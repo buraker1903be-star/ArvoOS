@@ -88,22 +88,41 @@ export function yenidenBol(
   if (!Number.isInteger(aralik) || aralik < 1 || aralik > 12) return { hata: "Taksit aralığı 1–12 ay arasında olmalı." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(secim.ilkVade)) return { hata: "İlk vade tarihi seçin." };
 
-  // Ödenmiş kısım korunur: tamamı ödenenler aynen, kısmen ödenenin ödenen kısmı.
-  const korunan: { vade: string; tutar: number }[] = [];
-  for (const t of [...plan].sort((a, b) => a.no - b.no)) {
-    const odenen = Math.min(t.tutar, Math.max(0, Math.round(t.odenen)));
-    if (odenen > 0) korunan.push({ vade: t.vade, tutar: odenen });
-  }
-  const odenmis = korunan.reduce((s, t) => s + t.tutar, 0);
-  const kalan = Math.round(toplam) - odenmis;
-  if (kalan < 0) return { hata: "Ödenen tutar sözleşme tutarını aşıyor; plan yeniden bölünemez." };
-  if (kalan === 0) return { hata: "Bu sözleşmenin ödenecek kalanı yok." };
+  const tutar = Math.round(toplam);
+  if (!Number.isFinite(tutar) || tutar <= 0) return { hata: "Sözleşme tutarı geçersiz." };
 
-  const taban = Math.floor(kalan / adet);
-  const artan = kalan - taban * adet;
+  /*
+    ÖDENEN TUTAR AYRI SATIRA ÇEVRİLMİYOR (kurum sahibinin kararı,
+    23.10.2026). Eskiden tamamen ödenmiş taksitler olduğu gibi
+    korunuyor, kısmen ödenenin ödenen kısmı AYRI bir taksit oluyor ve
+    yalnızca KALAN tutar yeni taksitlere bölünüyordu. Sonucu canlıda
+    görüldü: 19.000 TL'lik sözleşmede "3 taksit" seçilince ekranda
+    BEŞ satır çıkıyordu (SOZ-2026-000059) ve bir şey ödendiği anda
+    plan bir daha asla eşit taksitli hâle gelemiyordu.
+
+    Buna gerek yok, çünkü ÖDEME ZATEN TÜRETİLEREK DAĞITILIYOR:
+    taksitlerde "ödenen" sütunu yok; cari dökümündeki net tahsilat en
+    erken vadeden başlayarak taksitlere yazılıyor
+    (lib/taksit-dagitimi.ts). Yani toplam üçe bölündüğünde ödenen
+    tutar ilk taksite kendiliğinden sayılıyor ve o taksit "kısmi"
+    görünüyor.
+
+    Ödemenin ne zaman yapıldığı kaybolmuyor: o bilgi cari hareket
+    dökümünde duruyor, taksit planında değil.
+  */
+  const odenmis = plan.reduce(
+    (s, t) => s + Math.min(t.tutar, Math.max(0, Math.round(t.odenen))),
+    0,
+  );
+  if (odenmis > tutar) return { hata: "Ödenen tutar sözleşme tutarını aşıyor; plan yeniden bölünemez." };
+
+  /* Artan kuruş BAŞTAKİ taksitlere eklenir; toplam birebir tutar
+     (AGENTS.md). 19.000 / 3 = 6.333,34 + 6.333,33 + 6.333,33. */
+  const taban = Math.floor(tutar / adet);
+  const artan = tutar - taban * adet;
   const yeni = Array.from({ length: adet }, (_, i) => ({
     vade: ayEkle(secim.ilkVade, i * aralik),
     tutar: taban + (i < artan ? 1 : 0),
   })).filter((t) => t.tutar > 0);
-  return numarala([...korunan, ...yeni]);
+  return numarala(yeni);
 }

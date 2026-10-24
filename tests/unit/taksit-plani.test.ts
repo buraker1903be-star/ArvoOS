@@ -39,25 +39,71 @@ test("son taksit azalırsa fark bir ay sonra yeni taksit olur", () => {
   ]);
 });
 
-test("taksit seçeneği değişince ödenen korunur, kalan bölünür; artan kuruş baştakilere", () => {
-  // 1. taksitin 15.000'i ödenmiş: ödenen kısım ayrı (ödenmiş) taksit olarak kalır.
-  const sonuc = yenidenBol(plan.map((t, i) => ({ ...t, odenen: i === 0 ? 1500000 : 0 })), 4500000, { adet: 3, ilkVade: "2026-11-01", aralikAy: 1 });
+/*
+  TAKSİT SEÇENEĞİ DEĞİŞİNCE TOPLAM BÖLÜNÜR, KALAN DEĞİL.
+
+  Kural 23.10.2026'da kurum sahibinin kararıyla değişti. Eskiden
+  ödenmiş kısımlar ayrı satır olarak korunuyor ve yalnızca KALAN
+  tutar bölünüyordu; canlıda 19.000 TL'lik bir sözleşmede "3 taksit"
+  seçilince ekranda BEŞ satır çıkıyordu (SOZ-2026-000059) ve bir şey
+  ödendiği anda plan bir daha eşit taksitli hâle gelemiyordu.
+
+  Buna gerek yok: ödeme zaten TÜRETİLEREK dağıtılıyor
+  (lib/taksit-dagitimi.ts — net tahsilat en erken vadeden başlayarak
+  taksitlere yazılıyor), taksitlerde "ödenen" sütunu yok. Toplam üçe
+  bölününce ödenen tutar ilk taksite kendiliğinden sayılıyor.
+*/
+test("taksit seçeneği değişince TOPLAM bölünür; artan kuruş baştakilere", () => {
+  const sonuc = yenidenBol(
+    plan.map((t, i) => ({ ...t, odenen: i === 0 ? 1500000 : 0 })),
+    4500000,
+    { adet: 3, ilkVade: "2026-11-01", aralikAy: 1 },
+  );
   assert.ok(Array.isArray(sonuc));
+  /* Ödenmiş 15.000 ayrı satır DEĞİL: toplam 45.000 üçe bölünüyor. */
   assert.deepEqual(sonuc, [
-    { no: 1, vade: "2026-10-05", tutar: 1500000 },
-    { no: 2, vade: "2026-11-01", tutar: 1000000 },
-    { no: 3, vade: "2026-12-01", tutar: 1000000 },
-    { no: 4, vade: "2027-01-01", tutar: 1000000 },
+    { no: 1, vade: "2026-11-01", tutar: 1500000 },
+    { no: 2, vade: "2026-12-01", tutar: 1500000 },
+    { no: 3, vade: "2027-01-01", tutar: 1500000 },
   ]);
+
   const kurus = yenidenBol([{ no: 1, vade: "2026-10-01", tutar: 1000, odenen: 0 }], 1000, { adet: 3, ilkVade: "2026-10-01", aralikAy: 2 });
   assert.ok(Array.isArray(kurus));
   assert.deepEqual(kurus.map((t) => [t.vade, t.tutar]), [["2026-10-01", 334], ["2026-12-01", 333], ["2027-02-01", 333]]);
   assert.equal(toplam(kurus), 1000);
 });
 
+test("CANLIDAKİ SÖZLEŞME: 19.000 üçe bölününce üç satır", () => {
+  /* SOZ-2026-000059 — kurum sahibinin bildirdiği durum. 6.333 TL
+     tahsil edilmişti ve ekranda dört karışık satır vardı. */
+  const bozuk = [
+    { no: 1, vade: "2026-10-23", tutar: 422234, odenen: 422234 },
+    { no: 2, vade: "2026-10-23", tutar: 633350, odenen: 211066 },
+    { no: 3, vade: "2026-11-12", tutar: 211066, odenen: 0 },
+    { no: 4, vade: "2026-11-23", tutar: 633350, odenen: 0 },
+  ];
+  const sonuc = yenidenBol(bozuk, 1900000, { adet: 3, ilkVade: "2026-10-23", aralikAy: 1 });
+  assert.ok(Array.isArray(sonuc));
+  assert.equal(sonuc.length, 3, "üç satır olmalı");
+  assert.deepEqual(sonuc.map((t) => t.tutar), [633334, 633333, 633333]);
+  assert.equal(toplam(sonuc), 1900000, "toplam sözleşme tutarını birebir tutmalı");
+});
+
 test("yeniden bölmede geçersiz seçim reddedilir", () => {
+  /* TAMAMI ÖDENMİŞ SÖZLEŞME ARTIK REDDEDİLMİYOR: eskiden "kalan
+     yok" diye hata veriyordu, çünkü yalnızca kalan bölünüyordu.
+     Toplam bölündüğü için tamamı ödenmiş bir sözleşmenin planı da
+     yeniden düzenlenebiliyor — üç taksit de "ödendi" görünür. */
   const p = plan.map((t) => ({ ...t, odenen: t.tutar }));
-  assert.deepEqual(yenidenBol(p, 4500000, { adet: 2, ilkVade: "2026-11-01", aralikAy: 1 }), { hata: "Bu sözleşmenin ödenecek kalanı yok." });
+  const tamOdenmis = yenidenBol(p, 4500000, { adet: 2, ilkVade: "2026-11-01", aralikAy: 1 });
+  assert.ok(Array.isArray(tamOdenmis), "tamamı ödenmiş sözleşme de bölünebilmeli");
+  assert.equal(toplam(tamOdenmis), 4500000);
+
+  /* Ödenen sözleşme tutarını AŞIYORSA hâlâ reddediliyor. */
+  assert.deepEqual(
+    yenidenBol([{ no: 1, vade: "2026-10-01", tutar: 5000000, odenen: 5000000 }], 4500000, { adet: 2, ilkVade: "2026-11-01", aralikAy: 1 }),
+    { hata: "Ödenen tutar sözleşme tutarını aşıyor; plan yeniden bölünemez." },
+  );
   assert.deepEqual(yenidenBol(plan.map((t) => ({ ...t, odenen: 0 })), 4500000, { adet: 0, ilkVade: "2026-11-01", aralikAy: 1 }), { hata: "Taksit sayısı 1–36 arasında olmalı." });
 });
 
@@ -101,14 +147,16 @@ test("yenidenBol: toplam birebir korunuyor", () => {
 });
 
 test("aynı vadeli taksitlerde eklenme sırası korunuyor", () => {
-  /* Kısmen ödenmiş bir taksitin ödenen kısmı, kalanından önce
-     numaralanmalı: ikisi de aynı güne düşüyor. */
-  const plan = [
-    { no: 1, vade: "2026-10-23", tutar: 422234, odenen: 422234 },
-    { no: 2, vade: "2026-10-23", tutar: 633350, odenen: 211066 },
-  ];
-  const sonuc = yenidenBol(plan, 1900000, { adet: 1, ilkVade: "2026-10-23", aralikAy: 1 });
+  /* Sıralama kararlı: aynı güne düşen taksitlerde üretim sırası
+     bozulmuyor. Aylık aralıkla üretilen plan zaten ayrı günlere
+     düşüyor; bu testin işi sıralamanın kararlı KALDIĞINI
+     sabitlemek. */
+  const sonuc = yenidenBol(
+    [{ no: 1, vade: "2026-10-23", tutar: 300, odenen: 0 }],
+    300,
+    { adet: 3, ilkVade: "2026-10-23", aralikAy: 1 },
+  );
   const liste = sonuc as { no: number; vade: string; tutar: number }[];
-  assert.equal(liste[0].tutar, 422234, "önce tamamı ödenmiş taksit");
-  assert.equal(liste[1].tutar, 211066, "sonra kısmen ödenenin ödenen kısmı");
+  assert.deepEqual(liste.map((t) => t.vade), ["2026-10-23", "2026-11-23", "2026-12-23"]);
+  assert.deepEqual(liste.map((t) => t.no), [1, 2, 3]);
 });
