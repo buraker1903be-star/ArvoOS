@@ -159,9 +159,24 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
 @media(max-width:1280px){
   .rpt-widgets{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
 }
+/*
+  KART IZGARASI DAR EKRANDA İKİ SÜTUN (2026-10-24).
+
+  Burada tek sütuna iniyordu ve o karar kartlar UZUNKEN doğruydu:
+  464–965 px'lik bir kartı yan yana koymak okunmaz hâle getiriyordu.
+  Kartlar özete indikten sonra (≈195 px) aynı kural sayfayı yeniden
+  uzatıyordu — 1120 px'lik bir ekranda beş kart alt alta diziliyor
+  ve 1.180 px'in altındaki her dizüstünde "tek sayfa" kuralı
+  bozuluyordu. Ölçüldü.
+
+  Tek sütun yalnızca gerçekten dar ekranda (820 px altı).
+*/
 @media(max-width:1180px){
-  .rpt-grid{grid-template-columns:minmax(0,1fr)}
+  .rpt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .rpt-ledgers{grid-template-columns:minmax(0,1fr);gap:20px}
+}
+@media(max-width:820px){
+  .rpt-grid{grid-template-columns:minmax(0,1fr)}
 }
 @media(max-width:760px){
   .rpt{gap:14px}
@@ -296,8 +311,6 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
 .rpt-kart-ac:active{transform:translateY(0) scale(.97)}
 .rpt-pencere-alt{margin:16px 0 0}
 
-@media(max-width:1100px){.rpt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:700px){.rpt-grid{grid-template-columns:minmax(0,1fr)}}
 
 /* ---------- Yazdırma: ayrıntı geri gelir ----------
    PanelDrawer çocuklarını kapalıyken de çiziyor (portalda, gizli),
