@@ -1,0 +1,19 @@
+{
+  "_aciklama": "ORTAK ÖRNEK TABLOSU. 'Operasyon departmanı' kuralı iki yerde yaşıyor: TypeScript'te departmanTuru() (profil ataması) ve SQL'de private.arvo_is_operations_name() (müşteri verisi kapısı, migration 20261023184948). İkisi aynı sonucu vermek zorunda; biri değişip diğeri kalırsa operasyon personeli müşterinin telefonunu ve sözleşme tutarını görmeye başlar ve hiçbir yerde hata görünmez.",
+  "operasyon": [
+    "Operasyon",
+    "Operasyon Departmanı",
+    "OPERASYON",
+    "operasyon ekibi",
+    "Operasyon Birimi"
+  ],
+  "operasyonDegil": [
+    "Satış",
+    "Satış Departmanı",
+    "SATIŞ",
+    "Muhasebe",
+    "İnsan Kaynakları",
+    "Yönetim",
+    "Kooperasyon"
+  ]
+}

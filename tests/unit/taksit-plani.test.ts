@@ -60,3 +60,55 @@ test("yeniden bölmede geçersiz seçim reddedilir", () => {
   assert.deepEqual(yenidenBol(p, 4500000, { adet: 2, ilkVade: "2026-11-01", aralikAy: 1 }), { hata: "Bu sözleşmenin ödenecek kalanı yok." });
   assert.deepEqual(yenidenBol(plan.map((t) => ({ ...t, odenen: 0 })), 4500000, { adet: 0, ilkVade: "2026-11-01", aralikAy: 1 }), { hata: "Taksit sayısı 1–36 arasında olmalı." });
 });
+
+/*
+  TAKSİT NUMARASI VADEYE UYMAK ZORUNDA.
+
+  CANLIDA GÖRÜLDÜ (23.10.2026, SOZ-2026-000059): ödeme takviminde
+  taksitler 2, 3, 1, 4 sırasıyla diziliydi — "1. taksit" en son
+  vadeliydi. Sebebi `yenidenBol`un son satırıydı: ödenmiş taksitler
+  diziye başa, yeni taksitler sona konup SIRAYLA numaralanıyordu;
+  yeni ilk vade korunan bir taksitten önceye düştüğünde numara ile
+  tarih ayrışıyordu.
+
+  Zararı kozmetik değil: aynı numaralar müşteriye gönderilen ödeme
+  takviminde ve hatırlatmalarda da yazıyor. "3. taksitiniz gecikti"
+  diyen bir mesajın hangi tarihe ait olduğu belirsiz kalıyordu.
+*/
+test("yenidenBol: numaralar VADE sırasını izliyor", () => {
+  /* Peşin ödenmiş ileri tarihli taksit var, yeni plan daha erken
+     başlıyor — kusurun çıktığı durum. */
+  const plan = [{ no: 1, vade: "2026-12-23", tutar: 500000, odenen: 500000 }];
+  const sonuc = yenidenBol(plan, 1900000, { adet: 2, ilkVade: "2026-10-23", aralikAy: 1 });
+  assert.ok(Array.isArray(sonuc), "plan dönmeli");
+  const liste = sonuc as { no: number; vade: string; tutar: number }[];
+  assert.deepEqual(
+    liste.map((t) => t.no),
+    [...liste].sort((a, b) => a.vade.localeCompare(b.vade)).map((t) => t.no),
+    "numaralar vade sırasını izlemeli",
+  );
+  assert.equal(liste[0].vade, "2026-10-23", "1. taksit en erken vadeli olmalı");
+});
+
+test("yenidenBol: toplam birebir korunuyor", () => {
+  /* Sıralama değişti diye bölüştürme bozulmamalı: artan kuruş
+     baştaki taksitlere ekleniyor ve toplam sözleşme tutarını
+     birebir tutuyor (AGENTS.md). */
+  const plan = [{ no: 1, vade: "2026-10-23", tutar: 633300, odenen: 633300 }];
+  const sonuc = yenidenBol(plan, 1900000, { adet: 3, ilkVade: "2026-11-23", aralikAy: 1 });
+  const liste = sonuc as { no: number; vade: string; tutar: number }[];
+  assert.equal(liste.reduce((s, t) => s + t.tutar, 0), 1900000);
+});
+
+test("aynı vadeli taksitlerde eklenme sırası korunuyor", () => {
+  /* Kısmen ödenmiş bir taksitin ödenen kısmı, kalanından önce
+     numaralanmalı: ikisi de aynı güne düşüyor. */
+  const plan = [
+    { no: 1, vade: "2026-10-23", tutar: 422234, odenen: 422234 },
+    { no: 2, vade: "2026-10-23", tutar: 633350, odenen: 211066 },
+  ];
+  const sonuc = yenidenBol(plan, 1900000, { adet: 1, ilkVade: "2026-10-23", aralikAy: 1 });
+  const liste = sonuc as { no: number; vade: string; tutar: number }[];
+  assert.equal(liste[0].tutar, 422234, "önce tamamı ödenmiş taksit");
+  assert.equal(liste[1].tutar, 211066, "sonra kısmen ödenenin ödenen kısmı");
+});

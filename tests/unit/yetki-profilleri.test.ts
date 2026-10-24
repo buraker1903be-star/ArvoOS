@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { departmanaUygunProfiller, departmanTuru, profilBul, profilDepartmanEngeli, profilModulKararlari, profilUygulandiMi, YETKI_PROFILLERI } from "@/lib/yetki-profilleri";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
@@ -112,4 +113,36 @@ test("tanınmayan ya da boş departmanda her profil açık", () => {
   assert.equal(departmanaUygunProfiller("Muhasebe").length, YETKI_PROFILLERI.length);
   assert.equal(departmanaUygunProfiller(null).length, YETKI_PROFILLERI.length);
   for (const p of YETKI_PROFILLERI) assert.equal(profilDepartmanEngeli(p, "Muhasebe"), null);
+});
+
+/*
+  OPERASYON DEPARTMANI KURALI İKİ YERDE YAŞIYOR.
+
+  TypeScript: departmanTuru() — profil ataması.
+  SQL: private.arvo_is_operations_name() — müşteri verisi kapısı
+  (migration 20261023184948: operasyon departmanında sözleşme tutarı
+  ve müşteri telefonu varsayılan KAPALI).
+
+  İkisi aynı sonucu vermek zorunda. Biri değişip diğeri kalırsa
+  operasyon personeli telefonu ve tutarı görmeye başlar ve hiçbir
+  yerde hata görünmez — bu deponun en pahalı hata sınıfı.
+
+  Ortak örnek tablosu: tests/fixtures/operasyon-departman-adlari.json.
+  SQL tarafı aynı tabloyu tests/db altında sınamalı.
+
+  "Kooperasyon" BİLEREK listede: kural sözcük başına bakıyor
+  (SQL'de \m, TS'te \b), yoksa içinde "operasyon" geçen her ad
+  operasyon departmanı sayılırdı.
+*/
+test("operasyon departmanı kuralı ortak örnek tablosuyla uyuşuyor", async () => {
+  const ornekler = JSON.parse(
+    await readFile(new URL("../fixtures/operasyon-departman-adlari.json", import.meta.url), "utf8"),
+  ) as { operasyon: string[]; operasyonDegil: string[] };
+
+  for (const ad of ornekler.operasyon) {
+    assert.equal(departmanTuru(ad), "operasyon", ad);
+  }
+  for (const ad of ornekler.operasyonDegil) {
+    assert.notEqual(departmanTuru(ad), "operasyon", ad);
+  }
 });

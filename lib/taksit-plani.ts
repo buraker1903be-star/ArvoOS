@@ -31,7 +31,25 @@ export function ayEkle(gun: string, ay: number): string {
   return hedef.toISOString().slice(0, 10);
 }
 
-const numarala = (liste: { vade: string; tutar: number }[]): PlanTaksidi[] => liste.map((t, i) => ({ no: i + 1, vade: t.vade, tutar: t.tutar }));
+/*
+  NUMARA VADEYE GÖRE VERİLİR, dizi sırasına göre değil.
+
+  Eskiden `yenidenBol` ödenmiş taksitleri başa, yeni taksitleri sona
+  koyup sırayla numaralıyordu. Yeni ilk vade korunan bir taksitten
+  ÖNCEYE düştüğünde numaralar tarihlerle uyumsuz kalıyordu:
+  "1. taksit" en SON vadeli taksit olabiliyordu. Canlıda görüldü
+  (23.10.2026, SOZ-2026-000059): ekranda taksitler 2, 3, 1, 4
+  sırasıyla diziliydi ve müşteriye gönderilen ödeme takviminde de
+  aynı numaralar yazıyor.
+
+  Sıralama KARARLI: aynı vadeli taksitlerde eklenme sırası korunuyor,
+  yani kısmen ödenmiş bir taksitin ödenen kısmı kalanından önce
+  numaralanıyor.
+*/
+const numarala = (liste: { vade: string; tutar: number }[]): PlanTaksidi[] =>
+  [...liste]
+    .sort((a, b) => a.vade.localeCompare(b.vade))
+    .map((t, i) => ({ no: i + 1, vade: t.vade, tutar: t.tutar }));
 
 export function tutarDegistir(plan: PlanTaksidi[], hedefNo: number, yeniTutar: number): PlanTaksidi[] | { hata: string } {
   const sirali = [...plan].sort((a, b) => a.no - b.no).map((t) => ({ ...t }));
