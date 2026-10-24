@@ -46,6 +46,7 @@
  *
  * KULLANIM
  *   ARVO_COOKIE="$(pbpaste)" node scripts/duman-testi.mjs
+ *     (pano "Copy as cURL" çıktısı da olabilir; çerez içinden çıkarılır)
  *   node scripts/duman-testi.mjs --cerez-dosyasi ~/arvo-cerez.txt
  *   node scripts/duman-testi.mjs --taban https://app.arvo-os.com --konsol https://yonetim.arvo-os.com
  *   node scripts/duman-testi.mjs --yalnizca /panel/finance
@@ -77,12 +78,50 @@ const konsol = arg("--konsol", "https://yonetim.arvo-os.com").replace(/\/$/, "")
 const yalnizca = arg("--yalnizca");
 const cerezDosyasi = arg("--cerez-dosyasi");
 
-const cerez = (cerezDosyasi ? fs.readFileSync(cerezDosyasi, "utf8") : process.env.ARVO_COOKIE || "").trim();
+/*
+  ÇEREZ "COPY AS CURL" ÇIKTISINDAN DA OKUNUYOR (24.10.2026).
+
+  Önceden yalnızca ham çerez dizesi kabul ediliyordu ve onu almak
+  DevTools'ta altı adım sürüyor: Ağ sekmesi → belge isteği →
+  Headers → Request Headers → "Raw" → `cookie:` satırını seç →
+  kopyala. Kullanıcı bunu denedi, pano boş kaldı ve betik
+  "oturum çerezi yok" dedi — yani en çok işe yarayan denetim en zor
+  çalıştırılan denetimdi.
+
+  Tarayıcıda tek adımlı bir yol var: isteğe sağ tık → "Copy as cURL".
+  Çıktı zaten `-H 'cookie: …'` taşıyor. Betik artık verilen metin bir
+  cURL komutuysa çerezi içinden çıkarıyor; ham çerez dizesi de
+  çalışmaya devam ediyor.
+*/
+function cerezCoz(ham) {
+  const metin = (ham || "").trim();
+  if (!metin) return "";
+  /* cURL çıktısı: -H 'cookie: …' / -H "Cookie: …" / --header 'cookie: …'
+     Tek ve çift tırnağın ikisi de (Windows'ta çift tırnak çıkıyor). */
+  const basliktan = metin.match(/-{1,2}(?:H|header)\s+(['"])\s*cookie\s*:\s*([\s\S]*?)\1/i);
+  if (basliktan) return basliktan[2].trim();
+  /* Bazı tarayıcılar çerezi -b / --cookie ile veriyor. */
+  const bayraktan = metin.match(/-{1,2}(?:b|cookie)\s+(['"])([\s\S]*?)\1/i);
+  if (bayraktan) return bayraktan[2].trim();
+  /* cURL komutu ama çerez yok: kullanıcıya sebebini söyle. */
+  if (/^\s*curl\b/i.test(metin)) return "";
+  return metin;
+}
+
+const hamCerez = cerezDosyasi ? fs.readFileSync(cerezDosyasi, "utf8") : process.env.ARVO_COOKIE || "";
+const cerez = cerezCoz(hamCerez);
 if (!cerez) {
+  const curlVerildi = /^\s*curl\b/i.test((hamCerez || "").trim());
   console.error(
-    "✗ Oturum çerezi yok.\n"
-    + "  ARVO_COOKIE ortam değişkenini ya da --cerez-dosyasi verin.\n"
-    + "  Çerezi tarayıcının Ağ sekmesinden bir isteğin `cookie` başlığından kopyalayın.",
+    curlVerildi
+      ? "✗ Verilen cURL komutunda `cookie` başlığı yok.\n"
+        + "  Oturum açıkken bir PANEL isteğini kopyalayın (ör. /panel/finance);\n"
+        + "  statik dosya isteklerinde çerez başlığı bulunmaz."
+      : "✗ Oturum çerezi yok.\n"
+        + "  EN KOLAY YOL: tarayıcıda panel açıkken DevTools → Network →\n"
+        + "  bir panel isteğine sağ tık → Copy → Copy as cURL, sonra:\n"
+        + "    ARVO_COOKIE=\"$(pbpaste)\" npm run duman\n"
+        + "  Ham çerez dizesi de kabul ediliyor (--cerez-dosyasi ile dosyadan).",
   );
   process.exit(2);
 }
