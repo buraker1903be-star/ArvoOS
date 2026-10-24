@@ -6,7 +6,8 @@ import {
   operasyonModeli,
   type DagilimSatiri, type OperasyonAdimi, type OperasyonIsi, type OperasyonModeli,
 } from "@/lib/rapor-operasyon";
-import { Icon, WidgetCard, cssVar, percent, type Tone, type Widget } from "./rapor-parcalari";
+import { cssVar, Icon, percent, TutarlilikUyarisi, WidgetCard, type Tone, type Widget } from "./rapor-parcalari";
+import { operasyonTutarliligi } from "@/lib/rapor-tutarlilik";
 import type { RaporGirdisi } from "./rapor-girdisi";
 
 /*
@@ -92,6 +93,9 @@ const ONCELIK_TONU: Record<string, Tone> = { urgent: "danger", high: "warning", 
 
 export async function OperasyonRaporu({ supabase, organizationId, donem }: RaporGirdisi) {
   const m = await operasyonVerisi({ supabase, organizationId, donem });
+  /* Raporun kendi toplamları birbirini tutuyor mu (lib/rapor-tutarlilik).
+     Normal şartlarda boş; dolduğu gün ekran bunu söylüyor. */
+  const bulgular = operasyonTutarliligi(m);
   const gorevOrani = m.adimToplam ? (m.adimTamamlanan / m.adimToplam) * 100 : null;
   const enYuksekAy = Math.max(1, ...m.aylik.map((a) => Math.max(a.acilan, a.tamamlanan)));
   const enUzunGecikme = Math.max(1, ...m.gecikenler.map((g) => g.gecikmeGun));
@@ -132,6 +136,8 @@ export async function OperasyonRaporu({ supabase, organizationId, donem }: Rapor
   ];
 
   return <>
+    <TutarlilikUyarisi bulgular={bulgular} />
+
     <p className="rapor-tanim">
       <Icon name="alert" size={15} />
       <span>

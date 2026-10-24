@@ -4,7 +4,8 @@ import { gunYazisi } from "@/lib/rapor-donemi";
 import { tumSatirlar } from "@/lib/rapor-okuma";
 import { tahsilatModeli, YAKLASAN_GUN, type TahsilatCarisi, type TahsilatHareketi, type TahsilatModeli } from "@/lib/rapor-tahsilat";
 import { buildAccountBalances, netTahsilatToplamdan, type CariToplam } from "../account-balances";
-import { Icon, WidgetCard, cssVar, money, percent, type Widget } from "./rapor-parcalari";
+import { cssVar, Icon, money, percent, TutarlilikUyarisi, WidgetCard, type Widget } from "./rapor-parcalari";
+import { tahsilatTutarliligi } from "@/lib/rapor-tutarlilik";
 import type { RaporGirdisi } from "./rapor-girdisi";
 import type { DagitilacakTaksit } from "@/lib/taksit-dagitimi";
 
@@ -106,6 +107,9 @@ export async function tahsilatVerisi({ supabase, organizationId, donem }: RaporG
 
 export async function TahsilatRaporu({ supabase, organizationId, donem }: RaporGirdisi) {
   const m = await tahsilatVerisi({ supabase, organizationId, donem });
+  /* Raporun kendi toplamları birbirini tutuyor mu (lib/rapor-tutarlilik).
+     Normal şartlarda boş; dolduğu gün ekran bunu söylüyor. */
+  const bulgular = tahsilatTutarliligi(m);
   const aylar = m.takvim.filter((a) => a.tur === "ay");
   const enYuksekAy = Math.max(1, ...aylar.map((a) => a.tutar));
   const enYuksekTahsilat = Math.max(1, ...m.aylikTahsilat.map((a) => a.tutar));
@@ -152,6 +156,8 @@ export async function TahsilatRaporu({ supabase, organizationId, donem }: RaporG
   ];
 
   return <>
+    <TutarlilikUyarisi bulgular={bulgular} />
+
     <p className="rapor-tanim">
       <Icon name="alert" size={15} />
       <span>

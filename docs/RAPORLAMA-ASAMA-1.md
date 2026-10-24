@@ -688,3 +688,58 @@ bilinir, o yüzden `hr_employees` tamamı okunuyor (sayfalanarak; tablo
 kurum ölçeğinde küçük). Ayrılmış personel (`terminated`) aktif
 sayılmıyor ama üzerine kayıt varsa tablolarda görünmeye devam ediyor —
 geçmiş dönemin raporu o kişiyi yok saymamalı.
+
+---
+
+## 17. Tutarlılık katmanı (24.10.2026)
+
+Bu alt sistemde bulunan kusurların **hepsi** aynı sınıftandı ve
+hiçbiri hata vermiyordu — yalnızca yanlış sayıyorlardı:
+
+| Kusur | Belirti |
+|---|---|
+| Personel kutusunda iki işi de yapan kişi iki dilimde | dilim toplamı kutudaki sayıyı aşıyor |
+| Teklif kutusunda süresi geçen süreçler hiçbir dilimde | toplam, süreç sayısını tutmuyor |
+| Huni kümeleri aşamaların üçte birini tanımıyor | dönüşüm olduğundan küçük |
+| Kabul `status` sütununda aranıyor | dönüşüm her zaman %0 |
+| `payment` aşaması eşlemede yok | talep çizgide arşiv gibi |
+
+Ortak nokta: **bir toplam, olması gereken başka bir toplamla
+tutmuyordu.** Ekranda bu görünmez; rakam makul durur.
+
+### `lib/rapor-tutarlilik.ts`
+
+Her raporun modelini alıp tutmayan ilişkileri listeliyor. İki yerde
+kullanılıyor:
+
+1. **Rastgele girdili testlerde** (`tests/unit/rapor-tutarlilik.test.ts`):
+   yedi model, her biri 300 tur, tohumlu üreteçle. Örnek tabanlı test
+   yazanın aklına geleni sınar; bu alt sistemdeki kusurların hepsi
+   akla gelmeyen birleşimlerde çıktı (iki işi de yapan personel,
+   süresi geçmiş süreç, akademik aşama, yıl içinde ikinci imza).
+2. **Ekranda** (`TutarlilikUyarisi`): tutarsızlık varsa rapor bunu
+   YAZIYOR. Sessizce yanlış sayı göstermektense "şu toplam tutmuyor"
+   demek yeğdir.
+
+**Kural:** buraya yalnızca gerçekten değişmez ilişkiler yazılır.
+Yanlış bir değişmez, olmayan bir hatayı her gün bildirir ve kullanıcı
+uyarıyı okumamayı öğrenir — denetim o gün ölür. Kırpılmış listeler
+(ilk 20, ilk 25) bu yüzden eşitlikle değil **≤** ile sınanıyor.
+
+Bu kural daha yazılırken işe yaradı: "ödenen prim ≤ tahakkuk eden
+prim" ölçütünü koydum, rastgele test ilk turda düşürdü. İkisi farklı
+tarihlerle dönemleniyor (tahakkuk `accrued_at`, ödeme `paid_at`);
+eylülde tahakkuk edip ekimde ödenen prim ekim raporunda "tahakkuk 0,
+ödenen X" verir ve bu **doğru** davranıştır. Ölçüt kaldırıldı.
+
+### `tests/unit/raporlar-arasi.test.ts`
+
+Aynı ham veri iki ayrı modele verilip ortak büyüklüklerin eşitliği
+sınanıyor: Satış ↔ Teklif (imzalı tutar/adet, teklif süreci, kabul),
+Tahsilat ↔ Finans (dönem net tahsilatı). Aynı gerçeği iki rapor
+farklı söylerse kullanıcı hangisine güveneceğini bilemez.
+
+Ölçütler bilerek dar: yalnızca **tanımı aynı** büyüklükler
+karşılaştırılıyor. CRM kazanımı ile satış adedi eşit olmak zorunda
+değil (biri aşamadan, öteki sözleşmeden gelir) ve test bunu da
+sabitliyor — ilişkinin yönünü, eşitliği değil.

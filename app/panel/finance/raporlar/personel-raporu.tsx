@@ -6,7 +6,8 @@ import {
   type PersonelIsi, type PersonelKaydi, type PersonelModeli, type PersonelPrimi,
   type PersonelSozlesmesi, type PersonelTalebi,
 } from "@/lib/rapor-personel";
-import { Icon, WidgetCard, cssVar, money, percent, type Widget } from "./rapor-parcalari";
+import { cssVar, Icon, money, percent, TutarlilikUyarisi, WidgetCard, type Widget } from "./rapor-parcalari";
+import { personelTutarliligi } from "@/lib/rapor-tutarlilik";
 import type { RaporGirdisi } from "./rapor-girdisi";
 
 /*
@@ -96,6 +97,9 @@ export async function personelVerisi({ supabase, organizationId, donem }: RaporG
 
 export async function PersonelRaporu({ supabase, organizationId, donem }: RaporGirdisi) {
   const m = await personelVerisi({ supabase, organizationId, donem });
+  /* Raporun kendi toplamları birbirini tutuyor mu (lib/rapor-tutarlilik).
+     Normal şartlarda boş; dolduğu gün ekran bunu söylüyor. */
+  const bulgular = personelTutarliligi(m);
   const enYuksekTutar = Math.max(1, ...m.satis.map((s) => s.sozlesmeTutari));
   const enYuksekIs = Math.max(1, ...m.operasyon.map((o) => o.aktifIs));
   const enYuksekAy = Math.max(1, ...m.aylik.map((a) => Math.max(a.kazanilan, a.tamamlanan)));
@@ -152,6 +156,8 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
   ];
 
   return <>
+    <TutarlilikUyarisi bulgular={bulgular} />
+
     <p className="rapor-tanim">
       <Icon name="alert" size={15} />
       <span>

@@ -656,3 +656,10 @@ body.rapor-kilit{overflow:hidden}
    durumları için (gelir defteri boşken net sonucun zarar sanılması). */
 .rapor-tanim.is-uyari{border-color:color-mix(in srgb,var(--warning) 40%,var(--line));background:color-mix(in srgb,var(--warning) 10%,transparent)}
 .rapor-tanim.is-uyari svg{color:var(--warning)}
+
+/* Tutarsızlık uyarısı: normal şartlarda hiç görünmez (ölçütler
+   rastgele girdilerle sınanıyor). Göründüğünde dikkat çekmeli. */
+.rapor-tanim.is-hata{align-items:flex-start;border-color:color-mix(in srgb,var(--danger) 45%,var(--line));background:color-mix(in srgb,var(--danger) 9%,transparent)}
+.rapor-tanim.is-hata svg{color:var(--danger)}
+.rapor-tutarsizlik{margin:6px 0 0;padding-left:18px}
+.rapor-tutarsizlik li{margin-top:3px;font-variant-numeric:tabular-nums}

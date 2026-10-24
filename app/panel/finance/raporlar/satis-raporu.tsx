@@ -3,7 +3,8 @@ import { istanbulMidnight, monthStartKey } from "@/lib/istanbul-date";
 import { gunYazisi } from "@/lib/rapor-donemi";
 import { kimliklerle, tumSatirlar } from "@/lib/rapor-okuma";
 import { satisModeli, type SatisModeli, type SatisSozlesmesi, type SatisTalebi, type SatisTeklifi } from "@/lib/rapor-satis";
-import { Icon, WidgetCard, cssVar, money, percent, type Widget } from "./rapor-parcalari";
+import { cssVar, Icon, money, percent, TutarlilikUyarisi, WidgetCard, type Widget } from "./rapor-parcalari";
+import { satisTutarliligi } from "@/lib/rapor-tutarlilik";
 import type { RaporGirdisi } from "./rapor-girdisi";
 
 /*
@@ -94,6 +95,9 @@ export async function satisVerisi({ supabase, organizationId, donem }: RaporGird
 
 export async function SatisRaporu({ supabase, organizationId, donem }: RaporGirdisi) {
   const m = await satisVerisi({ supabase, organizationId, donem });
+  /* Raporun kendi toplamları birbirini tutuyor mu (lib/rapor-tutarlilik).
+     Normal şartlarda boş; dolduğu gün ekran bunu söylüyor. */
+  const bulgular = satisTutarliligi(m);
   const enYuksekAy = Math.max(1, ...m.aylik.map((a) => a.tutar));
 
   const kutular: Widget[] = [
@@ -134,6 +138,8 @@ export async function SatisRaporu({ supabase, organizationId, donem }: RaporGird
   ];
 
   return <>
+    <TutarlilikUyarisi bulgular={bulgular} />
+
     {/* KPI tanımı EKRANDA: "satış" ile "tahsilat" aynı şey sanılırsa
         rapor doğru sayıyı yanlış soruya cevap olarak verir. */}
     <p className="rapor-tanim">

@@ -3,7 +3,8 @@ import { istanbulMidnight, monthStartKey } from "@/lib/istanbul-date";
 import { gunYazisi } from "@/lib/rapor-donemi";
 import { kimliklerle, tumSatirlar } from "@/lib/rapor-okuma";
 import { crmModeli, type CrmModeli, type CrmSozlesmesi, type CrmTalebi } from "@/lib/rapor-crm";
-import { Icon, WidgetCard, cssVar, money, percent, type Widget } from "./rapor-parcalari";
+import { cssVar, Icon, money, percent, TutarlilikUyarisi, WidgetCard, type Widget } from "./rapor-parcalari";
+import { crmTutarliligi } from "@/lib/rapor-tutarlilik";
 import type { RaporGirdisi } from "./rapor-girdisi";
 
 /*
@@ -71,6 +72,9 @@ export async function crmVerisi({ supabase, organizationId, donem }: RaporGirdis
 
 export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdisi) {
   const m = await crmVerisi({ supabase, organizationId, donem });
+  /* Raporun kendi toplamları birbirini tutuyor mu (lib/rapor-tutarlilik).
+     Normal şartlarda boş; dolduğu gün ekran bunu söylüyor. */
+  const bulgular = crmTutarliligi(m);
   const enYuksekAy = Math.max(1, ...m.aylik.map((a) => a.talep));
   const enYuksekSebep = Math.max(1, ...m.kayipSebepleri.map((s) => s.adet));
 
@@ -125,6 +129,8 @@ export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdis
   ];
 
   return <>
+    <TutarlilikUyarisi bulgular={bulgular} />
+
     <p className="rapor-tanim">
       <Icon name="alert" size={15} />
       <span>

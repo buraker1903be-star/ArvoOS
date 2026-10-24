@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { IkonAdi } from "@/lib/rapor-ikonlari";
+import type { Tutarsizlik } from "@/lib/rapor-tutarlilik";
 import { PanelDrawer } from "../../components/panel-drawer";
 
 /*
@@ -366,6 +367,41 @@ export function Ledger({ title, caption, rows, total }: { title: string; caption
             </tr>
           </tfoot>
         </table>
+      </div>
+    </div>
+  );
+}
+
+/*
+  TUTARSIZLIK UYARISI (2026-10-24).
+
+  Raporun kendi toplamları birbirini tutmuyorsa ekran bunu SÖYLÜYOR.
+  Bu alt sistemde bulunan kusurların hepsi "bir toplam, olması
+  gereken başka bir toplamla tutmuyor" sınıfındandı ve hiçbiri hata
+  vermiyordu — rakam makul görünüyordu, kullanıcı ona güvenip karar
+  veriyordu.
+
+  Ölçütler `lib/rapor-tutarlilik.ts`'te ve rastgele üretilmiş
+  girdilerle sınanıyor; yani burası normal şartlarda HİÇ
+  görünmemeli. Göründüğü gün, yanlış bir rakama güvenmektense
+  raporun kusurlu olduğunu bilmek yeğdir.
+*/
+export function TutarlilikUyarisi({ bulgular }: { bulgular: Tutarsizlik[] }) {
+  if (bulgular.length === 0) return null;
+  return (
+    <div className="rapor-tanim is-hata" role="alert">
+      <Icon name="alert" size={15} />
+      <div>
+        <b>Bu raporda tutmayan {bulgular.length} toplam var.</b> Rakamlara güvenmeden önce
+        aşağıdakileri bildirin; rapor bunları sessizce göstermemek için uyarıyor.
+        <ul className="rapor-tutarsizlik">
+          {bulgular.map((b) => (
+            <li key={`${b.rapor}-${b.olcut}`}>
+              <b>{b.olcut}</b> — beklenen {b.beklenen.toLocaleString("tr-TR")},
+              bulunan {b.bulunan.toLocaleString("tr-TR")}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

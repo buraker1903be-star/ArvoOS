@@ -3,7 +3,8 @@ import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
 import { gunYazisi } from "@/lib/rapor-donemi";
 import { kimliklerle, tumSatirlar } from "@/lib/rapor-okuma";
 import { teklifModeli, type TeklifModeli, type TeklifSatiri, type TeklifSozlesmesi } from "@/lib/rapor-teklif";
-import { Icon, WidgetCard, cssVar, money, percent, type Tone, type Widget } from "./rapor-parcalari";
+import { cssVar, Icon, money, percent, TutarlilikUyarisi, WidgetCard, type Tone, type Widget } from "./rapor-parcalari";
+import { teklifTutarliligi } from "@/lib/rapor-tutarlilik";
 import type { RaporGirdisi } from "./rapor-girdisi";
 
 /*
@@ -108,6 +109,9 @@ const DURUM_TONU: Record<string, Tone> = {
 
 export async function TeklifRaporu({ supabase, organizationId, donem }: RaporGirdisi) {
   const m = await teklifVerisi({ supabase, organizationId, donem });
+  /* Raporun kendi toplamları birbirini tutuyor mu (lib/rapor-tutarlilik).
+     Normal şartlarda boş; dolduğu gün ekran bunu söylüyor. */
+  const bulgular = teklifTutarliligi(m);
   const enUzunBekleme = Math.max(1, ...m.bekleyenler.map((b) => b.beklemeGun ?? 0));
 
   const kutular: Widget[] = [
@@ -150,6 +154,8 @@ export async function TeklifRaporu({ supabase, organizationId, donem }: RaporGir
   ];
 
   return <>
+    <TutarlilikUyarisi bulgular={bulgular} />
+
     <p className="rapor-tanim">
       <Icon name="alert" size={15} />
       <span>

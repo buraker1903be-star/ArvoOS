@@ -2,7 +2,8 @@ import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul
 import { tumSatirlar } from "@/lib/rapor-okuma";
 import { finansModeli, type FinansHareketi, type FinansModeli, type KasaHareketi, type Kirilim, type MaliyetKalemi } from "@/lib/rapor-finans";
 import Link from "next/link";
-import { Icon, WidgetCard, cssVar, money, percent, type Widget } from "./rapor-parcalari";
+import { cssVar, Icon, money, percent, TutarlilikUyarisi, WidgetCard, type Widget } from "./rapor-parcalari";
+import { finansTutarliligi } from "@/lib/rapor-tutarlilik";
 import type { RaporGirdisi } from "./rapor-girdisi";
 
 /*
@@ -83,6 +84,9 @@ export async function finansVerisi({ supabase, organizationId, donem }: RaporGir
 
 export async function FinansRaporu({ supabase, organizationId, donem }: RaporGirdisi) {
   const m = await finansVerisi({ supabase, organizationId, donem });
+  /* Raporun kendi toplamları birbirini tutuyor mu (lib/rapor-tutarlilik).
+     Normal şartlarda boş; dolduğu gün ekran bunu söylüyor. */
+  const bulgular = finansTutarliligi(m);
   const enYuksek = Math.max(1, ...m.aylik.flatMap((a) => [a.gelir, a.gider + a.maliyet]));
   /* Gelir defteri boş ama para çıkmışsa "net sonuç" bir zarar değil,
      defterin boş olduğunun işareti. Rapor bunu söylemek zorunda. */
@@ -135,6 +139,8 @@ export async function FinansRaporu({ supabase, organizationId, donem }: RaporGir
   ];
 
   return <>
+    <TutarlilikUyarisi bulgular={bulgular} />
+
     {/*
       GELİR DEFTERİ BOŞKEN UYARI. Rapor doğru çalışıyor ama rakam
       yanlış OKUNUYOR: "net sonuç −₺498.789" bir zarar sanılıyor.
