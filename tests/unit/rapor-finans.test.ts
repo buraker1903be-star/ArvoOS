@@ -290,3 +290,34 @@ describe("gelir defteri boşken tahsilat referansı", () => {
     assert.deepEqual(satir?.[1], { deger: 7000, bicim: "para" });
   });
 });
+
+describe("ödendi işaretlenmemiş planlı gelir", () => {
+  it("planlı gelir kayıtlarını vadeden bağımsız sayar", () => {
+    /*
+      Canlıda görüldü: akademikmerkez kurumunda 27 planlı gelir
+      kaydı (₺878.250) varken ödenmiş kayıt sıfırdı. "Defteri
+      kullanmıyorlar" ile "ödendi işaretlemiyorlar" ayrı sorunlar;
+      ikincisine "deftere kaydedin" demek yanlış yönlendirme.
+    */
+    const m = calistir({ hareketler: [
+      hareket({ status: "planned", paid_at: null, due_date: "2026-10-28", amount: 300_000 }),
+      hareket({ status: "planned", paid_at: null, due_date: "2026-09-10", amount: 200_000 }),
+      hareket({ status: "planned", paid_at: null, due_date: null, amount: 100_000 }),
+      hareket({ transaction_type: "expense", status: "planned", paid_at: null, due_date: "2026-10-28", amount: 900_000 }),
+    ] });
+    assert.equal(m.planliGelir.adet, 3, "gideri saymıyor, vadesizi atlamıyor");
+    assert.equal(m.planliGelir.tutar, 600_000);
+    assert.equal(m.gelirDefteriBos, true);
+  });
+
+  it("iptal edilmiş planlı geliri saymaz", () => {
+    const m = calistir({ hareketler: [hareket({ status: "canceled", paid_at: null, amount: 900_000 })] });
+    assert.equal(m.planliGelir.adet, 0);
+  });
+
+  it("ödenmiş gelir planlı sayıma girmez", () => {
+    const m = calistir({ hareketler: [hareket({ amount: 500_000 })] });
+    assert.equal(m.planliGelir.adet, 0);
+    assert.equal(m.gelirDefteriBos, false);
+  });
+});

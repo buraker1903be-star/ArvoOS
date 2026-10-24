@@ -92,9 +92,11 @@ export async function FinansRaporu({ supabase, organizationId, donem }: RaporGir
     {
       label: "Gelir", value: money(m.gelir),
       note: m.gelirDefteriBos
-        ? (m.tahsilatReferansi
-          ? `Gelir defterinde kayıt yok · kasaya ${money(m.tahsilatReferansi)} girdi`
-          : "Gelir defterinde ödenmiş kayıt yok")
+        ? (m.planliGelir.adet
+          ? `${m.planliGelir.adet} planlı kayıt var · hiçbiri “ödendi” değil`
+          : m.tahsilatReferansi
+            ? `Gelir defterinde kayıt yok · kasaya ${money(m.tahsilatReferansi)} girdi`
+            : "Gelir defterinde ödenmiş kayıt yok")
         : `${m.gelirAdet} ödenmiş kayıt · muhasebesel`,
       icon: "wallet", tone: "success",
       grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.gelir, etiket: money(a.gelir) })) },
@@ -147,10 +149,22 @@ export async function FinansRaporu({ supabase, organizationId, donem }: RaporGir
         <span>
           <b>Bu dönemde gelir defterinde hiç ödenmiş kayıt yok</b>, bu yüzden “Net sonuç”
           yalnızca çıkışları gösteriyor — <b>bu bir zarar değil</b>.
+          {/*
+            İKİ AYRI DURUM, İKİ AYRI TAVSİYE. "Defteri hiç
+            kullanmıyorlar" ile "yazıyorlar ama ödendi
+            işaretlemiyorlar" farklı sorunlar; ikincisine "deftere
+            kaydedin" demek yanlış yönlendirme olurdu (24.10.2026'da
+            canlı veriyle görüldü: 27 planlı gelir kaydı vardı).
+          */}
+          {m.planliGelir.adet ? (
+            <> Defterde <b>{m.planliGelir.adet} planlı gelir kaydı</b> ({money(m.planliGelir.tutar)}) duruyor
+              ama hiçbiri <b>“ödendi”</b> işaretlenmemiş; işaretlendikleri anda bu rapora girerler.</>
+          ) : (
+            <> Gelirleri burada görmek için ödemeleri <b>Finans → Gelir/Gider</b> defterine de kaydetmek gerekiyor.</>
+          )}
           {m.tahsilatReferansi ? <> Aynı dönemde kasaya <b>{money(m.tahsilatReferansi)}</b> girdi;
             müşteri ödemeleri cari hesaplara işleniyor.</> : null}
-          {" "}Gelirleri burada görmek için ödemeleri <b>Finans → Gelir/Gider</b> defterine de
-          kaydetmek gerekiyor; kasaya giren para <Link href="/panel/finance/raporlar?rapor=tahsilat" className="rapor-kayit-link"><b>Tahsilat ve Alacak</b></Link> raporunda,
+          {" "}Kasaya giren para <Link href="/panel/finance/raporlar?rapor=tahsilat" className="rapor-kayit-link"><b>Tahsilat ve Alacak</b></Link> raporunda,
           imzalanan sözleşme tutarı <Link href="/panel/finance/raporlar?rapor=satis" className="rapor-kayit-link"><b>Satış Analitiği</b></Link>’nde.
         </span>
       </p>

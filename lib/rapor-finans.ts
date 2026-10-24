@@ -97,8 +97,18 @@ export type FinansModeli = {
   vadesizPlan: Bekleyen;
   /** Dönemde kasaya giren net para — REFERANS; gelire eklenmiyor. */
   tahsilatReferansi: number;
-  /** Gelir defteri bu dönemde boş mu (kayıt sayısı sıfır). */
+  /** Gelir defteri bu dönemde boş mu (ödenmiş kayıt sayısı sıfır). */
   gelirDefteriBos: boolean;
+  /*
+    OKUNAN BÜTÜN PLANLI GELİR KAYITLARI (dönemsiz).
+
+    Kurum gelirini deftere YAZIYOR ama "ödendi" işaretlemiyor
+    olabilir: canlıda akademikmerkez kurumunda 27 planlı gelir kaydı
+    (₺878.250) varken ödenmiş kayıt sıfırdı. "Defteri kullanmıyorlar"
+    ile "işaretlemeyi unutuyorlar" ayrı sorunlar ve ayrı çözümleri
+    var; rapor hangisi olduğunu söyleyebilmeli.
+  */
+  planliGelir: Bekleyen;
   gelirKategorileri: Kirilim[];
   giderKategorileri: Kirilim[];
   maliyetKategorileri: Kirilim[];
@@ -153,6 +163,7 @@ export function finansModeli({
   const gecikenGelir = { tutar: 0, adet: 0 };
   const gecikenGider = { tutar: 0, adet: 0 };
   const vadesizPlan = { tutar: 0, adet: 0 };
+  const planliGelir = { tutar: 0, adet: 0 };
   const gelirKat = new Map<string, { adet: number; tutar: number }>();
   const giderKat = new Map<string, { adet: number; tutar: number }>();
 
@@ -187,6 +198,9 @@ export function finansModeli({
     }
 
     // status === "planned"
+    /* Vadesinden ve döneminden BAĞIMSIZ sayım: "gelir yazılıyor ama
+       ödendi işaretlenmiyor" durumunu görebilmek için. */
+    if (gelirMi) { planliGelir.tutar += tutar; planliGelir.adet += 1; }
     if (!h.due_date) {
       /* Vadesi girilmemiş plan hiçbir döneme düşmüyor; gizlemek
          yerine kendi satırında sayılıyor ki toplamlar tutsun. */
@@ -245,6 +259,7 @@ export function finansModeli({
     marj: gelir ? (netSonuc / gelir) * 100 : null,
     tahsilatReferansi: Math.max(0, tahsilat - iade),
     gelirDefteriBos: gelirAdet === 0,
+    planliGelir,
     bekleyenGelir,
     bekleyenGider,
     gecikenGelir,
@@ -296,6 +311,7 @@ export function finansSayfalari({ model, donemEtiket }: { model: FinansModeli; d
         /* Referans satırı: gelire EKLENMİYOR, nerede göründüğünü
            söylüyor. Başlığı da bunu yazıyor. */
         ["Dönemde kasaya giren (referans — gelir değil)", para(model.tahsilatReferansi)],
+        ["Ödendi işaretlenmemiş planlı gelir", para(model.planliGelir.tutar)],
       ] as Hucre[][],
     },
     {
