@@ -255,7 +255,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 }
 .crm-page-stack .crm-filter-form{gap:10px}
 .crm-page-stack .crm-filter-form label>span{font-size:12px;letter-spacing:.02em;color:var(--muted)}
-.crm-page-stack .crm-filter-form :is(input,select){min-height:42px;border-radius:11px;padding:9px 12px;font-size:14px;background:var(--surface-raised)}
+.crm-page-stack .crm-filter-form :is(input,select){min-height:42px;border-radius:11px;padding:9px 12px;font-size:14px;background-color:var(--surface-raised)}
 
 .crm-page-stack .crm-table-wrap{
   padding:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:auto;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted) 30%,transparent) transparent

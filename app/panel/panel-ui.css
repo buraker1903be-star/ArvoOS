@@ -81,8 +81,21 @@ html[data-theme="dark"] .os-root .panel-secondary{border-color:var(--line);color
    özgüllükte onu eziyordu ve sayfa içindeki formlarda (Ayarlar, Abonelik)
    açılır liste oku siliniyor, punto ve köşeler çekmecedekinden farklı
    çıkıyordu. Çekmeceler .panel-content dışında çizildiği için etkilenmiyordu. */
+/*
+  ARKA PLAN KISA YAZIMLA VERİLMEZ (24.10.2026). Burada
+  `background:var(--surface)` yazıyordu ve kısa yazım
+  `background-image`'ı da SIFIRLIYOR: seçicinin özel oku
+  (panel-premium.css, --select-chevron) hiç görünmüyordu.
+
+  Kusur sessizdi — check:css geçiyordu, üretim derlemesi geçiyordu,
+  ok yalnızca EKRANDA yoktu; canlıda hesaplanmış stile bakınca
+  çıktı (background-image:none, padding-right:34px, yani boşluk
+  açılmış ama ok basılmamış).
+
+  Bu kuralın niyeti rengi belirlemek; görseli yok etmek değil.
+*/
 .os-root .panel-content :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),select,textarea):not(.kayit-formu > label > *){
-  border:1px solid var(--n-300);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:var(--fs-base);
+  border:1px solid var(--n-300);border-radius:var(--r-sm);background-color:var(--surface);color:var(--ink);font-size:var(--fs-base);
   transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
 }
 .os-root .panel-content :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),select,textarea):not(.kayit-formu > label > *):focus{
@@ -90,7 +103,7 @@ html[data-theme="dark"] .os-root .panel-secondary{border-color:var(--line);color
 }
 .os-root .panel-content :is(input,textarea)::placeholder{color:var(--muted)}
 .os-root .panel-content label>:is(span,small):first-child{font-weight:var(--fw-medium)}
-html[data-theme="dark"] .os-root .panel-content :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea):not(.kayit-formu > label > *){border-color:var(--line);background:var(--surface-2)}
+html[data-theme="dark"] .os-root .panel-content :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea):not(.kayit-formu > label > *){border-color:var(--line);background-color:var(--surface-2)}
 
 /* ---------- Boş durumlar ----------
    ~18 ayrı tasarım vardı; ortak çerçeve: kesik çizgili, ortalanmış, sakin. */
