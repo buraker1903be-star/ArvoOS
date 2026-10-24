@@ -36,7 +36,29 @@ export function useOdakTuzagi(
   odakRef: RefObject<HTMLElement | null>,
   /** Katmanın .panel-root altındaki kök sınıfı (ör. "ntd-root"). */
   kokSinifi: string,
+  /*
+    KENDİ INERT'İNİ YÖNETEN ÖTEKİ KATMANLAR (2026-10-24).
+
+    Bu kanca `.panel-root`'un doğrudan çocuklarından katmanın kendisi
+    dışındakileri inert yapıyor. İÇ İÇE KATMANDA bu, bir sonraki
+    pencereyi daha açılmadan öldürüyordu: rapor penceresi açılırken
+    kokpitin kart pencereleri (`panel-drawer-root`) de portalla
+    `.panel-root`'ta duruyor ve inert alıyordu; kullanıcı kartın
+    "Aç" düğmesine bastığında pencere çiziliyor ama hiçbir şeye
+    tıklanamıyordu — hata da vermiyordu.
+
+    Burada sayılan sınıflara dokunulmuyor, çünkü onlar kapalıyken
+    kendi içeriğini zaten inert tutuyor (PanelDrawer: `<aside
+    inert={!open}>`). Yani klavye kapalı bir pencereye kaçamıyor,
+    açılan pencere de ölü kalmıyor.
+  */
+  kendiniYonetenler: readonly string[] = [],
 ) {
+  /* Dizi her çizimde yeniden kuruluyor; etkinin bağımlılığı dizinin
+     KİMLİĞİ olsaydı her çizimde yeniden koşar ve inert bir kare
+     boyunca kalkardı. */
+  const yonetilenler = kendiniYonetenler.join(",");
+
   useEffect(() => {
     if (!acik) return;
     const aktif = document.activeElement;
@@ -46,7 +68,10 @@ export function useOdakTuzagi(
     const disaridakiler = kabuk
       ? [...kabuk.children].filter(
           (el): el is HTMLElement =>
-            el instanceof HTMLElement && !el.classList.contains(kokSinifi) && !el.hasAttribute("inert"),
+            el instanceof HTMLElement
+            && !el.classList.contains(kokSinifi)
+            && !(yonetilenler ? yonetilenler.split(",").some((sinif) => el.classList.contains(sinif)) : false)
+            && !el.hasAttribute("inert"),
         )
       : [];
     for (const el of disaridakiler) el.setAttribute("inert", "");
@@ -60,5 +85,5 @@ export function useOdakTuzagi(
         geriOdak.focus({ preventScroll: true });
       }
     };
-  }, [acik, odakRef, kokSinifi]);
+  }, [acik, odakRef, kokSinifi, yonetilenler]);
 }
