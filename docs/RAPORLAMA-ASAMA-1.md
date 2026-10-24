@@ -106,6 +106,50 @@ devam eder.
 
 ---
 
+## 4a. Tahsilat raporuna ek istek — beklenen tahsilat takvimi
+
+Kurum sahibinin eki (24.10.2026): "Taksitlerden önümüzdeki ay ne kadar
+tahsilatımız olacak, aylara göre beklenen tahsilatlar da görmemiz
+lazım."
+
+**Hesaplanabilir.** `payment_installments` (amount, due_date,
+payment_plan_id) + `payment_plans` (contract_id, party_id) yeterli.
+
+### Hesaplama kuralı — dikkat
+
+Beklenen tahsilat, taksitin TUTARI değil **KALANI**. Ve kalan,
+taksitin kendi `status` sütunundan okunamaz:
+
+> `payment_installments.status` cari tahsilatıyla GÜNCELLENMİYOR.
+> Ödenmişlik `lib/taksit-dagitimi.ts` ile türetiliyor: cari dökümündeki
+> net tahsilat, en eski vadeden başlayarak taksitlere dağıtılıyor.
+
+Naif bir `status <> 'paid'` sorgusu, ödenmiş ama durumu güncellenmemiş
+taksitleri de "beklenen" sayar ve rakamı **olduğundan büyük** gösterir.
+Bu tuzak bu depoda bir kez yaşandı: müşteri 31.500 TL ödemişken tek
+taksit hâlâ "ödenmedi" görünüyordu (lib/taksit-dagitimi.ts başlığı).
+
+Doğru akış, sözleşme/cari başına:
+1. Cari dökümünden net tahsilatı al (tahsilat − iade).
+2. `taksitleriDagit` ile taksitlere dağıt.
+3. Her taksitin `kalan` değerini vade AYINA topla.
+
+### Rapor içeriği
+
+- **Önümüzdeki ay beklenen tahsilat** (tek rakam, kokpitte de görünür)
+- **Aylara göre beklenen tahsilat**: gelecek 6–12 ay, çubuk + tablo
+- **Vadesi geçmiş kalan**: ayrı gösterilir, geleceğe karıştırılmaz
+- Müşteri ve sözleşme kırılımı, ilgili kayda geçiş
+
+### Sınırı
+
+Bu bir TAKVİM, tahmin değil: yalnızca ödeme planı olan sözleşmelerin
+taksitlerini sayar. Planı olmayan sözleşme ve plansız beklenen gelir
+buraya girmez; rapor bunu açıkça yazmalı, yoksa "önümüzdeki ay şu kadar
+tahsilat var" cümlesi eksik bir tabandan kurulmuş olur.
+
+---
+
 ## 5. Altyapı
 
 - **Grafik kütüphanesi yok ve gerekmiyor.** `MiniGrafik` beş tür biliyor

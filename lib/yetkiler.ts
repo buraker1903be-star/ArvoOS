@@ -107,6 +107,43 @@ export const YETKI_GRUPLARI: readonly { id: string; modul: string | null; baslik
       { key: "operations.ekip.gor", modul: "operations", label: "Ekip yükü", aciklama: "Kimde kaç iş var, kimin termini geçti, kim müsait — kişi kişi görür", varsayilan: YONETIM_VE_SEF },
     ],
   },
+  /*
+    RAPORLAR — HER RAPORUN KENDİ YETKİSİ (24.10.2026, kurum sahibinin
+    kararı).
+
+    Önceden tek anahtar vardı (`finance.rapor.gor`) ve rapor sayfası
+    finans kapısının arkasındaydı. Sekiz raporluk alt sistemde bu
+    yanlış olurdu: operasyon ve personel raporları da orada ve
+    finans kapısı varsayılan olarak YALNIZCA admin'e açık — operasyon
+    müdürü kendi ekibinin iş yükünü göremezdi.
+
+    TUTAR İÇEREN RAPOR, TUTAR YETKİSİ İSTER. Satış, tahsilat, finans
+    ve kokpit raporları varsayılan olarak yalnızca yönetime açık;
+    operasyon ve teklif/sözleşme raporları şefe de açılabiliyor.
+    Bu, bugün konulan kuralla aynı yönde: operasyon departmanı
+    sözleşme ve teklif tutarını göremez (migration 20261023184948),
+    yani o rapora yetki verilse bile tutar sütunları veritabanında
+    maskeli kalır — yetki ekranı o korumayı DELMİYOR.
+
+    Rapor sayfası bu anahtarlardan EN AZ BİRİNİ isteyecek; her rapor
+    kartı kendi anahtarını ayrıca soruyor.
+  */
+  {
+    id: "reports",
+    modul: "reports",
+    baslik: "Raporlar",
+    yetkiler: [
+      { key: "rapor.kokpit", modul: "reports", label: "Yönetici kokpiti", aciklama: "Bütün raporların özeti ve dikkat gerektiren durumlar", varsayilan: YONETIM },
+      { key: "rapor.satis", modul: "reports", label: "Satış analitiği", aciklama: "Satış tutarı, adedi, dönüşüm ve personel kırılımı", varsayilan: YONETIM },
+      { key: "rapor.crm", modul: "reports", label: "CRM ve müşteri analitiği", aciklama: "Müşteri kazanımı, kaynak dağılımı, tekrar satış", varsayilan: YONETIM_VE_SEF },
+      { key: "rapor.tahsilat", modul: "reports", label: "Tahsilat ve alacak", aciklama: "Tahsil edilen, bekleyen ve vadesi geçen alacaklar", varsayilan: YONETIM },
+      { key: "rapor.finans", modul: "reports", label: "Finansal performans", aciklama: "Gelir, gider, kârlılık ve nakit akışı", varsayilan: YONETIM },
+      { key: "rapor.personel", modul: "reports", label: "Personel performansı", aciklama: "Kişi bazlı satış, iş yükü ve tamamlama süresi", varsayilan: YONETIM },
+      { key: "rapor.operasyon", modul: "reports", label: "Operasyon ve iş akışı", aciklama: "Devam eden, tamamlanan ve geciken işler", varsayilan: YONETIM_VE_SEF },
+      { key: "rapor.teklif", modul: "reports", label: "Teklif ve sözleşme", aciklama: "Teklif dönüşümü, imza bekleyen ve aktif sözleşmeler", varsayilan: YONETIM_VE_SEF },
+      { key: "rapor.disa_aktar", modul: "reports", label: "Rapor dışa aktarma", aciklama: "Açabildiği raporları Excel olarak indirir", varsayilan: YONETIM },
+    ],
+  },
   {
     id: "finance",
     modul: "finance",
