@@ -4,6 +4,7 @@ import { canSeeFinanceReports } from "../finance-navigation";
 import { modulGerek, yetkiGerek } from "@/lib/modul-kapisi";
 import { donemCoz, donemEtiketi } from "@/lib/rapor-donemi";
 import { gorulebilenRaporlar, raporAdresi, raporBul, type RaporAnahtari } from "@/lib/rapor-tanimlari";
+import { organizationBrandName } from "@/lib/kurum-adi";
 import { Icon } from "./rapor-parcalari";
 import { RaporPenceresi } from "./rapor-penceresi";
 import { KokpitRaporu } from "./kokpit-raporu";
@@ -94,6 +95,25 @@ export default async function ReportingPage({
   const donemEtiket = donemEtiketi(donem);
   const organizationId = membership.organization_id;
 
+  /*
+    KÜNYEDE MARKA ADI, TİCARİ UNVAN DEĞİL (24.10.2026, kurum
+    sahibinin kararı).
+
+    Künye `organizations.name`i basıyordu, yani TİCARİ UNVANI. İki
+    sorun birden vardı: yönetici hangi MARKANIN rakamlarına baktığını
+    göremiyordu (aynı unvanı taşıyan iki kurum var) ve panel içi bir
+    yönetim raporu, yasal belgelerin dilini konuşuyordu.
+
+    Ticari unvan yerinde kalıyor — teklif, sözleşme ve gizlilik
+    sözleşmesi onu basmaya devam ediyor; orası yasal taraf adının
+    yeri. Rapor künyesi markayı gösteriyor (lib/kurum-adi).
+  */
+  const markaAdi = organizationBrandName({
+    slug: organization.slug,
+    displayName: organization.display_name,
+    legalName: organization.name,
+  });
+
   const acilabilir = gorulebilenRaporlar(izin);
   /*
     ADRESTEKİ RAPOR İKİ KEZ SÜZÜLÜYOR: önce gerçek bir rapor mu
@@ -173,7 +193,7 @@ export default async function ReportingPage({
         donemEtiket={donemEtiket}
         taban={TABAN}
         params={params}
-        kurum={organization.name}
+        kurum={markaAdi}
         komsular={acilabilir.filter((r) => HAZIR.has(r.anahtar))}
         indirmeAdresi={INDIRILEBILIR.has(acik.anahtar) && izin("rapor.disa_aktar") ? indirmeAdresi(acik.anahtar) : undefined}
       >

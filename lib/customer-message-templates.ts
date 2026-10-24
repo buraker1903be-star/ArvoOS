@@ -12,19 +12,11 @@ const salutation = (name?: string) =>
 const documentLabel = (type: "proposal" | "contract", no?: string) =>
   `${no ? `${no} numaralı ` : ""}${type === "proposal" ? "teklif" : "sözleşme"}`;
 
-export function organizationBrandName(input: {
-  slug?: string;
-  displayName?: string | null;
-  legalName: string;
-}) {
-  if (input.displayName?.trim()) return input.displayName.trim();
-  if (input.slug === "akademikmerkez") return "AkademikMerkez";
-  if (input.slug === "arvo-os") return "ArvoOS";
-  return input.legalName
-    .replace(/\s+(anonim|limited)\s+şirketi.*$/i, "")
-    .replace(/\s+ltd\.?\s*şti\.?$/i, "")
-    .trim();
-}
+/* Marka adı kararı nötr bir modülde (lib/kurum-adi): panel içi
+   evrak da (rapor künyesi) aynı kararı kullanıyor ve finans
+   raporunun "müşteri mesajı şablonları"nı içe aktarması okuyanı
+   yanıltırdı. Buradan yeniden dışa veriliyor. */
+export { organizationBrandName } from "@/lib/kurum-adi";
 
 export function proposalMessages(input: DocumentMessageInput) {
   const label = documentLabel("proposal", input.documentNo);

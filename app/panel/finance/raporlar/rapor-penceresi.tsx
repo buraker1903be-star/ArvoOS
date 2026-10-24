@@ -18,10 +18,15 @@ import { istanbulDateTime } from "@/lib/istanbul-date";
   sorguları RLS'li oturum istemcisiyle kalıyor.
 
   KÜNYE YAZDIRMA İÇİN VAR ve ekranda da duruyor: kâğıda basılan bir
-  rapor "hangi kurum, hangi rapor, hangi dönem, ne zaman alındı"
+  rapor "hangi marka, hangi rapor, hangi dönem, ne zaman alındı"
   sorularını kendi başına yanıtlamalı. Ekranda gizleyip yalnızca
   baskıda göstermek, kullanıcının çıktıda ne göreceğini bilmemesi
   demekti.
+
+  KÜNYEDEKİ AD MARKA ADIDIR, ticari unvan değil: bu panel içi bir
+  yönetim evrakı ve yöneticinin görmesi gereken şey hangi MARKANIN
+  rakamlarına baktığı. Ticari unvan teklif/sözleşme gibi YASAL
+  belgelerde basılmaya devam ediyor (lib/kurum-adi).
 */
 export function RaporPenceresi({
   rapor,
@@ -37,6 +42,7 @@ export function RaporPenceresi({
   donemEtiket: string;
   taban: string;
   params: Record<string, string | undefined>;
+  /** Markanın adı (ticari unvan değil). */
   kurum: string;
   /** Kullanıcının açabildiği öteki raporlar; pencereden pencereye geçiş. */
   komsular: RaporTanimi[];

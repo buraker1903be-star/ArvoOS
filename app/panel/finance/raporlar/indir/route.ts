@@ -18,6 +18,7 @@ import { crmVerisi } from "../crm-raporu";
 import { operasyonVerisi } from "../operasyon-raporu";
 import { personelVerisi } from "../personel-raporu";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { organizationBrandName } from "@/lib/kurum-adi";
 
 /*
   RAPORU EXCEL OLARAK İNDİRME (2026-10-24).
@@ -45,13 +46,19 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 */
 export const dynamic = "force-dynamic";
 
-/** Dosya adı: kurum ve dönem ayrı dosyalarda karışmasın diye. */
-const dosyaAdi = (kod: string, baslik: string, donemEtiket: string) =>
-  `${kod} ${baslik} — ${donemEtiket} (${todayInIstanbul()}).xlsx`;
+/*
+  DOSYA ADINDA MARKA VAR. İki markanın aynı raporu aynı klasöre
+  inince dosya adları birebir aynı oluyordu ve tarayıcı ikincisine
+  "(1)" ekliyordu — hangisinin hangi marka olduğu dosyadan
+  anlaşılmıyordu. Ad MARKA, ticari unvan değil: bu bir yönetim
+  evrakı (lib/kurum-adi).
+*/
+const dosyaAdi = (marka: string, kod: string, baslik: string, donemEtiket: string) =>
+  `${marka} — ${kod} ${baslik} — ${donemEtiket} (${todayInIstanbul()}).xlsx`;
 
 export async function GET(istek: Request) {
   const adres = new URL(istek.url);
-  const { supabase, membership, modules, yetkiler, izin } = await getPanelContext();
+  const { supabase, membership, organization, modules, yetkiler, izin } = await getPanelContext();
 
   if (!modules.some((m) => m.code === "reporting")) {
     return yanitHata("Raporlama modülü bu kurumda kapalı.", 403);
@@ -110,7 +117,14 @@ export async function GET(istek: Request) {
   }
 
   return new Response(new Uint8Array(xlsxUret(sayfalar)), {
-    headers: xlsxBasliklari(dosyaAdi(rapor.kod, rapor.baslik, donemEtiket)),
+    headers: xlsxBasliklari(dosyaAdi(
+      organizationBrandName({
+        slug: organization.slug,
+        displayName: organization.display_name,
+        legalName: organization.name,
+      }),
+      rapor.kod, rapor.baslik, donemEtiket,
+    )),
   });
 }
 
