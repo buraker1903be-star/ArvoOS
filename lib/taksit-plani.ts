@@ -92,37 +92,64 @@ export function yenidenBol(
   if (!Number.isFinite(tutar) || tutar <= 0) return { hata: "Sözleşme tutarı geçersiz." };
 
   /*
-    ÖDENEN TUTAR AYRI SATIRA ÇEVRİLMİYOR (kurum sahibinin kararı,
-    23.10.2026). Eskiden tamamen ödenmiş taksitler olduğu gibi
-    korunuyor, kısmen ödenenin ödenen kısmı AYRI bir taksit oluyor ve
-    yalnızca KALAN tutar yeni taksitlere bölünüyordu. Sonucu canlıda
-    görüldü: 19.000 TL'lik sözleşmede "3 taksit" seçilince ekranda
-    BEŞ satır çıkıyordu (SOZ-2026-000059) ve bir şey ödendiği anda
-    plan bir daha asla eşit taksitli hâle gelemiyordu.
+    ÖDENEN TUTAR İLK TAKSİT OLUR, KALAN SONRAKİLERE BÖLÜNÜR.
 
-    Buna gerek yok, çünkü ÖDEME ZATEN TÜRETİLEREK DAĞITILIYOR:
-    taksitlerde "ödenen" sütunu yok; cari dökümündeki net tahsilat en
-    erken vadeden başlayarak taksitlere yazılıyor
-    (lib/taksit-dagitimi.ts). Yani toplam üçe bölündüğünde ödenen
-    tutar ilk taksite kendiliğinden sayılıyor ve o taksit "kısmi"
-    görünüyor.
+    Kurum sahibinin kararı (23.10.2026) ve iki aşamada oturdu:
 
-    Ödemenin ne zaman yapıldığı kaybolmuyor: o bilgi cari hareket
-    dökümünde duruyor, taksit planında değil.
+    1. Önce ödenmiş kısımlar AYRI SATIR olarak korunuyor, yalnızca
+       kalan bölünüyordu. 19.000 TL'lik sözleşmede "3 taksit"
+       seçilince ekranda BEŞ satır çıkıyordu (SOZ-2026-000059) ve
+       bir şey ödendiği anda plan bir daha eşit taksitli hâle
+       gelemiyordu.
+    2. Sonra toplam eşit bölündü; bu kez ilk taksit ödenenden 34
+       kuruş fazla kalıyor ve "kısmi" görünüyordu. Ödenmiş bir
+       taksitin kuruşu kalması operasyonda takip gerektiriyor.
+
+    Şimdiki kural ikisini de çözüyor: ilk taksit TAM OLARAK ödenen
+    tutar (kısmi kalmıyor, kapanıyor), kalan tutar geri kalan
+    taksitlere eşit bölünüyor.
+
+      19.000 toplam, 6.333 ödenmiş, 3 taksit:
+        6.333,00 (ödendi) + 6.333,50 + 6.333,50 = 19.000,00
+
+    ÖDENEN YOKSA eski davranış: toplam eşit bölünür.
+
+    İLK TAKSİTİN VADESİ `ilkVade`: kullanıcı zaten "ilk vade"yi
+    seçiyor ve ödenmiş taksit her hâlükârda en erken vadeli olduğu
+    için tahsilat ona dağıtılıyor (lib/taksit-dagitimi.ts — dağıtım
+    en erken vadeden başlıyor). Ödemenin GERÇEK tarihi cari hareket
+    dökümünde duruyor; taksit planı bir takvim, bir kütük değil.
+
+    TEK TAKSİT SEÇİLİRSE bölünecek bir "sonraki" yok: toplam tek
+    taksit olur, yoksa kalan tutar sessizce düşerdi.
   */
-  const odenmis = plan.reduce(
-    (s, t) => s + Math.min(t.tutar, Math.max(0, Math.round(t.odenen))),
-    0,
+  const odenmis = Math.min(
+    tutar,
+    plan.reduce((s, t) => s + Math.min(t.tutar, Math.max(0, Math.round(t.odenen))), 0),
   );
-  if (odenmis > tutar) return { hata: "Ödenen tutar sözleşme tutarını aşıyor; plan yeniden bölünemez." };
+  if (odenmis < 0) return { hata: "Ödenen tutar okunamadı." };
 
-  /* Artan kuruş BAŞTAKİ taksitlere eklenir; toplam birebir tutar
-     (AGENTS.md). 19.000 / 3 = 6.333,34 + 6.333,33 + 6.333,33. */
-  const taban = Math.floor(tutar / adet);
-  const artan = tutar - taban * adet;
-  const yeni = Array.from({ length: adet }, (_, i) => ({
-    vade: ayEkle(secim.ilkVade, i * aralik),
-    tutar: taban + (i < artan ? 1 : 0),
-  })).filter((t) => t.tutar > 0);
-  return numarala(yeni);
+  const esitBol = (hedef: number, parca: number, baslangic: number) => {
+    const taban = Math.floor(hedef / parca);
+    const artan = hedef - taban * parca;
+    return Array.from({ length: parca }, (_, i) => ({
+      vade: ayEkle(secim.ilkVade, (baslangic + i) * aralik),
+      tutar: taban + (i < artan ? 1 : 0),
+    }));
+  };
+
+  if (odenmis <= 0 || adet === 1) {
+    return numarala(esitBol(tutar, adet, 0).filter((t) => t.tutar > 0));
+  }
+
+  const kalan = tutar - odenmis;
+  if (kalan <= 0) {
+    /* Tamamı ödenmiş: tek satır, tutarı sözleşme tutarı. */
+    return numarala([{ vade: secim.ilkVade, tutar }]);
+  }
+
+  return numarala([
+    { vade: secim.ilkVade, tutar: odenmis },
+    ...esitBol(kalan, adet - 1, 1).filter((t) => t.tutar > 0),
+  ]);
 }
