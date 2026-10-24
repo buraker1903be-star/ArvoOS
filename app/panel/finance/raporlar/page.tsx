@@ -1,368 +1,86 @@
 import Link from "next/link";
-import { PanelDrawer } from "../../components/panel-drawer";
-import type { CSSProperties, ReactNode } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { canSeeFinanceReports } from "../finance-navigation";
 import { modulGerek, yetkiGerek } from "@/lib/modul-kapisi";
-import { PrintReportButton } from "./print-report-button";
-import { monthStartKey, todayInIstanbul, istanbulMidnight } from "@/lib/istanbul-date";
+import { donemCoz, donemEtiketi } from "@/lib/rapor-donemi";
+import { gorulebilenRaporlar, raporAdresi, raporBul, type RaporAnahtari } from "@/lib/rapor-tanimlari";
+import { Icon } from "./rapor-parcalari";
+import { RaporPenceresi } from "./rapor-penceresi";
+import { KokpitRaporu } from "./kokpit-raporu";
+import { SatisRaporu } from "./satis-raporu";
+import { TahsilatRaporu } from "./tahsilat-raporu";
+import { TeklifRaporu } from "./teklif-raporu";
+import { FinansRaporu } from "./finans-raporu";
+import { CrmRaporu } from "./crm-raporu";
+import { OperasyonRaporu } from "./operasyon-raporu";
+import { PersonelRaporu } from "./personel-raporu";
 // Sayfa başlığı (talep-bas) öteki panel sayfalarıyla aynı düzen.
 import "../../crm/kayit-detay/kayit-detay.css";
 import "./reporting.css";
 
-const money = (amount: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount / 100);
-// Negatif oran "−%184" (eskiden "%-184" yazılıyordu).
-const percent = (value: number) => (Math.round(value) < 0 ? `−%${Math.abs(Math.round(value))}` : `%${Math.round(value)}`);
-const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 /*
-  DÖNEM TÜRKİYE GÜNÜYLE (12.10.2026).
+  RAPOR MERKEZİ (2026-10-24, kurum sahibinin kuralı: "tek sayfa").
 
-  Eskiden aralık sunucunun yerel saatiyle (`new Date(yıl, ay, 1)`)
-  kuruluyor, kayıtlar da zaman damgasının UTC gününe (`slice(0, 10)`)
-  göre aralığa sokuluyordu. Sunucu UTC'de çalıştığı için ayın 1'inde
-  00:00–03:00 arasında gelen talep ya da imzalanan sözleşme önceki aya
-  yazılıyor; ayın ilk üç saatinde "Bu ay" hâlâ geçen ayı gösteriyordu.
-  Artık her şey "YYYY-AA-GG" Türkiye günü anahtarı: dönem bugünden,
-  kayıt kendi anından (`gunAnahtari`) türetiliyor.
+  Bu sayfa eskiden raporun KENDİSİYDİ: on KPI kutusu, beş kart ve
+  defterler tek akışta duruyordu. Sekiz rapor aynı yere sığmaz —
+  sayfa ekranın onlarca katına uzardı.
 
-  Geçersiz özel aralık ("?baslangic=abc") eskiden `Invalid Date`
-  üretip sorgu penceresinde `toISOString` ile sayfayı düşürüyordu; artık
-  "Bu ay"a dönülüyor, ters girilen aralık düzeltiliyor.
+  Artık sayfa bir MERKEZ: hangi raporların olduğunu ve kullanıcının
+  hangilerini açabildiğini gösteriyor; rapor adresten açılıyor
+  (`?rapor=satis`) ve içeriği pencerede çiziliyor. Eski içerik
+  silinmedi, "Yönetici Kokpiti" raporuna taşındı.
+
+  ADRESTEN AÇILMANIN sebebi yerel bir durum değil: sorgular sunucuda
+  kalıyor (RLS kendiliğinden uyguluyor), geri tuşu çalışıyor ve
+  dönem/süzgeç raporlar arası geçişte taşınıyor. Bu depodaki
+  `?pencere=` kalıbının aynısı.
+
+  KAPI BURADA, GÖVDEDE DEĞİL. Modül + rol yetkisi bu sayfada
+  soruluyor; rapor gövdeleri yalnızca veri okuyor. Her gövdeye kapı
+  koymak, birinde unutulduğunda sessizce açık bir rapor bırakırdı
+  (AGENTS.md "Yetki üç yerdedir").
 */
-const GUN = /^\d{4}-\d{2}-\d{2}$/;
-const gecerliGun = (deger?: string): deger is string => Boolean(deger && GUN.test(deger) && !Number.isNaN(Date.parse(`${deger}T00:00:00Z`)));
-/** Ayın son günü; ay 1–12, taşma serbest. */
-const ayinSonGunu = (yil: number, ay: number) => new Date(Date.UTC(yil, ay, 0)).toISOString().slice(0, 10);
-/** Zaman damgası Türkiye gününe; yalın tarih ("2026-10-01") olduğu gibi. */
-const gunAnahtari = (deger: string) => (deger.length > 10 ? todayInIstanbul(new Date(deger)) : deger);
-function resolveRange(range?: string, customStart?: string, customEnd?: string) {
-  const [yil, ay] = todayInIstanbul().split("-").map(Number);
-  if (range === "gecen_ay") return { startKey: monthStartKey(yil, ay - 1), endKey: ayinSonGunu(yil, ay - 1), key: range };
-  if (range === "bu_yil") return { startKey: `${yil}-01-01`, endKey: `${yil}-12-31`, key: range };
-  if (range === "ozel" && gecerliGun(customStart) && gecerliGun(customEnd)) {
-    const [startKey, endKey] = customStart <= customEnd ? [customStart, customEnd] : [customEnd, customStart];
-    return { startKey, endKey, key: range };
-  }
-  return { startKey: monthStartKey(yil, ay), endKey: ayinSonGunu(yil, ay), key: "bu_ay" };
-}
-const gunYazisi = (gun: string) => { const [y, a, g] = gun.split("-"); return `${g}.${a}.${y}`; };
 
-// ---------------------------------------------------------------
-// Sunum yardımcıları (yalnızca görünüm; veri mantığına dokunmaz)
-// ---------------------------------------------------------------
-/** Satır içi CSS değişkeni (ör. --w, --h). CSS tarafında her zaman fallback'li okunur. */
-const cssVar = (name: string, value: string) => ({ [name]: value }) as CSSProperties;
-const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
-/** Düşülen kalemler için "−₺1.250"; sıfırsa işaretsiz "₺0". */
-const deduction = (amount: number) => (amount ? `−${money(amount)}` : money(0));
-const shareOf = (value: number, base: number) => (base ? (value / base) * 100 : null);
-
-type Tone = "brand" | "info" | "gold" | "success" | "warning" | "danger";
-/*
-  GRAFİKLİ KARTLAR (2026-10). Üstteki on kart eskiden yalnızca bir sayı ve
-  bir cümleydi; dönemin gidişatı (artıyor mu, oranı ne, nereye gitti)
-  görünmüyordu. Her kart kendi verisine uygun küçük bir grafik taşıyor:
-    cubuk    son 6 ayın değeri (gelen lead, satış, iş maliyeti, tahsilat)
-    halka    bir önceki aşamaya oran (ulaşılan, nitelikli, teklif)
-    gosterge yarım daire oran (dönüşüm)
-    yigin    satış değerinin maliyet / kâr bölünmesi (brüt kâr)
-    selale   tahsilattan düşülenler ve kalan (net nakit)
-  Grafikler sunucuda çizilen SVG ve CSS: istemci kodu, kütüphane yok.
-*/
-type SeriNoktasi = { ad: string; deger: number; etiket: string; simdiki?: boolean };
-type Grafik =
-  | { tur: "cubuk"; seri: SeriNoktasi[] }
-  | { tur: "halka"; oran: number | null; altyazi: string }
-  | { tur: "gosterge"; oran: number }
-  | { tur: "yigin"; parcalar: { ad: string; deger: number; ton: Tone }[] }
-  | { tur: "selale"; adimlar: { ad: string; deger: number; ton: Tone }[] }
-  /*
-    DURUM ŞERİDİ (2026-10-24). "Bu dönem ne söylüyor?" kartının
-    konusu rakam değil, DÖRT YARGIDAN her birinin iyi mi kötü mü
-    olduğu; çubuk ya da halka bunu anlatamıyor. Şerit dört noktayı
-    tonlarıyla gösteriyor — bakışta "bir uyarı, iki iyi, bir bilgi"
-    okunuyor.
-  */
-  | { tur: "durum"; noktalar: { ad: string; ton: Tone }[] };
-type Widget = { label: string; value: string; note: string; icon: string; tone: Tone; toned?: boolean; grafik: Grafik };
-type LedgerRow = { label: string; hint: string; amount: string; share: number | null; tone: Tone };
-
-const iconPaths: Record<string, ReactNode> = {
-  inbox: <><path d="M3 13h5l1.5 3h5L16 13h5" /><path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z" /></>,
-  chat: <><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12Z" /></>,
-  badge: <><circle cx="12" cy="12" r="9" /><path d="m8.5 12.3 2.4 2.4 4.7-5" /></>,
-  doc: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /><path d="M9 13h6" /><path d="M9 17h4" /></>,
-  seal: <><path d="M12 3.5 14.2 5l2.6-.2.9 2.5 2.2 1.4-.8 2.5.8 2.5-2.2 1.4-.9 2.5-2.6-.2L12 20.5 9.8 19l-2.6.2-.9-2.5-2.2-1.4.8-2.5-.8-2.5 2.2-1.4.9-2.5 2.6.2Z" /><path d="m9.2 12.2 2 2 3.7-4" /></>,
-  spark: <><path d="M4 16.5 9 11l3.5 3.5L20 7" /><path d="M15 7h5v5" /></>,
-  briefcase: <><rect x="3" y="7" width="18" height="13" rx="2.5" /><path d="M8.5 7V5.5A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5V7" /><path d="M3 12.5h18" /></>,
-  chart: <><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M21 20H3" /></>,
-  wallet: <><rect x="2.5" y="5.5" width="19" height="14" rx="2.5" /><path d="M16 12.5h2.5" /><path d="M2.5 9.5h19" /></>,
-  flow: <><path d="M4 8h13" /><path d="m14 5 3 3-3 3" /><path d="M20 16H7" /><path d="m10 13-3 3 3 3" /></>,
-  alert: <><path d="M10.3 4.2 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" /><path d="M12 9.5v4" /><path d="M12 17h.01" /></>,
-  users: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" /><path d="M18 14.3a6.5 6.5 0 0 1 3.5 5.7" /></>,
-  heart: <><path d="M12 20s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10Z" /></>,
-};
-function Icon({ name, size = 18 }: { name: string; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {iconPaths[name]}
-    </svg>
-  );
-}
-
-function MiniGrafik({ grafik }: { grafik: Grafik }) {
-  if (grafik.tur === "cubuk") {
-    const enBuyuk = Math.max(1, ...grafik.seri.map((n) => n.deger));
-    return (
-      <div className="rpt-mini rpt-mini-cubuk" role="img" aria-label={grafik.seri.map((n) => `${n.ad} ${n.etiket}`).join(", ")}>
-        {grafik.seri.map((n) => (
-          <span key={n.ad} className={n.simdiki ? "is-current" : undefined} title={`${n.ad}: ${n.etiket}`}>
-            <i style={cssVar("--h", `${n.deger ? Math.max(8, (n.deger / enBuyuk) * 100) : 3}%`)} />
-            <small>{n.ad}</small>
-          </span>
-        ))}
-      </div>
-    );
-  }
-  if (grafik.tur === "halka") {
-    const cevre = 2 * Math.PI * 22;
-    const oran = grafik.oran === null ? 0 : clampPercent(grafik.oran);
-    return (
-      <div className="rpt-mini rpt-mini-halka">
-        <svg viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
-          <circle className="rpt-halka-iz" cx="28" cy="28" r="22" />
-          <circle className="rpt-halka-dolu" cx="28" cy="28" r="22" strokeDasharray={`${(oran / 100) * cevre} ${cevre}`} transform="rotate(-90 28 28)" />
-          <text x="28" y="32" textAnchor="middle">{grafik.oran === null ? "—" : percent(grafik.oran)}</text>
-        </svg>
-        <span>{grafik.altyazi}</span>
-      </div>
-    );
-  }
-  if (grafik.tur === "gosterge") {
-    const oran = clampPercent(grafik.oran);
-    const uzunluk = Math.PI * 40;
-    return (
-      <div className="rpt-mini rpt-mini-gosterge" role="img" aria-label={`Dönüşüm ${percent(grafik.oran)}`}>
-        <svg viewBox="0 0 100 56" width="100" height="56" aria-hidden="true">
-          <path className="rpt-halka-iz" d="M10 50 A40 40 0 0 1 90 50" />
-          <path className="rpt-halka-dolu" d="M10 50 A40 40 0 0 1 90 50" strokeDasharray={`${(oran / 100) * uzunluk} ${uzunluk}`} />
-        </svg>
-      </div>
-    );
-  }
-  if (grafik.tur === "yigin") {
-    const toplam = grafik.parcalar.reduce((t, p) => t + Math.max(0, p.deger), 0);
-    return (
-      <div className="rpt-mini rpt-mini-yigin">
-        <div className="rpt-yigin-cubuk" aria-hidden="true">
-          {toplam ? grafik.parcalar.map((p) => <i key={p.ad} data-tone={p.ton} style={cssVar("--w", `${(Math.max(0, p.deger) / toplam) * 100}%`)} />) : null}
-        </div>
-        <ul className="rpt-mini-lejant">
-          {grafik.parcalar.map((p) => <li key={p.ad} data-tone={p.ton}><i />{p.ad} <b>{money(p.deger)}</b></li>)}
-        </ul>
-      </div>
-    );
-  }
-  if (grafik.tur === "durum") {
-    return (
-      <div className="rpt-mini rpt-mini-durum" role="img" aria-label={grafik.noktalar.map((n) => n.ad).join(", ")}>
-        {grafik.noktalar.map((n) => (
-          <span key={n.ad} data-tone={n.ton} title={n.ad}><i /><small>{n.ad}</small></span>
-        ))}
-      </div>
-    );
-  }
-  const taban = Math.max(1, ...grafik.adimlar.map((a) => Math.abs(a.deger)));
-  return (
-    <ul className="rpt-mini rpt-mini-selale">
-      {grafik.adimlar.map((a) => (
-        <li key={a.ad} data-tone={a.ton}>
-          <span>{a.ad}</span>
-          <span className="rpt-selale-iz"><i style={cssVar("--w", `${Math.max(a.deger ? 3 : 0, (Math.abs(a.deger) / taban) * 100)}%`)} /></span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+const TABAN = "/panel/finance/raporlar";
 
 /*
-  KPI AYRINTISI (2026-10-24, kurum sahibinin önerisi).
-
-  Kutudaki mini grafik ŞEKLİ gösteriyor, RAKAMI değil: altı aylık
-  çubuklarda hangi ayın kaç olduğu okunmuyor, şelalenin adımları
-  (tahsilat → maliyet → gider → kalan) minik bir çizimde kayboluyor.
-  Pencere tam olarak o rakamları veriyor — yoksa rakamı büyütüp
-  tekrar gösteren bir pencere olurdu ve kullanıcıya "tıklamaya değmez"
-  dedirtirdi.
+  GÖVDESİ YAZILMIŞ RAPORLAR. Kart listesi sekiz raporun tamamını
+  gösteriyor ama yalnızca gövdesi olan açılıyor: boş bir pencere
+  açmak, kullanıcıya "rapor var" deyip hiçbir şey göstermemek olurdu.
+  Bir rapor yazıldıkça buraya ekleniyor ve kart kendiliğinden
+  tıklanabilir oluyor.
 */
-function WidgetDetay({ grafik, widget }: { grafik: Grafik; widget: Widget }) {
-  if (grafik.tur === "cubuk") {
-    const toplam = grafik.seri.reduce((sum, nokta) => sum + nokta.deger, 0);
-    return <>
-      <MiniGrafik grafik={grafik} />
-      <table className="rpt-detay-tablo">
-        <thead><tr><th>Ay</th><th>Değer</th></tr></thead>
-        <tbody>
-          {grafik.seri.map((nokta) => <tr key={nokta.ad} className={nokta.simdiki ? "is-current" : undefined}>
-            <th scope="row">{nokta.ad}</th><td>{nokta.etiket}</td>
-          </tr>)}
-        </tbody>
-        <tfoot><tr><th scope="row">Altı ay toplamı</th><td>{toplam}</td></tr></tfoot>
-      </table>
-    </>;
-  }
-  if (grafik.tur === "yigin" || grafik.tur === "selale") {
-    const satirlar = grafik.tur === "yigin" ? grafik.parcalar : grafik.adimlar;
-    return <>
-      <MiniGrafik grafik={grafik} />
-      <table className="rpt-detay-tablo">
-        <tbody>
-          {satirlar.map((satir) => <tr key={satir.ad} data-tone={satir.ton}>
-            <th scope="row">{satir.ad}</th><td>{money(satir.deger)}</td>
-          </tr>)}
-        </tbody>
-      </table>
-    </>;
-  }
-  /* Oranlı kutular: pay ve payda zaten notta yazıyor, pencere onu
-     büyük ve tek başına gösteriyor. Uydurma bir döküm eklenmedi. */
-  return <>
-    <MiniGrafik grafik={grafik} />
-    <p className="rpt-detay-not">{widget.note}</p>
-  </>;
-}
+/*
+  SEKİZ RAPORUN HEPSİ HAZIR (24.10.2026). Liste yine duruyor: yeni bir
+  rapor eklendiğinde gövdesi yazılana kadar kartı tıklanamaz kalsın
+  diye. Boş pencere açmak, kusuru kullanıcının hatası gibi
+  gösterirdi.
+*/
+const HAZIR = new Set<RaporAnahtari>([
+  "kokpit", "satis", "crm", "tahsilat", "finans", "personel", "operasyon", "teklif",
+]);
 
 /*
-  ÖZET KARTI (2026-10-24).
+  EXCEL'E AKTARILABİLEN RAPORLAR. Dışa aktarma, raporun modelini
+  döndüren bir işlev gerektiriyor (ekranla dosyanın aynı sayıyı
+  göstermesi için); o işlev yazılmadan düğmeyi göstermek, basınca
+  hata veren bir düğme olurdu.
 
-  İlk hâlinde kart başlık + iki rakam + gri bir cümleden ibaretti ve
-  kurum sahibi haklı olarak beğenmedi: üstte mini grafikli KPI
-  kutuları dururken altta yalnızca sayı listesi kalıyordu, sayfa
-  "pano" gibi değil "döküm" gibi okunuyordu.
-
-  Her kart artık KENDİ VERİSİNİN İMZASINI taşıyor ve imza süs değil:
-  huni daralan çubuklarla, kârlılık maliyet/kâr yığınıyla, kayıp
-  sebepleri kendi çubuklarıyla, dönem yorumu dört yargının tonuyla
-  görünüyor. Bakışta işin ŞEKLİ okunuyor, rakam pencerede.
-
-  Grafik dili yeniden icat edilmedi: KPI kutularının kullandığı
-  MiniGrafik'in aynısı. Tek eklenen tür "durum" şeridi.
-
-  KARTIN TAMAMI TIKLANABİLİR — küçük bir "Ayrıntı" hapı yerine, KPI
-  kutularıyla aynı kalıp (üste serili etiketli düğme). Tek bir
-  etkileşim dili: panoda her şey tıklanır, ayrıntı pencerede açılır.
+  Kokpit bilerek listede DEĞİL: özeti olduğu sekiz raporun kendi
+  dosyaları var ve kokpitin tablosu yok, yorumu var — yorumu Excel'e
+  dökmek bir hücreye paragraf yazmak olurdu.
 */
-function OzetKart({
-  baslik, altyazi, kicker, sayilar, grafik, cumle, genis, ton, children,
+const INDIRILEBILIR = new Set<RaporAnahtari>([
+  "satis", "crm", "tahsilat", "finans", "personel", "operasyon", "teklif",
+]);
+
+export default async function ReportingPage({
+  searchParams,
 }: {
-  baslik: string; altyazi: string; kicker: string;
-  sayilar: { deger: string; etiket: string; ton?: Tone }[];
-  grafik: Grafik; cumle: string; genis?: boolean; ton: Tone; children: ReactNode;
+  searchParams: Promise<{ rapor?: string; aralik?: string; baslangic?: string; bitis?: string; personel?: string; musteri?: string }>;
 }) {
-  return (
-    <article className="rpt-card rpt-kart-ozet" data-tone={ton}>
-      <header className="rpt-card-head">
-        <div><h2>{baslik}</h2><p>{altyazi}</p></div>
-      </header>
-      <div className="rpt-ozet-sayilar">
-        {sayilar.map((sayi) => (
-          <div key={sayi.etiket} data-tone={sayi.ton}>
-            <strong>{sayi.deger}</strong><span>{sayi.etiket}</span>
-          </div>
-        ))}
-      </div>
-      <MiniGrafik grafik={grafik} />
-      <p className="rpt-kart-cumle">{cumle}</p>
-      <PanelDrawer
-        triggerLabel={`${baslik} ayrıntısı`}
-        triggerClassName="rpt-kart-ac"
-        kicker={kicker}
-        title={baslik}
-        description={altyazi}
-        genis={genis}
-      >
-        {children}
-      </PanelDrawer>
-    </article>
-  );
-}
-
-function WidgetCard({ widget }: { widget: Widget }) {
-  return (
-    <article className="rpt-widget" data-tone={widget.tone}>
-      <header className="rpt-widget-bas">
-        <span className="rpt-widget-icon"><Icon name={widget.icon} /></span>
-        <small>{widget.label}</small>
-      </header>
-      <strong className={widget.toned ? "is-toned" : undefined}>{widget.value}</strong>
-      <MiniGrafik grafik={widget.grafik} />
-      <span className="rpt-widget-note">{widget.note}</span>
-      {/*
-        Kutunun TAMAMI tıklanabilir ama düğme kutunun İÇİNDE, üstüne
-        serilmiş durumda. Kutuyu düğmenin içine koymak geçersiz HTML
-        olurdu (button yalnızca metin düzeyi içerik alır) ve ekran
-        okuyucuda grafik de düğme adının parçası olurdu. Bu kalıp
-        depoda zaten var (crm satır tıklaması).
-      */}
-      <PanelDrawer
-        triggerLabel={`${widget.label} ayrıntısı`}
-        triggerClassName="rpt-widget-ac"
-        kicker="KPI"
-        title={widget.label}
-        description={widget.note}
-      >
-        <WidgetDetay grafik={widget.grafik} widget={widget} />
-      </PanelDrawer>
-    </article>
-  );
-}
-
-function Ledger({ title, caption, rows, total }: { title: string; caption: string; rows: LedgerRow[]; total: LedgerRow }) {
-  const shareCell = (row: LedgerRow) => (
-    <td className="rpt-share">
-      <span className="rpt-share-bar" data-tone={row.tone} aria-hidden="true"><i style={cssVar("--w", `${row.share === null ? 0 : clampPercent(row.share)}%`)} /></span>
-      <span className="rpt-share-value">{row.share === null ? "—" : percent(row.share)}</span>
-    </td>
-  );
-  return (
-    <div className="rpt-ledger">
-      <h3>{title}</h3>
-      <div className="rpt-table-wrap">
-        <table className="rpt-table">
-          <caption>{caption}</caption>
-          <thead><tr><th scope="col">Kalem</th><th scope="col">Pay</th><th scope="col" className="rpt-money">Tutar</th></tr></thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.label}>
-                <th scope="row"><b>{row.label}</b><small>{row.hint}</small></th>
-                {shareCell(row)}
-                <td className="rpt-money">{row.amount}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr data-tone={total.tone}>
-              <th scope="row"><b>{total.label}</b><small>{total.hint}</small></th>
-              {shareCell(total)}
-              <td className="rpt-money">{total.amount}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-type Opportunity = { id: string; stage: string; estimated_value: number; source: string | null; lost_reason: string | null; created_at: string; updated_at: string };
-type Proposal = { id: string; opportunity_id: string; amount: number; status: string; superseded_by: string | null; created_at: string };
-type Contract = { id: string; opportunity_id: string | null; amount: number; status: string; signed_at: string | null; created_at: string };
-type Transaction = { transaction_type: "income" | "expense"; status: string; amount: number; category:string|null;paid_at: string | null; created_at: string };
-type CostItem={contract_id:string;amount:number;status:string;cost_date:string};
-type AccountEntry={entry_type:"debit"|"credit";source_type:string;amount:number;transaction_date:string};
-
-export default async function ReportingPage({ searchParams }: { searchParams: Promise<{ aralik?: string; baslangic?: string; bitis?: string }> }) {
   const params = await searchParams;
-  const { supabase, membership, modules, yetkiler } = await getPanelContext();
+  const { membership, organization, modules, yetkiler, izin, supabase } = await getPanelContext();
   // Finans kapısı (sahip/yönetici) layout'ta; burada Raporlar modülü ve rol yetkisi
   const access = { modules, yetkiler };
   /* Kapı iki parçalı: Raporlama modülü kurumda açık mı, rolde rapor
@@ -370,206 +88,53 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
      soruluyor — "modül kapalı" ile "yetkin yok" farklı iki cevap. */
   modulGerek(modules, "reporting");
   yetkiGerek(canSeeFinanceReports(access), "reporting");
-  const { startKey, endKey, key } = resolveRange(params.aralik, params.baslangic, params.bitis);
-  const inRange = (value: string | null) => { if (!value) return false; const gun = gunAnahtari(value); return gun >= startKey && gun <= endKey; };
-  const [sonYil, sonAy] = endKey.split("-").map(Number);
-  const trendStartKey = monthStartKey(sonYil, sonAy - 5);
-  const queryStartKey = startKey < trendStartKey ? startKey : trendStartKey;
+
+  const donem = donemCoz(params.aralik, params.baslangic, params.bitis);
+  const { startKey, endKey, key } = donem;
+  const donemEtiket = donemEtiketi(donem);
   const organizationId = membership.organization_id;
 
+  const acilabilir = gorulebilenRaporlar(izin);
   /*
-    OKUMALAR PENCEREYLE SINIRLI (12.10.2026).
-
-    Talep, sözleşme ve maliyet kalemleri kurumun TAMAMI için, zaman
-    sınırı olmadan çekiliyordu. Defter ve talep tablosu hiç küçülmüyor:
-    PostgREST'in satır tavanına çarpıldığı gün raporun sayıları
-    sessizce eksilirdi — hem de paranın raporlandığı yerde (AGENTS.md
-    "Rakam denetimi").
-
-    Pencere `queryStartKey` (Türkiye gece yarısı): istenen aralık ya da altı aylık trend, hangisi
-    eskiyse. Daraltma SAYIYI DEĞİŞTİRMİYOR, her kullanım tek tek
-    izlendi:
-
-    - Talepler: `incoming` created_at'e, `wonOpportunities`/`lost`
-      updated_at'e, trend dilimleri son altı aya bakıyor. İki tarihi de
-      pencereden ESKİ olan bir kayıt hiçbirine giremez — `or` süzgeci
-      tam olarak bunu söylüyor. "Satışa dönen" kümesi tüm zamanların
-      kazanılmış taleplerinden kuruluyordu ama yalnızca aralık
-      içindeki talepleri sınıflamak için kullanılıyor; onların kimliği
-      zaten pencerede.
-    - Sözleşmeler: aynı gerekçe (signed_at ya da created_at).
-      Aralıktaki bir talebin sözleşmesi, talepten sonra açıldığı için
-      pencerenin içinde kalır.
-    - Maliyet kalemleri İKİ sorguya ayrıldı: tarihli kullanımlar
-      (ödenen maliyet, maliyet serisi) pencereyle; "imzalı sözleşmenin
-      maliyeti" ise KALEM TARİHİNE BAKMADAN sözleşme kimliğiyle —
-      kalem sözleşmeden aylar sonra girilebiliyor, tarihle süzmek kârı
-      yanlış hesaplardı.
+    ADRESTEKİ RAPOR İKİ KEZ SÜZÜLÜYOR: önce gerçek bir rapor mu
+    (`raporBul`), sonra bu kullanıcının yetkisi var mı. Yetkisiz
+    anahtar için pencere açmamak yetmez — açılmayan pencere sessizce
+    yok sayılırsa kullanıcı neden boş sayfa gördüğünü anlamaz; kart
+    listesi zaten yalnızca açabildiklerini gösteriyor.
   */
-  const pencereBasi = istanbulMidnight(queryStartKey).toISOString();
-  const [opportunityResult, proposalResult, contractResult, transactionResult,costResult,entryResult] = await Promise.all([
-    supabase.from("crm_opportunities").select("id,stage,estimated_value,source,lost_reason,created_at,updated_at").eq("organization_id", organizationId)
-      .or(`created_at.gte.${pencereBasi},updated_at.gte.${pencereBasi}`),
-    supabase.from("crm_proposals").select("id,opportunity_id,amount,status,superseded_by,created_at").eq("organization_id", organizationId).gte("created_at", pencereBasi),
-    supabase.from("crm_contracts").select("id,opportunity_id,amount,status,signed_at,created_at").eq("organization_id", organizationId)
-      .or(`signed_at.gte.${pencereBasi},created_at.gte.${pencereBasi}`),
-    supabase.from("finance_transactions").select("transaction_type,status,amount,category,paid_at,created_at").eq("organization_id", organizationId).gte("created_at", pencereBasi),
-    supabase.from("contract_cost_items").select("contract_id,amount,status,cost_date").eq("organization_id",organizationId).gte("cost_date",queryStartKey),
-    supabase.from("account_entries").select("entry_type,source_type,amount,transaction_date").eq("organization_id",organizationId).gte("transaction_date",queryStartKey),
-  ]);
-  if (opportunityResult.error) throw new Error(`CRM raporu okunamadı: ${opportunityResult.error.message}`);
-  if(proposalResult.error||contractResult.error||transactionResult.error||costResult.error||entryResult.error)throw new Error("Finansal rapor verileri eksiksiz okunamadı.");
-  const opportunities = (opportunityResult.data ?? []) as Opportunity[];
-  const proposals = (proposalResult.data ?? []) as Proposal[];
-  const contracts = (contractResult.data ?? []) as Contract[];
-  const transactions = (transactionResult.data ?? []) as Transaction[];
-  const costItems=(costResult.data??[]) as CostItem[];
-  const accountEntries=(entryResult.data??[]) as AccountEntry[];
-  const incoming = opportunities.filter((row) => inRange(row.created_at));
-  const reachedStages = new Set(["qualified", "proposal", "contract", "payment", "won", "lost"]);
-  const qualifiedStages = new Set(["qualified", "proposal", "contract", "payment", "won"]);
-  const reached = incoming.filter((row) => reachedStages.has(row.stage));
-  const qualified = incoming.filter((row) => qualifiedStages.has(row.stage));
-  const signedContracts = contracts.filter((row) => ["signed","completed"].includes(row.status) && inRange(row.signed_at ?? row.created_at));
-  const signedOpportunityIds = new Set(signedContracts.map((row) => row.opportunity_id).filter((value): value is string => Boolean(value)));
-  const wonOpportunities = opportunities.filter((row) => row.stage === "won" && inRange(row.updated_at));
-  const saleOpportunityIds = new Set([...wonOpportunities.map((row) => row.id), ...signedOpportunityIds]);
-  const sales = saleOpportunityIds.size;
-  const salesValue = signedContracts.length ? signedContracts.reduce((sum, row) => sum + Number(row.amount), 0) : wonOpportunities.reduce((sum, row) => sum + Number(row.estimated_value), 0);
-  /*
-    Dönüşüm: bu dönemde GÖRÜŞÜLEN adaylardan satışa dönenlerin oranı.
-    Eskiden dönemin bütün satışları (önceki aylarda gelmiş müşteriler
-    dahil) bu dönemde görüşülenlere bölünüyordu ve oran %275 gibi
-    %100'ü aşan değerler çıkıyordu.
-  */
-  /*
-    HUNİ TEK BİR GRUBUN YOLCULUĞU: bu dönemde GELEN adaylar. Her aşama bir
-    öncekinin alt kümesi (nitelikli ⊂ ulaşılan ⊂ gelen; teklif ve satış
-    niteliklilerden), huni hiçbir zaman genişlemez.
+  const istenen = raporBul(params.rapor);
+  const acik = istenen && acilabilir.some((r) => r.anahtar === istenen.anahtar) ? istenen : null;
 
-    Eskiden "Teklif" dönemde teklif verilen bütün müşterileri, "Satış"
-    dönemin bütün satışlarını sayıyordu (önceki aylarda gelmiş müşteriler
-    dahil); huni teklif aşamasında 4'ken satışta 11'e çıkıyor, dönüşüm
-    %275 gibi %100'ü aşan değerler veriyordu.
+  const donemAdresi = (aralik: string) => `${TABAN}?aralik=${aralik}${params.rapor ? `&rapor=${params.rapor}` : ""}`;
 
-    Satışa dönmüş sayılmak: imzalı sözleşmesi olmak (ne zaman imzalanmış
-    olursa) ya da aşamasının "kazanıldı" olması. Teklif verilmiş sayılmak:
-    geçerli (yerine yenisi gelmemiş) bir teklifi olmak ya da satışa dönmüş
-    olmak — sözleşmesi olan müşteriye teklif de verilmiştir.
-  */
-  const satisaDonenIds = new Set([
-    ...contracts.filter((row) => ["signed", "completed"].includes(row.status)).map((row) => row.opportunity_id).filter((v): v is string => Boolean(v)),
-    ...opportunities.filter((row) => row.stage === "won").map((row) => row.id),
-  ]);
-  const teklifliIds = new Set(proposals.filter((row) => !row.superseded_by).map((row) => row.opportunity_id));
-  const huniTeklif = qualified.filter((row) => teklifliIds.has(row.id) || satisaDonenIds.has(row.id));
-  const huniSatis = qualified.filter((row) => satisaDonenIds.has(row.id));
-  const conversion = reached.length ? (huniSatis.length / reached.length) * 100 : 0;
-  const averageSale = sales ? salesValue / sales : 0;
-  const signedContractIds=new Set(signedContracts.map(row=>row.id));
-  /* İmzalı sözleşmelerin maliyeti: kalem TARİHİNDEN bağımsız, sözleşme
-     kimliğiyle toplanıyor (kalem sözleşmeden aylar sonra girilebiliyor;
-     pencereyle süzmek brüt kârı yanlış gösterirdi). Sorgu yalnızca
-     aralıktaki imzalı sözleşmeler için, yani liste kısa. */
-  const { data: sozlesmeMaliyetleri, error: maliyetHatasi } = signedContractIds.size
-    ? await supabase.from("contract_cost_items").select("contract_id,amount")
-        .eq("organization_id", organizationId).in("contract_id", [...signedContractIds])
-    : { data: [], error: null };
-  if (maliyetHatasi) throw new Error("Sözleşme maliyetleri okunamadı: " + maliyetHatasi.message);
-  const contractedCost=((sozlesmeMaliyetleri ?? []) as { contract_id: string; amount: number }[])
-    .reduce((sum,row)=>sum+Number(row.amount),0);
-  const grossProfit=salesValue-contractedCost;
-  const grossMargin=salesValue?grossProfit/salesValue*100:0;
-  const collections=accountEntries.filter(row=>row.entry_type==="credit"&&inRange(row.transaction_date)).reduce((sum,row)=>sum+Number(row.amount),0);
-  const paidJobCost=costItems.filter(row=>row.status==="paid"&&inRange(row.cost_date)).reduce((sum,row)=>sum+Number(row.amount),0);
-  const paidTransactions = transactions.filter((row) => row.status === "paid" && inRange(row.paid_at ?? row.created_at));
-  const operatingExpense=paidTransactions.filter(row=>row.transaction_type==="expense"&&row.category!=="Hizmet maliyeti").reduce((sum,row)=>sum+Number(row.amount),0);
-  const realizedProfit=collections-paidJobCost-operatingExpense;
-  const realizedMargin=collections?realizedProfit/collections*100:0;
-  const lost = opportunities.filter((row) => row.stage === "lost" && inRange(row.updated_at));
-  const referralLeads = incoming.filter((row) => (row.source ?? "").toLocaleLowerCase("tr-TR").includes("referans"));
-  const referralSales = referralLeads.filter((row) => saleOpportunityIds.has(row.id)).length;
-
-  const lostReasonMap = new Map<string, number>();
-  for (const row of lost) { const reason = row.lost_reason?.trim() || "Neden belirtilmedi"; lostReasonMap.set(reason, (lostReasonMap.get(reason) ?? 0) + 1); }
-  const lostReasons = [...lostReasonMap.entries()].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
-  const maxLostReason = Math.max(1, ...lostReasons.map((row) => row.count));
-  const funnel = [
-    { label: "Gelen lead", value: incoming.length, detail: "Yeni müşteri adayı" },
-    { label: "Ulaşılan", value: reached.length, detail: incoming.length ? `${percent((reached.length / incoming.length) * 100)} erişim` : "—" },
-    { label: "Nitelikli lead", value: qualified.length, detail: reached.length ? `${percent((qualified.length / reached.length) * 100)} nitelikli` : "—" },
-    { label: "Teklif", value: huniTeklif.length, detail: qualified.length ? `${percent((huniTeklif.length / qualified.length) * 100)} teklif` : "—" },
-    { label: "Satışa dönen", value: huniSatis.length, detail: reached.length ? `${percent(conversion)} dönüşüm` : "—" },
-  ];
-  const maxFunnel = Math.max(1, ...funnel.map((row) => row.value));
-  const transitionRates = funnel.slice(0, -1).map((row, index) => ({ from: row.label, to: funnel[index + 1].label, rate: row.value ? (funnel[index + 1].value / row.value) * 100 : 0 }));
-  const weakestStep = [...transitionRates].sort((a, b) => a.rate - b.rate)[0];
-  const months = Array.from({ length: 6 }, (_, index) => { const ayKey = monthStartKey(sonYil, sonAy - (5 - index)).slice(0, 7); return { key: ayKey, label: monthNames[Number(ayKey.slice(5, 7)) - 1], leads: 0, sales: 0 }; });
-  for (const row of opportunities) { const bucket = months.find((month) => month.key === gunAnahtari(row.created_at).slice(0, 7)); if (bucket) bucket.leads += 1; }
-  for (const row of opportunities.filter((item) => item.stage === "won")) { const bucket = months.find((month) => month.key === gunAnahtari(row.updated_at).slice(0, 7)); if (bucket) bucket.sales += 1; }
-  const maxTrend = Math.max(1, ...months.map((row) => row.leads));
-  /* Kart grafikleri için aylık seriler (yukarıdaki months dilimleriyle).
-     Satış imzalı sözleşmeden (imza tarihi), maliyet kalem tarihinden,
-     tahsilat cari dökümündeki ödemelerden. */
-  const aylikSeri = (kayitlar: { tarih: string | null; tutar: number }[], bicim: (n: number) => string): SeriNoktasi[] =>
-    months.map((ay, sira) => {
-      const deger = kayitlar.filter((k) => k.tarih && gunAnahtari(k.tarih).slice(0, 7) === ay.key).reduce((t, k) => t + k.tutar, 0);
-      return { ad: ay.label, deger, etiket: bicim(deger), simdiki: sira === months.length - 1 };
-    });
-  const adet = (n: number) => String(n);
-  const leadSerisi = aylikSeri(opportunities.map((o) => ({ tarih: o.created_at, tutar: 1 })), adet);
-  const imzaliTumu = contracts.filter((c) => ["signed", "completed"].includes(c.status));
-  const satisSerisi = aylikSeri(imzaliTumu.map((c) => ({ tarih: c.signed_at ?? c.created_at, tutar: 1 })), adet);
-  const maliyetSerisi = aylikSeri(costItems.map((c) => ({ tarih: c.cost_date, tutar: Number(c.amount) })), money);
-  const tahsilatSerisi = aylikSeri(accountEntries.filter((e) => e.entry_type === "credit").map((e) => ({ tarih: e.transaction_date, tutar: Number(e.amount) })), money);
-  const rangeLabel = key === "bu_ay" ? "Bu ay" : key === "gecen_ay" ? "Geçen ay" : key === "bu_yil" ? "Bu yıl" : `${gunYazisi(startKey)} – ${gunYazisi(endKey)}`;
-
-  // --- Sunum: yukarıda hesaplanan değerlerden türetilir, yeni sorgu yok ---
-  const oranOf = (pay: number, payda: number) => (payda ? (pay / payda) * 100 : null);
-  const salesWidgets: Widget[] = [
-    { label: "Gelen lead", value: String(incoming.length), note: "Son 6 ay, aylık gelen aday", icon: "inbox", tone: "brand", grafik: { tur: "cubuk", seri: leadSerisi } },
-    { label: "Ulaşılan", value: String(reached.length), note: "Gelen adayların görüşülen kısmı", icon: "chat", tone: "info", grafik: { tur: "halka", oran: oranOf(reached.length, incoming.length), altyazi: "erişim oranı" } },
-    { label: "Nitelikli lead", value: String(qualified.length), note: "Görüşülenlerin gerçek aday kısmı", icon: "badge", tone: "info", grafik: { tur: "halka", oran: oranOf(qualified.length, reached.length), altyazi: "nitelikli oranı" } },
-    { label: "Teklif", value: String(huniTeklif.length), note: "Bu dönemin adaylarından teklif verilen", icon: "doc", tone: "gold", grafik: { tur: "halka", oran: oranOf(huniTeklif.length, qualified.length), altyazi: "nitelikliye teklif" } },
-    { label: "Satış", value: String(sales), note: `${money(salesValue)} · son 6 ay imzalanan`, icon: "seal", tone: "success", grafik: { tur: "cubuk", seri: satisSerisi } },
-  ];
-  const financeWidgets: Widget[] = [
-    { label: "Dönüşüm", value: percent(conversion), note: `Görüşülen ${reached.length} adaydan ${huniSatis.length} satış`, icon: "spark", tone: "gold", grafik: { tur: "gosterge", oran: conversion } },
-    { label: "İş maliyeti", value: money(contractedCost), note: "Bu dönem imzalanan işlerin maliyeti · son 6 ay", icon: "briefcase", tone: "warning", grafik: { tur: "cubuk", seri: maliyetSerisi } },
-    { label: "Brüt iş kârı", value: money(grossProfit), note: `${percent(grossMargin)} sözleşme marjı`, icon: "chart", tone: grossProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "yigin", parcalar: [{ ad: "Maliyet", deger: contractedCost, ton: "warning" }, { ad: "Kâr", deger: grossProfit, ton: grossProfit >= 0 ? "success" : "danger" }] } },
-    { label: "Tahsilat", value: money(collections), note: "Kasaya giren müşteri ödemesi · son 6 ay", icon: "wallet", tone: "brand", grafik: { tur: "cubuk", seri: tahsilatSerisi } },
-    { label: "Net nakit hareketi", value: money(realizedProfit), note: `${percent(realizedMargin)} tahsilat sonrası fark`, icon: "flow", tone: realizedProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "selale", adimlar: [{ ad: "Tahsilat", deger: collections, ton: "brand" }, { ad: "İş maliyeti", deger: -paidJobCost, ton: "warning" }, { ad: "Genel gider", deger: -operatingExpense, ton: "warning" }, { ad: "Kalan", deger: realizedProfit, ton: realizedProfit >= 0 ? "success" : "danger" }] } },
-  ];
-  const hasLeads = incoming.length > 0;
-  const contractRows: LedgerRow[] = [
-    { label: "İmzalı satış değeri", hint: `${sales} satış · ortalama ${money(averageSale)}`, amount: money(salesValue), share: salesValue ? 100 : null, tone: "brand" },
-    { label: "İş maliyeti", hint: "İmzalı işlere bağlı maliyet kalemleri", amount: deduction(contractedCost), share: shareOf(contractedCost, salesValue), tone: "warning" },
-  ];
-  const contractTotal: LedgerRow = { label: "Brüt iş kârı", hint: "Satış değeri − iş maliyeti", amount: money(grossProfit), share: salesValue ? grossMargin : null, tone: grossProfit >= 0 ? "success" : "danger" };
-  const cashRows: LedgerRow[] = [
-    { label: "Tahsilat", hint: "Cari hesaplara giren ödemeler", amount: money(collections), share: collections ? 100 : null, tone: "brand" },
-    { label: "Ödenmiş iş maliyeti", hint: "Dönem içinde ödenen maliyet kalemleri", amount: deduction(paidJobCost), share: shareOf(paidJobCost, collections), tone: "warning" },
-    { label: "Genel gider", hint: "Hizmet maliyeti dışındaki ödenmiş giderler", amount: deduction(operatingExpense), share: shareOf(operatingExpense, collections), tone: "warning" },
-  ];
-  const cashTotal: LedgerRow = { label: "Net nakit hareketi", hint: "Tahsilat − ödemeler", amount: money(realizedProfit), share: collections ? realizedMargin : null, tone: realizedProfit >= 0 ? "success" : "danger" };
-  const trendLeads = months.reduce((sum, month) => sum + month.leads, 0);
-  const trendSales = months.reduce((sum, month) => sum + month.sales, 0);
-  const trendEmpty = trendLeads === 0 && trendSales === 0;
+  /* Dosya adresi dönemi TAŞIYOR: ekranda "geçen ay" açıkken inen
+     dosyanın bu ayı göstermesi, kullanıcının fark etmeyeceği bir
+     yanlışlık olurdu. */
+  const indirmeAdresi = (anahtar: RaporAnahtari) => {
+    const p = new URLSearchParams({ rapor: anahtar, aralik: key });
+    if (key === "ozel") { p.set("baslangic", startKey); p.set("bitis", endKey); }
+    return `${TABAN}/indir?${p.toString()}`;
+  };
 
   return <div className="rpt">
     <header className="talep-bas rpt-bas">
       <div className="talep-bas-metin"><small className="panel-kicker">FİNANS</small><h1>Raporlar</h1></div>
-      <div className="talep-bas-eylem"><span className="status-pill rpt-range-pill" data-tone="gold">{rangeLabel}</span><PrintReportButton /></div>
+      <div className="talep-bas-eylem"><span className="status-pill rpt-range-pill" data-tone="gold">{donemEtiket}</span></div>
     </header>
 
+    {/* Dönem MERKEZDE seçiliyor ve pencereye adresle taşınıyor: her
+        raporun kendi dönem çubuğu olsaydı kullanıcı sekiz kez aynı
+        aralığı kurardı ve iki rapor farklı dönemle yan yana
+        karşılaştırılabilirdi. */}
     <section className="rpt-toolbar" aria-label="Rapor dönemi">
       <nav className="rpt-segment" aria-label="Hazır dönemler">
-        <Link className={key === "bu_ay" ? "is-active" : undefined} aria-current={key === "bu_ay" ? "page" : undefined} href="/panel/finance/raporlar?aralik=bu_ay">Bu Ay</Link>
-        <Link className={key === "gecen_ay" ? "is-active" : undefined} aria-current={key === "gecen_ay" ? "page" : undefined} href="/panel/finance/raporlar?aralik=gecen_ay">Geçen Ay</Link>
-        <Link className={key === "bu_yil" ? "is-active" : undefined} aria-current={key === "bu_yil" ? "page" : undefined} href="/panel/finance/raporlar?aralik=bu_yil">Bu Yıl</Link>
+        <Link className={key === "bu_ay" ? "is-active" : undefined} aria-current={key === "bu_ay" ? "page" : undefined} href={donemAdresi("bu_ay")}>Bu Ay</Link>
+        <Link className={key === "gecen_ay" ? "is-active" : undefined} aria-current={key === "gecen_ay" ? "page" : undefined} href={donemAdresi("gecen_ay")}>Geçen Ay</Link>
+        <Link className={key === "bu_yil" ? "is-active" : undefined} aria-current={key === "bu_yil" ? "page" : undefined} href={donemAdresi("bu_yil")}>Bu Yıl</Link>
       </nav>
       <form className={`rpt-range-form${key === "ozel" ? " is-active" : ""}`} method="get">
         <input type="hidden" name="aralik" value="ozel"/>
+        {params.rapor ? <input type="hidden" name="rapor" value={params.rapor}/> : null}
         <span className="rpt-range-label">Özel aralık</span>
         <input name="baslangic" type="date" defaultValue={key === "ozel" ? startKey : undefined} required aria-label="Başlangıç tarihi"/>
         <span className="rpt-range-sep" aria-hidden="true">–</span>
@@ -578,155 +143,49 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
       </form>
     </section>
 
-    <section className="rpt-group" aria-labelledby="rpt-sales-title">
-      <h2 className="rpt-group-title" id="rpt-sales-title">Satış hattı</h2>
-      <div className="rpt-widgets">{salesWidgets.map((widget) => <WidgetCard key={widget.label} widget={widget} />)}</div>
+    <section className="rpt-merkez" aria-label="Raporlar">
+      {acilabilir.map((rapor) => {
+        const hazir = HAZIR.has(rapor.anahtar);
+        const govde = <>
+          <span className="rapor-kart-ikon" aria-hidden="true"><Icon name={rapor.ikon} size={20} /></span>
+          <small className="panel-kicker">{rapor.kod}</small>
+          <b>{rapor.baslik}</b>
+          <p>{rapor.aciklama}</p>
+          <span className="rapor-kart-alt">
+            {hazir ? <>Raporu aç<i aria-hidden="true"> ›</i></> : "Hazırlanıyor"}
+          </span>
+        </>;
+        return hazir
+          ? <Link key={rapor.anahtar} className="rapor-kart" href={raporAdresi(TABAN, rapor.anahtar, params)}>{govde}</Link>
+          /* Gövdesi olmayan rapor bağlantı DEĞİL: tıklanabilir
+             görünüp boş pencere açmak, kullanıcıya kusuru kendi
+             hatası gibi gösterirdi. */
+          : <article key={rapor.anahtar} className="rapor-kart is-bekliyor">{govde}</article>;
+      })}
+      {acilabilir.length === 0 ? (
+        <p className="rpt-empty-note">Rolünüzde açık bir rapor yetkisi yok. Ayarlar → Yetkilendirme’den rapor yetkileri verilebilir.</p>
+      ) : null}
     </section>
-    <section className="rpt-group" aria-labelledby="rpt-finance-title">
-      <h2 className="rpt-group-title" id="rpt-finance-title">Kârlılık ve nakit</h2>
-      <div className="rpt-widgets">{financeWidgets.map((widget) => <WidgetCard key={widget.label} widget={widget} />)}</div>
-    </section>
 
-    {/*
-      TEK SAYFA — AYRINTI PENCEREDE (2026-10-24, kurum sahibinin kuralı).
-
-      Beş kart da içeriğini tam açıyordu ve sayfa ekranın birkaç katına
-      uzuyordu: yönetici "bu dönem ne oldu" sorusunun cevabını görmek
-      için kaydırmak zorundaydı, yani özet olmaktan çıkmıştı.
-
-      Artık her kart ekranda yalnızca KARARA YETECEK KADARINI
-      gösteriyor — başlık, bir cümle ve en çok iki rakam — ayrıntı
-      `PanelDrawer` ile ortada açılıyor. Pencere kalıbı yeni değil;
-      cari hesap ve iş maliyeti aynısını kullanıyor.
-
-      YAZDIRMA BOZULMADI ve bu bilerek çözüldü: `PanelDrawer`
-      çocuklarını kapalıyken de çiziyor (portalda, gizli), o yüzden
-      içerik DOM'da duruyor. Yazdırma CSS'i pencereleri statik ve
-      görünür yapıyor — rapor çıktısı eskisi gibi eksiksiz çıkıyor.
-      İçeriği ikinci kez çizmek (ekran için bir, baskı için bir)
-      gerekmedi; iki kopya kaçınılmaz olarak ayrışırdı.
-    */}
-    <div className="rpt-grid">
-      <OzetKart
-        baslik="Satış hunisi" altyazi="Lead’den satışa her aşamada kalan müşteri"
-        kicker="SATIŞ HATTI" ton="brand" genis
-        sayilar={[
-          { deger: String(funnel[0]?.value ?? 0), etiket: "lead" },
-          { deger: String(funnel[funnel.length - 1]?.value ?? 0), etiket: "satış" },
-          ...(weakestStep ? [{ deger: percent(weakestStep.rate), etiket: "en zayıf geçiş", ton: "warning" as Tone }] : []),
-        ]}
-        /* Huni, aşamaların kendisinden: daralan çubuklar huninin
-           şeklini veriyor, ayrı bir çizim gerekmiyor. */
-        grafik={{ tur: "cubuk", seri: funnel.map((row) => ({ ad: row.label, deger: row.value, etiket: String(row.value) })) }}
-        cumle={weakestStep ? `${weakestStep.from} → ${weakestStep.to} aşaması en çok müşteriyi kaybediyor.` : "Huni oranları ilk kayıtlarla oluşur."}
+    {acik ? (
+      <RaporPenceresi
+        rapor={acik}
+        donemEtiket={donemEtiket}
+        taban={TABAN}
+        params={params}
+        kurum={organization.name}
+        komsular={acilabilir.filter((r) => HAZIR.has(r.anahtar))}
+        indirmeAdresi={INDIRILEBILIR.has(acik.anahtar) && izin("rapor.disa_aktar") ? indirmeAdresi(acik.anahtar) : undefined}
       >
-        <ol className="rpt-funnel">
-          {funnel.map((row, index) => {
-            const step = transitionRates[index];
-            const isWeak = hasLeads && step !== undefined && step === weakestStep;
-            return <li key={row.label}>
-              <div className="rpt-funnel-row">
-                <div className="rpt-funnel-label"><b>{row.label}</b><span>{row.detail}</span></div>
-                <div className="rpt-funnel-track"><i style={cssVar("--w", `${Math.max(4, (row.value / maxFunnel) * 100)}%`)}/></div>
-                <strong>{row.value}</strong>
-              </div>
-              {step ? <div className={`rpt-funnel-step${isWeak ? " is-weak" : ""}`}><span aria-hidden="true">↓</span><b>{percent(step.rate)}</b> sonraki aşamaya geçti{isWeak ? <em>En zayıf geçiş</em> : null}</div> : null}
-            </li>;
-          })}
-        </ol>
-        {!hasLeads ? <p className="rpt-empty-note">Bu dönemde yeni lead kaydı yok; huni oranları ilk kayıtlarla birlikte oluşur.</p> : null}
-        <p className="rpt-pencere-alt"><Link href="/panel/crm" className="rpt-card-link">CRM’i aç<span aria-hidden="true"> ›</span></Link></p>
-      </OzetKart>
-
-      <OzetKart
-        baslik="Bu dönem ne söylüyor?" altyazi="Yönetici için dört kısa not"
-        kicker="DÖNEM YORUMU" ton={realizedProfit >= 0 ? "success" : "danger"}
-        sayilar={[
-          { deger: money(realizedProfit), etiket: "net nakit", ton: realizedProfit >= 0 ? "success" : "danger" },
-          { deger: sales ? percent(grossMargin) : "—", etiket: "brüt marj", ton: "gold" },
-        ]}
-        /* Dört yargının TONU: kart rakam değil, iyi/kötü dağılımı
-           anlatıyor. */
-        grafik={{ tur: "durum", noktalar: [
-          { ad: "Geçiş", ton: "warning" },
-          { ad: "Marj", ton: sales ? "gold" : "info" },
-          { ad: "Nakit", ton: realizedProfit >= 0 ? "success" : "danger" },
-          { ad: "Referans", ton: referralLeads.length ? "info" : "warning" },
-        ] }}
-        cumle="En zayıf geçiş, kârlılık, nakit ve referans — dört başlıkta dönem yorumu."
-      >
-        <ul className="rpt-insights">
-          <li data-tone="warning"><span className="rpt-insight-icon"><Icon name="alert" size={17} /></span><div><b>En zayıf geçiş</b><p>{weakestStep ? `${weakestStep.from} → ${weakestStep.to} dönüşümü ${percent(weakestStep.rate)}.` : "Yeterli veri yok."}</p></div></li>
-          <li data-tone="gold"><span className="rpt-insight-icon"><Icon name="chart" size={17} /></span><div><b>Sözleşme kârlılığı</b><p>{sales?`${money(salesValue)} imzalı işin maliyeti ${money(contractedCost)}; brüt marj ${percent(grossMargin)}.`:"Bu dönemde imzalanan sözleşme yok."}</p></div></li>
-          <li data-tone={realizedProfit >= 0 ? "success" : "danger"}><span className="rpt-insight-icon"><Icon name="wallet" size={17} /></span><div><b>Net nakit hareketi</b><p>{realizedProfit>=0?`${money(collections)} tahsilattan ${money(paidJobCost)} ödenmiş iş maliyeti ve ${money(operatingExpense)} genel gider düşüldükten sonra ${money(realizedProfit)} kaldı.`:`Bu dönemde ödemeler tahsilatı ${money(Math.abs(realizedProfit))} aşıyor; bu muhasebesel zarar değil, dönemsel nakit farkıdır.`}</p></div></li>
-          <li data-tone="info"><span className="rpt-insight-icon"><Icon name="users" size={17} /></span><div><b>Referans gücü</b><p>{referralLeads.length ? `${referralLeads.length} referans lead’in ${referralSales} tanesi satışa döndü.` : "Bu dönemde referans kaynaklı lead kaydı yok."}</p></div></li>
-        </ul>
-      </OzetKart>
-
-      <OzetKart
-        baslik="Kârlılık dökümü" altyazi="Sözleşme marjı ve dönem nakdi"
-        kicker="KÂRLILIK" ton={grossProfit >= 0 ? "success" : "danger"} genis
-        sayilar={[
-          { deger: contractTotal.amount, etiket: "brüt iş kârı", ton: contractTotal.tone },
-          { deger: cashTotal.amount, etiket: "net nakit", ton: cashTotal.tone },
-        ]}
-        /* Maliyet ve kâr yan yana: marjın büyüklüğü tek bakışta. */
-        grafik={{ tur: "yigin", parcalar: [
-          { ad: "Maliyet", deger: contractedCost, ton: "warning" },
-          { ad: "Kâr", deger: Math.max(0, grossProfit), ton: grossProfit >= 0 ? "success" : "danger" },
-        ] }}
-        cumle="İmzalı işin marjı ile dönem içindeki gerçek para hareketi yan yana."
-      >
-        <div className="rpt-ledgers">
-          <Ledger title="Sözleşme kârlılığı" caption="Pay: imzalı satış değerine oranı" rows={contractRows} total={contractTotal} />
-          <Ledger title="Dönem nakit hareketi" caption="Pay: tahsilata oranı" rows={cashRows} total={cashTotal} />
-        </div>
-      </OzetKart>
-
-      <OzetKart
-        baslik="6 aylık eğilim" altyazi="Aylara göre gelen lead ve kazanılan satış"
-        kicker="EĞİLİM" ton="info" genis
-        sayilar={[{ deger: String(trendLeads), etiket: "lead" }, { deger: String(trendSales), etiket: "satış" }]}
-        grafik={{ tur: "cubuk", seri: leadSerisi }}
-        cumle={trendEmpty ? "Son 6 ayda lead veya kazanılan satış kaydı yok." : "Son altı ayın aylık dağılımı."}
-      >
-        <div className="rpt-trend" role="img" aria-label={`Altı aylık grafik: ${months.map((month) => `${month.label} ${month.leads} lead, ${month.sales} satış`).join("; ")}`}>
-          {months.map((month, index) => <div key={month.key} className={`rpt-trend-col${index === months.length - 1 ? " is-current" : ""}`}>
-            <div className="rpt-trend-bars">
-              <i className="is-lead" style={cssVar("--h", `${Math.max(3, clampPercent((month.leads / maxTrend) * 100))}%`)} title={`${month.leads} lead`}/>
-              <i className="is-sale" style={cssVar("--h", `${Math.max(3, clampPercent((month.sales / maxTrend) * 100))}%`)} title={`${month.sales} satış`}/>
-            </div>
-            <b>{month.label}</b>
-            <span>{month.leads} · {month.sales}</span>
-          </div>)}
-        </div>
-        <div className="rpt-legend"><span><i className="is-lead"/>Lead</span><span><i className="is-sale"/>Satış</span></div>
-        {trendEmpty ? <p className="rpt-empty-note">Son 6 ayda lead veya kazanılan satış kaydı yok.</p> : null}
-      </OzetKart>
-
-      <OzetKart
-        baslik="Neden kaybedildi?" altyazi="Bu dönemde kaybedilen müşteriler"
-        kicker="KAYIP" ton={lost.length ? "danger" : "success"}
-        sayilar={[
-          { deger: String(lost.length), etiket: "müşteri", ton: lost.length ? "danger" : "success" },
-          ...(lostReasons[0] ? [{ deger: String(lostReasons[0].count), etiket: lostReasons[0].reason }] : []),
-        ]}
-        /* Sebepler kendi çubuklarıyla: hangisinin baskın olduğu
-           kartta görünüyor, isimler pencerede. */
-        grafik={{ tur: "cubuk", seri: lostReasons.slice(0, 6).map((row) => ({ ad: row.reason, deger: row.count, etiket: String(row.count) })) }}
-        cumle={lostReasons.length ? "Kayıp sebepleri ve kaç müşteriye denk geldiği." : "Bu dönemde kaybedildi olarak işaretlenen fırsat yok."}
-      >
-        {lostReasons.length ? <ul className="rpt-lost">
-          {lostReasons.map((row) => <li key={row.reason}>
-            <div className="rpt-lost-top"><b>{row.reason}</b><span>{row.count} müşteri</span></div>
-            <div className="rpt-lost-track"><i style={cssVar("--w", `${(row.count / maxLostReason) * 100}%`)}/></div>
-          </li>)}
-        </ul> : <div className="rpt-empty" data-tone="success">
-          <span className="rpt-insight-icon"><Icon name="heart" size={20} /></span>
-          <b>Kaybedilen müşteri yok</b>
-          <p>Bu dönemde kaybedildi olarak işaretlenen fırsat bulunmuyor.</p>
-        </div>}
-      </OzetKart>
-    </div>
+        {acik.anahtar === "kokpit" ? <KokpitRaporu supabase={supabase} organizationId={organizationId} donem={donem} /> : null}
+        {acik.anahtar === "satis" ? <SatisRaporu supabase={supabase} organizationId={organizationId} donem={donem} /> : null}
+        {acik.anahtar === "tahsilat" ? <TahsilatRaporu supabase={supabase} organizationId={organizationId} donem={donem} /> : null}
+        {acik.anahtar === "teklif" ? <TeklifRaporu supabase={supabase} organizationId={organizationId} donem={donem} /> : null}
+        {acik.anahtar === "finans" ? <FinansRaporu supabase={supabase} organizationId={organizationId} donem={donem} /> : null}
+        {acik.anahtar === "crm" ? <CrmRaporu supabase={supabase} organizationId={organizationId} donem={donem} /> : null}
+        {acik.anahtar === "operasyon" ? <OperasyonRaporu supabase={supabase} organizationId={organizationId} donem={donem} /> : null}
+        {acik.anahtar === "personel" ? <PersonelRaporu supabase={supabase} organizationId={organizationId} donem={donem} /> : null}
+      </RaporPenceresi>
+    ) : null}
   </div>;
 }

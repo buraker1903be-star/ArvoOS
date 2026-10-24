@@ -428,3 +428,186 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
 /* Yazdırma: KPI pencereleri çıktıda da açık (kart pencereleriyle
    aynı kural, yukarıda). Görünmez düğme basılmaz. */
 @media print{.panel-root .rpt-widget-ac{display:none!important}}
+
+/* ---------- Rapor merkezi ve rapor penceresi (2026-10-24) ----------
+   Sayfa artık raporun kendisi değil MERKEZİ: sekiz kart, rapor
+   adresten açılan bir pencerede. Pencere PanelDrawer'dan daha geniş
+   (rapor tabloları 680 pikselde okunmuyor) ama aynı kalıpta:
+   .panel-root'a portal, perde + odak tuzağı.
+   ---------------------------------------------------------------- */
+.rpt-merkez{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:stretch}
+.rapor-kart{
+  position:relative;display:flex;flex-direction:column;gap:6px;padding:16px 16px 14px;
+  border:1px solid var(--line);border-radius:20px;background:var(--surface);
+  box-shadow:var(--shadow-sm);text-decoration:none;color:inherit;overflow:hidden;
+  transition:transform var(--ctl-spring,.22s cubic-bezier(.2,.8,.2,1)),box-shadow .22s ease,border-color .22s ease
+}
+/* Üst kenarda marka çizgisi: kartları bir AİLE gibi gösteriyor,
+   her biri ayrı bir kutu gibi durmuyor. */
+.rapor-kart::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--sheen,linear-gradient(90deg,var(--brand-500),var(--primary)));opacity:.55}
+.rapor-kart:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:color-mix(in srgb,var(--brand-500) 32%,var(--line))}
+.rapor-kart:active{transform:translateY(0)}
+.rapor-kart:focus-visible{outline:2px solid var(--brand-500);outline-offset:2px}
+.rapor-kart-ikon{display:grid;place-items:center;width:38px;height:38px;margin-bottom:4px;border-radius:12px;background:color-mix(in srgb,var(--brand-500) 14%,transparent);color:var(--brand-600)}
+.rapor-kart b{font-size:15px;line-height:1.25;color:var(--ink)}
+.rapor-kart p{margin:0;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.rapor-kart-alt{margin-top:auto;padding-top:8px;font-size:12px;font-weight:600;color:var(--brand-600)}
+.rapor-kart-alt i{font-style:normal}
+/* Gövdesi yazılmamış rapor: kart duruyor (kurumun hangi raporlara
+   sahip olduğunu gösteriyor) ama bağlantı değil ve bunu SÖYLÜYOR. */
+.rapor-kart.is-bekliyor{box-shadow:none;background:var(--surface-2);cursor:default}
+.rapor-kart.is-bekliyor::before{opacity:.18}
+.rapor-kart.is-bekliyor:hover{transform:none;box-shadow:none;border-color:var(--line)}
+.rapor-kart.is-bekliyor .rapor-kart-ikon{background:color-mix(in srgb,var(--muted) 14%,transparent);color:var(--muted)}
+.rapor-kart.is-bekliyor .rapor-kart-alt{color:var(--dim)}
+
+.rapor-pencere-root{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:clamp(10px,3vh,32px)}
+.rapor-pencere-perde{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0;background:color-mix(in srgb,var(--n-900) 58%,transparent);backdrop-filter:blur(3px);cursor:pointer}
+.rapor-pencere{
+  position:relative;display:flex;flex-direction:column;
+  width:min(1500px,92vw);max-height:88dvh;
+  border:1px solid var(--line);border-radius:24px;background:var(--surface);
+  box-shadow:0 30px 80px -24px color-mix(in srgb,var(--n-900) 55%,transparent);
+  overflow:hidden;animation:rapor-pencere-gir .22s cubic-bezier(.2,.8,.2,1)
+}
+@keyframes rapor-pencere-gir{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .rapor-pencere{animation:none}
+  .rapor-kart{transition:none}
+}
+.rapor-pencere-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 20px 14px;border-bottom:1px solid var(--line-soft);background:var(--surface-raised)}
+.rapor-pencere-kimlik{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.rapor-pencere-ikon{display:grid;place-items:center;width:40px;height:40px;flex:0 0 auto;border-radius:13px;background:color-mix(in srgb,var(--brand-500) 14%,transparent);color:var(--brand-600)}
+.rapor-pencere-kimlik h2{margin:2px 0 3px;font-size:19px;line-height:1.2;color:var(--ink)}
+.rapor-pencere-kimlik p{margin:0;font-size:12.5px;color:var(--muted)}
+.rapor-pencere-eylem{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rapor-indir{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.rapor-pencere-kapat{
+  display:grid;place-items:center;width:34px;height:34px;border-radius:11px;
+  border:1px solid var(--line);background:var(--surface);color:var(--muted);
+  font-size:20px;line-height:1;text-decoration:none
+}
+.rapor-pencere-kapat:hover{color:var(--ink);border-color:color-mix(in srgb,var(--danger) 40%,var(--line));background:color-mix(in srgb,var(--danger) 8%,transparent)}
+.rapor-pencere-kapat:focus-visible{outline:2px solid var(--brand-500);outline-offset:2px}
+
+.rapor-kunye{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0;padding:8px 20px;border-bottom:1px solid var(--line-soft);background:var(--surface-2);font-size:11.5px;color:var(--muted)}
+.rapor-kunye b{color:var(--ink-soft);font-size:12px}
+.rapor-kunye span::before{content:"·";margin-right:10px;color:var(--dim)}
+
+.rapor-pencere-govde{display:flex;flex-direction:column;gap:14px;padding:18px 20px;overflow:auto;overscroll-behavior:contain}
+
+.rapor-gecis{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 20px;border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.rapor-gecis-etiket{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.rapor-gecis-liste{display:flex;gap:8px;flex-wrap:wrap}
+.rapor-gecis-liste a{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:12.5px;font-weight:600;color:var(--ink-soft);text-decoration:none}
+.rapor-gecis-liste a:hover{border-color:color-mix(in srgb,var(--brand-500) 34%,var(--line));color:var(--brand-600)}
+.rapor-gecis-liste a:focus-visible{outline:2px solid var(--brand-500);outline-offset:2px}
+
+@media (max-width:1180px){.rpt-merkez{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){.rpt-merkez{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){
+  .rpt-merkez{grid-template-columns:minmax(0,1fr)}
+  .rapor-pencere-root{padding:0}
+  .rapor-pencere{width:100%;max-width:none;max-height:100dvh;border-radius:0;border:0}
+}
+
+/*
+  YAZDIRMA: AÇIK OLAN RAPOR BASILIR.
+
+  Eskiden sayfanın kendisi rapordu ve baskı sayfayı basıyordu. Artık
+  sayfa bir merkez; "Yazdır" düğmesi pencerenin içinde ve basılması
+  gereken şey O RAPOR. Merkez kartlarını ve dönem çubuğunu da basmak,
+  çıktının ilk sayfasını menüyle doldurmak olurdu.
+
+  Pencere `position:fixed` olduğu için baskıda tek sayfaya sıkışıyordu
+  (sabit kutu sayfalara bölünmüyor): `position:static` ve
+  `max-height:none` ile akışa giriyor, tablolar sayfalara dağılıyor.
+*/
+@media print{
+  .panel-root .rpt-merkez,.panel-root .rapor-pencere-perde,
+  .panel-root .rapor-pencere-kapat,.panel-root .rapor-indir,
+  .panel-root .rapor-gecis{display:none!important}
+  .panel-root .rapor-pencere-root{position:static;display:block;padding:0;z-index:auto}
+  .panel-root .rapor-pencere{
+    position:static;width:auto;max-width:none;max-height:none;overflow:visible;
+    border:0;border-radius:0;box-shadow:none;animation:none;background:var(--surface)
+  }
+  .panel-root .rapor-pencere-bas{padding:0 0 10px;background:transparent;border-bottom:1px solid var(--line)}
+  .panel-root .rapor-pencere-govde{padding:12px 0 0;overflow:visible}
+  /* Künye çıktının künyesi: kurum, rapor kodu, dönem ve alındığı an
+     kâğıtta kalmalı — "bu rapor hangi döneme ait" sorusu masada
+     sorulur. */
+  .panel-root .rapor-kunye{padding:8px 0;background:transparent;border-bottom:1px solid var(--line);break-after:avoid}
+}
+
+/* ---------- Rapor gövdesinin ortak blokları (2026-10-24) ---------- */
+/* KPI tanımı: "satış" ile "tahsilat"ı aynı sanan bir okuyucu doğru
+   sayıyı yanlış soruya cevap sayar. */
+.rapor-tanim{display:flex;align-items:flex-start;gap:9px;margin:0;padding:10px 13px;border:1px solid color-mix(in srgb,var(--primary) 26%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--primary) 7%,transparent);font-size:12.5px;line-height:1.5;color:var(--ink-soft)}
+.rapor-tanim svg{flex:0 0 auto;margin-top:2px;color:var(--primary)}
+.rapor-tanim b{color:var(--ink)}
+
+.rapor-blok{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.rapor-blok-bas{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rapor-blok-bas h3{margin:0;font-size:15px;color:var(--ink)}
+.rapor-blok-bas span{font-size:12px;color:var(--muted)}
+.rapor-ikili{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+
+.rapor-aylik{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;align-items:end;min-height:190px}
+.rapor-aylik-sutun{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;text-align:center}
+.rapor-aylik-cubuk{display:flex;align-items:flex-end;width:100%;height:120px}
+.rapor-aylik-cubuk i{
+  width:100%;height:var(--h,4%);border-radius:8px 8px 3px 3px;
+  background:linear-gradient(180deg,var(--brand-500),color-mix(in srgb,var(--brand-500) 55%,transparent))
+}
+.rapor-aylik-sutun.is-current .rapor-aylik-cubuk i{background:linear-gradient(180deg,var(--primary),color-mix(in srgb,var(--primary) 55%,transparent))}
+.rapor-aylik-sutun b{font-size:12px;color:var(--ink)}
+.rapor-aylik-sutun span{font-size:11.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.rapor-aylik-sutun small{font-size:11px;color:var(--muted)}
+
+/* Pay çubuğu sayının yanında: oranı okumak için yüzdeleri
+   karşılaştırmak gerekmesin. */
+.rapor-pay{display:flex;align-items:center;gap:8px;min-width:120px}
+.rapor-pay-cubuk{flex:1 1 auto;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.rapor-pay-cubuk i{display:block;width:var(--w,2%);height:100%;border-radius:999px;background:var(--brand-500)}
+.rapor-pay span{flex:0 0 auto;font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+
+.rapor-kayit-link{color:inherit;text-decoration:none}
+.rapor-kayit-link:hover b{color:var(--brand-600);text-decoration:underline}
+.rapor-kayit-link:focus-visible{outline:2px solid var(--brand-500);outline-offset:2px;border-radius:4px}
+
+@media (max-width:900px){
+  .rapor-ikili{grid-template-columns:minmax(0,1fr)}
+  .rapor-aylik{min-height:150px}
+  .rapor-aylik-cubuk{height:90px}
+}
+@media print{
+  .panel-root .rapor-blok{box-shadow:none;break-inside:avoid;padding:12px}
+  .panel-root .rapor-ikili{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .panel-root .rapor-aylik-cubuk i,.panel-root .rapor-pay-cubuk i{animation:none}
+}
+
+/* Rapor penceresi açıkken arka plan kaydırılmıyor. Sınıf, iç içe
+   açılan PanelDrawer'ın satır içi biçimini bozmadan altında kalıyor
+   (rapor-pencere-kabugu.tsx'teki gerekçe). */
+body.rapor-kilit{overflow:hidden}
+
+/* Bekleme süresi: sayı ve çubuk birlikte — "42 gün"ün ne kadar uzun
+   olduğu ancak ötekilerle karşılaştırılınca anlaşılıyor. */
+.rapor-bekleme{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:84px}
+.rapor-bekleme .rapor-pay-cubuk{width:100%}
+
+/* İkili aylık çubuk: gelir ve çıkış yan yana — ayın kârlı mı olduğu
+   iki rakamı karşılaştırmadan okunuyor. Renkler .rpt-legend'deki
+   is-lead / is-sale ile aynı kaynaktan. */
+.rapor-aylik-cubuk.is-ikili{display:flex;align-items:flex-end;gap:3px}
+.rapor-aylik-cubuk.is-ikili i{width:50%}
+.rapor-aylik-cubuk.is-ikili i.is-gelir{background:linear-gradient(180deg,var(--success),color-mix(in srgb,var(--success) 55%,transparent))}
+.rapor-aylik-cubuk.is-ikili i.is-cikis{background:linear-gradient(180deg,var(--warning),color-mix(in srgb,var(--warning) 55%,transparent))}
+.rapor-aylik-ikili .rapor-aylik-sutun.is-current .rapor-aylik-cubuk i.is-gelir{background:linear-gradient(180deg,var(--success),color-mix(in srgb,var(--success) 70%,transparent))}
+/* Kategori payı bloğun tonunu alıyor: gelir yeşil, gider turuncu. */
+.rapor-pay[data-tone="success"] .rapor-pay-cubuk i{background:var(--success)}
+.rapor-pay[data-tone="warning"] .rapor-pay-cubuk i{background:var(--warning)}
+
+/* Hücre içindeki ikincil not: "3 sözleşme", "₺2.500 ödendi". */
+.rapor-alt-not{display:block;margin-top:2px;font-size:11px;font-weight:400;color:var(--muted)}
