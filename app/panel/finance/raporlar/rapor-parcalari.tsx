@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { IkonAdi } from "@/lib/rapor-ikonlari";
 import type { Tutarsizlik } from "@/lib/rapor-tutarlilik";
+import { money, percent } from "@/lib/rapor-bicim";
+import type { SeriNoktasi } from "@/lib/rapor-seri";
 import { PanelDrawer } from "../../components/panel-drawer";
 
 /*
@@ -14,9 +16,11 @@ import { PanelDrawer } from "../../components/panel-drawer";
   Hepsi SUNUCUDA çiziliyor: SVG ve CSS, istemci kodu ve kütüphane yok.
   Veri mantığına dokunmuyorlar; aldıkları şeyi gösteriyorlar.
 */
-export const money = (amount: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount / 100);
-// Negatif oran "−%184" (eskiden "%-184" yazılıyordu).
-export const percent = (value: number) => (Math.round(value) < 0 ? `−%${Math.abs(Math.round(value))}` : `%${Math.round(value)}`);
+/* Biçimleyiciler saf modülde (lib/rapor-bicim): rapor MODELLERİ de
+   onları kullanıyor ve bir modelin JSX içeren dosyaya bağlanması saf
+   mantığı React'e bağlamak olurdu. Buradan yeniden dışa veriliyor,
+   çağıranların hiçbiri değişmedi. */
+export { money, percent } from "@/lib/rapor-bicim";
 // ---------------------------------------------------------------
 // Sunum yardımcıları (yalnızca görünüm; veri mantığına dokunmaz)
 // ---------------------------------------------------------------
@@ -39,32 +43,9 @@ export type Tone = "brand" | "info" | "gold" | "success" | "warning" | "danger";
     selale   tahsilattan düşülenler ve kalan (net nakit)
   Grafikler sunucuda çizilen SVG ve CSS: istemci kodu, kütüphane yok.
 */
-/*
-  ÇUBUĞUN ALTINDAKİ ETİKET AYRI BİR ALAN (2026-10-24).
-
-  `ad` hem ipucu/ekran okuyucu metni hem de eksen etiketi olarak
-  kullanılıyordu. Ay kısaltmalarıyla ("Tem", "Ağu") sorun yoktu ama
-  aynı grafik müşteri adı, kayıp sebebi ve sözleşme numarasıyla da
-  kullanılınca etiketler ÜST ÜSTE BİNDİ ve kutudaki rakamın üstüne
-  taştı — canlıda CRM raporunun "Müşteri başına" ve "Kaybedilen"
-  kutularında görüldü.
-
-  Artık eksen etiketi yalnızca `eksen` verildiğinde çiziliyor. `ad`
-  tam adı taşımaya devam ediyor: ipucunda ve ekran okuyucuda eksiksiz
-  görünüyor, kutuda yer kaplamıyor. Uzunluğa bakan bir tahmin
-  yazılmadı — "kaç karakter sığar" sorusunun doğru cevabı yok,
-  etiketin anlamlı olup olmadığına çağıran karar veriyor.
-*/
-export type SeriNoktasi = {
-  /** Tam ad: ipucu ve ekran okuyucu. */
-  ad: string;
-  /** Çubuğun altındaki kısa etiket; verilmezse yazılmıyor. */
-  eksen?: string;
-  deger: number;
-  /** Biçimlenmiş değer (ipucunda görünür). */
-  etiket: string;
-  simdiki?: boolean;
-};
+/* Seri noktası saf modülde (lib/rapor-seri): rapor modelleri de
+   seri üretiyor ve JSX içeren bir dosyaya bağlanmamalı. */
+export type { SeriNoktasi } from "@/lib/rapor-seri";
 export type Grafik =
   | { tur: "cubuk"; seri: SeriNoktasi[] }
   | { tur: "halka"; oran: number | null; altyazi: string }

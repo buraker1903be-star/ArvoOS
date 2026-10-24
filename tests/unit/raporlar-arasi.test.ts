@@ -5,6 +5,7 @@ import { teklifModeli } from "../../lib/rapor-teklif";
 import { tahsilatModeli } from "../../lib/rapor-tahsilat";
 import { finansModeli } from "../../lib/rapor-finans";
 import { crmModeli } from "../../lib/rapor-crm";
+import { kokpitModeli } from "../../lib/rapor-kokpit";
 import type { Donem } from "../../lib/rapor-donemi";
 
 /*
@@ -34,6 +35,52 @@ const SOZLESMELER = [
 ];
 
 describe("raporlar arası tutarlılık", () => {
+  it("Kokpit ile Satış aynı imzalı tutarı söylüyor", () => {
+    /*
+      KOKPİT KULLANICININ İLK AÇTIĞI RAPOR ve ayrıntı raporlarıyla
+      ÇELİŞMEMELİ: ikisi de "imzalı sayılan durumlar + imza günü
+      aralıkta" kuralını kullanıyor. Kokpitin hesabı 24.10.2026'da
+      bileşenden saf modele taşındı; bu test taşımanın matematiği
+      değiştirmediğini ve bundan sonra ayrışmayacağını sabitliyor.
+    */
+    const kokpit = kokpitModeli({
+      donem: EKIM,
+      opportunities: [], proposals: [], transactions: [], costItems: [],
+      accountEntries: [], sozlesmeMaliyetleri: [],
+      contracts: SOZLESMELER.map((c) => ({ ...c, opportunity_id: "t1" })),
+    });
+    const satis = satisModeli({
+      donem: EKIM,
+      sozlesmeler: SOZLESMELER.map((c) => ({
+        ...c, contract_no: `SOZ-${c.id}`, title: "İş", opportunity_id: "t1",
+      })),
+      teklifler: [],
+      talepler: new Map([["t1", { assigned_employee_id: null, customer_name: "A", service_type: null }]]),
+      personelAdi: new Map(),
+    });
+    assert.equal(kokpit.salesValue, satis.toplam, "imzalı tutar kokpit ile satış raporunda farklı");
+    assert.equal(kokpit.signedContracts.length, satis.adet, "imzalı adet farklı");
+    assert.equal(kokpit.salesValue, 3_050_000);
+  });
+
+  it("Kokpit ile Tahsilat aynı dönem tahsilatını söylüyor", () => {
+    const hareketler = [
+      { entry_type: "credit" as const, source_type: "payment", amount: 1_200_000, transaction_date: "2026-10-05" },
+      { entry_type: "credit" as const, source_type: "payment", amount: 300_000, transaction_date: "2026-10-18" },
+      { entry_type: "debit" as const, source_type: "adjustment", amount: 100_000, transaction_date: "2026-10-20" },
+      { entry_type: "credit" as const, source_type: "payment", amount: 900_000, transaction_date: "2026-09-11" },
+    ];
+    const kokpit = kokpitModeli({
+      donem: EKIM, opportunities: [], proposals: [], contracts: [], transactions: [],
+      costItems: [], accountEntries: hareketler, sozlesmeMaliyetleri: [],
+    });
+    const tahsilat = tahsilatModeli({ donem: EKIM, bugun: BUGUN, hareketler, cariler: [] });
+    /* Kokpit BRÜT tahsilatı gösteriyor (iade düşmeden), tahsilat
+       raporu hem brütü hem neti. Karşılaştırma brüt üzerinden. */
+    assert.equal(kokpit.collections, tahsilat.donemTahsilat, "dönem tahsilatı kokpit ile farklı");
+    assert.equal(kokpit.collections, 1_500_000);
+  });
+
   it("Satış ile Teklif aynı dönemde aynı imzalı tutarı söylüyor", () => {
     /* İkisi de "imzalı sayılan durumlar + imza günü aralıkta"
        kuralını kullanıyor; biri değişirse bu test düşer ve ötekinin

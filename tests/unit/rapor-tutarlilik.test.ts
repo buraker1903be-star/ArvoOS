@@ -1,9 +1,11 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  crmTutarliligi, finansTutarliligi, operasyonTutarliligi, personelTutarliligi,
-  satisTutarliligi, tahsilatTutarliligi, teklifTutarliligi, type Tutarsizlik,
+  crmTutarliligi, finansTutarliligi, kokpitTutarliligi, operasyonTutarliligi,
+  personelTutarliligi, satisTutarliligi, tahsilatTutarliligi, teklifTutarliligi,
+  type Tutarsizlik,
 } from "../../lib/rapor-tutarlilik";
+import { kokpitModeli } from "../../lib/rapor-kokpit";
 import { satisModeli } from "../../lib/rapor-satis";
 import { crmModeli } from "../../lib/rapor-crm";
 import { tahsilatModeli } from "../../lib/rapor-tahsilat";
@@ -68,6 +70,52 @@ const anlat = (tohum: number, liste: Tutarsizlik[]) =>
   `tohum ${tohum}: ` + liste.map((t) => `${t.rapor} · ${t.olcut} (beklenen ${t.beklenen}, bulunan ${t.bulunan})`).join(" | ");
 
 describe("rapor tutarlılığı — rastgele girdilerle", () => {
+  it("RPR-00 Kokpit: huni daralıyor, marjlar ve seriler tutuyor", () => {
+    for (let tohum = 1; tohum <= TUR; tohum += 1) {
+      const r = uretec(tohum);
+      const sozlesmeler = Array.from({ length: adet(r, 14) }, (_, i) => ({
+        id: `s${i}`, opportunity_id: belki(r, `t${adet(r, 16)}`, 0.25),
+        amount: tutar(r), status: sec(r, SOZ_DURUM),
+        signed_at: belki(r, an(r)), created_at: an(r),
+      }));
+      const m = kokpitModeli({
+        donem: EKIM,
+        opportunities: Array.from({ length: adet(r, 16) }, (_, i) => ({
+          id: `t${i}`, stage: sec(r, ASAMALAR), estimated_value: tutar(r),
+          source: sec(r, [...KAYNAKLAR, "Referans müşteri"]),
+          lost_reason: sec(r, ["Fiyat", null, "  "]),
+          created_at: an(r), updated_at: an(r),
+        })),
+        proposals: Array.from({ length: adet(r, 12) }, (_, i) => ({
+          id: `p${i}`, opportunity_id: `t${adet(r, 16)}`, amount: tutar(r),
+          status: sec(r, TEKLIF_DURUM), superseded_by: belki(r, `p${adet(r, 12)}`, 0.6),
+          created_at: an(r),
+        })),
+        contracts: sozlesmeler,
+        transactions: Array.from({ length: adet(r, 12) }, () => ({
+          transaction_type: sec(r, ["income", "expense"] as const),
+          status: sec(r, ["paid", "planned", "canceled"]), amount: tutar(r),
+          category: sec(r, ["Hizmet maliyeti", "Kira", null]),
+          paid_at: belki(r, an(r), 0.3), created_at: an(r),
+        })),
+        costItems: Array.from({ length: adet(r, 10) }, () => ({
+          contract_id: `s${adet(r, 14)}`, amount: tutar(r),
+          status: sec(r, ["paid", "planned"]), cost_date: gun(r),
+        })),
+        accountEntries: Array.from({ length: adet(r, 14) }, () => ({
+          entry_type: sec(r, ["credit", "debit"] as const),
+          source_type: sec(r, ["payment", "adjustment", "contract"]),
+          amount: tutar(r), transaction_date: gun(r),
+        })),
+        sozlesmeMaliyetleri: Array.from({ length: adet(r, 8) }, () => ({
+          contract_id: `s${adet(r, 14)}`, amount: tutar(r),
+        })),
+      });
+      const bulgu = kokpitTutarliligi(m);
+      assert.deepEqual(bulgu, [], anlat(tohum, bulgu));
+    }
+  });
+
   it("RPR-01 Satış: kırılımlar her zaman toplamı tutuyor", () => {
     for (let tohum = 1; tohum <= TUR; tohum += 1) {
       const r = uretec(tohum);

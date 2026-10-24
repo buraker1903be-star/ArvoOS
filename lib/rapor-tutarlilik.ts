@@ -1,3 +1,4 @@
+import type { KokpitModeli } from "@/lib/rapor-kokpit";
 import type { SatisModeli } from "@/lib/rapor-satis";
 import type { CrmModeli } from "@/lib/rapor-crm";
 import type { TahsilatModeli } from "@/lib/rapor-tahsilat";
@@ -198,5 +199,38 @@ export function teklifTutarliligi(m: TeklifModeli): Tutarsizlik[] {
     ...enCok(R, "Bekleyen listesi ≤ 20", 20, m.bekleyenler.length),
     ...oranEsit(R, "Dönüşüm = kabul ÷ süreç", oran(m.kabul, m.surecAdet), m.donusum),
     ...esit(R, "Durum dağılımı tutarı = süreç tutarı", m.surecTutar, topla(m.dagilim, (d) => d.tutar)),
+  ];
+}
+
+/* ---------------- RPR-00 Kokpit ---------------- */
+export function kokpitTutarliligi(m: KokpitModeli): Tutarsizlik[] {
+  const R = "RPR-00";
+  return [
+    /* Huni TEK BİR GRUBUN yolculuğu: bu dönemde gelen adaylar. Her
+       basamak bir öncekinin alt kümesi, huni hiç genişlemez. Eskiden
+       "Teklif" dönemin bütün tekliflerini sayıyordu ve huni teklifte
+       4'ken satışta 11'e çıkıyor, dönüşüm %275 veriyordu. */
+    ...enCok(R, "Ulaşılan ≤ gelen lead", m.incoming.length, m.reached.length),
+    ...enCok(R, "Nitelikli ≤ ulaşılan", m.reached.length, m.qualified.length),
+    ...enCok(R, "Teklif ≤ nitelikli", m.qualified.length, m.huniTeklif.length),
+    ...enCok(R, "Satışa dönen ≤ teklif", m.huniTeklif.length, m.huniSatis.length),
+    ...esit(R, "Huni beş basamak", 5, m.funnel.length),
+    ...esit(R, "Huni ilk basamağı = gelen lead", m.incoming.length, m.funnel[0]?.value ?? -1),
+    ...esit(R, "Huni son basamağı = satışa dönen", m.huniSatis.length, m.funnel[4]?.value ?? -1),
+    ...esit(R, "Brüt kâr = satış değeri − iş maliyeti", m.salesValue - m.contractedCost, m.grossProfit),
+    ...esit(R, "Net nakit = tahsilat − maliyet − gider",
+      m.collections - m.paidJobCost - m.operatingExpense, m.realizedProfit),
+    ...oranEsit(R, "Brüt marj = kâr ÷ satış", m.salesValue ? (m.grossProfit / m.salesValue) * 100 : 0, m.grossMargin),
+    ...oranEsit(R, "Net marj = net nakit ÷ tahsilat",
+      m.collections ? (m.realizedProfit / m.collections) * 100 : 0, m.realizedMargin),
+    ...oranEsit(R, "Dönüşüm = satışa dönen ÷ ulaşılan",
+      m.reached.length ? (m.huniSatis.length / m.reached.length) * 100 : 0, m.conversion),
+    ...esit(R, "Kayıp sebepleri = kaybedilen", m.lost.length, m.lostReasons.reduce((t, x) => t + x.count, 0)),
+    ...enCok(R, "Referans satışı ≤ referans lead", m.referralLeads.length, m.referralSales),
+    ...esit(R, "Aylık seriler 6 ay", 6, m.months.length),
+    ...esit(R, "Lead serisi 6 nokta", 6, m.leadSerisi.length),
+    ...esit(R, "Satış serisi 6 nokta", 6, m.satisSerisi.length),
+    ...esit(R, "Maliyet serisi 6 nokta", 6, m.maliyetSerisi.length),
+    ...esit(R, "Tahsilat serisi 6 nokta", 6, m.tahsilatSerisi.length),
   ];
 }
