@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PanelDrawer } from "../../components/panel-drawer";
 import type { CSSProperties, ReactNode } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { canSeeFinanceReports } from "../finance-navigation";
@@ -451,78 +452,150 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
       <div className="rpt-widgets">{financeWidgets.map((widget) => <WidgetCard key={widget.label} widget={widget} />)}</div>
     </section>
 
+    {/*
+      TEK SAYFA — AYRINTI PENCEREDE (2026-10-24, kurum sahibinin kuralı).
+
+      Beş kart da içeriğini tam açıyordu ve sayfa ekranın birkaç katına
+      uzuyordu: yönetici "bu dönem ne oldu" sorusunun cevabını görmek
+      için kaydırmak zorundaydı, yani özet olmaktan çıkmıştı.
+
+      Artık her kart ekranda yalnızca KARARA YETECEK KADARINI
+      gösteriyor — başlık, bir cümle ve en çok iki rakam — ayrıntı
+      `PanelDrawer` ile ortada açılıyor. Pencere kalıbı yeni değil;
+      cari hesap ve iş maliyeti aynısını kullanıyor.
+
+      YAZDIRMA BOZULMADI ve bu bilerek çözüldü: `PanelDrawer`
+      çocuklarını kapalıyken de çiziyor (portalda, gizli), o yüzden
+      içerik DOM'da duruyor. Yazdırma CSS'i pencereleri statik ve
+      görünür yapıyor — rapor çıktısı eskisi gibi eksiksiz çıkıyor.
+      İçeriği ikinci kez çizmek (ekran için bir, baskı için bir)
+      gerekmedi; iki kopya kaçınılmaz olarak ayrışırdı.
+    */}
     <div className="rpt-grid">
-      <section className="rpt-card">
-        <header className="rpt-card-head"><div><h2>Satış hunisi</h2><p>Lead’den satışa her aşamada kalan müşteri</p></div><Link href="/panel/crm" className="rpt-card-link">CRM’i aç<span aria-hidden="true"> ›</span></Link></header>
-        <ol className="rpt-funnel">
-          {funnel.map((row, index) => {
-            const step = transitionRates[index];
-            const isWeak = hasLeads && step !== undefined && step === weakestStep;
-            return <li key={row.label} className={index === funnel.length - 1 ? "is-final" : undefined}>
-              <div className="rpt-funnel-row">
-                <div className="rpt-funnel-label"><b>{row.label}</b><span>{row.detail}</span></div>
-                <div className="rpt-funnel-track"><i style={cssVar("--w", `${Math.max(4, (row.value / maxFunnel) * 100)}%`)}/></div>
-                <strong>{row.value}</strong>
-              </div>
-              {step ? <div className={`rpt-funnel-step${isWeak ? " is-weak" : ""}`}><span aria-hidden="true">↓</span><b>{percent(step.rate)}</b> sonraki aşamaya geçti{isWeak ? <em>En zayıf geçiş</em> : null}</div> : null}
-            </li>;
-          })}
-        </ol>
-        {!hasLeads ? <p className="rpt-empty-note">Bu dönemde yeni lead kaydı yok; huni oranları ilk kayıtlarla birlikte oluşur.</p> : null}
-      </section>
-
-      <section className="rpt-card">
-        <header className="rpt-card-head"><div><h2>Bu dönem ne söylüyor?</h2><p>Yönetici için dört kısa not</p></div></header>
-        <ul className="rpt-insights">
-          <li data-tone="warning"><span className="rpt-insight-icon"><Icon name="alert" size={17} /></span><div><b>En zayıf geçiş</b><p>{weakestStep ? `${weakestStep.from} → ${weakestStep.to} dönüşümü ${percent(weakestStep.rate)}.` : "Yeterli veri yok."}</p></div></li>
-          <li data-tone="gold"><span className="rpt-insight-icon"><Icon name="chart" size={17} /></span><div><b>Sözleşme kârlılığı</b><p>{sales?`${money(salesValue)} imzalı işin maliyeti ${money(contractedCost)}; brüt marj ${percent(grossMargin)}.`:"Bu dönemde imzalanan sözleşme yok."}</p></div></li>
-          <li data-tone={realizedProfit >= 0 ? "success" : "danger"}><span className="rpt-insight-icon"><Icon name="wallet" size={17} /></span><div><b>Net nakit hareketi</b><p>{realizedProfit>=0?`${money(collections)} tahsilattan ${money(paidJobCost)} ödenmiş iş maliyeti ve ${money(operatingExpense)} genel gider düşüldükten sonra ${money(realizedProfit)} kaldı.`:`Bu dönemde ödemeler tahsilatı ${money(Math.abs(realizedProfit))} aşıyor; bu muhasebesel zarar değil, dönemsel nakit farkıdır.`}</p></div></li>
-          <li data-tone="info"><span className="rpt-insight-icon"><Icon name="users" size={17} /></span><div><b>Referans gücü</b><p>{referralLeads.length ? `${referralLeads.length} referans lead’in ${referralSales} tanesi satışa döndü.` : "Bu dönemde referans kaynaklı lead kaydı yok."}</p></div></li>
-        </ul>
-      </section>
-
-      <section className="rpt-card rpt-span-full">
-        <header className="rpt-card-head"><div><h2>Kârlılık dökümü</h2><p>Sözleşme marjı ile dönem içindeki gerçek nakit hareketi yan yana</p></div></header>
-        <div className="rpt-ledgers">
-          <Ledger title="Sözleşme kârlılığı" caption="Pay: imzalı satış değerine oranı" rows={contractRows} total={contractTotal} />
-          <Ledger title="Dönem nakit hareketi" caption="Pay: tahsilata oranı" rows={cashRows} total={cashTotal} />
+      <section className="rpt-card rpt-kart-ozet">
+        <header className="rpt-card-head">
+          <div><h2>Satış hunisi</h2><p>Lead’den satışa her aşamada kalan müşteri</p></div>
+        </header>
+        <div className="rpt-ozet-sayilar">
+          <div><strong>{funnel[0]?.value ?? 0}</strong><span>lead</span></div>
+          <div><strong>{funnel[funnel.length - 1]?.value ?? 0}</strong><span>satış</span></div>
+          {weakestStep ? <div data-tone="warning"><strong>{percent(weakestStep.rate)}</strong><span>en zayıf geçiş</span></div> : null}
         </div>
+        <footer className="rpt-kart-alt">
+          {weakestStep ? <p>{weakestStep.from} → {weakestStep.to} aşaması en çok müşteriyi kaybediyor.</p> : <p>Huni oranları ilk kayıtlarla oluşur.</p>}
+          <PanelDrawer triggerLabel="Ayrıntı" triggerClassName="rpt-kart-ac" kicker="SATIŞ HATTI" title="Satış hunisi" description="Lead’den satışa her aşamada kalan müşteri" genis>
+            <ol className="rpt-funnel">
+              {funnel.map((row, index) => {
+                const step = transitionRates[index];
+                const isWeak = hasLeads && step !== undefined && step === weakestStep;
+                return <li key={row.label}>
+                  <div className="rpt-funnel-row">
+                    <div className="rpt-funnel-label"><b>{row.label}</b><span>{row.detail}</span></div>
+                    <div className="rpt-funnel-track"><i style={cssVar("--w", `${Math.max(4, (row.value / maxFunnel) * 100)}%`)}/></div>
+                    <strong>{row.value}</strong>
+                  </div>
+                  {step ? <div className={`rpt-funnel-step${isWeak ? " is-weak" : ""}`}><span aria-hidden="true">↓</span><b>{percent(step.rate)}</b> sonraki aşamaya geçti{isWeak ? <em>En zayıf geçiş</em> : null}</div> : null}
+                </li>;
+              })}
+            </ol>
+            {!hasLeads ? <p className="rpt-empty-note">Bu dönemde yeni lead kaydı yok; huni oranları ilk kayıtlarla birlikte oluşur.</p> : null}
+            <p className="rpt-pencere-alt"><Link href="/panel/crm" className="rpt-card-link">CRM’i aç<span aria-hidden="true"> ›</span></Link></p>
+          </PanelDrawer>
+        </footer>
       </section>
 
-      <section className="rpt-card">
+      <section className="rpt-card rpt-kart-ozet">
+        <header className="rpt-card-head">
+          <div><h2>Bu dönem ne söylüyor?</h2><p>Yönetici için dört kısa not</p></div>
+        </header>
+        <div className="rpt-ozet-sayilar">
+          <div data-tone={realizedProfit >= 0 ? "success" : "danger"}><strong>{money(realizedProfit)}</strong><span>net nakit</span></div>
+          <div data-tone="gold"><strong>{sales ? percent(grossMargin) : "—"}</strong><span>brüt marj</span></div>
+        </div>
+        <footer className="rpt-kart-alt">
+          <p>Dört başlıkta dönem yorumu: en zayıf geçiş, kârlılık, nakit ve referans.</p>
+          <PanelDrawer triggerLabel="Ayrıntı" triggerClassName="rpt-kart-ac" kicker="DÖNEM YORUMU" title="Bu dönem ne söylüyor?" description="Yönetici için dört kısa not">
+            <ul className="rpt-insights">
+              <li data-tone="warning"><span className="rpt-insight-icon"><Icon name="alert" size={17} /></span><div><b>En zayıf geçiş</b><p>{weakestStep ? `${weakestStep.from} → ${weakestStep.to} dönüşümü ${percent(weakestStep.rate)}.` : "Yeterli veri yok."}</p></div></li>
+              <li data-tone="gold"><span className="rpt-insight-icon"><Icon name="chart" size={17} /></span><div><b>Sözleşme kârlılığı</b><p>{sales?`${money(salesValue)} imzalı işin maliyeti ${money(contractedCost)}; brüt marj ${percent(grossMargin)}.`:"Bu dönemde imzalanan sözleşme yok."}</p></div></li>
+              <li data-tone={realizedProfit >= 0 ? "success" : "danger"}><span className="rpt-insight-icon"><Icon name="wallet" size={17} /></span><div><b>Net nakit hareketi</b><p>{realizedProfit>=0?`${money(collections)} tahsilattan ${money(paidJobCost)} ödenmiş iş maliyeti ve ${money(operatingExpense)} genel gider düşüldükten sonra ${money(realizedProfit)} kaldı.`:`Bu dönemde ödemeler tahsilatı ${money(Math.abs(realizedProfit))} aşıyor; bu muhasebesel zarar değil, dönemsel nakit farkıdır.`}</p></div></li>
+              <li data-tone="info"><span className="rpt-insight-icon"><Icon name="users" size={17} /></span><div><b>Referans gücü</b><p>{referralLeads.length ? `${referralLeads.length} referans lead’in ${referralSales} tanesi satışa döndü.` : "Bu dönemde referans kaynaklı lead kaydı yok."}</p></div></li>
+            </ul>
+          </PanelDrawer>
+        </footer>
+      </section>
+
+      <section className="rpt-card rpt-kart-ozet">
+        <header className="rpt-card-head">
+          <div><h2>Kârlılık dökümü</h2><p>Sözleşme marjı ve dönem nakdi</p></div>
+        </header>
+        <div className="rpt-ozet-sayilar">
+          {/* Tutarlar dökümün KENDİ toplam satırından; ikinci kez
+              biçimlendirilmiyor ki özet ile pencere ayrışmasın. */}
+          <div data-tone={contractTotal.tone}><strong>{contractTotal.amount}</strong><span>brüt iş kârı</span></div>
+          <div data-tone={cashTotal.tone}><strong>{cashTotal.amount}</strong><span>net nakit</span></div>
+        </div>
+        <footer className="rpt-kart-alt">
+          <p>İki döküm yan yana: imzalı işin marjı ve dönem içindeki gerçek para hareketi.</p>
+          <PanelDrawer triggerLabel="Ayrıntı" triggerClassName="rpt-kart-ac" kicker="KÂRLILIK" title="Kârlılık dökümü" description="Sözleşme marjı ile dönem içindeki gerçek nakit hareketi yan yana" genis>
+            <div className="rpt-ledgers">
+              <Ledger title="Sözleşme kârlılığı" caption="Pay: imzalı satış değerine oranı" rows={contractRows} total={contractTotal} />
+              <Ledger title="Dönem nakit hareketi" caption="Pay: tahsilata oranı" rows={cashRows} total={cashTotal} />
+            </div>
+          </PanelDrawer>
+        </footer>
+      </section>
+
+      <section className="rpt-card rpt-kart-ozet">
         <header className="rpt-card-head">
           <div><h2>6 aylık eğilim</h2><p>Aylara göre gelen lead ve kazanılan satış</p></div>
-          <div className="rpt-stat"><strong>{trendLeads}</strong><span>lead · {trendSales} satış</span></div>
         </header>
-        <div className="rpt-trend" role="img" aria-label={`Altı aylık grafik: ${months.map((month) => `${month.label} ${month.leads} lead, ${month.sales} satış`).join("; ")}`}>
-          {months.map((month, index) => <div key={month.key} className={`rpt-trend-col${index === months.length - 1 ? " is-current" : ""}`}>
-            <div className="rpt-trend-bars">
-              <i className="is-lead" style={cssVar("--h", `${Math.max(3, clampPercent((month.leads / maxTrend) * 100))}%`)} title={`${month.leads} lead`}/>
-              <i className="is-sale" style={cssVar("--h", `${Math.max(3, clampPercent((month.sales / maxTrend) * 100))}%`)} title={`${month.sales} satış`}/>
-            </div>
-            <b>{month.label}</b>
-            <span>{month.leads} · {month.sales}</span>
-          </div>)}
+        <div className="rpt-ozet-sayilar">
+          <div><strong>{trendLeads}</strong><span>lead</span></div>
+          <div><strong>{trendSales}</strong><span>satış</span></div>
         </div>
-        <div className="rpt-legend"><span><i className="is-lead"/>Lead</span><span><i className="is-sale"/>Satış</span></div>
-        {trendEmpty ? <p className="rpt-empty-note">Son 6 ayda lead veya kazanılan satış kaydı yok.</p> : null}
+        <footer className="rpt-kart-alt">
+          <p>{trendEmpty ? "Son 6 ayda lead veya kazanılan satış kaydı yok." : "Son altı ayın aylık dağılımı."}</p>
+          <PanelDrawer triggerLabel="Ayrıntı" triggerClassName="rpt-kart-ac" kicker="EĞİLİM" title="6 aylık eğilim" description="Aylara göre gelen lead ve kazanılan satış" genis>
+            <div className="rpt-trend" role="img" aria-label={`Altı aylık grafik: ${months.map((month) => `${month.label} ${month.leads} lead, ${month.sales} satış`).join("; ")}`}>
+              {months.map((month, index) => <div key={month.key} className={`rpt-trend-col${index === months.length - 1 ? " is-current" : ""}`}>
+                <div className="rpt-trend-bars">
+                  <i className="is-lead" style={cssVar("--h", `${Math.max(3, clampPercent((month.leads / maxTrend) * 100))}%`)} title={`${month.leads} lead`}/>
+                  <i className="is-sale" style={cssVar("--h", `${Math.max(3, clampPercent((month.sales / maxTrend) * 100))}%`)} title={`${month.sales} satış`}/>
+                </div>
+                <b>{month.label}</b>
+                <span>{month.leads} · {month.sales}</span>
+              </div>)}
+            </div>
+            <div className="rpt-legend"><span><i className="is-lead"/>Lead</span><span><i className="is-sale"/>Satış</span></div>
+            {trendEmpty ? <p className="rpt-empty-note">Son 6 ayda lead veya kazanılan satış kaydı yok.</p> : null}
+          </PanelDrawer>
+        </footer>
       </section>
 
-      <section className="rpt-card">
+      <section className="rpt-card rpt-kart-ozet">
         <header className="rpt-card-head">
           <div><h2>Neden kaybedildi?</h2><p>Bu dönemde kaybedilen müşteriler</p></div>
-          <div className="rpt-stat" data-tone={lost.length ? "danger" : "success"}><strong>{lost.length}</strong><span>müşteri</span></div>
         </header>
-        {lostReasons.length ? <ul className="rpt-lost">
-          {lostReasons.map((row) => <li key={row.reason}>
-            <div className="rpt-lost-top"><b>{row.reason}</b><span>{row.count} müşteri</span></div>
-            <div className="rpt-lost-track"><i style={cssVar("--w", `${(row.count / maxLostReason) * 100}%`)}/></div>
-          </li>)}
-        </ul> : <div className="rpt-empty" data-tone="success">
-          <span className="rpt-insight-icon"><Icon name="heart" size={20} /></span>
-          <b>Kaybedilen müşteri yok</b>
-          <p>Bu dönemde kaybedildi olarak işaretlenen fırsat bulunmuyor.</p>
-        </div>}
+        <div className="rpt-ozet-sayilar">
+          <div data-tone={lost.length ? "danger" : "success"}><strong>{lost.length}</strong><span>müşteri</span></div>
+          {lostReasons[0] ? <div><strong>{lostReasons[0].count}</strong><span>{lostReasons[0].reason}</span></div> : null}
+        </div>
+        <footer className="rpt-kart-alt">
+          <p>{lostReasons.length ? "Kayıp sebepleri ve kaç müşteriye denk geldiği." : "Bu dönemde kaybedildi olarak işaretlenen fırsat yok."}</p>
+          <PanelDrawer triggerLabel="Ayrıntı" triggerClassName="rpt-kart-ac" kicker="KAYIP" title="Neden kaybedildi?" description="Bu dönemde kaybedilen müşteriler">
+            {lostReasons.length ? <ul className="rpt-lost">
+              {lostReasons.map((row) => <li key={row.reason}>
+                <div className="rpt-lost-top"><b>{row.reason}</b><span>{row.count} müşteri</span></div>
+                <div className="rpt-lost-track"><i style={cssVar("--w", `${(row.count / maxLostReason) * 100}%`)}/></div>
+              </li>)}
+            </ul> : <div className="rpt-empty" data-tone="success">
+              <span className="rpt-insight-icon"><Icon name="heart" size={20} /></span>
+              <b>Kaybedilen müşteri yok</b>
+              <p>Bu dönemde kaybedildi olarak işaretlenen fırsat bulunmuyor.</p>
+            </div>}
+          </PanelDrawer>
+        </footer>
       </section>
     </div>
   </div>;
