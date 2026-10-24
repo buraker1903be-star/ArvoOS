@@ -52,6 +52,36 @@
       "paket_kodu",
       "payment_link_id"
     ],
+    "analitik_olaylar": [
+      "boylam",
+      "cihaz",
+      "created_at",
+      "enlem",
+      "id",
+      "kampanya",
+      "kaynak",
+      "kaynak_ham",
+      "organization_id",
+      "ortam",
+      "sehir",
+      "site_id",
+      "tarayici",
+      "tur",
+      "ulke",
+      "yol",
+      "ziyaretci"
+    ],
+    "analitik_siteler": [
+      "ad",
+      "alan_adi",
+      "anahtar",
+      "created_at",
+      "created_by",
+      "id",
+      "ilk_olay_at",
+      "organization_id",
+      "son_olay_at"
+    ],
     "arc_collection_products": [
       "collection_id",
       "created_at",
@@ -587,6 +617,9 @@
     ],
     "crm_opportunities": [
       "assigned_employee_id",
+      "birakan_user_id",
+      "birakildi_at",
+      "birakma_sebebi",
       "contact_email",
       "contact_phone",
       "created_at",
@@ -690,6 +723,9 @@
     ],
     "crm_talep_liste": [
       "assigned_employee_id",
+      "birakan_adi",
+      "birakildi_at",
+      "birakma_sebebi",
       "contact_email",
       "contact_phone",
       "created_at",
@@ -782,6 +818,7 @@
       "organization_id",
       "paid_at",
       "party_id",
+      "payment_installment_id",
       "status",
       "title",
       "transaction_type",
@@ -1186,6 +1223,13 @@
       "size_bytes",
       "storage_path",
       "uploaded_by",
+      "workflow_id"
+    ],
+    "operation_workflow_assignees": [
+      "created_at",
+      "created_by",
+      "employee_id",
+      "organization_id",
       "workflow_id"
     ],
     "operation_workflow_comments": [
@@ -1893,6 +1937,9 @@
   "functions": [
     "accrue_operation_commission",
     "add_standard_operation_steps",
+    "analitik_canli",
+    "analitik_olay_yaz",
+    "analitik_ozet",
     "arc_address_before_write",
     "arc_address_line",
     "arc_adjust_inventory",
@@ -1962,6 +2009,7 @@
     "arvo_tracking_guard",
     "arvo_tracking_work_plan",
     "arvo_unread_notification_count",
+    "arvo_varlik_kaydet",
     "attach_arvoculture_order_owner",
     "authorize_customer_portal_file_download",
     "cari_tahsilat_ozeti",
@@ -1981,6 +2029,8 @@
     "crm_customer_search",
     "crm_genel_bakis_ozeti",
     "crm_sozlesme_istatistikleri",
+    "crm_talebi_birak",
+    "crm_talep_birakmayi_geri_al",
     "crm_talep_istatistikleri",
     "crm_talep_serit",
     "crm_talep_suz",

@@ -10,11 +10,8 @@
 */
 import { before, test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
-import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
+import { islem, migrationYetkileri, reddedilir, rol, veritabani } from "./ortam.mjs";
 
-const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 /*
   LİSTE BOŞALTILMIYOR, ÇÜNKÜ DÖKÜM GÖRÜNÜM YETKİLERİNİ TAŞIMIYOR.
 
@@ -26,8 +23,18 @@ const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migr
   ölçmüyor ve kapalı sandığımız görünüm testte açık oluyordu
   (11.10.2026'da döküm yenilenince çıktı).
 
-  Burada görünümün SON hâlini kuran migration duruyor; işlevin gövdesi
-  (crm_talep_istatistikleri) zaten dökümde ve bu dosya ona dokunmuyor.
+  AMA DOSYANIN TAMAMI UYGULANMIYOR, YALNIZCA YETKİ SATIRLARI
+  (24.10.2026). Döküm yenilenince görünümün dökümdeki hâli üç sütun
+  daha taşımaya başladı (`birakildi_at`, `birakan_user_id`,
+  `birakma_sebebi` — talebi bırakma özelliği); migration'ın içindeki
+  ESKİ `create or replace view` o sütunları düşürmeye çalışıyor ve
+  Postgres "cannot drop columns from view" diyor. Altı test birden
+  bu yüzden düştü.
+
+  `migrationYetkileri` DDL'i atlayıp yalnızca grant/revoke satırlarını
+  tekrarlıyor: görünümün tanımı dökümden (güncel), anon'a kapalı
+  olması migration'dan (dökümde olmayan tek şey). Aynı çözüm
+  13.10.2026'da da kullanıldı.
 */
 const MIGRATIONLAR = ["20261011141558_yorum_yan_sorgu_dizini.sql"];
 
@@ -46,7 +53,7 @@ const ozet = async () =>
 
 before(async () => {
   db = await veritabani();
-  for (const ad of MIGRATIONLAR) await db.exec(fs.readFileSync(migration(ad), "utf8"));
+  await migrationYetkileri(db, MIGRATIONLAR);
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id, email) values ('${SAHIP}','sahip@x.com'),('${YABANCI}','yabanci@x.com');

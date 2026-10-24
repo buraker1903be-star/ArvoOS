@@ -145,6 +145,13 @@ async function personelSil__impl(formData: FormData) {
   const kontroller: [string, PromiseLike<{ count: number | null; error: { message: string } | null }>][] = [
     ["atanmış talep", say("crm_opportunities", "assigned_employee_id")],
     ["atanmış iş", say("operation_workflows", "assigned_employee_id")],
+    /* EK SORUMLU DA ENGEL (24.10.2026). `operation_workflow_assignees`
+       22.10.2026'da eklendi ama silme engeline girmemişti; bağ
+       ON DELETE CASCADE, yani ek sorumlu olarak atanmış personeli
+       silmek o atamaları SESSİZCE götürüyordu — iş o kişiyi
+       kaybediyor, kimse haberdar olmuyor. Döküm yenilenince
+       tests/unit/personel-silme.test.ts yakaladı. */
+    ["ek sorumlu olduğu iş", say("operation_workflow_assignees", "employee_id")],
     ["atanmış iş adımı", say("operation_steps", "assigned_employee_id")],
     ["randevu", say("crm_appointments", "employee_id")],
     ["özlük belgesi", say("hr_employee_documents", "employee_id")],
