@@ -108,6 +108,29 @@ function cerezCoz(ham) {
   return metin;
 }
 
+/*
+  ÇEREZ DOĞRULANIYOR (24.10.2026).
+
+  Pano'da çerez yerine BAŞKA bir şey olduğunda betik onu olduğu gibi
+  kabul ediyordu: bir SQL sonucu (`ay,adet,tl\n2026-08,…`) yapıştırıldı,
+  her istek `Headers.append: … is an invalid header value` ile düştü ve
+  betik bunu "240 SAYFA ÇÖKÜYOR" diye bildirdi. Sayfaların hiçbiri
+  denenmemişti.
+
+  Kendinden emin bir biçimde yanlış sonuç söyleyen denetim, denetimin
+  kendisinden kötüdür: bu çıktıyı gören biri olmayan bir yangını
+  söndürmeye koşar. O yüzden değer ÖNCE sınanıyor — HTTP başlık değeri
+  tek satırdır ve kontrol karakteri taşımaz, çerez de en az bir `ad=değer`
+  çifti içerir.
+*/
+const BASLIKTA_YASAK = /[\u0000-\u001f\u007f]/;
+
+function cerezKusuru(cerez) {
+  if (BASLIKTA_YASAK.test(cerez)) return "satır sonu ya da kontrol karakteri içeriyor (HTTP başlığına konamaz)";
+  if (!cerez.includes("=")) return "`ad=değer` çifti yok";
+  return null;
+}
+
 const hamCerez = cerezDosyasi ? fs.readFileSync(cerezDosyasi, "utf8") : process.env.ARVO_COOKIE || "";
 const cerez = cerezCoz(hamCerez);
 if (!cerez) {
@@ -122,6 +145,17 @@ if (!cerez) {
         + "  bir panel isteğine sağ tık → Copy → Copy as cURL, sonra:\n"
         + "    ARVO_COOKIE=\"$(pbpaste)\" npm run duman\n"
         + "  Ham çerez dizesi de kabul ediliyor (--cerez-dosyasi ile dosyadan).",
+  );
+  process.exit(2);
+}
+
+const kusur = cerezKusuru(cerez);
+if (kusur) {
+  console.error(
+    `✗ Verilen değer çerez değil: ${kusur}.\n`
+    + `  Gelen (ilk 60 karakter): ${JSON.stringify(cerez.slice(0, 60))}\n`
+    + "  Panoda çerez yerine başka bir şey olabilir (ör. bir sorgu sonucu).\n"
+    + "  DevTools → Network → bir PANEL isteğine sağ tık → Copy → Copy as cURL.",
   );
   process.exit(2);
 }
@@ -292,7 +326,10 @@ async function dene(rota) {
     if (cevap.status >= 500) return { rota, durum: "COKME", not: `HTTP ${cevap.status}` };
     return { rota, durum: "ok", not: `${cevap.status}` };
   } catch (hata) {
-    return { rota, durum: "COKME", not: `istek düştü: ${hata.message}` };
+    /* Taşıma hatası sayfanın kusuru DEĞİL: ağ kapalı, taban adres
+       yanlış ya da başlık kurulamıyor olabilir. Ayrı işaretleniyor ki
+       özet "şu kadar sayfa çöküyor" demesin. */
+    return { rota, durum: "ULASILAMADI", not: `istek düştü: ${hata.message}` };
   }
 }
 
@@ -391,25 +428,51 @@ if (!argv.includes("--bayat-yok")) {
 }
 
 const cokmeler = sonuclar.filter((s) => s.durum === "COKME");
+/*
+  ULAŞILAMADI, çökmeden AYRI sayılıyor. Hepsi birden ulaşılamıyorsa
+  sorun sayfalarda değil kurulumda (ağ, taban adres, başlık) ve
+  "240 sayfa çöküyor" demek yanlış yönlendirmedir.
+*/
+const ulasilamayan = sonuclar.filter((s) => s.durum === "ULASILAMADI");
 const oturum = sonuclar.filter((s) => s.durum === "OTURUM");
 const yonlendirmeler = sonuclar.filter((s) => s.durum === "yonlendirme");
 
 for (const s of sonuclar) {
   if (s.durum === "ok") continue;
-  const isaret = s.durum === "COKME" ? "✗" : s.durum === "OTURUM" ? "!" : "·";
+  const isaret = s.durum === "COKME" ? "✗" : s.durum === "ULASILAMADI" ? "?" : s.durum === "OTURUM" ? "!" : "·";
   console.log(`  ${isaret} ${s.rota}  ${s.durum}${s.not ? "  " + s.not : ""}`);
 }
 
 console.log(
   `\n${taranacak.length} rota + ${sorguSayisi} sorgu görünümü + ${bayatSayisi} bayat adres + ${bozukSayisi} bozuk kimlik tarandı`
-  + ` · ${sonuclar.length - cokmeler.length - oturum.length} sorunsuz`
+  + ` · ${sonuclar.length - cokmeler.length - ulasilamayan.length - oturum.length} sorunsuz`
   + ` · ${yonlendirmeler.length} yönlendirme`
   + ` · ${cokmeler.length} çökme`
+  + (ulasilamayan.length ? ` · ${ulasilamayan.length} ulaşılamadı` : "")
   + (atlanan.length
     ? `\n${atlanan.length} rota atlandı (örnek kayıt bulunamadı): ${atlanan.join(", ")}`
     : `\n${dinamikler.length} dinamik rotanın örneği listelerden bulundu.`),
 );
 
+/*
+  HİÇBİR SAYFAYA ULAŞILAMADIYSA sorun sayfalarda DEĞİL kurulumda:
+  ağ kapalı, taban adres yanlış ya da başlık kurulamıyor. Bunu
+  "şu kadar sayfa çöküyor" diye bildirmek, olmayan bir yangına
+  koşturmaktır — 24.10.2026'da tam bu oldu (panoda çerez yerine bir
+  SQL sonucu vardı, 240 sayfa "çöküyor" sanıldı).
+*/
+if (ulasilamayan.length === sonuclar.length && sonuclar.length > 0) {
+  console.error(
+    `\n✗ Hiçbir sayfaya ULAŞILAMADI (${ulasilamayan.length} istek). Sayfalar denenemedi;`
+    + " bu sayfaların kusuru değil.\n"
+    + `  İlk hata: ${ulasilamayan[0].not}\n`
+    + "  Ağ, --taban adresi ve çerez biçimini kontrol edin.",
+  );
+  process.exit(2);
+}
+if (ulasilamayan.length) {
+  console.error(`\n? ${ulasilamayan.length} isteğe ulaşılamadı (ağ/adres). Bu sayılar çökme değildir.`);
+}
 if (oturum.length) {
   console.error("\n! Bazı sayfalar girişe yönlendi: çerez eski olabilir. Sonuçlar güvenilir değil.");
   process.exit(2);
