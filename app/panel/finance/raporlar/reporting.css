@@ -316,3 +316,23 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
   .panel-root .rpt-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .panel-root .rpt-ozet-sayilar strong{font-size:16px}
 }
+
+
+/* ---------- Tek ekran için sıkılaştırma (2026-10-24) ----------
+   Kartlar pencereye taşındıktan sonra sayfanın en uzun parçası KPI
+   şeritleri kaldı: iki sırada on kutu, her biri 196 px ve içinde
+   64 px'lik mini grafik. Grafik kutunun yarısını yiyordu.
+
+   Ölçülerek kısaltıldı; grafik KALDIRILMADI çünkü rakamın yönünü
+   (artıyor mu azalıyor mu) yalnızca o söylüyor — rakamı tek başına
+   göstermek "25 lead" deyip iyi mi kötü mü sorusunu yanıtsız
+   bırakıyordu. */
+.panel-root .rpt{gap:14px}
+.panel-root .rpt-widget{padding:12px 14px}
+.panel-root .rpt-mini{height:44px;margin:4px 0 0}
+.panel-root .rpt-group{gap:8px}
+.panel-root .rpt-group-title{font-size:12px}
+
+/* Yazdırmada grafik eski boyuna dönüyor: kâğıtta yer sorunu yok ve
+   küçük grafik baskıda okunmuyor. */
+@media print{.panel-root .rpt-mini{height:56px}}
