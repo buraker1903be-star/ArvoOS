@@ -52,7 +52,6 @@ export function xmlKacis(metin: string): string {
     .replace(/'/g, "&apos;")
     /* Denetim karakterleri XML 1.0'da YASAK ve Excel dosyayı "bozuk"
        diye açmıyor. Kullanıcı notlarından gelebiliyor. */
-    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
 }
 
