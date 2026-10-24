@@ -613,3 +613,151 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 html[data-theme="dark"] .panel-kicker{color:var(--accent-bright)}
 html[data-theme="dark"] .panel-user>span{background:color-mix(in srgb,var(--accent-bright) 18%,transparent);color:var(--accent-bright)}
 html[data-theme="dark"] .panel-secondary{color:var(--ink)}
+
+/* ============================================================
+   KONTROL KATMANI — düğme, seçici, anahtar (2026-10-24)
+
+   Kurum sahibinin isteği: "ürün kalitesinde" kontroller. Buradaki
+   işin tamamı mevcut sınıflara iniyor; MARKUP DEĞİŞMİYOR, yani
+   yüz küsur sayfanın hiçbirine dokunmak gerekmiyor ve bir sayfanın
+   gözden kaçması mümkün değil.
+
+   Üç ilke:
+
+   1. DERİNLİK MARKADAN GELİR. Düğmeler `filter:brightness(1.08)`
+      ile aydınlanıyordu; filtre kör bir araç — koyu markada fark
+      edilmiyor, açık markada rengi soldurup metni de aydınlatıyor.
+      Yerine üstten ince bir ışık ve kiracının KENDİ renginden
+      türeyen gölge var.
+
+   2. BASMA GERÇEK OLMALI. Kalkan ama basılmayan bir düğme yarım
+      kalmış hissi veriyor: artık basınca gölge çöküyor ve kontrol
+      hafifçe küçülüyor.
+
+   3. ODAK HER ZAMAN GÖRÜNÜR. Klavyeyle gezen kullanıcı nerede
+      olduğunu bilmeli; halka tek token'dan (--focus) geliyor.
+   ============================================================ */
+
+/* ---------- Birincil düğme ---------- */
+.panel-root .panel-primary{
+  background-image:linear-gradient(180deg,color-mix(in srgb,#fff 14%,var(--primary)) 0%,var(--primary) 55%,color-mix(in srgb,#000 6%,var(--primary)) 100%);
+  box-shadow:var(--sheen),var(--shadow-primary);
+  transition:transform .16s var(--ctl-ease),box-shadow .16s var(--ctl-ease),background-image .16s var(--ctl-ease);
+}
+.panel-root .panel-primary:hover{
+  /* filter YOK: metin de aydınlanıyor ve kontrast düşüyordu. */
+  filter:none;
+  transform:translateY(-1px);
+  box-shadow:var(--sheen),var(--shadow-primary-hover);
+  background-image:linear-gradient(180deg,color-mix(in srgb,#fff 20%,var(--primary)) 0%,var(--primary) 60%,color-mix(in srgb,#000 4%,var(--primary)) 100%);
+}
+.panel-root .panel-primary:active{
+  transform:translateY(0) scale(.985);
+  box-shadow:var(--sheen-soft),0 1px 2px rgba(16,24,40,.12);
+}
+
+/* ---------- İkincil düğme ---------- */
+.panel-root .panel-secondary{
+  box-shadow:var(--shadow-xs);
+  transition:transform .16s var(--ctl-ease),box-shadow .16s var(--ctl-ease),border-color .16s var(--ctl-ease),background-color .16s var(--ctl-ease);
+}
+.panel-root .panel-secondary:hover{
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb,var(--primary) 45%,var(--line));
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.panel-root .panel-secondary:active{transform:translateY(0) scale(.985);box-shadow:none;background:var(--surface-2)}
+
+/* ---------- Tehlike düğmesi ---------- */
+.panel-root .panel-danger{
+  transition:transform .16s var(--ctl-ease),box-shadow .16s var(--ctl-ease),background-color .16s var(--ctl-ease);
+}
+.panel-root .panel-danger:hover{
+  transform:translateY(-1px);
+  background:color-mix(in srgb,var(--danger) 14%,var(--surface));
+  box-shadow:0 1px 2px rgba(16,24,40,.1),0 6px 16px -8px color-mix(in srgb,var(--danger) 55%,transparent);
+}
+.panel-root .panel-danger:active{transform:translateY(0) scale(.985);box-shadow:none}
+
+/* ---------- Simge düğmesi ---------- */
+.panel-root .panel-icon-button{transition:transform .16s var(--ctl-ease),box-shadow .16s var(--ctl-ease),border-color .16s var(--ctl-ease)}
+.panel-root .panel-icon-button:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--primary) 40%,var(--line));box-shadow:var(--shadow-sm)}
+.panel-root .panel-icon-button:active{transform:translateY(0) scale(.94)}
+
+/*
+  DEVRE DIŞI HÂLİ BİLİNÇLİ GÖRÜNÜR. Yarı saydam bir düğme "yükleniyor
+  mu, kapalı mı" sorusunu açık bırakıyordu; artık düz, soluk ve
+  imleç kapalı — ayrıca basma/kalkma fiziği tamamen kapanıyor,
+  yoksa tıklanabilir hissi veriyordu.
+*/
+.panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-icon-button):disabled,
+.panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-icon-button)[aria-disabled="true"]{
+  transform:none;cursor:not-allowed;opacity:1;
+  background-image:none;background-color:var(--surface-2);
+  color:var(--dim);border-color:var(--line-soft);box-shadow:none;
+}
+
+/* ---------- Seçici (select) ---------- */
+/*
+  NATIVE OK KALDIRILDI. İşletim sistemi kendi okunu çiziyordu —
+  macOS'ta mavi çift ok, Windows'ta siyah üçgen — ve aynı ekranda
+  farklı kullanıcıda farklı görünüyordu. Ok artık token'dan gelen
+  tek bir SVG (koyu temada rengi değişiyor).
+
+  Sağ boşluk oka yer açıyor; `padding-right` olmadan uzun bir
+  seçenek okun altından geçiyordu.
+*/
+.panel-root .panel-content select:not([multiple]):not([size]){
+  appearance:none;-webkit-appearance:none;
+  padding-right:34px;
+  background-image:var(--select-chevron);
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  cursor:pointer;
+}
+.panel-root .panel-content select:not([multiple]):not([size]):hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--line))}
+
+/* ---------- Anahtar (iOS tarzı) ---------- */
+/*
+  Topuz BASINCA UZUYOR. Gerçek iOS anahtarının imzası bu: parmak
+  değdiğinde topuz yana doğru genişliyor, bırakınca yerine oturuyor.
+  Tek satırlık bir ayrıntı ama "yazılım" ile "ürün" arasındaki farkı
+  en çok burada hissettiriyor.
+
+  Gölge token'dan: dosyada `rgba(0,0,0,.2)` sabiti vardı ve koyu
+  temada görünmüyordu.
+*/
+.panel-root .stg-switch>span::after{box-shadow:var(--knob-shadow)}
+.panel-root .stg-switch:active>span::after{width:28px}
+.panel-root .stg-switch input:checked:active+span::after{transform:translateX(14px)}
+.panel-root .stg-switch>span{
+  transition:background-color .22s var(--ctl-ease),box-shadow .22s var(--ctl-ease);
+}
+.panel-root .stg-switch>span::after{
+  transition:transform .28s var(--ctl-spring),width .18s var(--ctl-ease);
+}
+/* Açıkken rayın kendi rengiyle hafif bir hale: açık/kapalı farkı
+   yalnızca renge değil derinliğe de yaslanıyor (renk körlüğü). */
+.panel-root .stg-switch input:checked+span{
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--success) 45%,transparent),0 2px 8px -3px color-mix(in srgb,var(--success) 60%,transparent);
+}
+
+/* ---------- Odak halkası ---------- */
+.panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-icon-button):focus-visible{
+  outline:none;
+  box-shadow:0 0 0 3px var(--surface),0 0 0 6px var(--focus);
+}
+
+/*
+  HAREKETİ AZALT. Kullanıcı sistem ayarında hareketi kısıtladıysa
+  kalkma, küçülme ve topuzun uzaması kapanıyor; renk ve odak halkası
+  kalıyor, yani geri bildirim kaybolmuyor.
+*/
+@media (prefers-reduced-motion:reduce){
+  .panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-icon-button){transition:box-shadow .01s linear,border-color .01s linear}
+  .panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-icon-button):hover,
+  .panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-icon-button):active{transform:none}
+  .panel-root .stg-switch:active>span::after{width:24px}
+  .panel-root .stg-switch>span::after{transition:none}
+}

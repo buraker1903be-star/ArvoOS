@@ -96,6 +96,43 @@
      sessizce eziyordu; tek kaynak burası */
   --r-xs:6px; --r-sm:8px; --r-md:10px; --r-lg:14px; --r-xl:18px; --r-pill:999px;
 
+  /* ==========================================================
+     KONTROL TOKEN'LARI (düğme, seçici, anahtar) — 2026-10-24
+
+     Düğmeler `filter:brightness(1.08)` ile aydınlanıyordu. Filtre
+     kör bir araç: kiracının markası koyuysa fark edilmiyor, açıksa
+     rengi soldurup kontrastı düşürüyor ve metni de birlikte
+     aydınlatıyor. Yerine üstten gelen ince bir ışık (sheen) ve
+     RENKLİ gölge var — ikisi de kiracının kendi rengini kullanıyor,
+     yani marka hangi renkse derinlik ondan doğuyor.
+     ========================================================== */
+
+  /* Basma fiziği: yay eğrisi iOS'un anahtarından, panelde zaten
+     kullanılıyordu (settings.css); token'a alındı ki her kontrol
+     aynı hissi versin. */
+  --ctl-spring:cubic-bezier(.32,.72,0,1);
+  --ctl-ease:cubic-bezier(.2,.8,.3,1);
+
+  /* Üstten ışık: düğmenin tepesinde 1px'lik beyaz çizgi + hafif
+     degrade. Düz dolgu ile arasındaki fark küçük ama "basılabilir"
+     hissini o veriyor. */
+  --sheen:inset 0 1px 0 rgba(255,255,255,.22);
+  --sheen-soft:inset 0 1px 0 rgba(255,255,255,.1);
+
+  /* Renkli gölge: birincil düğme zemininden türüyor. Nötr gri gölge
+     her markada aynı görünürdü; bu, düğmenin kendi rengiyle yere
+     düşmesini sağlıyor. */
+  --shadow-primary:0 1px 2px rgba(16,24,40,.1), 0 6px 16px -6px color-mix(in srgb,var(--primary) 55%,transparent);
+  --shadow-primary-hover:0 2px 4px rgba(16,24,40,.12), 0 12px 24px -8px color-mix(in srgb,var(--primary) 62%,transparent);
+
+  /* Anahtar topuzu: sabit rgba yerine token (koyu temada da doğru). */
+  --knob-shadow:0 1px 2px rgba(16,24,40,.18), 0 2px 6px rgba(16,24,40,.14);
+
+  /* Seçicinin oku. Native ok platforma göre değişiyor (macOS'ta mavi
+     çift ok, Windows'ta siyah üçgen) ve panelin dilini bozuyor.
+     Renk burada çünkü koyu temada değişmesi gerekiyor. */
+  --select-chevron:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' stroke='%23667085' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
   /* spacing — 4px ızgara */
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
   --sp-8:32px; --sp-10:40px; --sp-12:48px;
@@ -186,6 +223,14 @@ html[data-theme="dark"] .panel-root{
   --shadow-sm:0 1px 3px rgba(0,0,0,.4);
   --shadow-md:0 4px 12px rgba(0,0,0,.45);
   --shadow-lg:0 20px 40px rgba(0,0,0,.55);
+  /* Koyu temada beyaz ışık fazla parlıyor, gölge zaten koyu zeminde
+     görünmüyor: ikisi de yumuşatılıyor, ok açılıyor. */
+  --sheen:inset 0 1px 0 rgba(255,255,255,.12);
+  --sheen-soft:inset 0 1px 0 rgba(255,255,255,.06);
+  --shadow-primary:0 1px 2px rgba(0,0,0,.4), 0 8px 20px -8px color-mix(in srgb,var(--primary) 70%,transparent);
+  --shadow-primary-hover:0 2px 6px rgba(0,0,0,.45), 0 14px 28px -10px color-mix(in srgb,var(--primary) 78%,transparent);
+  --knob-shadow:0 1px 3px rgba(0,0,0,.5);
+  --select-chevron:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' stroke='%2398a2b3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   color-scheme:dark;
 }
