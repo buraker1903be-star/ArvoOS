@@ -95,13 +95,29 @@ export async function FinansRaporu({ supabase, organizationId, donem }: RaporGir
   const kutular: Widget[] = [
     {
       label: "Gelir", value: money(m.gelir),
+      /*
+        KASAYA GİRENİ HER ZAMAN YAZIYOR (24.10.2026).
+
+        Önceden bu karşılaştırma yalnızca gelir defteri BOŞKEN
+        görünüyordu. Oysa asıl kafa karıştıran durum defter doluyken
+        oluyor: kurum sahibi "gelir ₺388.500 ama tahsilatım ₺452.888"
+        diye sordu ve farkı görmek için SQL çalıştırmak gerekti.
+        Fark meşru — taksidi tamamlamayan kısmi ödemeler gelire
+        dönüşmez — ama görünmeyen bir fark, kullanıcıya rakamın
+        yanlış olduğunu düşündürüyor.
+
+        Tahsilat gelire EKLENMİYOR; üç kavram ayrı (docs §3.2).
+        Yalnızca yan yana duruyor.
+      */
       note: m.gelirDefteriBos
         ? (m.planliGelir.adet
           ? `${m.planliGelir.adet} planlı kayıt var · hiçbiri “ödendi” değil`
           : m.tahsilatReferansi
             ? `Gelir defterinde kayıt yok · kasaya ${money(m.tahsilatReferansi)} girdi`
             : "Gelir defterinde ödenmiş kayıt yok")
-        : `${m.gelirAdet} ödenmiş kayıt · muhasebesel`,
+        : m.tahsilatReferansi
+          ? `${m.gelirAdet} ödenmiş kayıt · kasaya ${money(m.tahsilatReferansi)} girdi`
+          : `${m.gelirAdet} ödenmiş kayıt · muhasebesel`,
       icon: "wallet", tone: "success",
       grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.gelir, etiket: money(a.gelir) })) },
     },
