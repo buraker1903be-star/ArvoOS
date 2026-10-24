@@ -130,13 +130,13 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
       label: "Satış yapan personel", value: String(m.satis.length),
       note: toplamSatis ? `${money(toplamSatis)} imzalı sözleşme` : "Dönemde imzalı sözleşme yok",
       icon: "seal", tone: "success",
-      grafik: { tur: "cubuk", seri: m.satis.slice(0, 6).map((s) => ({ ad: s.ad, deger: s.sozlesmeTutari, etiket: money(s.sozlesmeTutari) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: m.satis.slice(0, 6).map((s) => ({ ad: s.ad, deger: s.sozlesmeTutari, etiket: money(s.sozlesmeTutari) })) },
     },
     {
       label: "Operasyon personeli", value: String(m.operasyon.length),
       note: `${m.operasyon.reduce((t, o) => t + o.aktifIs, 0)} devam eden iş yürütüyor`,
       icon: "briefcase", tone: "info",
-      grafik: { tur: "cubuk", seri: m.operasyon.slice(0, 6).map((o) => ({ ad: o.ad, deger: o.aktifIs, etiket: String(o.aktifIs) })) },
+      grafik: { tur: "cubuk", bicim: "sayi", seri: m.operasyon.slice(0, 6).map((o) => ({ ad: o.ad, deger: o.aktifIs, etiket: String(o.aktifIs) })) },
     },
     {
       label: "Tahakkuk eden prim", value: money(m.primTahakkuk),

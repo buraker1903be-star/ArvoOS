@@ -104,12 +104,12 @@ export async function SatisRaporu({ supabase, organizationId, donem }: RaporGird
     {
       label: "Satış tutarı", value: money(m.toplam), note: "Dönemde imzalanan sözleşme tutarı",
       icon: "seal", tone: "success",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.tutar, etiket: money(a.tutar) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.tutar, etiket: money(a.tutar) })) },
     },
     {
       label: "Satış adedi", value: String(m.adet), note: "Dönemde imzalanan sözleşme",
       icon: "doc", tone: "brand",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.adet, etiket: String(a.adet) })) },
+      grafik: { tur: "cubuk", bicim: "sayi", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.adet, etiket: String(a.adet) })) },
     },
     {
       label: "Ortalama sözleşme", value: m.adet ? money(m.ortalama) : "—", note: "Satış tutarı ÷ satış adedi",
@@ -120,7 +120,7 @@ export async function SatisRaporu({ supabase, organizationId, donem }: RaporGird
         Ortalamanın anlamı dağılımla birlikte okunur: en büyük altı
         sözleşme, ortalamanın etrafındaki yayılmayı gösteriyor.
       */
-      grafik: { tur: "cubuk", seri: m.enBuyuk.slice(0, 6).map((x) => ({
+      grafik: { tur: "cubuk", bicim: "para", seri: m.enBuyuk.slice(0, 6).map((x) => ({
         ad: `${x.no} · ${x.musteri}`, deger: x.tutar, etiket: money(x.tutar),
       })) },
     },

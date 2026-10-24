@@ -119,17 +119,17 @@ export async function FinansRaporu({ supabase, organizationId, donem }: RaporGir
           ? `${m.gelirAdet} ödenmiş kayıt · kasaya ${money(m.tahsilatReferansi)} girdi`
           : `${m.gelirAdet} ödenmiş kayıt · muhasebesel`,
       icon: "wallet", tone: "success",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.gelir, etiket: money(a.gelir) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.gelir, etiket: money(a.gelir) })) },
     },
     {
       label: "Genel gider", value: money(m.gider), note: `${m.giderAdet} ödenmiş kayıt · iş maliyeti hariç`,
       icon: "briefcase", tone: "warning",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.gider, etiket: money(a.gider) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.gider, etiket: money(a.gider) })) },
     },
     {
       label: "İş maliyeti", value: money(m.isMaliyeti), note: "Belirli işlere bağlı ödenmiş maliyet",
       icon: "doc", tone: "warning",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.maliyet, etiket: money(a.maliyet) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.maliyet, etiket: money(a.maliyet) })) },
     },
     {
       label: "Net sonuç", value: money(m.netSonuc),

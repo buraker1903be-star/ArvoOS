@@ -136,7 +136,7 @@ export default async function ReportingPage({
     return `${TABAN}/indir?${p.toString()}`;
   };
 
-  return <div className="rpt">
+  return <div className="rpt rpt-tonlar">
     <header className="talep-bas rpt-bas">
       <div className="talep-bas-metin"><small className="panel-kicker">FİNANS</small><h1>Raporlar</h1></div>
       <div className="talep-bas-eylem"><span className="status-pill rpt-range-pill" data-tone="gold">{donemEtiket}</span></div>

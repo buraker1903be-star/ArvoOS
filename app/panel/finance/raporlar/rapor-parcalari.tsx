@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { IkonAdi } from "@/lib/rapor-ikonlari";
 import type { Tutarsizlik } from "@/lib/rapor-tutarlilik";
 import { money, percent } from "@/lib/rapor-bicim";
-import type { SeriNoktasi } from "@/lib/rapor-seri";
+import { seriOzeti, type SeriBicimi, type SeriNoktasi } from "@/lib/rapor-seri";
 import { PanelDrawer } from "../../components/panel-drawer";
 
 /*
@@ -47,7 +47,16 @@ export type Tone = "brand" | "info" | "gold" | "success" | "warning" | "danger";
    seri üretiyor ve JSX içeren bir dosyaya bağlanmamalı. */
 export type { SeriNoktasi } from "@/lib/rapor-seri";
 export type Grafik =
-  | { tur: "cubuk"; seri: SeriNoktasi[] }
+  /*
+    ÇUBUKTA DA BİÇİM ZORUNLU (25.10.2026). Seri noktası biçimlenmiş
+    `etiket`ini taşıyor ama TOPLAMININ, ortalamasının ve en yüksek
+    değerinin biçimi hiçbir yerde yazmıyordu: KPI penceresinin
+    "toplam" satırı ham sayıyı yazıyordu — altı aylık tahsilat
+    ekranda **45288815** görünüyordu (kuruş), ₺452.888 yerine.
+    Yığında olduğu gibi burada da isteğe bağlı olsaydı aynı hata
+    sessizce geri gelirdi.
+  */
+  | { tur: "cubuk"; bicim: "para" | "sayi"; seri: SeriNoktasi[] }
   | { tur: "halka"; oran: number | null; altyazi: string }
   | { tur: "gosterge"; oran: number }
   /*
@@ -186,7 +195,8 @@ export function MiniGrafik({ grafik }: { grafik: Grafik }) {
 }
 
 /*
-  KPI AYRINTISI (2026-10-24, kurum sahibinin önerisi).
+  KPI AYRINTISI (2026-10-24, kurum sahibinin önerisi; 25.10.2026'da
+  yeniden yazıldı).
 
   Kutudaki mini grafik ŞEKLİ gösteriyor, RAKAMI değil: altı aylık
   çubuklarda hangi ayın kaç olduğu okunmuyor, şelalenin adımları
@@ -194,42 +204,152 @@ export function MiniGrafik({ grafik }: { grafik: Grafik }) {
   Pencere tam olarak o rakamları veriyor — yoksa rakamı büyütüp
   tekrar gösteren bir pencere olurdu ve kullanıcıya "tıklamaya değmez"
   dedirtirdi.
+
+  İLK HÂLİNDE PENCERE ÜÇ KUSUR TAŞIYORDU (canlıda, Dönem tahsilatı
+  kutusunda görüldü):
+   - grafik GÖRÜNMÜYORDU. Pencere portalla `.panel-root`a basılıyor,
+     yani ton değişkenlerini tanımlayan köke göre dışarıda kalıyor
+     ve `background:var(--tone-fg)` saydama düşüyordu (reporting.css
+     "Tonlar" bloğundaki gerekçe). Ayların adı duruyor, çubuklar yok.
+   - "Altı ay toplamı" HAM SAYI yazıyordu: ₺452.888 yerine 45288815.
+     Toplamın biçimi hiçbir yerde yazmıyordu; artık grafiğin kendisi
+     söylüyor (`bicim`).
+   - yığın dökümü her satırı `money()` ile yazıyordu — adet taşıyan
+     kutularda (aktif personel, yanıtlanan teklif) "₺0" çıkardı.
+     Mini lejantta aynı hata 24.10'da düzeltilmişti, döküm atlanmıştı.
+
+  Üç tür (halka, gösterge, durum) yalnızca mini grafiği ve notu
+  gösteriyordu; şimdi hepsinin sahnesi ve dökümü var — oran kutularında
+  payı/paydayı anlatan bir satır, durum şeridinde dört yargının listesi.
 */
-export function WidgetDetay({ grafik, widget }: { grafik: Grafik; widget: Widget }) {
+/** Döküm satırlarının biçimi grafikten gelir; `money()` kuruş bekler. */
+const sayiYazisi = (deger: number, bicim: SeriBicimi) =>
+  bicim === "para" ? money(deger) : deger.toLocaleString("tr-TR");
+
+function DetayOzet({ kalemler }: { kalemler: { etiket: string; deger: string; alt?: string }[] }) {
+  return (
+    <dl className="rpt-detay-ozet">
+      {kalemler.map((k) => (
+        <div key={k.etiket}>
+          <dt>{k.etiket}</dt>
+          <dd>{k.deger}{k.alt ? <small>{k.alt}</small> : null}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Döküm satırındaki pay çubuğu; Ledger'daki kalıbın aynısı. */
+function PayHucresi({ oran, ton }: { oran: number | null; ton: Tone }) {
+  return (
+    <td className="rpt-share">
+      <span className="rpt-share-bar" data-tone={ton} aria-hidden="true">
+        <i style={cssVar("--w", `${oran === null ? 0 : clampPercent(oran)}%`)} />
+      </span>
+      <span className="rpt-share-value">{oran === null ? "—" : percent(oran)}</span>
+    </td>
+  );
+}
+
+function DetayDokumu({ grafik, widget }: { grafik: Grafik; widget: Widget }) {
   if (grafik.tur === "cubuk") {
-    const toplam = grafik.seri.reduce((sum, nokta) => sum + nokta.deger, 0);
+    /* Hesap saf modülde (lib/rapor-seri → seriOzeti): burada yazılı
+       olduğu sürece birim testi JSX'e bağlanırdı ve ham kuruş yazan
+       toplam hatası tam da böyle gözden kaçtı. */
+    const { toplam, ortalama, enBuyuk, tepe } = seriOzeti(grafik.seri);
+    /* Eksen etiketi olan seri aylık, olmayan seri bir sıralama
+       (en büyük müşteri, kayıp sebebi): başlık ikisinde aynı olamaz. */
+    const aylik = grafik.seri.some((n) => n.eksen);
     return <>
-      <MiniGrafik grafik={grafik} />
+      <DetayOzet kalemler={[
+        { etiket: "Toplam", deger: sayiYazisi(toplam, grafik.bicim) },
+        { etiket: aylik ? "Dönem ortalaması" : "Ortalama", deger: sayiYazisi(ortalama, grafik.bicim) },
+        { etiket: "En yüksek", deger: sayiYazisi(enBuyuk, grafik.bicim), alt: tepe },
+      ]} />
       <table className="rpt-detay-tablo">
-        <thead><tr><th>Ay</th><th>Değer</th></tr></thead>
+        <thead><tr><th>{aylik ? "Dönem" : "Kalem"}</th><th>Pay</th><th>Değer</th></tr></thead>
         <tbody>
-          {grafik.seri.map((nokta) => <tr key={nokta.ad} className={nokta.simdiki ? "is-current" : undefined}>
-            <th scope="row">{nokta.ad}</th><td>{nokta.etiket}</td>
-          </tr>)}
+          {grafik.seri.map((nokta, sira) => (
+            /* Anahtar sırayı da içeriyor: iki müşterinin adı aynı olabiliyor. */
+            <tr key={`${nokta.ad}-${sira}`} className={nokta.simdiki ? "is-current" : undefined}>
+              <th scope="row">{nokta.ad}</th>
+              <PayHucresi oran={shareOf(nokta.deger, enBuyuk)} ton={widget.tone} />
+              <td>{nokta.etiket}</td>
+            </tr>
+          ))}
         </tbody>
-        <tfoot><tr><th scope="row">Altı ay toplamı</th><td>{toplam}</td></tr></tfoot>
+        <tfoot><tr><th scope="row">Toplam</th><td /><td>{sayiYazisi(toplam, grafik.bicim)}</td></tr></tfoot>
       </table>
     </>;
   }
+
   if (grafik.tur === "yigin" || grafik.tur === "selale") {
     const satirlar = grafik.tur === "yigin" ? grafik.parcalar : grafik.adimlar;
+    /* Şelale her zaman para (tahsilattan düşülenler); yığın ikisini de taşıyor. */
+    const bicim: SeriBicimi = grafik.tur === "yigin" ? grafik.bicim : "para";
+    /* Yığında pay TOPLAMIN içindeki pay (parçalar bir bütünü böler);
+       şelalede adımlar bir bütünün parçası değil, en büyüğe oranlanır. */
+    const taban = grafik.tur === "yigin"
+      ? satirlar.reduce((t, r) => t + Math.max(0, r.deger), 0)
+      : Math.max(0, ...satirlar.map((r) => Math.abs(r.deger)));
     return <>
-      <MiniGrafik grafik={grafik} />
       <table className="rpt-detay-tablo">
+        <thead><tr><th>Kalem</th><th>Pay</th><th>Değer</th></tr></thead>
         <tbody>
-          {satirlar.map((satir) => <tr key={satir.ad} data-tone={satir.ton}>
-            <th scope="row">{satir.ad}</th><td>{money(satir.deger)}</td>
-          </tr>)}
+          {satirlar.map((satir) => (
+            <tr key={satir.ad} data-tone={satir.ton}>
+              <th scope="row">{satir.ad}</th>
+              <PayHucresi oran={shareOf(Math.abs(satir.deger), taban)} ton={satir.ton} />
+              <td>{sayiYazisi(satir.deger, bicim)}</td>
+            </tr>
+          ))}
         </tbody>
+        {grafik.tur === "yigin" ? (
+          <tfoot><tr><th scope="row">Toplam</th><td /><td>{sayiYazisi(taban, bicim)}</td></tr></tfoot>
+        ) : null}
       </table>
     </>;
   }
-  /* Oranlı kutular: pay ve payda zaten notta yazıyor, pencere onu
-     büyük ve tek başına gösteriyor. Uydurma bir döküm eklenmedi. */
+
+  if (grafik.tur === "durum") {
+    return (
+      <ul className="rpt-detay-durum">
+        {grafik.noktalar.map((n) => (
+          <li key={n.ad} data-tone={n.ton}><i aria-hidden="true" /><span>{n.ad}</span></li>
+        ))}
+      </ul>
+    );
+  }
+
+  /*
+    ORANLI KUTULAR (halka, gösterge): pay ve payda zaten notta yazılı,
+    uydurma bir döküm eklenmedi. Tek kutu, oranın KENDİ adıyla —
+    "Oran / %70" demek sahnedeki halkayı ikinci kez yazmak olurdu;
+    "Erişim oranı / %70" ise neyin oranı olduğunu söylüyor.
+  */
+  const oran = grafik.oran;
+  const oranAdi = grafik.tur === "halka" ? grafik.altyazi : `${widget.label} oranı`;
   return <>
-    <MiniGrafik grafik={grafik} />
+    <DetayOzet kalemler={[{ etiket: oranAdi, deger: oran === null ? "—" : percent(oran) }]} />
     <p className="rpt-detay-not">{widget.note}</p>
   </>;
+}
+
+export function WidgetDetay({ grafik, widget }: { grafik: Grafik; widget: Widget }) {
+  return (
+    /* `rpt-tonlar`: pencere portalla `.panel-root`a basılıyor ve ton
+       değişkenleri orada tanımlı değil (reporting.css "Tonlar"). */
+    <div className="rpt-detay rpt-tonlar">
+      <div className="rpt-detay-sahne" data-tone={widget.tone}>
+        <header className="rpt-detay-bas">
+          <span className="rpt-widget-icon"><Icon name={widget.icon} /></span>
+          <div><strong>{widget.value}</strong><small>{widget.label}</small></div>
+        </header>
+        <MiniGrafik grafik={grafik} />
+      </div>
+      <DetayDokumu grafik={grafik} widget={widget} />
+    </div>
+  );
 }
 
 /*
@@ -281,7 +401,11 @@ export function OzetKart({
         description={altyazi}
         genis={genis}
       >
-        {children}
+        {/* Ton değişkenleri `.rpt`de tanımlı, pencere ise portalla
+            `.panel-root`a basılıyor: gövde kendi ton kökünü taşır
+            (reporting.css "Tonlar"). Yoksa kartın penceresindeki
+            çubuklar ve pay çizgileri saydam çiziliyordu. */}
+        <div className="rpt-tonlar">{children}</div>
       </PanelDrawer>
     </article>
   );

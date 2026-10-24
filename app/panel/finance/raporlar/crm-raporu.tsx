@@ -95,7 +95,7 @@ export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdis
       label: "Yeni talep", value: String(m.yeniTalep),
       note: `${money(m.yeniTalepDegeri)} tahmini değer`,
       icon: "inbox", tone: "brand",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.talep, etiket: String(a.talep) })) },
+      grafik: { tur: "cubuk", bicim: "sayi", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.talep, etiket: String(a.talep) })) },
     },
     {
       label: "Kazanılan", value: String(m.kazanilan),
@@ -107,7 +107,7 @@ export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdis
       label: "Kaybedilen", value: String(m.kayip),
       note: m.kayipSebepleri[0] ? `En sık: ${m.kayipSebepleri[0].ad}` : "Kaybedilen talep yok",
       icon: "alert", tone: m.kayip ? "danger" : "success", toned: true,
-      grafik: { tur: "cubuk", seri: m.kayipSebepleri.slice(0, 6).map((s) => ({ ad: s.ad, deger: s.adet, etiket: String(s.adet) })) },
+      grafik: { tur: "cubuk", bicim: "sayi", seri: m.kayipSebepleri.slice(0, 6).map((s) => ({ ad: s.ad, deger: s.adet, etiket: String(s.adet) })) },
     },
     {
       label: "Tekrar eden müşteri", value: String(m.tekrarEden),
@@ -124,7 +124,7 @@ export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdis
       label: "Müşteri başına", value: money(m.musteriBasina),
       note: "Ömür boyu ortalama sözleşme tutarı",
       icon: "chart", tone: "info",
-      grafik: { tur: "cubuk", seri: m.enDegerli.slice(0, 6).map((x) => ({ ad: x.ad, deger: x.tutar, etiket: money(x.tutar) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: m.enDegerli.slice(0, 6).map((x) => ({ ad: x.ad, deger: x.tutar, etiket: money(x.tutar) })) },
     },
   ];
 

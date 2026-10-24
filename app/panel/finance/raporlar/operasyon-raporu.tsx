@@ -105,13 +105,13 @@ export async function OperasyonRaporu({ supabase, organizationId, donem }: Rapor
     {
       label: "Devam eden iş", value: String(m.devamEden), note: "Şu anki durum — dönemden bağımsız",
       icon: "briefcase", tone: "brand",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.acilan, etiket: String(a.acilan) })) },
+      grafik: { tur: "cubuk", bicim: "sayi", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.acilan, etiket: String(a.acilan) })) },
     },
     {
       label: "Dönemde tamamlanan", value: String(m.tamamlanan),
       note: m.ortSureGun === null ? "Süre ölçülebilir iş yok" : `Ortalama ${m.ortSureGun} günde tamamlandı`,
       icon: "seal", tone: "success",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.tamamlanan, etiket: String(a.tamamlanan) })) },
+      grafik: { tur: "cubuk", bicim: "sayi", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.tamamlanan, etiket: String(a.tamamlanan) })) },
     },
     {
       label: "Termini geçmiş", value: String(m.geciken),

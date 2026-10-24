@@ -125,7 +125,7 @@ export async function TahsilatRaporu({ supabase, organizationId, donem }: RaporG
       label: "Dönem tahsilatı", value: money(m.donemTahsilat),
       note: m.donemIade ? `${money(m.donemIade)} iade düşülünce ${money(m.donemNet)}` : `${m.donemAdet} tahsilat kaydı`,
       icon: "wallet", tone: "success",
-      grafik: { tur: "cubuk", seri: m.aylikTahsilat.map((a) => ({ ad: a.etiket, eksen: a.etiket.slice(0, 3), deger: a.tutar, etiket: money(a.tutar) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: m.aylikTahsilat.map((a) => ({ ad: a.etiket, eksen: a.etiket.slice(0, 3), deger: a.tutar, etiket: money(a.tutar) })) },
     },
     {
       label: "Açık alacak", value: money(m.acikBakiye), note: "Şu anki toplam — dönemden bağımsız",
@@ -145,7 +145,7 @@ export async function TahsilatRaporu({ supabase, organizationId, donem }: RaporG
       label: "Önümüzdeki ay beklenen", value: money(m.onumuzdekiAy?.tutar ?? 0),
       note: m.onumuzdekiAy ? `${m.onumuzdekiAy.etiket} · ${m.onumuzdekiAy.adet} taksit` : "Takvim kurulamadı",
       icon: "flow", tone: "gold",
-      grafik: { tur: "cubuk", seri: aylar.slice(0, 6).map((a) => ({ ad: a.etiket, eksen: a.etiket.slice(0, 3), deger: a.tutar, etiket: money(a.tutar) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: aylar.slice(0, 6).map((a) => ({ ad: a.etiket, eksen: a.etiket.slice(0, 3), deger: a.tutar, etiket: money(a.tutar) })) },
     },
     {
       label: "Planı olmayan alacak", value: money(m.plansizKalan),

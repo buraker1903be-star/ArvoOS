@@ -95,7 +95,7 @@ export function RaporPencereKabugu({
       <section
         ref={pencereRef}
         tabIndex={-1}
-        className="rapor-pencere"
+        className="rapor-pencere rpt-tonlar"
         role="dialog"
         aria-modal="true"
         aria-labelledby={basliklendiren}

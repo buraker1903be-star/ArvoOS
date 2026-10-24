@@ -7,15 +7,35 @@
 
 .rpt{--rpt-ease:cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;gap:18px;font-family:var(--font-body)}
 
-/* Tonlar */
-.rpt [data-tone]{--tone-bg:var(--surface-2);--tone-fg:var(--muted)}
-.rpt [data-tone="info"]{--tone-bg:var(--info-soft);--tone-fg:var(--info)}
-.rpt [data-tone="gold"]{--tone-bg:var(--accent-soft);--tone-fg:var(--accent-strong)}
-.rpt [data-tone="success"]{--tone-bg:var(--success-soft);--tone-fg:var(--success)}
-.rpt [data-tone="warning"]{--tone-bg:var(--warning-soft);--tone-fg:var(--warning)}
-.rpt [data-tone="danger"]{--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
-.rpt [data-tone="brand"]{--tone-bg:color-mix(in srgb,var(--brand-500) 14%,var(--surface));--tone-fg:var(--brand-600)}
-html[data-theme="dark"] .rpt [data-tone="brand"]{--tone-fg:var(--brand-200)}
+/* Tonlar
+   ----------------------------------------------------------------
+   TON KAPSAMI DÖRT KÖKTE, ÜÇÜ SONRADAN EKLENDİ (25.10.2026).
+
+   `.rpt` yalnızca MERKEZ SAYFANIN kökü. Rapor penceresi de, KPI
+   penceresi de `createPortal` ile `.panel-root`a basılıyor, yani
+   `.rpt`nin DIŞINDA bir kardeş olarak duruyor: orada hiçbir seçici
+   `--tone-fg`yi tanımlamıyordu. Tanımsız bir değişkenle yazılan
+   `background:var(--tone-fg)` geçersiz sayılıp BAŞLANGIÇ değerine
+   düşüyor — yani saydam. Grafikler çiziliyor, yer kaplıyor, ekran
+   okuyucuda okunuyor ama GÖRÜNMÜYORDU; kullanıcı KPI penceresini
+   açınca ayların adını görüyor, çubukları görmüyordu.
+
+   Hata vermeyen cinsten: ne derleme, ne `check:css` (sınıf rotaya
+   giriyor), ne de duman testi (sayfa açılıyor) bunu görebilir.
+
+   Liste `.panel-drawer`a genişletilmedi: o sınıf panelin her yerinde
+   kullanılıyor ve `--tone-*` adları burada olduğu gibi başka
+   ekranlarda da tanımlı — hepsini buradan ezmek olurdu. Pencerelerin
+   gövdesi `rpt-tonlar` sınıfını kendisi taşıyor.
+   ---------------------------------------------------------------- */
+.rpt-tonlar [data-tone]{--tone-bg:var(--surface-2);--tone-fg:var(--muted)}
+.rpt-tonlar [data-tone="info"]{--tone-bg:var(--info-soft);--tone-fg:var(--info)}
+.rpt-tonlar [data-tone="gold"]{--tone-bg:var(--accent-soft);--tone-fg:var(--accent-strong)}
+.rpt-tonlar [data-tone="success"]{--tone-bg:var(--success-soft);--tone-fg:var(--success)}
+.rpt-tonlar [data-tone="warning"]{--tone-bg:var(--warning-soft);--tone-fg:var(--warning)}
+.rpt-tonlar [data-tone="danger"]{--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
+.rpt-tonlar [data-tone="brand"]{--tone-bg:color-mix(in srgb,var(--brand-500) 14%,var(--surface));--tone-fg:var(--brand-600)}
+html[data-theme="dark"] .rpt-tonlar [data-tone="brand"]{--tone-fg:var(--brand-200)}
 
 /* ---------- Başlık ---------- */
 .rpt-bas .talep-bas-eylem{flex-wrap:wrap}
@@ -220,9 +240,9 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
     --line:var(--n-200);--line-soft:var(--n-100);
     gap:12px;color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact
   }
-  .panel-root .rpt [data-tone="brand"]{--tone-fg:var(--brand-600)}
-  .panel-root .rpt [data-tone="gold"]{--tone-fg:var(--primary)}
-  .panel-root .rpt [data-tone]{--tone-bg:color-mix(in srgb,var(--tone-fg,var(--n-500)) 12%,var(--n-0))}
+  .panel-root .rpt-tonlar [data-tone="brand"]{--tone-fg:var(--brand-600)}
+  .panel-root .rpt-tonlar [data-tone="gold"]{--tone-fg:var(--primary)}
+  .panel-root .rpt-tonlar [data-tone]{--tone-bg:color-mix(in srgb,var(--tone-fg,var(--n-500)) 12%,var(--n-0))}
   .panel-root .rpt-toolbar,.panel-root .rpt-print-button,.panel-root .rpt-card-link{display:none!important}
   .panel-root .rpt-bas .talep-bas-eylem{display:flex!important;width:auto}
   .panel-root .rpt-widgets{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
@@ -434,21 +454,86 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
   .rpt-widget:has(.rpt-widget-ac:hover),.rpt-widget:has(.rpt-widget-ac:active){transform:none}
 }
 
-/* ---------- KPI penceresinin içi ---------- */
-.rpt-detay-tablo{width:100%;margin-top:18px;border-collapse:separate;border-spacing:0;font-size:13px}
+/* ---------- KPI penceresinin içi (25.10.2026'da yeniden yazıldı) ----------
+   Pencere "rakamı büyütüp tekrar gösteren" bir kutu olmaktan çıktı:
+   üstte tonlu bir SAHNE (kutudaki rakam, grafiğin büyüğü), altında
+   dökümün kendisi. Düzen üç bölüm: sahne → özet şeridi → tablo.
+
+   Sahnenin arka planı kutunun TONUNDAN geliyor; pencere hangi KPI'dan
+   açıldığını renkle de söylüyor ve grafik gri bir yüzeyde değil kendi
+   renk ailesinin içinde duruyor. */
+.rpt-detay{display:flex;flex-direction:column;gap:16px}
+.rpt-detay-sahne{
+  display:flex;flex-direction:column;gap:12px;padding:16px 18px 14px;
+  border:1px solid color-mix(in srgb,var(--tone-fg) 18%,var(--line-soft));
+  border-radius:18px;
+  background:linear-gradient(170deg,color-mix(in srgb,var(--tone-fg) 9%,var(--surface)),var(--surface) 72%)
+}
+.rpt-detay-bas{display:flex;align-items:center;gap:12px;min-width:0}
+.rpt-detay-bas .rpt-widget-icon{width:38px;height:38px;flex:0 0 auto;margin:0;border-radius:13px}
+.rpt-detay-bas>div{min-width:0}
+.rpt-detay-bas strong{display:block;font-size:26px;line-height:1.1;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.rpt-detay-bas small{display:block;margin-top:2px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+/* Sahnedeki grafik kutudakinin iki katı: pencerenin varlık sebebi
+   şeklin değil AYRINTININ okunması. */
+.rpt-detay-sahne .rpt-mini{height:132px;margin:0}
+.rpt-detay-sahne .rpt-mini-selale,
+.rpt-detay-sahne .rpt-mini-yigin,
+.rpt-detay-sahne .rpt-mini-durum{height:auto;min-height:0}
+.rpt-detay-sahne .rpt-mini-cubuk{gap:8px}
+.rpt-detay-sahne .rpt-mini-cubuk i{opacity:.42}
+.rpt-detay-sahne .rpt-mini-cubuk .is-current i{opacity:1}
+.rpt-detay-sahne .rpt-mini-cubuk small{font-size:12px}
+.rpt-detay-sahne .rpt-mini-halka{justify-content:center;gap:16px}
+.rpt-detay-sahne .rpt-mini-halka svg{width:112px;height:112px}
+.rpt-detay-sahne .rpt-mini-halka text{font-size:11px}
+/* Gösterge viewBox'ı 100x56; genişliği %100 yapmak yayı kapsayıcı
+   kadar büyütüp kutudan taşırıyordu. Ölçü yarım dairenin kendi
+   oranından veriliyor. */
+.rpt-detay-sahne .rpt-mini-gosterge{height:auto;min-height:0;justify-content:center}
+.rpt-detay-sahne .rpt-mini-gosterge svg{width:min(240px,100%);height:auto}
+/* Boş kısım sahnede GÖRÜNÜR olmalı: halka ve göstergede dolu yay tek
+   başına "ne kadarın ne kadarı" sorusuna cevap vermiyor — iz
+   görünmeyince yay havada duran bir çizgiye dönüşüyor. `--surface-2`
+   tonlu sahnenin üstünde neredeyse kayboluyordu. */
+.rpt-detay-sahne .rpt-halka-iz{stroke:color-mix(in srgb,var(--tone-fg) 16%,var(--line))}
+.rpt-detay-sahne .rpt-yigin-cubuk{height:18px}
+.rpt-detay-sahne .rpt-mini-selale li{grid-template-columns:110px minmax(0,1fr)}
+.rpt-detay-sahne .rpt-selale-iz{height:12px}
+
+/* Özet şeridi: toplam / ortalama / en yüksek — tablonun üstünde
+   "bu seri ne söylüyor" sorusunun üç satırlık karşılığı. */
+/* Oranlı kutularda tek kalem var; sabit üç sütun onu dar bir
+   kutuya sıkıştırıp yanına iki boşluk bırakıyordu. */
+.rpt-detay-ozet{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0}
+.rpt-detay-ozet>div{padding:11px 13px;border:1px solid var(--line-soft);border-radius:14px;background:var(--surface-2);min-width:0}
+.rpt-detay-ozet dt{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.rpt-detay-ozet dd{margin:4px 0 0;font-size:17px;font-weight:800;line-height:1.15;color:var(--ink);font-variant-numeric:tabular-nums}
+.rpt-detay-ozet dd small{display:block;margin-top:3px;font-size:11.5px;font-weight:500;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Durum şeridi dökümü: dört yargı alt alta, tonuyla. */
+.rpt-detay-durum{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
+.rpt-detay-durum li{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line-soft);font-size:13.5px;color:var(--ink-soft)}
+.rpt-detay-durum li:last-child{border-bottom:0}
+.rpt-detay-durum i{width:10px;height:10px;flex:0 0 auto;border-radius:50%;background:var(--tone-fg,var(--muted));box-shadow:0 0 0 3px color-mix(in srgb,var(--tone-fg,var(--muted)) 18%,transparent)}
+
+.rpt-detay-tablo{width:100%;margin-top:0;border-collapse:separate;border-spacing:0;font-size:13px}
 .rpt-detay-tablo th,.rpt-detay-tablo td{padding:10px 2px;border-bottom:1px solid var(--line-soft);text-align:left}
 .rpt-detay-tablo td{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
 .rpt-detay-tablo thead th{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.rpt-detay-tablo thead th:last-child{text-align:right}
 .rpt-detay-tablo tbody th{font-weight:600;color:var(--ink-soft)}
 .rpt-detay-tablo tbody tr.is-current th,.rpt-detay-tablo tbody tr.is-current td{color:var(--ink);font-weight:800}
 .rpt-detay-tablo tfoot th,.rpt-detay-tablo tfoot td{border-bottom:0;padding-top:12px;font-weight:800;color:var(--ink)}
+/* Pay sütunu: Ledger'daki çubuğun aynısı, dar sütunda. */
+.rpt-detay-tablo .rpt-share{width:34%;text-align:left}
 /* Şelale/yığın satırlarında ton yalnızca TUTARA iniyor; etiketi de
    boyamak tabloyu alacalı yapıyordu. */
-.rpt-detay-tablo tbody tr[data-tone="success"] td{color:var(--success)}
-.rpt-detay-tablo tbody tr[data-tone="danger"] td{color:var(--danger)}
-.rpt-detay-tablo tbody tr[data-tone="warning"] td{color:var(--warning)}
-.rpt-detay-not{margin:16px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
-/* Pencerede grafik büyüyor: kutudaki 44 px'de şekil görünüyor ama
+.rpt-detay-tablo tbody tr[data-tone="success"] td:last-child{color:var(--success)}
+.rpt-detay-tablo tbody tr[data-tone="danger"] td:last-child{color:var(--danger)}
+.rpt-detay-tablo tbody tr[data-tone="warning"] td:last-child{color:var(--warning)}
+.rpt-detay-not{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+/* Pencerede grafik büyüyor: kutudaki 64 px'de şekil görünüyor ama
    ayrıntı görünmüyor; pencerenin varlık sebebi zaten o. */
 .panel-drawer .rpt-mini{height:120px;margin:0}
 

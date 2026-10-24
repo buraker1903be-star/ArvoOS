@@ -118,17 +118,17 @@ export async function KokpitRaporu({ supabase, organizationId, donem }: RaporGir
   // --- Sunum: yukarıda hesaplanan değerlerden türetilir, yeni sorgu yok ---
   const oranOf = (pay: number, payda: number) => (payda ? (pay / payda) * 100 : null);
   const salesWidgets: Widget[] = [
-    { label: "Gelen lead", value: String(incoming.length), note: "Dönemde gelen aday", icon: "inbox", tone: "brand", grafik: { tur: "cubuk", seri: leadSerisi } },
+    { label: "Gelen lead", value: String(incoming.length), note: "Dönemde gelen aday", icon: "inbox", tone: "brand", grafik: { tur: "cubuk", bicim: "sayi", seri: leadSerisi } },
     { label: "Ulaşılan", value: String(reached.length), note: "Gelen adayların görüşülen kısmı", icon: "chat", tone: "info", grafik: { tur: "halka", oran: oranOf(reached.length, incoming.length), altyazi: "erişim oranı" } },
     { label: "Nitelikli lead", value: String(qualified.length), note: "Görüşülenlerin gerçek aday kısmı", icon: "badge", tone: "info", grafik: { tur: "halka", oran: oranOf(qualified.length, reached.length), altyazi: "nitelikli oranı" } },
     { label: "Teklif", value: String(huniTeklif.length), note: "Bu dönemin adaylarından teklif verilen", icon: "doc", tone: "gold", grafik: { tur: "halka", oran: oranOf(huniTeklif.length, qualified.length), altyazi: "nitelikliye teklif" } },
-    { label: "Satış", value: String(sales), note: `${money(salesValue)} imzalı sözleşme`, icon: "seal", tone: "success", grafik: { tur: "cubuk", seri: satisSerisi } },
+    { label: "Satış", value: String(sales), note: `${money(salesValue)} imzalı sözleşme`, icon: "seal", tone: "success", grafik: { tur: "cubuk", bicim: "sayi", seri: satisSerisi } },
   ];
   const financeWidgets: Widget[] = [
     { label: "Dönüşüm", value: percent(conversion), note: `Görüşülen ${reached.length} adaydan ${huniSatis.length} satış`, icon: "spark", tone: "gold", grafik: { tur: "gosterge", oran: conversion } },
-    { label: "İş maliyeti", value: money(contractedCost), note: "Bu dönem imzalanan işlerin maliyeti", icon: "briefcase", tone: "warning", grafik: { tur: "cubuk", seri: maliyetSerisi } },
+    { label: "İş maliyeti", value: money(contractedCost), note: "Bu dönem imzalanan işlerin maliyeti", icon: "briefcase", tone: "warning", grafik: { tur: "cubuk", bicim: "para", seri: maliyetSerisi } },
     { label: "Brüt iş kârı", value: money(grossProfit), note: `${percent(grossMargin)} sözleşme marjı`, icon: "chart", tone: grossProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "yigin", bicim: "para", parcalar: [{ ad: "Maliyet", deger: contractedCost, ton: "warning" }, { ad: "Kâr", deger: grossProfit, ton: grossProfit >= 0 ? "success" : "danger" }] } },
-    { label: "Tahsilat", value: money(collections), note: "Dönemde kasaya giren müşteri ödemesi", icon: "wallet", tone: "brand", grafik: { tur: "cubuk", seri: tahsilatSerisi } },
+    { label: "Tahsilat", value: money(collections), note: "Dönemde kasaya giren müşteri ödemesi", icon: "wallet", tone: "brand", grafik: { tur: "cubuk", bicim: "para", seri: tahsilatSerisi } },
     { label: "Net nakit hareketi", value: money(realizedProfit), note: `${percent(realizedMargin)} tahsilat sonrası fark`, icon: "flow", tone: realizedProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "selale", adimlar: [{ ad: "Tahsilat", deger: collections, ton: "brand" }, { ad: "İş maliyeti", deger: -paidJobCost, ton: "warning" }, { ad: "Genel gider", deger: -operatingExpense, ton: "warning" }, { ad: "Kalan", deger: realizedProfit, ton: realizedProfit >= 0 ? "success" : "danger" }] } },
   ];
   const hasLeads = incoming.length > 0;
@@ -190,7 +190,7 @@ export async function KokpitRaporu({ supabase, organizationId, donem }: RaporGir
         ]}
         /* Huni, aşamaların kendisinden: daralan çubuklar huninin
            şeklini veriyor, ayrı bir çizim gerekmiyor. */
-        grafik={{ tur: "cubuk", seri: funnel.map((row) => ({ ad: row.label, eksen: row.label, deger: row.value, etiket: String(row.value) })) }}
+        grafik={{ tur: "cubuk", bicim: "sayi", seri: funnel.map((row) => ({ ad: row.label, eksen: row.label, deger: row.value, etiket: String(row.value) })) }}
         cumle={weakestStep ? `${weakestStep.from} → ${weakestStep.to} aşaması en çok müşteriyi kaybediyor.` : "Huni oranları ilk kayıtlarla oluşur."}
       >
         <ol className="rpt-funnel">
@@ -260,7 +260,7 @@ export async function KokpitRaporu({ supabase, organizationId, donem }: RaporGir
         baslik="6 aylık eğilim" altyazi="Aylara göre gelen lead ve kazanılan satış"
         kicker="EĞİLİM" ton="info" genis
         sayilar={[{ deger: String(trendLeads), etiket: "lead" }, { deger: String(trendSales), etiket: "satış" }]}
-        grafik={{ tur: "cubuk", seri: leadSerisi }}
+        grafik={{ tur: "cubuk", bicim: "sayi", seri: leadSerisi }}
         cumle={trendEmpty ? "Son 6 ayda lead veya kazanılan satış kaydı yok." : "Son altı ayın aylık dağılımı."}
       >
         <div className="rpt-trend" role="img" aria-label={`Altı aylık grafik: ${months.map((month) => `${month.label} ${month.leads} lead, ${month.sales} satış`).join("; ")}`}>
@@ -286,7 +286,7 @@ export async function KokpitRaporu({ supabase, organizationId, donem }: RaporGir
         ]}
         /* Sebepler kendi çubuklarıyla: hangisinin baskın olduğu
            kartta görünüyor, isimler pencerede. */
-        grafik={{ tur: "cubuk", seri: lostReasons.slice(0, 6).map((row) => ({ ad: row.reason, deger: row.count, etiket: String(row.count) })) }}
+        grafik={{ tur: "cubuk", bicim: "sayi", seri: lostReasons.slice(0, 6).map((row) => ({ ad: row.reason, deger: row.count, etiket: String(row.count) })) }}
         cumle={lostReasons.length ? "Kayıp sebepleri ve kaç müşteriye denk geldiği." : "Bu dönemde kaybedildi olarak işaretlenen fırsat yok."}
       >
         {lostReasons.length ? <ul className="rpt-lost">

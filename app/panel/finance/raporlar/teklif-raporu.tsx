@@ -119,7 +119,7 @@ export async function TeklifRaporu({ supabase, organizationId, donem }: RaporGir
       label: "Gönderilen teklif", value: String(m.surecAdet),
       note: `${money(m.surecTutar)} · revizyonlar tek süreç`,
       icon: "inbox", tone: "brand",
-      grafik: { tur: "cubuk", seri: m.dagilim.map((d) => ({ ad: d.ad, deger: d.adet, etiket: String(d.adet) })) },
+      grafik: { tur: "cubuk", bicim: "sayi", seri: m.dagilim.map((d) => ({ ad: d.ad, deger: d.adet, etiket: String(d.adet) })) },
     },
     {
       label: "Kabul edilen", value: String(m.kabul), note: `${money(m.kabulTutar)} kabul tutarı`,
@@ -149,7 +149,7 @@ export async function TeklifRaporu({ supabase, organizationId, donem }: RaporGir
       label: "İmza bekleyen", value: money(m.bekleyenTutar),
       note: m.bekleyenler.length ? `${m.bekleyenler.length} sözleşme · şu anki durum` : "Bekleyen imza yok",
       icon: "doc", tone: m.bekleyenTutar ? "warning" : "success", toned: true,
-      grafik: { tur: "cubuk", seri: m.bekleyenler.slice(0, 6).map((b) => ({ ad: b.no, deger: b.tutar, etiket: money(b.tutar) })) },
+      grafik: { tur: "cubuk", bicim: "para", seri: m.bekleyenler.slice(0, 6).map((b) => ({ ad: b.no, deger: b.tutar, etiket: money(b.tutar) })) },
     },
   ];
 
