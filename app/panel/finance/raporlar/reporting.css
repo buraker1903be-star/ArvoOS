@@ -285,32 +285,70 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
 
 
 /* ---------- Özet kartı (2026-10-24) ----------
-   Ekranda yalnızca karara yetecek kadarı: başlık, en çok üç rakam ve
-   bir cümle. Ayrıntı pencerede (page.tsx → PanelDrawer). */
-.rpt-kart-ozet{gap:12px;padding:18px}
+   İlk hâlinde kart başlık + iki rakam + gri bir cümleydi; üstte
+   grafikli KPI kutuları dururken altta sayı listesi kalıyordu ve
+   sayfa "pano" gibi değil "döküm" gibi okunuyordu.
+
+   Her kart artık kendi verisinin imzasını taşıyor (page.tsx →
+   OzetKart). İmza süs değil: huni daralan çubuklarla, kârlılık
+   maliyet/kâr yığınıyla, kayıp sebepleri kendi çubuklarıyla, dönem
+   yorumu dört yargının tonuyla. */
+.rpt-kart-ozet{position:relative;gap:10px;padding:18px;overflow:hidden}
 .rpt-kart-ozet .rpt-card-head h2{font-size:15px}
 .rpt-kart-ozet .rpt-card-head p{font-size:12px}
 
-.rpt-ozet-sayilar{display:flex;flex-wrap:wrap;gap:18px;margin-top:2px}
-.rpt-ozet-sayilar>div{display:flex;flex-direction:column;gap:2px;min-width:0}
-.rpt-ozet-sayilar strong{font-size:21px;line-height:1.1;letter-spacing:-.01em;color:var(--ink);overflow-wrap:anywhere}
+/* Ton şeridi: kartın üst kenarında kendi durumunun rengi. Göz
+   panoda önce buraya takılıyor — hangi kart iyi, hangisi dikkat
+   istiyor, okumadan önce görünüyor. */
+.rpt-kart-ozet::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,var(--tone-fg,var(--primary)),color-mix(in srgb,var(--tone-fg,var(--primary)) 20%,transparent));opacity:.9}
+
+.rpt-ozet-sayilar{display:flex;flex-wrap:wrap;gap:16px;margin-top:2px}
+.rpt-ozet-sayilar>div{display:flex;flex-direction:column;gap:1px;min-width:0}
+.rpt-ozet-sayilar strong{font-size:22px;line-height:1.1;letter-spacing:-.015em;color:var(--ink);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .rpt-ozet-sayilar span{font-size:11.5px;color:var(--muted)}
 /* Ton yalnızca RAKAMA iniyor; etiketi de boyamak kartı alacalı
-   yapıyordu. Tonsuz rakam mürekkep renginde kalır. */
+   yapıyordu. */
 .rpt-ozet-sayilar>div[data-tone="success"] strong{color:var(--success)}
 .rpt-ozet-sayilar>div[data-tone="danger"] strong{color:var(--danger)}
 .rpt-ozet-sayilar>div[data-tone="warning"] strong{color:var(--warning)}
 .rpt-ozet-sayilar>div[data-tone="gold"] strong{color:var(--primary)}
 
-/* Alt satır kartın dibine yapışıyor: kartlar eşit yükseklikte
-   olduğunda "Ayrıntı" düğmeleri de aynı hizada duruyor. */
-.rpt-kart-alt{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line-soft)}
-.rpt-kart-alt>p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
-.rpt-kart-ac{flex:0 0 auto;min-height:32px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--ink);font-size:12px;font-weight:800;cursor:pointer;transition:transform .16s var(--ctl-ease),border-color .16s var(--ctl-ease),box-shadow .16s var(--ctl-ease)}
-.rpt-kart-ac:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--primary) 45%,var(--line));box-shadow:var(--shadow-sm)}
-.rpt-kart-ac:active{transform:translateY(0) scale(.97)}
-.rpt-pencere-alt{margin:16px 0 0}
+/* İmza grafiği kartın içinde; KPI kutusundakiyle aynı yükseklik,
+   yani pano tek bir ritimde okunuyor. */
+.rpt-kart-ozet .rpt-mini{height:46px;margin:2px 0 0}
+.rpt-kart-cumle{margin:auto 0 0;padding-top:10px;border-top:1px solid var(--line-soft);color:var(--muted);font-size:12px;line-height:1.5}
 
+/* KARTIN TAMAMI TIKLANABİLİR — KPI kutularıyla aynı kalıp. Küçük
+   bir "Ayrıntı" hapı yerine tek etkileşim dili: panoda her şey
+   tıklanır, ayrıntı pencerede açılır. */
+.rpt-kart-ac{position:absolute;inset:0;z-index:2;border:0;border-radius:inherit;background:transparent;color:transparent;font-size:0;line-height:0;cursor:pointer}
+.rpt-kart-ac:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--focus)}
+/* Geri bildirim KARTTAN geliyor: düğme görünmez. Üzerine gelince
+   ton şeridi genişliyor — "bu kartta devamı var" demenin sessiz
+   yolu. */
+.rpt-kart-ozet{transition:transform .16s var(--ctl-ease),box-shadow .16s var(--ctl-ease),border-color .16s var(--ctl-ease)}
+.rpt-kart-ozet::before{transition:height .16s var(--ctl-ease),opacity .16s var(--ctl-ease)}
+.rpt-kart-ozet:has(.rpt-kart-ac:hover){transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:color-mix(in srgb,var(--tone-fg,var(--primary)) 35%,var(--line))}
+.rpt-kart-ozet:has(.rpt-kart-ac:hover)::before{height:5px;opacity:1}
+.rpt-kart-ozet:has(.rpt-kart-ac:active){transform:translateY(0) scale(.995)}
+@media (prefers-reduced-motion:reduce){
+  .rpt-kart-ozet,.rpt-kart-ozet::before{transition:none}
+  .rpt-kart-ozet:has(.rpt-kart-ac:hover),.rpt-kart-ozet:has(.rpt-kart-ac:active){transform:none}
+}
+
+/* Durum şeridi: dört yargının tonu. Nokta + ad; renk körlüğünde ad
+   tek başına da okunuyor. */
+.rpt-mini-durum{display:flex;align-items:center;gap:14px}
+.rpt-mini-durum>span{display:flex;align-items:center;gap:6px;min-width:0}
+.rpt-mini-durum i{width:9px;height:9px;flex:0 0 auto;border-radius:50%;background:var(--tone-fg,var(--muted));box-shadow:0 0 0 3px color-mix(in srgb,var(--tone-fg,var(--muted)) 18%,transparent)}
+.rpt-mini-durum small{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rpt-mini-durum>span[data-tone="success"]{--tone-fg:var(--success)}
+.rpt-mini-durum>span[data-tone="danger"]{--tone-fg:var(--danger)}
+.rpt-mini-durum>span[data-tone="warning"]{--tone-fg:var(--warning)}
+.rpt-mini-durum>span[data-tone="info"]{--tone-fg:var(--info)}
+.rpt-mini-durum>span[data-tone="gold"]{--tone-fg:var(--primary)}
+
+.rpt-pencere-alt{margin:16px 0 0}
 
 /* ---------- Yazdırma: ayrıntı geri gelir ----------
    PanelDrawer çocuklarını kapalıyken de çiziyor (portalda, gizli),
@@ -319,7 +357,7 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
    içeriği ikinci kez çizmek gerekmiyor — iki kopya ayrışırdı. */
 @media print{
   .panel-root .panel-drawer-root{position:static;visibility:visible;pointer-events:none;display:block;padding:0;z-index:auto}
-  .panel-root .panel-drawer-backdrop,.panel-root .panel-drawer-close,.panel-root .rpt-kart-ac,.panel-root .rpt-kart-alt{display:none!important}
+  .panel-root .panel-drawer-backdrop,.panel-root .panel-drawer-close,.panel-root .rpt-kart-ac{display:none!important}
   .panel-root .panel-drawer{position:static;width:auto;max-width:none;max-height:none;overflow:visible;opacity:1;transform:none;box-shadow:none;border:1px solid var(--line);border-radius:14px;break-inside:avoid}
   .panel-root .panel-drawer .panel-drawer-header{min-height:0;padding:14px 16px 8px!important}
   .panel-root .panel-drawer .panel-drawer-header h2{font-size:15px!important}
