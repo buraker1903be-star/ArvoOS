@@ -743,3 +743,51 @@ farklı söylerse kullanıcı hangisine güveneceğini bilemez.
 karşılaştırılıyor. CRM kazanımı ile satış adedi eşit olmak zorunda
 değil (biri aşamadan, öteki sözleşmeden gelir) ve test bunu da
 sabitliyor — ilişkinin yönünü, eşitliği değil.
+
+---
+
+## 18. Sistem oturdu — kontrol katmanlarının özeti (24.10.2026)
+
+Sekiz raporun hepsi aynı iskelete oturdu:
+
+```
+ham satırlar → saf MODEL → tutarlılık denetimi → ekran
+                   ↓                                ↓
+              Excel sayfaları              uyarı (tutmuyorsa)
+```
+
+| Katman | Dosya | Neyi yakalar |
+|---|---|---|
+| Model | `lib/rapor-*.ts` | — (karar burada, saf ve testli) |
+| Değişmezler | `lib/rapor-tutarlilik.ts` | bir toplam, olması gereken başka toplamla tutmuyorsa |
+| Rastgele tur | `tests/unit/rapor-tutarlilik.test.ts` | akla gelmeyen girdi birleşimleri (8 model × 300 tur) |
+| Raporlar arası | `tests/unit/raporlar-arasi.test.ts` | iki raporun aynı gerçeği farklı söylemesi |
+| Excel paritesi | `tests/unit/rapor-excel-parite.test.ts` | birim dönüşümü kayması (kuruş/lira, yüzde/oran) |
+| Bağlantı | `tests/unit/rapor-baglanti.test.ts` | rapor eklerken unutulan/yanlış bağlanan uç |
+| Şema sözleşmesi | `tests/unit/durum-yazimlari.test.ts` | durum değerlerinin yazımı, tetikleyici varlığı |
+| Ekran | `TutarlilikUyarisi` | canlıda tutmayan toplam (normalde hiç görünmez) |
+
+### Kokpit artık istisna değil
+
+Kokpitin hesabı bileşenin içindeydi, yani üstteki katmanların
+hiçbirine giremiyordu — kullanıcının ilk açtığı rapor, ayrıntı
+raporlarından bağımsız hesap yapıyordu. Saf modele taşındı
+(`lib/rapor-kokpit.ts`), matematiğe dokunulmadan. İki test taşımanın
+doğruluğunu ve bundan sonra ayrışmayacağını birlikte sabitliyor:
+`kokpit.salesValue == satış.toplam`, `kokpit.collections ==
+tahsilat.donemTahsilat`.
+
+### Bu katmanlar ne yakalayamaz
+
+Dürüst olmak gerekirse: **verinin kendisinin doğru olup olmadığını.**
+Raporlar `finance_transactions`'ta ödenmiş gelir kaydı yoksa "gelir
+₺0" der ve bu doğrudur — ama kurumun gerçekten geliri yok mu, yoksa
+kayıtlar "ödendi" işaretlenmemiş mi, bunu ancak veriye bakarak
+anlarız (§"Finansal Performans" notuna bakın). Rapor artık bu ikisini
+AYIRIP söylüyor; ama hangisinin doğru olduğuna karar vermek
+kullanıcının işi.
+
+İkincisi: **canlıda sayfanın açıldığını.** tsc, lint, testler ve
+derleme sayfanın derlendiğini söylüyor, çalıştığını değil
+(AGENTS.md "Canlı duman testi"). Dağıtımdan sonra `npm run duman`
+oturum çereziyle elle koşturulmalı.
