@@ -257,7 +257,11 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
 .rpt-mini-cubuk>span{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
 .rpt-mini-cubuk i{display:block;width:100%;height:var(--h,3%);max-height:calc(100% - 16px);border-radius:5px 5px 2px 2px;background:var(--tone-fg);opacity:.32;transform-origin:bottom;animation:rpt-cubuk .8s var(--rpt-ease) both}
 .rpt-mini-cubuk .is-current i{opacity:1}
-.rpt-mini-cubuk small{color:var(--muted);font-size:11px;line-height:1}
+.rpt-mini-cubuk small{color:var(--muted);font-size:11px;line-height:1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Etiketsiz seri (müşteri adı, kayıp sebebi, sözleşme no): çubuk tam
+   yüksekliği kullanıyor, adlar ipucunda. Önceden `ad` hem ipucu hem
+   eksen etiketiydi ve uzun adlar kutudaki rakamın üstüne taşıyordu. */
+.rpt-mini-cubuk.is-eksensiz i{max-height:100%}
 .rpt-mini-cubuk .is-current small{color:var(--ink);font-weight:600}
 @keyframes rpt-cubuk{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 /* Halka ve gösterge */

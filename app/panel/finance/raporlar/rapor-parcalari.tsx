@@ -38,12 +38,45 @@ export type Tone = "brand" | "info" | "gold" | "success" | "warning" | "danger";
     selale   tahsilattan düşülenler ve kalan (net nakit)
   Grafikler sunucuda çizilen SVG ve CSS: istemci kodu, kütüphane yok.
 */
-export type SeriNoktasi = { ad: string; deger: number; etiket: string; simdiki?: boolean };
+/*
+  ÇUBUĞUN ALTINDAKİ ETİKET AYRI BİR ALAN (2026-10-24).
+
+  `ad` hem ipucu/ekran okuyucu metni hem de eksen etiketi olarak
+  kullanılıyordu. Ay kısaltmalarıyla ("Tem", "Ağu") sorun yoktu ama
+  aynı grafik müşteri adı, kayıp sebebi ve sözleşme numarasıyla da
+  kullanılınca etiketler ÜST ÜSTE BİNDİ ve kutudaki rakamın üstüne
+  taştı — canlıda CRM raporunun "Müşteri başına" ve "Kaybedilen"
+  kutularında görüldü.
+
+  Artık eksen etiketi yalnızca `eksen` verildiğinde çiziliyor. `ad`
+  tam adı taşımaya devam ediyor: ipucunda ve ekran okuyucuda eksiksiz
+  görünüyor, kutuda yer kaplamıyor. Uzunluğa bakan bir tahmin
+  yazılmadı — "kaç karakter sığar" sorusunun doğru cevabı yok,
+  etiketin anlamlı olup olmadığına çağıran karar veriyor.
+*/
+export type SeriNoktasi = {
+  /** Tam ad: ipucu ve ekran okuyucu. */
+  ad: string;
+  /** Çubuğun altındaki kısa etiket; verilmezse yazılmıyor. */
+  eksen?: string;
+  deger: number;
+  /** Biçimlenmiş değer (ipucunda görünür). */
+  etiket: string;
+  simdiki?: boolean;
+};
 export type Grafik =
   | { tur: "cubuk"; seri: SeriNoktasi[] }
   | { tur: "halka"; oran: number | null; altyazi: string }
   | { tur: "gosterge"; oran: number }
-  | { tur: "yigin"; parcalar: { ad: string; deger: number; ton: Tone }[] }
+  /*
+    YIĞIN GRAFİĞİNDE BİÇİM ZORUNLU (2026-10-24). Değer her zaman
+    `money()` ile yazılıyordu; grafik önce yalnızca para için
+    kullanıldığı için fark edilmiyordu. Sayı taşıyan kutularda
+    (tekrar eden müşteri, yanıtlanan teklif, aktif personel) 25 kişi
+    ekranda **₺0** görünüyordu — money() kuruş bekliyor.
+    Biçim isteğe bağlı olsaydı aynı hata sessizce geri gelirdi.
+  */
+  | { tur: "yigin"; bicim: "para" | "sayi"; parcalar: { ad: string; deger: number; ton: Tone }[] }
   | { tur: "selale"; adimlar: { ad: string; deger: number; ton: Tone }[] }
   /*
     DURUM ŞERİDİ (2026-10-24). "Bu dönem ne söylüyor?" kartının
@@ -85,12 +118,21 @@ export function Icon({ name, size = 18 }: { name: IkonAdi; size?: number }) {
 export function MiniGrafik({ grafik }: { grafik: Grafik }) {
   if (grafik.tur === "cubuk") {
     const enBuyuk = Math.max(1, ...grafik.seri.map((n) => n.deger));
+    /* Hiçbir noktada eksen etiketi yoksa çubuklar tam yüksekliği
+       kullanıyor: etiket için ayrılan 16px boş yere duruyordu. */
+    const eksenVar = grafik.seri.some((n) => n.eksen);
     return (
-      <div className="rpt-mini rpt-mini-cubuk" role="img" aria-label={grafik.seri.map((n) => `${n.ad} ${n.etiket}`).join(", ")}>
-        {grafik.seri.map((n) => (
-          <span key={n.ad} className={n.simdiki ? "is-current" : undefined} title={`${n.ad}: ${n.etiket}`}>
+      <div
+        className={`rpt-mini rpt-mini-cubuk${eksenVar ? "" : " is-eksensiz"}`}
+        role="img"
+        aria-label={grafik.seri.map((n) => `${n.ad} ${n.etiket}`).join(", ")}
+      >
+        {/* Anahtar sırayı da içeriyor: iki müşterinin adı aynı
+            olabiliyor ve yalnızca ada dayanan anahtar çakışırdı. */}
+        {grafik.seri.map((n, sira) => (
+          <span key={`${n.ad}-${sira}`} className={n.simdiki ? "is-current" : undefined} title={`${n.ad}: ${n.etiket}`}>
             <i style={cssVar("--h", `${n.deger ? Math.max(8, (n.deger / enBuyuk) * 100) : 3}%`)} />
-            <small>{n.ad}</small>
+            {n.eksen ? <small>{n.eksen}</small> : null}
           </span>
         ))}
       </div>
@@ -130,7 +172,11 @@ export function MiniGrafik({ grafik }: { grafik: Grafik }) {
           {toplam ? grafik.parcalar.map((p) => <i key={p.ad} data-tone={p.ton} style={cssVar("--w", `${(Math.max(0, p.deger) / toplam) * 100}%`)} />) : null}
         </div>
         <ul className="rpt-mini-lejant">
-          {grafik.parcalar.map((p) => <li key={p.ad} data-tone={p.ton}><i />{p.ad} <b>{money(p.deger)}</b></li>)}
+          {grafik.parcalar.map((p) => (
+            <li key={p.ad} data-tone={p.ton}>
+              <i />{p.ad} <b>{grafik.bicim === "para" ? money(p.deger) : p.deger}</b>
+            </li>
+          ))}
         </ul>
       </div>
     );

@@ -173,7 +173,7 @@ export function crmModeli({
   // --- Müşteriler: ömür boyu sözleşmelerden ---
   const imzalilar = sozlesmeler.filter((c) => IMZALI.has(c.status));
   let kimliksizSozlesme = 0;
-  const musteriler = new Map<string, MusteriSatiri & { donemde: boolean; donemdenOnce: boolean }>();
+  const musteriler = new Map<string, MusteriSatiri & { donemde: boolean }>();
   for (const c of imzalilar) {
     const gun = gunAnahtari(c.signed_at ?? c.created_at);
     const cariId = c.party_id;
@@ -195,15 +195,26 @@ export function crmModeli({
       ilkIs: mevcut && mevcut.ilkIs < gun ? mevcut.ilkIs : gun,
       sonIs: mevcut && mevcut.sonIs > gun ? mevcut.sonIs : gun,
       donemde: (mevcut?.donemde ?? false) || donemde,
-      donemdenOnce: (mevcut?.donemdenOnce ?? false) || (!donemde && gun < donem.startKey),
     });
   }
 
   const donemdeImzalayan = [...musteriler.values()].filter((m) => m.donemde);
-  /* TEKRAR EDEN, ÖMÜR BOYU bakılarak: dönemde imzalayan müşterinin
-     dönemden ÖNCE de sözleşmesi varsa tekrar eden. Yalnızca dönem
-     içine bakmak iki yıllık müşteriyi "yeni" göstermek olurdu. */
-  const tekrarEden = donemdeImzalayan.filter((m) => m.donemdenOnce).length;
+  /*
+    TEKRAR EDEN = ÖMÜR BOYU BİRDEN FAZLA İŞİ OLAN (24.10.2026'da
+    düzeltildi).
+
+    İlk kural "dönemden ÖNCE de sözleşmesi varsa tekrar eden"
+    diyordu ve yıl içinde iki kez imzalayan müşteriyi YENİ sayıyordu:
+    dönem "Bu yıl" seçildiğinde, 2026'da kurulmuş bir kurumda tekrar
+    eden müşteri HİÇ çıkmıyordu. Canlıda tam bu görüldü — 25 ilk kez
+    imzalayan, 0 tekrar eden.
+
+    Doğru soru "daha önce de çalıştık mı": müşterinin ömür boyu imzalı
+    sözleşme sayısı birden fazlaysa tekrar eden, dönemin neresinde
+    imzaladığından bağımsız. Dönemde hiç imzalamayan eski müşteri
+    orana girmiyor, çünkü oran dönemde imzalayanların içindeki pay.
+  */
+  const tekrarEden = donemdeImzalayan.filter((m) => m.sozlesmeAdet > 1).length;
   const toplamTutar = [...musteriler.values()].reduce((t, m) => t + m.tutar, 0);
 
   const enDegerli: MusteriSatiri[] = [...musteriler.values()]

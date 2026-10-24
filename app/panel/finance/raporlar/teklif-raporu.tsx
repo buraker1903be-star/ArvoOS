@@ -132,7 +132,7 @@ export async function TeklifRaporu({ supabase, organizationId, donem }: RaporGir
       label: "Ortalama yanıt", value: m.ortYanitGun === null ? "—" : `${m.ortYanitGun} gün`,
       note: m.ortYanitGun === null ? "Yanıtlanan teklif yok" : `${m.musteriKarari} kararı müşteri verdi`,
       icon: "chat", tone: "info",
-      grafik: { tur: "yigin", parcalar: [
+      grafik: { tur: "yigin", bicim: "sayi", parcalar: [
         { ad: "Yanıtlanan", deger: m.kabul + m.red, ton: "success" },
         { ad: "Bekleyen", deger: m.yanitBekleyen, ton: "warning" },
       ] },

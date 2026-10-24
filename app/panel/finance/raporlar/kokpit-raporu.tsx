@@ -190,7 +190,7 @@ export async function KokpitRaporu({ supabase, organizationId, donem }: RaporGir
   const aylikSeri = (kayitlar: { tarih: string | null; tutar: number }[], bicim: (n: number) => string): SeriNoktasi[] =>
     months.map((ay, sira) => {
       const deger = kayitlar.filter((k) => k.tarih && gunAnahtari(k.tarih).slice(0, 7) === ay.key).reduce((t, k) => t + k.tutar, 0);
-      return { ad: ay.label, deger, etiket: bicim(deger), simdiki: sira === months.length - 1 };
+      return { ad: ay.label, eksen: ay.label, deger, etiket: bicim(deger), simdiki: sira === months.length - 1 };
     });
   const adet = (n: number) => String(n);
   const leadSerisi = aylikSeri(opportunities.map((o) => ({ tarih: o.created_at, tutar: 1 })), adet);
@@ -211,7 +211,7 @@ export async function KokpitRaporu({ supabase, organizationId, donem }: RaporGir
   const financeWidgets: Widget[] = [
     { label: "Dönüşüm", value: percent(conversion), note: `Görüşülen ${reached.length} adaydan ${huniSatis.length} satış`, icon: "spark", tone: "gold", grafik: { tur: "gosterge", oran: conversion } },
     { label: "İş maliyeti", value: money(contractedCost), note: "Bu dönem imzalanan işlerin maliyeti · son 6 ay", icon: "briefcase", tone: "warning", grafik: { tur: "cubuk", seri: maliyetSerisi } },
-    { label: "Brüt iş kârı", value: money(grossProfit), note: `${percent(grossMargin)} sözleşme marjı`, icon: "chart", tone: grossProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "yigin", parcalar: [{ ad: "Maliyet", deger: contractedCost, ton: "warning" }, { ad: "Kâr", deger: grossProfit, ton: grossProfit >= 0 ? "success" : "danger" }] } },
+    { label: "Brüt iş kârı", value: money(grossProfit), note: `${percent(grossMargin)} sözleşme marjı`, icon: "chart", tone: grossProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "yigin", bicim: "para", parcalar: [{ ad: "Maliyet", deger: contractedCost, ton: "warning" }, { ad: "Kâr", deger: grossProfit, ton: grossProfit >= 0 ? "success" : "danger" }] } },
     { label: "Tahsilat", value: money(collections), note: "Kasaya giren müşteri ödemesi · son 6 ay", icon: "wallet", tone: "brand", grafik: { tur: "cubuk", seri: tahsilatSerisi } },
     { label: "Net nakit hareketi", value: money(realizedProfit), note: `${percent(realizedMargin)} tahsilat sonrası fark`, icon: "flow", tone: realizedProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "selale", adimlar: [{ ad: "Tahsilat", deger: collections, ton: "brand" }, { ad: "İş maliyeti", deger: -paidJobCost, ton: "warning" }, { ad: "Genel gider", deger: -operatingExpense, ton: "warning" }, { ad: "Kalan", deger: realizedProfit, ton: realizedProfit >= 0 ? "success" : "danger" }] } },
   ];
@@ -272,7 +272,7 @@ export async function KokpitRaporu({ supabase, organizationId, donem }: RaporGir
         ]}
         /* Huni, aşamaların kendisinden: daralan çubuklar huninin
            şeklini veriyor, ayrı bir çizim gerekmiyor. */
-        grafik={{ tur: "cubuk", seri: funnel.map((row) => ({ ad: row.label, deger: row.value, etiket: String(row.value) })) }}
+        grafik={{ tur: "cubuk", seri: funnel.map((row) => ({ ad: row.label, eksen: row.label, deger: row.value, etiket: String(row.value) })) }}
         cumle={weakestStep ? `${weakestStep.from} → ${weakestStep.to} aşaması en çok müşteriyi kaybediyor.` : "Huni oranları ilk kayıtlarla oluşur."}
       >
         <ol className="rpt-funnel">
@@ -326,7 +326,7 @@ export async function KokpitRaporu({ supabase, organizationId, donem }: RaporGir
           { deger: cashTotal.amount, etiket: "net nakit", ton: cashTotal.tone },
         ]}
         /* Maliyet ve kâr yan yana: marjın büyüklüğü tek bakışta. */
-        grafik={{ tur: "yigin", parcalar: [
+        grafik={{ tur: "yigin", bicim: "para", parcalar: [
           { ad: "Maliyet", deger: contractedCost, ton: "warning" },
           { ad: "Kâr", deger: Math.max(0, grossProfit), ton: grossProfit >= 0 ? "success" : "danger" },
         ] }}

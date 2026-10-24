@@ -91,7 +91,7 @@ export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdis
       label: "Yeni talep", value: String(m.yeniTalep),
       note: `${money(m.yeniTalepDegeri)} tahmini değer · son 6 ay`,
       icon: "inbox", tone: "brand",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, deger: a.talep, etiket: String(a.talep) })) },
+      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.talep, etiket: String(a.talep) })) },
     },
     {
       label: "Kazanılan", value: String(m.kazanilan),
@@ -111,7 +111,7 @@ export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdis
         ? "Dönemde sözleşme imzalayan müşteri yok"
         : `${percent(m.tekrarOrani)} · ${m.yeniMusteri} ilk kez imzaladı`,
       icon: "users", tone: "gold", toned: true,
-      grafik: { tur: "yigin", parcalar: [
+      grafik: { tur: "yigin", bicim: "sayi", parcalar: [
         { ad: "Tekrar", deger: m.tekrarEden, ton: "gold" },
         { ad: "Yeni", deger: m.yeniMusteri, ton: "brand" },
       ] },

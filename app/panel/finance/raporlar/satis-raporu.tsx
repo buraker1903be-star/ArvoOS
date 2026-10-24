@@ -100,17 +100,17 @@ export async function SatisRaporu({ supabase, organizationId, donem }: RaporGird
     {
       label: "Satış tutarı", value: money(m.toplam), note: "İmzalanan sözleşme tutarı · son 6 ay",
       icon: "seal", tone: "success",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, deger: a.tutar, etiket: money(a.tutar) })) },
+      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.tutar, etiket: money(a.tutar) })) },
     },
     {
       label: "Satış adedi", value: String(m.adet), note: "Dönemde imzalanan sözleşme",
       icon: "doc", tone: "brand",
-      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, deger: a.adet, etiket: String(a.adet) })) },
+      grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.adet, etiket: String(a.adet) })) },
     },
     {
       label: "Ortalama sözleşme", value: m.adet ? money(m.ortalama) : "—", note: "Satış tutarı ÷ satış adedi",
       icon: "chart", tone: "gold",
-      grafik: { tur: "yigin", parcalar: [
+      grafik: { tur: "yigin", bicim: "para", parcalar: [
         { ad: "Ortalama", deger: m.ortalama, ton: "gold" },
         { ad: "Kalan", deger: Math.max(0, m.toplam - m.ortalama), ton: "brand" },
       ] },

@@ -105,7 +105,7 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
       label: "Aktif personel", value: String(m.aktifPersonel),
       note: m.atamasizPersonel ? `${m.atamasizPersonel} kişiye kayıt atanmamış` : "Hepsine kayıt atanmış",
       icon: "users", tone: "brand",
-      grafik: { tur: "yigin", parcalar: [
+      grafik: { tur: "yigin", bicim: "sayi", parcalar: [
         { ad: "Satış", deger: m.satis.length, ton: "success" },
         { ad: "Operasyon", deger: m.operasyon.length, ton: "info" },
         { ad: "Atamasız", deger: m.atamasizPersonel, ton: "warning" },
@@ -127,7 +127,7 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
       label: "Tahakkuk eden prim", value: money(m.primTahakkuk),
       note: `${money(m.primOdenen)} dönemde ödendi`,
       icon: "wallet", tone: "gold",
-      grafik: { tur: "yigin", parcalar: [
+      grafik: { tur: "yigin", bicim: "para", parcalar: [
         { ad: "Ödenen", deger: m.primOdenen, ton: "success" },
         { ad: "Bekleyen", deger: Math.max(0, m.primTahakkuk - m.primOdenen), ton: "warning" },
       ] },

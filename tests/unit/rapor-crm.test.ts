@@ -128,6 +128,28 @@ describe("CRM analitiği — müşteriler ve tekrar satış", () => {
     assert.equal(m.tekrarOrani, 50);
   });
 
+  it("yıl içinde iki kez imzalayanı da tekrar eden sayar", () => {
+    /*
+      İlk kural "dönemden ÖNCE de sözleşmesi varsa" diyordu ve dönem
+      "Bu yıl" seçildiğinde 2026'da kurulmuş bir kurumda tekrar eden
+      müşteri HİÇ çıkmıyordu (canlıda 25 ilk kez imzalayan, 0 tekrar
+      eden görüldü). Doğru soru "daha önce de çalıştık mı".
+    */
+    const yil: Donem = { startKey: "2026-01-01", endKey: "2026-12-31", key: "bu_yil" };
+    const m = calistir({
+      donem: yil,
+      sozlesmeler: [
+        sozlesme({ id: "a", party_id: "c1", signed_at: "2026-03-10T09:00:00Z", amount: 100_000 }),
+        sozlesme({ id: "b", party_id: "c1", signed_at: "2026-10-10T09:00:00Z", amount: 200_000 }),
+        sozlesme({ id: "c", party_id: "c2", signed_at: "2026-10-12T09:00:00Z", amount: 50_000 }),
+      ],
+      cariler: [["c1", "Akademik Merkez"], ["c2", "Beta"]],
+    });
+    assert.equal(m.tekrarEden, 1, "aynı yıl iki iş yapan müşteri tekrar eden");
+    assert.equal(m.yeniMusteri, 1);
+    assert.equal(m.tekrarOrani, 50);
+  });
+
   it("dönemde imzalamayan müşteriyi orana katmaz", () => {
     const m = calistir({ sozlesmeler: [
       sozlesme({ id: "eski", party_id: "c9", signed_at: "2025-01-10T09:00:00Z" }),
