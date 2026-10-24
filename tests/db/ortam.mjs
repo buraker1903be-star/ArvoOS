@@ -61,8 +61,10 @@ export const SEMA = path.resolve(import.meta.dirname, "../../supabase/schema/can
   check:db-testleri tam bunu arıyor.
 */
 export const BEKLEYEN_MIGRATIONLAR = [
-  // Şu an boş: döküm 11.10.2026'da yenilendi, canlıdaki her şey anlık
-  // görüntüde. Dolu bırakmak migration'ı iki kez uygulamak demek.
+  /* Gelir kaydının taksitle bağlanması (24.10.2026). Canlıya
+     uygulanıp döküm yenilendiğinde bu satır SİLİNECEK; dolu kalırsa
+     migration iki kez uygulanır. */
+  "20261024200803_gelir_taksite_baglandi.sql",
 ];
 
 /*

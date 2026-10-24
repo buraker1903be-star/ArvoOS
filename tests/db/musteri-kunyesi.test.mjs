@@ -33,6 +33,12 @@ const MIGRATIONLAR = [
      09.10.2026) bu dosyadan geliyor; eklenmezse test üretimde olmayan bir
      davranışı sınar ve yeşil kalır. */
   "20261009082529_musteri_iki_yonlu_senkron.sql",
+  /* SON SIRADA (2): yukarıdaki dosya sign_crm_contract'ı da yeniden
+     yaratıyor ve onun 09.10.2026'daki gövdesini geri getiriyor — gelir
+     kaydının taksitle bağlanması (24.10.2026) o gövdede YOK. Eklenmezse
+     bu test, üretimde olmayan bir sign_crm_contract ile koşar ve yeşil
+     kalır; npm run check:db-testleri tam bunu arıyor. */
+  "20261024200803_gelir_taksite_baglandi.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000002a1";
