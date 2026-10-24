@@ -98,7 +98,7 @@ export async function SatisRaporu({ supabase, organizationId, donem }: RaporGird
 
   const kutular: Widget[] = [
     {
-      label: "Satış tutarı", value: money(m.toplam), note: "İmzalanan sözleşme tutarı · son 6 ay",
+      label: "Satış tutarı", value: money(m.toplam), note: "Dönemde imzalanan sözleşme tutarı",
       icon: "seal", tone: "success",
       grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.tutar, etiket: money(a.tutar) })) },
     },
@@ -110,10 +110,15 @@ export async function SatisRaporu({ supabase, organizationId, donem }: RaporGird
     {
       label: "Ortalama sözleşme", value: m.adet ? money(m.ortalama) : "—", note: "Satış tutarı ÷ satış adedi",
       icon: "chart", tone: "gold",
-      grafik: { tur: "yigin", bicim: "para", parcalar: [
-        { ad: "Ortalama", deger: m.ortalama, ton: "gold" },
-        { ad: "Kalan", deger: Math.max(0, m.toplam - m.ortalama), ton: "brand" },
-      ] },
+      /*
+        Önceden "Ortalama" ile "toplam − ortalama" yan yana bir yığın
+        çiziliyordu; ikinci dilim hiçbir soruya cevap vermiyordu.
+        Ortalamanın anlamı dağılımla birlikte okunur: en büyük altı
+        sözleşme, ortalamanın etrafındaki yayılmayı gösteriyor.
+      */
+      grafik: { tur: "cubuk", seri: m.enBuyuk.slice(0, 6).map((x) => ({
+        ad: `${x.no} · ${x.musteri}`, deger: x.tutar, etiket: money(x.tutar),
+      })) },
     },
     {
       label: "Verilen teklif", value: String(m.teklifAdet), note: `${money(m.teklifTutari)} · revizyonlar tek süreç`,

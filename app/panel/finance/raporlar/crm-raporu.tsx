@@ -89,7 +89,7 @@ export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdis
   const kutular: Widget[] = [
     {
       label: "Yeni talep", value: String(m.yeniTalep),
-      note: `${money(m.yeniTalepDegeri)} tahmini değer · son 6 ay`,
+      note: `${money(m.yeniTalepDegeri)} tahmini değer`,
       icon: "inbox", tone: "brand",
       grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.talep, etiket: String(a.talep) })) },
     },
@@ -207,17 +207,19 @@ export async function CrmRaporu({ supabase, organizationId, donem }: RaporGirdis
 
       <section className="rapor-blok">
         <div className="rapor-blok-bas"><h3>Aylara göre kazanım</h3><span>Gelen talep ve kazanılan</span></div>
-        <div className="rapor-aylik" role="img" aria-label={`Aylık: ${m.aylik.map((a) => `${a.etiket} ${a.talep} talep, ${a.kazanilan} kazanım`).join("; ")}`}>
-          {m.aylik.map((a, i) => <div key={a.ay} className={`rapor-aylik-sutun${i === m.aylik.length - 1 ? " is-current" : ""}`}>
-            <div className="rapor-aylik-cubuk is-ikili">
-              <i className="is-gelir" style={cssVar("--h", `${Math.max(3, (a.talep / enYuksekAy) * 100)}%`)} title={`${a.talep} talep`} />
-              <i className="is-cikis" style={cssVar("--h", `${Math.max(3, (a.kazanilan / enYuksekAy) * 100)}%`)} title={`${a.kazanilan} kazanım`} />
-            </div>
-            <b>{a.etiket}</b>
-            <span>{a.talep} · {a.kazanilan}</span>
-          </div>)}
-        </div>
-        <div className="rpt-legend"><span><i className="is-lead" />Talep</span><span><i className="is-sale" />Kazanım</span></div>
+        {m.aylik.some((a) => a.talep || a.kazanilan) ? <>
+          <div className="rapor-aylik" role="img" aria-label={`Aylık: ${m.aylik.map((a) => `${a.etiket} ${a.talep} talep, ${a.kazanilan} kazanım`).join("; ")}`}>
+            {m.aylik.map((a, i) => <div key={a.ay} className={`rapor-aylik-sutun${i === m.aylik.length - 1 ? " is-current" : ""}`}>
+              <div className="rapor-aylik-cubuk is-ikili">
+                <i className="is-gelir" style={cssVar("--h", `${Math.max(3, (a.talep / enYuksekAy) * 100)}%`)} title={`${a.talep} talep`} />
+                <i className="is-cikis" style={cssVar("--h", `${Math.max(3, (a.kazanilan / enYuksekAy) * 100)}%`)} title={`${a.kazanilan} kazanım`} />
+              </div>
+              <b>{a.etiket}</b>
+              <span>{a.talep} · {a.kazanilan}</span>
+            </div>)}
+          </div>
+          <div className="rpt-legend"><span><i className="is-lead" />Talep</span><span><i className="is-sale" />Kazanım</span></div>
+        </> : <p className="rpt-empty-note">Son altı ayda talep ya da kazanım kaydı yok.</p>}
       </section>
     </div>
 

@@ -111,7 +111,7 @@ export async function OperasyonRaporu({ supabase, organizationId, donem }: Rapor
     },
     {
       label: "Termini geçmiş", value: String(m.geciken),
-      note: m.geciken ? `Devam eden işin ${percent(m.devamEden ? (m.geciken / m.devamEden) * 100 : 0)}’i` : "Gecikmiş iş yok",
+      note: m.geciken ? `Devam eden ${m.devamEden} işin ${m.geciken} tanesi` : "Gecikmiş iş yok",
       icon: "alert", tone: m.geciken ? "danger" : "success", toned: true,
       grafik: { tur: "halka", oran: m.devamEden ? (m.geciken / m.devamEden) * 100 : null, altyazi: "açık işin payı" },
     },
@@ -162,17 +162,19 @@ export async function OperasyonRaporu({ supabase, organizationId, donem }: Rapor
 
       <section className="rapor-blok">
         <div className="rapor-blok-bas"><h3>Aylara göre iş</h3><span>Açılan ve tamamlanan</span></div>
-        <div className="rapor-aylik" role="img" aria-label={`Aylık: ${m.aylik.map((a) => `${a.etiket} ${a.acilan} açılan, ${a.tamamlanan} tamamlanan`).join("; ")}`}>
-          {m.aylik.map((a, i) => <div key={a.ay} className={`rapor-aylik-sutun${i === m.aylik.length - 1 ? " is-current" : ""}`}>
-            <div className="rapor-aylik-cubuk is-ikili">
-              <i className="is-gelir" style={cssVar("--h", `${Math.max(3, (a.acilan / enYuksekAy) * 100)}%`)} title={`${a.acilan} açılan`} />
-              <i className="is-cikis" style={cssVar("--h", `${Math.max(3, (a.tamamlanan / enYuksekAy) * 100)}%`)} title={`${a.tamamlanan} tamamlanan`} />
-            </div>
-            <b>{a.etiket}</b>
-            <span>{a.acilan} · {a.tamamlanan}</span>
-          </div>)}
-        </div>
-        <div className="rpt-legend"><span><i className="is-lead" />Açılan</span><span><i className="is-sale" />Tamamlanan</span></div>
+        {m.aylik.some((a) => a.acilan || a.tamamlanan) ? <>
+          <div className="rapor-aylik" role="img" aria-label={`Aylık: ${m.aylik.map((a) => `${a.etiket} ${a.acilan} açılan, ${a.tamamlanan} tamamlanan`).join("; ")}`}>
+            {m.aylik.map((a, i) => <div key={a.ay} className={`rapor-aylik-sutun${i === m.aylik.length - 1 ? " is-current" : ""}`}>
+              <div className="rapor-aylik-cubuk is-ikili">
+                <i className="is-gelir" style={cssVar("--h", `${Math.max(3, (a.acilan / enYuksekAy) * 100)}%`)} title={`${a.acilan} açılan`} />
+                <i className="is-cikis" style={cssVar("--h", `${Math.max(3, (a.tamamlanan / enYuksekAy) * 100)}%`)} title={`${a.tamamlanan} tamamlanan`} />
+              </div>
+              <b>{a.etiket}</b>
+              <span>{a.acilan} · {a.tamamlanan}</span>
+            </div>)}
+          </div>
+          <div className="rpt-legend"><span><i className="is-lead" />Açılan</span><span><i className="is-sale" />Tamamlanan</span></div>
+        </> : <p className="rpt-empty-note">Son altı ayda açılan ya da tamamlanan iş yok.</p>}
       </section>
     </div>
 

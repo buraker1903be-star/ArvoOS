@@ -132,9 +132,13 @@ export async function TeklifRaporu({ supabase, organizationId, donem }: RaporGir
       label: "Ortalama yanıt", value: m.ortYanitGun === null ? "—" : `${m.ortYanitGun} gün`,
       note: m.ortYanitGun === null ? "Yanıtlanan teklif yok" : `${m.musteriKarari} kararı müşteri verdi`,
       icon: "chat", tone: "info",
+      /* Süresi geçen süreçler önceden hiçbir dilime girmiyordu:
+         yığın "yanıtlanan + bekleyen" diyordu ama toplamı süreç
+         sayısını tutmuyordu. */
       grafik: { tur: "yigin", bicim: "sayi", parcalar: [
         { ad: "Yanıtlanan", deger: m.kabul + m.red, ton: "success" },
         { ad: "Bekleyen", deger: m.yanitBekleyen, ton: "warning" },
+        { ad: "Süresi geçti", deger: m.sureGecti, ton: "danger" },
       ] },
     },
     {

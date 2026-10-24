@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import { tumSatirlar } from "@/lib/rapor-okuma";
 import {
@@ -99,6 +100,15 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
   const enYuksekIs = Math.max(1, ...m.operasyon.map((o) => o.aktifIs));
   const enYuksekAy = Math.max(1, ...m.aylik.map((a) => Math.max(a.kazanilan, a.tamamlanan)));
   const toplamSatis = m.satis.reduce((t, s) => t + s.sozlesmeTutari, 0);
+  /*
+    DİLİMLER AYRIK OLMAK ZORUNDA. Yığın "Satış / Operasyon /
+    Atamasız" diye çiziliyordu ve iki işi de yapan kişi İKİ dilimde
+    birden sayılıyordu: dilimlerin toplamı kutudaki "aktif personel"
+    sayısını aşabiliyor, oranlar yanlış çıkıyordu. Kesişim kendi
+    dilimine alındı.
+  */
+  const satisKimlikleri = new Set(m.satis.map((s) => s.id));
+  const ikisiDe = m.operasyon.filter((o) => satisKimlikleri.has(o.id)).length;
 
   const kutular: Widget[] = [
     {
@@ -106,8 +116,9 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
       note: m.atamasizPersonel ? `${m.atamasizPersonel} kişiye kayıt atanmamış` : "Hepsine kayıt atanmış",
       icon: "users", tone: "brand",
       grafik: { tur: "yigin", bicim: "sayi", parcalar: [
-        { ad: "Satış", deger: m.satis.length, ton: "success" },
-        { ad: "Operasyon", deger: m.operasyon.length, ton: "info" },
+        { ad: "Yalnızca satış", deger: m.satis.length - ikisiDe, ton: "success" },
+        { ad: "Yalnızca operasyon", deger: m.operasyon.length - ikisiDe, ton: "info" },
+        { ad: "İkisi de", deger: ikisiDe, ton: "gold" },
         { ad: "Atamasız", deger: m.atamasizPersonel, ton: "warning" },
       ] },
     },
@@ -168,7 +179,13 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
             <thead><tr><th>Personel</th><th className="rpt-money">Talep</th><th className="rpt-money">Kazanılan</th><th>Dönüşüm</th><th className="rpt-money">Sözleşme</th><th className="rpt-money">Prim</th></tr></thead>
             <tbody>
               {m.satis.map((s) => <tr key={s.id}>
-                <th scope="row"><b>{s.ad}</b><small>{s.unvan} · {s.departman}</small></th>
+                <th scope="row">
+                  {/* Rapordan personel kaydına geçiş: satır zaten bir
+                      kişi, "hangi personeldi" diye ayrıca aramak
+                      zorunda kalmak raporu yarım bırakıyordu. */}
+                  <Link href={`/panel/hr/${s.id}`} className="rapor-kayit-link"><b>{s.ad}</b></Link>
+                  <small>{s.unvan} · {s.departman}</small>
+                </th>
                 <td className="rpt-money">{s.talep}</td>
                 <td className="rpt-money">{s.kazanilan}</td>
                 <td className="rapor-pay">
@@ -208,7 +225,10 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
             <thead><tr><th>Personel</th><th className="rpt-money">Devam eden</th><th className="rpt-money">Tamamlanan</th><th className="rpt-money">Termini geçmiş</th><th className="rpt-money">Ortalama süre</th><th className="rpt-money">Prim</th></tr></thead>
             <tbody>
               {m.operasyon.map((o) => <tr key={o.id} data-tone={o.geciken ? "danger" : undefined}>
-                <th scope="row"><b>{o.ad}</b><small>{o.unvan} · {o.departman}</small></th>
+                <th scope="row">
+                  <Link href={`/panel/hr/${o.id}`} className="rapor-kayit-link"><b>{o.ad}</b></Link>
+                  <small>{o.unvan} · {o.departman}</small>
+                </th>
                 <td className="rpt-money">
                   <div className="rapor-bekleme">
                     <span>{o.aktifIs}</span>
@@ -232,17 +252,19 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
     <div className="rapor-ikili">
       <section className="rapor-blok">
         <div className="rapor-blok-bas"><h3>Aylara göre üretim</h3><span>Kazanılan talep ve tamamlanan iş</span></div>
-        <div className="rapor-aylik" role="img" aria-label={`Aylık: ${m.aylik.map((a) => `${a.etiket} ${a.kazanilan} kazanım, ${a.tamamlanan} tamamlanan iş`).join("; ")}`}>
-          {m.aylik.map((a, i) => <div key={a.ay} className={`rapor-aylik-sutun${i === m.aylik.length - 1 ? " is-current" : ""}`}>
-            <div className="rapor-aylik-cubuk is-ikili">
-              <i className="is-gelir" style={cssVar("--h", `${Math.max(3, (a.kazanilan / enYuksekAy) * 100)}%`)} title={`${a.kazanilan} kazanım`} />
-              <i className="is-cikis" style={cssVar("--h", `${Math.max(3, (a.tamamlanan / enYuksekAy) * 100)}%`)} title={`${a.tamamlanan} tamamlanan`} />
-            </div>
-            <b>{a.etiket}</b>
-            <span>{a.kazanilan} · {a.tamamlanan}</span>
-          </div>)}
-        </div>
-        <div className="rpt-legend"><span><i className="is-lead" />Kazanım</span><span><i className="is-sale" />Tamamlanan iş</span></div>
+        {m.aylik.some((a) => a.kazanilan || a.tamamlanan) ? <>
+          <div className="rapor-aylik" role="img" aria-label={`Aylık: ${m.aylik.map((a) => `${a.etiket} ${a.kazanilan} kazanım, ${a.tamamlanan} tamamlanan iş`).join("; ")}`}>
+            {m.aylik.map((a, i) => <div key={a.ay} className={`rapor-aylik-sutun${i === m.aylik.length - 1 ? " is-current" : ""}`}>
+              <div className="rapor-aylik-cubuk is-ikili">
+                <i className="is-gelir" style={cssVar("--h", `${Math.max(3, (a.kazanilan / enYuksekAy) * 100)}%`)} title={`${a.kazanilan} kazanım`} />
+                <i className="is-cikis" style={cssVar("--h", `${Math.max(3, (a.tamamlanan / enYuksekAy) * 100)}%`)} title={`${a.tamamlanan} tamamlanan`} />
+              </div>
+              <b>{a.etiket}</b>
+              <span>{a.kazanilan} · {a.tamamlanan}</span>
+            </div>)}
+          </div>
+          <div className="rpt-legend"><span><i className="is-lead" />Kazanım</span><span><i className="is-sale" />Tamamlanan iş</span></div>
+        </> : <p className="rpt-empty-note">Son altı ayda kazanım ya da tamamlanan iş yok.</p>}
       </section>
 
       <section className="rapor-blok">
