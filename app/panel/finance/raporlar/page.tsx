@@ -168,6 +168,53 @@ function MiniGrafik({ grafik }: { grafik: Grafik }) {
   );
 }
 
+/*
+  KPI AYRINTISI (2026-10-24, kurum sahibinin önerisi).
+
+  Kutudaki mini grafik ŞEKLİ gösteriyor, RAKAMI değil: altı aylık
+  çubuklarda hangi ayın kaç olduğu okunmuyor, şelalenin adımları
+  (tahsilat → maliyet → gider → kalan) minik bir çizimde kayboluyor.
+  Pencere tam olarak o rakamları veriyor — yoksa rakamı büyütüp
+  tekrar gösteren bir pencere olurdu ve kullanıcıya "tıklamaya değmez"
+  dedirtirdi.
+*/
+function WidgetDetay({ grafik, widget }: { grafik: Grafik; widget: Widget }) {
+  if (grafik.tur === "cubuk") {
+    const toplam = grafik.seri.reduce((sum, nokta) => sum + nokta.deger, 0);
+    return <>
+      <MiniGrafik grafik={grafik} />
+      <table className="rpt-detay-tablo">
+        <thead><tr><th>Ay</th><th>Değer</th></tr></thead>
+        <tbody>
+          {grafik.seri.map((nokta) => <tr key={nokta.ad} className={nokta.simdiki ? "is-current" : undefined}>
+            <th scope="row">{nokta.ad}</th><td>{nokta.etiket}</td>
+          </tr>)}
+        </tbody>
+        <tfoot><tr><th scope="row">Altı ay toplamı</th><td>{toplam}</td></tr></tfoot>
+      </table>
+    </>;
+  }
+  if (grafik.tur === "yigin" || grafik.tur === "selale") {
+    const satirlar = grafik.tur === "yigin" ? grafik.parcalar : grafik.adimlar;
+    return <>
+      <MiniGrafik grafik={grafik} />
+      <table className="rpt-detay-tablo">
+        <tbody>
+          {satirlar.map((satir) => <tr key={satir.ad} data-tone={satir.ton}>
+            <th scope="row">{satir.ad}</th><td>{money(satir.deger)}</td>
+          </tr>)}
+        </tbody>
+      </table>
+    </>;
+  }
+  /* Oranlı kutular: pay ve payda zaten notta yazıyor, pencere onu
+     büyük ve tek başına gösteriyor. Uydurma bir döküm eklenmedi. */
+  return <>
+    <MiniGrafik grafik={grafik} />
+    <p className="rpt-detay-not">{widget.note}</p>
+  </>;
+}
+
 function WidgetCard({ widget }: { widget: Widget }) {
   return (
     <article className="rpt-widget" data-tone={widget.tone}>
@@ -178,6 +225,22 @@ function WidgetCard({ widget }: { widget: Widget }) {
       <strong className={widget.toned ? "is-toned" : undefined}>{widget.value}</strong>
       <MiniGrafik grafik={widget.grafik} />
       <span className="rpt-widget-note">{widget.note}</span>
+      {/*
+        Kutunun TAMAMI tıklanabilir ama düğme kutunun İÇİNDE, üstüne
+        serilmiş durumda. Kutuyu düğmenin içine koymak geçersiz HTML
+        olurdu (button yalnızca metin düzeyi içerik alır) ve ekran
+        okuyucuda grafik de düğme adının parçası olurdu. Bu kalıp
+        depoda zaten var (crm satır tıklaması).
+      */}
+      <PanelDrawer
+        triggerLabel={`${widget.label} ayrıntısı`}
+        triggerClassName="rpt-widget-ac"
+        kicker="KPI"
+        title={widget.label}
+        description={widget.note}
+      >
+        <WidgetDetay grafik={widget.grafik} widget={widget} />
+      </PanelDrawer>
     </article>
   );
 }

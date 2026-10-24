@@ -336,3 +336,44 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
 /* Yazdırmada grafik eski boyuna dönüyor: kâğıtta yer sorunu yok ve
    küçük grafik baskıda okunmuyor. */
 @media print{.panel-root .rpt-mini{height:56px}}
+
+/* ---------- KPI kutusu tıklanabilir (2026-10-24) ----------
+   Düğme kutunun üstüne seriliyor: kutuyu düğmenin İÇİNE koymak
+   geçersiz HTML olurdu (button yalnızca metin düzeyi içerik alır).
+   Metin görünmez ama ekran okuyucuda duruyor — "Gelen lead
+   ayrıntısı" diye okunuyor. */
+.rpt-widget{position:relative}
+.rpt-widget-ac{position:absolute;inset:0;z-index:2;border:0;border-radius:inherit;background:transparent;color:transparent;font-size:0;line-height:0;cursor:pointer}
+.rpt-widget-ac:focus-visible{outline:none;box-shadow:0 0 0 3px var(--surface),0 0 0 6px var(--focus)}
+
+/* Üzerine gelince kutunun kendisi tepki veriyor; düğme görünmez
+   olduğu için geri bildirim buradan gelmek zorunda. */
+.rpt-widget:has(.rpt-widget-ac:hover){transform:translateY(-1px);box-shadow:var(--shadow-sm);border-color:color-mix(in srgb,var(--primary) 35%,var(--line))}
+.rpt-widget:has(.rpt-widget-ac:active){transform:translateY(0) scale(.99)}
+.rpt-widget{transition:transform .16s var(--ctl-ease),box-shadow .16s var(--ctl-ease),border-color .16s var(--ctl-ease)}
+@media (prefers-reduced-motion:reduce){
+  .rpt-widget{transition:box-shadow .01s linear}
+  .rpt-widget:has(.rpt-widget-ac:hover),.rpt-widget:has(.rpt-widget-ac:active){transform:none}
+}
+
+/* ---------- KPI penceresinin içi ---------- */
+.rpt-detay-tablo{width:100%;margin-top:18px;border-collapse:separate;border-spacing:0;font-size:13px}
+.rpt-detay-tablo th,.rpt-detay-tablo td{padding:10px 2px;border-bottom:1px solid var(--line-soft);text-align:left}
+.rpt-detay-tablo td{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.rpt-detay-tablo thead th{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.rpt-detay-tablo tbody th{font-weight:600;color:var(--ink-soft)}
+.rpt-detay-tablo tbody tr.is-current th,.rpt-detay-tablo tbody tr.is-current td{color:var(--ink);font-weight:800}
+.rpt-detay-tablo tfoot th,.rpt-detay-tablo tfoot td{border-bottom:0;padding-top:12px;font-weight:800;color:var(--ink)}
+/* Şelale/yığın satırlarında ton yalnızca TUTARA iniyor; etiketi de
+   boyamak tabloyu alacalı yapıyordu. */
+.rpt-detay-tablo tbody tr[data-tone="success"] td{color:var(--success)}
+.rpt-detay-tablo tbody tr[data-tone="danger"] td{color:var(--danger)}
+.rpt-detay-tablo tbody tr[data-tone="warning"] td{color:var(--warning)}
+.rpt-detay-not{margin:16px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
+/* Pencerede grafik büyüyor: kutudaki 44 px'de şekil görünüyor ama
+   ayrıntı görünmüyor; pencerenin varlık sebebi zaten o. */
+.panel-drawer .rpt-mini{height:120px;margin:0}
+
+/* Yazdırma: KPI pencereleri çıktıda da açık (kart pencereleriyle
+   aynı kural, yukarıda). Görünmez düğme basılmaz. */
+@media print{.panel-root .rpt-widget-ac{display:none!important}}
