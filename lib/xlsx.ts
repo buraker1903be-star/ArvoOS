@@ -23,8 +23,23 @@ import { deflateRawSync } from "node:zlib";
   Saf modül: testi tests/unit/xlsx.test.ts.
 */
 
-export type HucreBicimi = "metin" | "sayi" | "para" | "yuzde";
-export type Hucre = string | number | null;
+export type HucreBicimi = "metin" | "sayi" | "para" | "yuzde" | "tarih";
+
+/*
+  HÜCRE BİÇİMİ SÜTUNDAN GELİR, AMA BİR SÜTUNDA HER SATIR AYNI ŞEY
+  OLMAK ZORUNDA DEĞİL (2026-10-24).
+
+  Satış raporunun "Özet" sekmesi tek bir "Değer" sütununda dönem
+  adını (metin), tutarı (para), adedi (sayı) ve dönüşümü (yüzde)
+  birden taşıyor. Sütuna tek bir biçim vermek ya tutarı biçimsiz
+  bırakıyordu (23500 — kuruş sanılır) ya da adedi "2,00 ₺" yapıyordu.
+  İkisi de hücrenin kendi anlamını bozuyor.
+
+  O yüzden hücre `{ deger, bicim }` olarak da yazılabiliyor; sütun
+  biçimi varsayılan olarak duruyor.
+*/
+export type BicimliHucre = { deger: string | number | null; bicim: HucreBicimi };
+export type Hucre = string | number | null | BicimliHucre;
 
 export type Sutun = {
   baslik: string;
@@ -76,11 +91,45 @@ export function sekmeAdi(ham: string): string {
   return (temiz || "Sayfa").slice(0, 31);
 }
 
-const BICIM_STILI: Record<HucreBicimi, number> = { metin: 0, sayi: 0, para: 2, yuzde: 3 };
+const BICIM_STILI: Record<HucreBicimi, number> = { metin: 0, sayi: 0, para: 2, yuzde: 3, tarih: 4 };
 
-function hucreXml(deger: Hucre, adres: string, bicim: HucreBicimi): string {
+/*
+  TARİH METİN DEĞİL TARİH (2026-10-24).
+
+  Tarihler "2026-09-01" diye METİN olarak yazılıyordu. Hücre
+  görünüyordu ama Excel onu tarih bilmiyordu: tarih süzgeci
+  çalışmıyor, iki tarih arasındaki gün farkı alınamıyor ve ekranda
+  Türkçe değil ISO biçiminde duruyordu — yani ekrandaki "01.09.2026"
+  ile dosyadaki "2026-09-01" ayrı diller.
+
+  Excel tarihi 1899-12-30'dan itibaren GÜN SAYISI tutuyor; biçim
+  kodu `dd.mm.yyyy`. Gün anahtarı UTC'den hesaplanıyor çünkü
+  "YYYY-AA-GG" bir AN değil bir GÜN taşıyor — yerel saatle
+  çevirmek, sunucunun dilimine göre bir gün kaydırırdı.
+*/
+const EXCEL_SIFIR = Date.UTC(1899, 11, 30);
+const GUN_KALIBI = /^\d{4}-\d{2}-\d{2}$/;
+
+/** "2026-09-01" → 46266 (Excel gün sayısı). Geçersizse null. */
+export function excelGunu(gun: string): number | null {
+  if (!GUN_KALIBI.test(gun)) return null;
+  const an = Date.parse(`${gun}T00:00:00Z`);
+  if (Number.isNaN(an)) return null;
+  return Math.round((an - EXCEL_SIFIR) / 86_400_000);
+}
+
+const bicimliMi = (hucre: Hucre): hucre is BicimliHucre =>
+  typeof hucre === "object" && hucre !== null && "deger" in hucre;
+
+function hucreXml(hucre: Hucre, adres: string, sutunBicimi: HucreBicimi): string {
+  const ham = bicimliMi(hucre) ? hucre.deger : hucre;
+  const bicim = bicimliMi(hucre) ? hucre.bicim : sutunBicimi;
+  /* Tarih biçimli hücreye gün anahtarı ("2026-09-01") verilebiliyor;
+     sayıya çevrilemiyorsa METİN olarak yazılıyor — hücreyi atlamak,
+     veriyi sessizce düşürmek olurdu. */
+  const deger = bicim === "tarih" && typeof ham === "string" ? excelGunu(ham) ?? ham : ham;
   if (deger === null || deger === "") return "";
-  const stil = BICIM_STILI[bicim];
+  const stil = typeof deger === "number" ? BICIM_STILI[bicim] : 0;
   const stilEk = stil ? ` s="${stil}"` : "";
   if (typeof deger === "number" && Number.isFinite(deger)) {
     return `<c r="${adres}"${stilEk}><v>${deger}</v></c>`;
@@ -119,7 +168,7 @@ function sayfaXml(sayfa: Sayfa): string {
   sütun toplanamazdı.
 */
 const STILLER = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00\\ &quot;₺&quot;"/><numFmt numFmtId="165" formatCode="0.0%"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>`;
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00\\ &quot;₺&quot;"/><numFmt numFmtId="165" formatCode="0.0%"/><numFmt numFmtId="166" formatCode="dd\\.mm\\.yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>`;
 
 /* ---------- ZIP ---------- */
 
