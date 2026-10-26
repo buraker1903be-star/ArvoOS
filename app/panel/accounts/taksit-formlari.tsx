@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { tutarDegistir, yenidenBol, type PlanTaksidi } from "@/lib/taksit-plani";
+import { ekHizmetiDagit, tutarDegistir, yenidenBol, type PlanTaksidi } from "@/lib/taksit-plani";
 import { gecerliGun, gunFarki, gunKaydir } from "@/lib/taksit-vadesi";
 import { liraYazisi, parseTurkishAmount } from "@/lib/turkish-amount";
 import "../components/kayit-formu.css";
@@ -135,6 +135,51 @@ export function TaksitDuzenleFormu({ taksitId, plan, hedefNo, eylem }: {
       <div className="wide panel-form-actions kayit-formu-eylem">
         <p>{req} işaretli alanlar zorunlu.</p>
         <button className="panel-primary" disabled={"hata" in sonuc}>Kaydet</button>
+      </div>
+    </form>
+  );
+}
+
+/*
+  Ek hizmeti açık taksitlere eşit dağıtır ya da (bağlıysa) taksitlerden
+  çıkarır. Önizleme sunucu işlemiyle aynı işlevden (ekHizmetiDagit,
+  finance/actions.ts ekHizmetTaksitleri__impl). Carinin birden çok
+  sözleşmesi varsa hangisinin taksitlerine gideceği seçilir.
+*/
+export function EkHizmetTaksitFormu({ entryId, tutar, planlar, bagliPlanId, eylem }: {
+  entryId: string;
+  tutar: number;
+  planlar: { planId: string; ad: string; toplam: number; taksitler: OnizlemeTaksidi[] }[];
+  bagliPlanId: string | null;
+  eylem: (formData: FormData) => Promise<void>;
+}) {
+  const secenekler = bagliPlanId ? planlar.filter((p) => p.planId === bagliPlanId) : planlar;
+  const [planId, setPlanId] = useState(secenekler[0]?.planId ?? "");
+  const secili = secenekler.find((p) => p.planId === planId);
+  if (!secili) return <p className="fin-form-note">Bu ek hizmetin dağıtılabileceği bir ödeme takvimi yok.</p>;
+  const fark = bagliPlanId ? -tutar : tutar;
+  const sonuc = ekHizmetiDagit(secili.taksitler, fark);
+  const eski = new Map(secili.taksitler.map((t) => [t.no, { no: t.no, vade: t.vade, tutar: t.tutar }]));
+
+  return (
+    <form className="panel-form fin-form kayit-formu" action={eylem}>
+      <input type="hidden" name="entry_id" value={entryId} />
+      {secenekler.length > 1 ? (
+        <label className="wide">Sözleşme
+          <select name="plan_id" value={planId} onChange={(o) => setPlanId(o.target.value)}>
+            {secenekler.map((p) => <option key={p.planId} value={p.planId}>{p.ad}</option>)}
+          </select>
+        </label>
+      ) : <input type="hidden" name="plan_id" value={planId} />}
+      <p className="wide kayit-formu-not">
+        {bagliPlanId
+          ? `${para(tutar)} ödenmemiş taksitlerden eşit düşülür; ödenmiş kısımlar olduğu gibi kalır. Sonra ek hizmetin tutarı düzeltilebilir ya da silinebilir.`
+          : `${para(tutar)} ${secili.ad} için ödenmemiş taksitlere eşit dağıtılır, artan kuruş baştaki taksitlere eklenir. Ödenmiş taksitler ve vadeler değişmez.`}
+      </p>
+      <PlanOnizleme satirlar={"hata" in sonuc ? [] : sonuc} eski={eski} toplam={secili.toplam + fark} hata={"hata" in sonuc ? sonuc.hata : null} />
+      <div className="wide panel-form-actions kayit-formu-eylem">
+        <p />
+        <button className={bagliPlanId ? "panel-secondary" : "panel-primary"} disabled={"hata" in sonuc}>{bagliPlanId ? "Taksitlerden çıkar" : "Taksitlere dağıt"}</button>
       </div>
     </form>
   );

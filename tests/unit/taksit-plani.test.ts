@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ayEkle, tutarDegistir, yenidenBol } from "@/lib/taksit-plani";
+import { ayEkle, ekHizmetiDagit, tutarDegistir, yenidenBol } from "@/lib/taksit-plani";
 
 const toplam = (p: { tutar: number }[]) => p.reduce((s, t) => s + t.tutar, 0);
 const plan = [
@@ -204,4 +204,67 @@ test("aynı vadeli taksitlerde eklenme sırası korunuyor", () => {
   const liste = sonuc as { no: number; vade: string; tutar: number }[];
   assert.deepEqual(liste.map((t) => t.vade), ["2026-10-23", "2026-11-23", "2026-12-23"]);
   assert.deepEqual(liste.map((t) => t.no), [1, 2, 3]);
+});
+
+test("ek hizmet yalnızca açık taksitlere eşit dağılır; ödenmiş taksite ve vadelere dokunulmaz", () => {
+  // SOZ-2026-000059: 19.000 TL, ilki ödenmiş; 7.000 TL ek hizmet.
+  const plan3 = [
+    { no: 1, vade: "2026-10-23", tutar: 633300, odenen: 633300 },
+    { no: 2, vade: "2026-11-12", tutar: 983350, odenen: 0 },
+    { no: 3, vade: "2026-12-04", tutar: 283350, odenen: 0 },
+  ];
+  const sonuc = ekHizmetiDagit(plan3, 700000);
+  assert.ok(Array.isArray(sonuc));
+  assert.deepEqual(sonuc, [
+    { no: 1, vade: "2026-10-23", tutar: 633300 },
+    { no: 2, vade: "2026-11-12", tutar: 1333350 },
+    { no: 3, vade: "2026-12-04", tutar: 633350 },
+  ]);
+  assert.equal(toplam(sonuc), 1900000 + 700000);
+});
+
+test("ek hizmet: kısmen ödenmiş taksit açık sayılır, artan kuruş baştakilere", () => {
+  const sonuc = ekHizmetiDagit([
+    { no: 1, vade: "2026-10-05", tutar: 1000000, odenen: 400000 },
+    { no: 2, vade: "2026-11-05", tutar: 1000000, odenen: 0 },
+    { no: 3, vade: "2026-12-05", tutar: 1000000, odenen: 0 },
+  ], 100);
+  assert.ok(Array.isArray(sonuc));
+  assert.deepEqual(sonuc.map((t) => t.tutar), [1000034, 1000033, 1000033]);
+});
+
+test("ek hizmet: açık taksit yoksa dağıtılmaz", () => {
+  assert.ok("hata" in ekHizmetiDagit([{ no: 1, vade: "2026-10-05", tutar: 100, odenen: 100 }], 50));
+});
+
+test("ek hizmeti çıkarmak dağıtmanın tersidir", () => {
+  const plan3 = [
+    { no: 1, vade: "2026-10-23", tutar: 633300, odenen: 633300 },
+    { no: 2, vade: "2026-11-12", tutar: 983350, odenen: 0 },
+    { no: 3, vade: "2026-12-04", tutar: 283350, odenen: 0 },
+  ];
+  const dagitilmis = ekHizmetiDagit(plan3, 700000);
+  assert.ok(Array.isArray(dagitilmis));
+  const geri = ekHizmetiDagit(dagitilmis.map((t, i) => ({ ...t, odenen: plan3[i].odenen })), -700000);
+  assert.deepEqual(geri, plan3.map(({ no, vade, tutar }) => ({ no, vade, tutar })));
+});
+
+test("ek hizmeti çıkarırken taksit ödenen kısmının altına inmez; payı ötekilere kayar", () => {
+  const sonuc = ekHizmetiDagit([
+    { no: 1, vade: "2026-10-05", tutar: 500000, odenen: 400000 },
+    { no: 2, vade: "2026-11-05", tutar: 900000, odenen: 0 },
+  ], -600000);
+  assert.ok(Array.isArray(sonuc));
+  assert.deepEqual(sonuc.map((t) => t.tutar), [400000, 400000]);
+  // Ödenmemiş kısımdan büyükse reddedilir.
+  assert.ok("hata" in ekHizmetiDagit([{ no: 1, vade: "2026-10-05", tutar: 500000, odenen: 400000 }], -200000));
+});
+
+test("ek hizmeti çıkarınca sıfıra inen ödemesiz taksit plandan çıkar", () => {
+  const sonuc = ekHizmetiDagit([
+    { no: 1, vade: "2026-10-05", tutar: 500000, odenen: 0 },
+    { no: 2, vade: "2026-11-05", tutar: 100000, odenen: 0 },
+  ], -200000);
+  assert.ok(Array.isArray(sonuc));
+  assert.deepEqual(sonuc, [{ no: 1, vade: "2026-10-05", tutar: 400000 }]);
 });
