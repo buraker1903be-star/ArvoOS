@@ -5,7 +5,11 @@ import { getPaymentIncidents } from "@/lib/payment-incidents";
 import { musteriMi } from "@/lib/kurum-turu";
 import { KBos, KListe, KNot, KOge } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { PanelModal } from "../../components/panel-modal";
+import { faturaYukle } from "./actions";
 import "../platform.css";
+import "../../components/kayit-formu.css";
 
 /*
   FATURALAMA VE TAHSİLAT (14.10.2026, Kurucu Konsolu'nun ana menüsü).
@@ -20,7 +24,12 @@ import "../platform.css";
   iki kez sayılıyordu (20261014062145). Toplamlar platform_tahsilat_ozeti
   işlevinden; liste yalnızca gösterilen son elli satır.
 
-  FATURA: platformun kiracıya kestiği fatura bugün YOK. Aktivasyon,
+  FATURA (26.10.2026): fatura elle kesiliyor ve PDF'i her tahsilatın
+  yanından yükleniyor (platform_faturalari, migration 20261026191235);
+  müşteri ArvoLab'da görüyor. Aşağıdaki not, yükleme gelmeden önceki
+  durumu anlatıyor:
+
+  ESKİ: platformun kiracıya kestiği fatura bugün YOK. Aktivasyon,
   kiracının kendi fatura tablosuna (billing_invoices) "ödendi" satırı
   yazıyor — o kiracının kendi müşterilerine kestiği faturaların tablosu,
   Arvo'nun faturası değil. Bölüm bunu açıkça söylüyor; Paraşüt
@@ -30,7 +39,8 @@ import "../platform.css";
 
 const LISTE = 50;
 
-type Tahsilat = { anahtar: string; organizationId: string | null; kim: string; kanal: string; amount: number; currency: string; tarih: string | null };
+type Tahsilat = { anahtar: string; id: string; tur: "kurum" | "abone"; organizationId: string | null; kim: string; kanal: string; amount: number; currency: string; tarih: string | null };
+type Fatura = { no: string; tarih: string; url: string | null };
 
 const KANALLAR = [
   { kod: "", ad: "Tümü" },
@@ -88,12 +98,12 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
       .map((o) => {
         const k = kurumBilgisi.get(o.organization_id);
         return {
-          anahtar: `kurum-${o.id}`, organizationId: o.organization_id, kim: k?.display_name || k?.name || "Kurum",
+          anahtar: `kurum-${o.id}`, id: o.id, tur: "kurum" as const, organizationId: o.organization_id, kim: k?.display_name || k?.name || "Kurum",
           kanal: o.payment_method === "paytr" ? "Kart (PayTR)" : "Havale/EFT", amount: Number(o.amount), currency: o.currency, tarih: o.reviewed_at,
         };
       }),
     ...((aboneOdemeleri ?? []) as { id: string; amount: number; currency: string; paid_at: string | null }[])
-      .map((o) => ({ anahtar: `abone-${o.id}`, organizationId: null, kim: "Bireysel abone", kanal: "Kart", amount: Number(o.amount), currency: o.currency, tarih: o.paid_at })),
+      .map((o) => ({ anahtar: `abone-${o.id}`, id: o.id, tur: "abone" as const, organizationId: null, kim: "Bireysel abone", kanal: "Kart", amount: Number(o.amount), currency: o.currency, tarih: o.paid_at })),
   ].sort((a, b) => (b.tarih ?? "").localeCompare(a.tarih ?? "")).slice(0, LISTE);
   /* Kanal süzgeci gösterilen listede (son elli). Toplamlar süzgeçten
      bağımsız, bütün kayıtlardan (özet işlevi). */
@@ -101,6 +111,58 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
     secili === "havale" ? t.kanal === "Havale/EFT" : secili === "kart" ? t.kanal === "Kart (PayTR)" : secili === "bireysel" ? t.organizationId === null : true;
   const gorunen = tahsilatlar.filter(kanalinda);
   const kanalSayisi = (ad: string) => tahsilatlar.filter((t) => t.kanal === ad).length;
+
+  /*
+    Gösterilen tahsilatların faturaları ve kısa süreli bağlantıları. Tablo
+    ve depo istemciye kapalı; kurucu denetimi yukarıda yapıldı, okuma
+    service_role ile.
+  */
+  const admin = createAdminClient();
+  const faturaHaritasi = new Map<string, Fatura>();
+  let faturaListesi: (Fatura & { kim: string })[] = [];
+  if (admin) {
+    type FSatir = {
+      fatura_no: string; fatura_tarihi: string; dosya_yolu: string;
+      subscriber_payment_id?: string | null; payment_request_id?: string | null;
+      organization_payment_requests?: { organization_id: string } | { organization_id: string }[] | null;
+    };
+    const aboneIdleri = gorunen.filter((t) => t.tur === "abone").map((t) => t.id);
+    const kurumIdleri = gorunen.filter((t) => t.tur === "kurum").map((t) => t.id);
+    const bos = { data: [] as FSatir[], error: null };
+    const [aboneYaniti, kurumYaniti, sonYaniti] = await Promise.all([
+      aboneIdleri.length
+        ? admin.from("platform_faturalari").select("fatura_no,fatura_tarihi,dosya_yolu,subscriber_payment_id").in("subscriber_payment_id", aboneIdleri)
+        : bos,
+      kurumIdleri.length
+        ? admin.from("platform_faturalari").select("fatura_no,fatura_tarihi,dosya_yolu,payment_request_id").in("payment_request_id", kurumIdleri)
+        : bos,
+      secili === "fatura"
+        ? admin.from("platform_faturalari")
+            .select("fatura_no,fatura_tarihi,dosya_yolu,subscriber_payment_id,payment_request_id,organization_payment_requests(organization_id)")
+            .order("fatura_tarihi", { ascending: false }).limit(LISTE)
+        : bos,
+    ]);
+    const fHata = aboneYaniti.error ?? kurumYaniti.error ?? sonYaniti.error;
+    if (fHata) throw new Error("Faturalar okunamadı: " + fHata.message);
+    const tahsilatFaturalari = [...((aboneYaniti.data ?? []) as FSatir[]), ...((kurumYaniti.data ?? []) as FSatir[])];
+    const sonFaturalar = (sonYaniti.data ?? []) as FSatir[];
+    const yollar = [...new Set([...tahsilatFaturalari, ...sonFaturalar].map((f) => f.dosya_yolu))];
+    const { data: imzali, error: imzaHatasi } = yollar.length
+      ? await admin.storage.from("platform-faturalari").createSignedUrls(yollar, 900)
+      : { data: [] as { path: string | null; signedUrl: string }[], error: null };
+    // Bağlantı üretilemezse fatura numarası yine görünür, yalnızca dosya açılmaz; sayfa düşmesin.
+    if (imzaHatasi) console.error("[tahsilat] fatura bağlantısı üretilemedi", imzaHatasi.message);
+    const url = new Map((imzali ?? []).flatMap((i) => (i.path && i.signedUrl ? [[i.path, i.signedUrl] as const] : [])));
+    for (const f of tahsilatFaturalari) {
+      const anahtar = f.subscriber_payment_id ? `abone-${f.subscriber_payment_id}` : `kurum-${f.payment_request_id}`;
+      faturaHaritasi.set(anahtar, { no: f.fatura_no, tarih: f.fatura_tarihi, url: url.get(f.dosya_yolu) ?? null });
+    }
+    faturaListesi = sonFaturalar.map((f) => {
+      const istek = Array.isArray(f.organization_payment_requests) ? f.organization_payment_requests[0] : f.organization_payment_requests;
+      const kurum = istek ? kurumBilgisi.get(istek.organization_id) : null;
+      return { no: f.fatura_no, tarih: f.fatura_tarihi, url: url.get(f.dosya_yolu) ?? null, kim: kurum ? kurum.display_name || kurum.name : "Bireysel abone" };
+    });
+  }
 
   const bekleyenSatirlar = (bekleyenler ?? []) as { amount: number; currency: string }[];
   // tuzak-tamam: sınırsız sorgu (bekleyen havalelerin hepsi), toplam doğru.
@@ -159,12 +221,26 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
       {birimKarisik ? <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</KNot> : null}
 
       {secili === "fatura" ? (
-        /* Platform faturası bugün yok: çalışmayan özellik çalışıyormuş
-           gibi gösterilmiyor (dosya başındaki açıklama). */
-        <KBos
-          baslik="Platform faturası henüz kesilmiyor"
-          aciklama="Onaylanan her ödeme lisansı açıyor ama Arvo adına fatura oluşturmuyor; faturalar elle kesiliyor. Paraşüt entegrasyonu (e-fatura / e-arşiv) bağlanınca kesilen faturalar burada listelenecek."
-        />
+        /* Yüklenen platform faturaları (son elli). Fatura elle kesilip her
+           tahsilatın yanından yükleniyor; müşteri ArvoLab'da görüyor. */
+        faturaListesi.length ? (
+          <KListe>
+            {faturaListesi.map((f) => (
+              <KOge
+                key={`${f.no}-${f.tarih}`}
+                simge={f.kim}
+                baslik={`Fatura ${f.no}`}
+                alt={`${f.kim} · ${tarih(f.tarih)}`}
+                sonu={f.url ? <a className="panel-secondary" href={f.url} target="_blank" rel="noreferrer noopener">PDF</a> : null}
+              />
+            ))}
+          </KListe>
+        ) : (
+          <KBos
+            baslik="Henüz fatura yüklenmedi"
+            aciklama="Faturalar elle kesiliyor. Tahsilat listesinde ödemenin yanındaki “Fatura yükle” ile PDF'i ekleyin; müşteri ArvoLab'daki Faturalar ve ödemeler bölümünde görür."
+          />
+        )
       ) : gorunen.length ? (
         /* iOS listesi (14.10.2026): kim, kanal ve tarih tek satırda;
            sağda tutar. Eskiden dört sütunlu tabloydu. */
@@ -177,7 +253,27 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
               baslik={t.kim}
               alt={`${t.kanal} · ${tarih(t.tarih)}`}
               deger={para(t.amount, t.currency)}
+              sonu={
+                faturaHaritasi.get(t.anahtar) ? (
+                  <a className="panel-secondary" href={faturaHaritasi.get(t.anahtar)!.url ?? undefined} target="_blank" rel="noreferrer noopener">
+                    Fatura {faturaHaritasi.get(t.anahtar)!.no}
+                  </a>
+                ) : (
+                  <PanelModal triggerLabel="Fatura yükle" kicker="Platform faturası" title={`${t.kim} · ${para(t.amount, t.currency)}`}
+                    description="Kestiğiniz faturanın PDF'ini yükleyin; müşteri ArvoLab'daki Faturalar ve ödemeler bölümünde görür." basaridaKapan>
+                    <form className="panel-form kayit-formu" action={faturaYukle}>
+                      <input type="hidden" name="tur" value={t.tur} />
+                      <input type="hidden" name="odeme_id" value={t.id} />
+                      <label><span>Fatura numarası<b className="req" aria-hidden="true">*</b></span><input name="fatura_no" maxLength={60} required autoComplete="off" /></label>
+                      <label><span>Fatura tarihi<b className="req" aria-hidden="true">*</b></span><input name="fatura_tarihi" type="date" required /></label>
+                      <label className="wide"><span>Fatura PDF<b className="req" aria-hidden="true">*</b></span><input name="dosya" type="file" accept="application/pdf" required /></label>
+                      <div className="wide panel-form-actions kayit-formu-eylem"><p>Yeniden yüklemek bu ödemenin faturasını değiştirir.</p><button className="panel-primary" type="submit">Faturayı yükle</button></div>
+                    </form>
+                  </PanelModal>
+                )
+              }
             />
+
           ))}
         </KListe>
       ) : (

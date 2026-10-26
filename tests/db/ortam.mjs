@@ -64,6 +64,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   // Döküm 24.10.2026'da yenilendi; sonrası burada. Migration canlıya
   // uygulanıp döküm yenilenince listeden çıkar (iki kez uygulanmasın).
   "20261026183021_bireysel_ai_kredisi.sql",
+  "20261026191235_platform_faturalari.sql",
 ];
 
 /*

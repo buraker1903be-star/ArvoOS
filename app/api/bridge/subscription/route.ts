@@ -12,6 +12,7 @@ import { kurumLisansiAcik } from "@/lib/kurum-lisansi-erisim";
 import { KREDI_PAKETLERI } from "@/lib/ai-kredi-paketleri";
 import { createBireyselKrediCheckout } from "@/lib/ai-kredi-checkout";
 import { CheckoutError } from "@/lib/license-checkout";
+import { aboneFaturalamasi, kurumFaturalamasi } from "@/lib/faturalama-koprusu";
 
 // Ürünler için abonelik köprüsü (ArvoLab, ileride ArvoARC).
 //
@@ -74,7 +75,7 @@ const state = (subscriber: SubscriberRow, monthlyFee: number | null, product: st
 export async function POST(request: Request) {
   if (!authorized(request)) return json(401, { error: "unauthorized" });
 
-  let body: { product?: string; action?: string; userId?: string; email?: string; fullName?: string; paket?: string };
+  let body: { product?: string; action?: string; userId?: string; email?: string; fullName?: string; paket?: string; organizationId?: string };
   try {
     body = await request.json();
   } catch {
@@ -86,8 +87,28 @@ export async function POST(request: Request) {
   const userId = String(body.userId ?? "").trim();
   const email = String(body.email ?? "").trim().toLowerCase();
   if (!isSubscriberProduct(product)) return json(400, { error: "invalid_product" });
+
+  /*
+    org_billing (26.10.2026): kurumun bu üründeki ödemeleri ve faturaları,
+    ArvoLab'daki kurum yöneticisine. Abone kaydına dokunmuyor (kurum abone
+    değil). Yetki ArvoLab'da: çağıran kullanıcının o kurumun yöneticisi
+    olduğunu ArvoLab doğruluyor; burası paylaşılan anahtarla korunuyor.
+  */
+  if (action === "org_billing") {
+    const organizationId = String(body.organizationId ?? "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(organizationId)) return json(400, { error: "missing_organization" });
+    const yonetici = createAdminClient();
+    if (!yonetici) return json(503, { error: "unavailable" });
+    try {
+      return json(200, await kurumFaturalamasi(yonetici, organizationId, product));
+    } catch (error) {
+      console.error("[bridge] kurum faturalaması okunamadı", error instanceof Error ? error.message : error);
+      return json(503, { error: "unavailable" });
+    }
+  }
+
   if (!userId || !email) return json(400, { error: "missing_user" });
-  if (!["ensure", "checkout", "close", "credit_checkout"].includes(action)) return json(400, { error: "invalid_action" });
+  if (!["ensure", "checkout", "close", "credit_checkout", "billing"].includes(action)) return json(400, { error: "invalid_action" });
   // Kredi yalnızca ArvoLab'da harcanıyor; başka ürüne satmak anlamsız.
   if (action === "credit_checkout" && product !== "arvolab") return json(400, { error: "invalid_action" });
 
@@ -117,6 +138,8 @@ export async function POST(request: Request) {
       404 dönseydi ArvoLab'ın silme cron'u takılır, hesap silinmeden kalırdı.
     */
     if (action === "close") return json(200, { closed: true, alreadyAbsent: true });
+    // Faturalama okuması abone yaratmaz: kaydı yoksa ödemesi de yok.
+    if (action === "billing") return json(200, { odemeler: [], toplamOdenen: 0, bekleyenTutar: 0 });
     if (action !== "ensure") return json(404, { error: "subscriber_not_found" });
     // İlk giriş: deneme süresi tanımlıysa denemeyle başlar, değilse kapalı.
     const trialDays = plan?.trial_days ?? 0;
@@ -181,6 +204,19 @@ export async function POST(request: Request) {
     sunmuyor). Kendi adına ödeme bağlantısı da üretilmez: kurum zaten
     ödüyor, kişinin ikinci kez ödemesi çift tahsilat olurdu.
   */
+  /*
+    billing: abonenin kendi kart ödemeleri ve faturaları. Kuruma geçmiş
+    abonenin de geçmiş ödemeleri kendisinin; gösteriliyor.
+  */
+  if (action === "billing") {
+    try {
+      return json(200, await aboneFaturalamasi(admin, subscriber.id));
+    } catch (error) {
+      console.error("[bridge] abone faturalaması okunamadı", error instanceof Error ? error.message : error);
+      return json(503, { error: "unavailable" });
+    }
+  }
+
   if (subscriber.kurum_id) {
     // Kurumun kredisini de kurum yöneticisi alır: kişinin ödemesi çift tahsilat olurdu.
     if (action === "checkout" || action === "credit_checkout") return json(409, { error: "organization_license" });
