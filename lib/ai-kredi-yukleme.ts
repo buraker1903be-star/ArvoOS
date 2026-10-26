@@ -32,18 +32,28 @@
   oradan geliyor.
 */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { arvolabKrediYukle } from "./arvolab";
+import { arvolabBireyselKrediYukle, arvolabKrediYukle } from "./arvolab";
 
 export type BekleyenKredi = {
   siparisId: string;
-  organizationId: string;
+  /** Kurum siparişinde dolu; bireysel abonede null. */
+  organizationId: string | null;
+  /** Bireysel abonenin ArvoLab kullanıcı kimliği; kurum siparişinde null. */
+  aboneKullaniciId: string | null;
   kredi: number;
   /** Ödemenin kimliği; yeniden denemenin tekilleştirme anahtarı. */
   merchantOid: string;
   odendiAt: string;
 };
 
-export type KrediSiparisi = { id: string; organization_id: string; kredi: number; payment_link_id: string };
+export type KrediSiparisi = {
+  id: string;
+  organization_id: string | null;
+  kredi: number;
+  payment_link_id: string;
+  /** Bireysel siparişte abonenin ArvoLab kullanıcı kimliği (product_subscribers.external_user_id). */
+  abone_kullanici_id?: string | null;
+};
 export type KrediOdemesi = { payment_link_id: string; merchant_oid: string; received_at: string };
 
 /*
@@ -69,7 +79,16 @@ export function krediEslestir(siparisler: KrediSiparisi[], olaylar: KrediOdemesi
   return siparisler
     .flatMap((s) => {
       const o = odeme.get(s.payment_link_id);
-      return o ? [{ siparisId: s.id, organizationId: s.organization_id, kredi: Number(s.kredi), merchantOid: o.merchantOid, odendiAt: o.receivedAt }] : [];
+      return o
+        ? [{
+            siparisId: s.id,
+            organizationId: s.organization_id,
+            aboneKullaniciId: s.abone_kullanici_id ?? null,
+            kredi: Number(s.kredi),
+            merchantOid: o.merchantOid,
+            odendiAt: o.receivedAt,
+          }]
+        : [];
     })
     .sort((a, b) => a.odendiAt.localeCompare(b.odendiAt));
 }
@@ -86,10 +105,22 @@ export async function bekleyenKrediler(admin: SupabaseClient): Promise<BekleyenK
      müşterinin kredisini sessizce dışarıda bırakırdı. */
   const { data: siparisler, error } = await admin
     .from("ai_credit_orders")
-    .select("id,organization_id,kredi,payment_link_id")
+    .select("id,organization_id,kredi,payment_link_id,product_subscribers(external_user_id)")
     .is("loaded_at", null);
   if (error) throw new Error("Kredi siparişleri okunamadı: " + error.message);
-  const satirlar = (siparisler ?? []) as KrediSiparisi[];
+  /* Bireysel siparişte yükleme ArvoLab kullanıcı kimliğiyle yapılıyor;
+     abone kaydından tek sorguda geliyor. */
+  const satirlar: KrediSiparisi[] = (siparisler ?? []).map((s) => {
+    const abone = (s as { product_subscribers?: { external_user_id?: string } | { external_user_id?: string }[] | null }).product_subscribers;
+    const ilk = Array.isArray(abone) ? abone[0] : abone;
+    return {
+      id: s.id as string,
+      organization_id: (s.organization_id as string | null) ?? null,
+      kredi: Number(s.kredi),
+      payment_link_id: s.payment_link_id as string,
+      abone_kullanici_id: ilk?.external_user_id ?? null,
+    };
+  });
   if (!satirlar.length) return [];
 
   const { data: olaylar, error: olayHatasi } = await admin
@@ -122,7 +153,11 @@ export async function bekleyenKredileriYukle(admin: SupabaseClient): Promise<Yuk
   let yuklenen = 0;
 
   for (const kayit of bekleyen) {
-    const sonuc = await arvolabKrediYukle(kayit.organizationId, kayit.kredi, kayit.merchantOid);
+    const sonuc = kayit.organizationId
+      ? await arvolabKrediYukle(kayit.organizationId, kayit.kredi, kayit.merchantOid)
+      : kayit.aboneKullaniciId
+        ? await arvolabBireyselKrediYukle(kayit.aboneKullaniciId, kayit.kredi, kayit.merchantOid)
+        : "failed";
     if (sonuc !== "loaded") { kalanlar.push(kayit); continue; }
     const { error } = await admin.from("ai_credit_orders")
       .update({ loaded_at: new Date().toISOString() }).eq("id", kayit.siparisId);

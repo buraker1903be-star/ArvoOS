@@ -496,9 +496,11 @@ export default async function SistemSagligiPage() {
       ) : krediSonucu.veri.length ? (
         <KListe>
           {krediSonucu.veri.map((kayit) => (
-            <KOge key={kayit.siparisId} simge={kurumAdi.get(kayit.organizationId) ?? kayit.organizationId}
-              href={`/panel/platform/musteriler/${kayit.organizationId}?pencere=odemeler`}
-              baslik={kurumAdi.get(kayit.organizationId) ?? kayit.organizationId}
+            /* Bireysel abonenin siparişinde kurum yok: tahsilat ekranına gidiyor. */
+            <KOge key={kayit.siparisId}
+              simge={kayit.organizationId ? kurumAdi.get(kayit.organizationId) ?? kayit.organizationId : "Bireysel"}
+              href={kayit.organizationId ? `/panel/platform/musteriler/${kayit.organizationId}?pencere=odemeler` : "/panel/platform/tahsilat"}
+              baslik={kayit.organizationId ? kurumAdi.get(kayit.organizationId) ?? kayit.organizationId : `Bireysel abone · ${kayit.aboneKullaniciId ?? "kimlik yok"}`}
               alt={`Ödeme ${tarihSaat(kayit.odendiAt)} · ${kayit.merchantOid}`}
               durum={{ etiket: "Yüklenemedi", ton: "danger" }}
               deger={`${sayi(kayit.kredi)} kredi`} degerAlt="ödendi" />

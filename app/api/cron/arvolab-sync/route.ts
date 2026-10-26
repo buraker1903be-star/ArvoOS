@@ -91,7 +91,7 @@ async function kosu(): Promise<CronKosusu> {
       metin: `${kayit.kredi} kredi ödendi ama ArvoLab'a yüklenemedi. Müşteri parasını ödediği hâlde asistanda durdurulur. `
         + "ArvoLab köprüsü düzelince kendiliğinden yüklenir; düzelmiyorsa Sistem Sağlığı'na bakın.",
       adres: "/panel/platform/saglik",
-      ek: { siparis: kayit.siparisId, kurum: kayit.organizationId, kredi: kayit.kredi, odeme: kayit.merchantOid },
+      ek: { siparis: kayit.siparisId, kurum: kayit.organizationId, abone: kayit.aboneKullaniciId, kredi: kayit.kredi, odeme: kayit.merchantOid },
     });
   }
 
