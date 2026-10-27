@@ -201,6 +201,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   /* Ek hizmeti taksitlere dağıtma penceresi için: taksiti olan her plan.
      Plan sözleşme tutarının tamamı ödenmiş olsa da listede (ters işlem
      için gerekebilir); açık taksit yoksa önizleme bunu söylüyor. */
+  const dagitilmamisEkHizmetler = entries.filter((e) => e.entry_type === "debit" && e.source_type === "manual" && e.description.startsWith("Ek hizmet ·") && !e.payment_plan_id);
   const dagitimPlanlari = [...planlar.entries()]
     .filter(([planId]) => taksitler.some((t) => t.payment_plan_id === planId))
     .map(([planId, sozlesme]) => ({ planId, ad: sozlesme.contract_no, toplam: planToplami.get(planId) ?? Number(sozlesme.amount), taksitler: planTaksitleri(planId) }));
@@ -431,7 +432,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                         hareketDuzeltir ? <p className="fin-form-note">Bu hareket bir sözleşmeye, PayTR ödemesine ya da finans kaydına bağlı; buradan değiştirilemez.</p> : null
                       )}
                       {/* Müşteri ek hizmetin bedelini taksitlere yaymak isteyebiliyor (26.10.2026). */}
-                      {elleTur === "ek-hizmet" && vadeDegistirir && dagitimPlanlari.length ? (
+                      {kind.label === "Ek Hizmet" && e.source_type === "manual" && vadeDegistirir && dagitimPlanlari.length ? (
                         <div className="talep-not">
                           <h3>{e.payment_plan_id ? "Sözleşme taksitlerinde" : "Sözleşme taksitlerine dağıt"}</h3>
                           <EkHizmetTaksitFormu
@@ -501,6 +502,33 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       description={`Sözleşme ${money(Number(p.sozlesme.amount))}${p.ekHizmet > 0 ? ` + ek hizmet ${money(p.ekHizmet)}` : ""} · ödenen ${money(p.odenen)} · kalan ${money(p.kalan)}`}
                     >
                       <TaksitPlaniFormu planId={p.planId} taksitler={planTaksitleri(p.planId)} toplam={p.toplam} ilkVade={p.ilkVade} acikAdet={p.acikAdet} eylem={taksitSecenegiDegistir} />
+                    </PanelDrawer>
+                  ))}
+                </div>
+              ) : null}
+              {/*
+                TAKSİTLERE DAĞITILMAMIŞ EK HİZMET (27.10.2026). Dağıtma
+                düğmesi önce yalnızca hareketin Ayrıntı penceresinin en
+                altındaydı; kurum onu bulamadı ve son taksiti elle
+                artırmaya çalıştı — plan sözleşme tutarına kilitli olduğu
+                için "toplamı aşıyor" hatası aldı. Takvimde dağıtılmamış
+                ek hizmet varsa bunu burada söylüyoruz.
+              */}
+              {vadeDegistirir && dagitimPlanlari.length && dagitilmamisEkHizmetler.length ? (
+                <div className="cari-plan-eylem">
+                  <p className="fin-form-note">
+                    {money(dagitilmamisEkHizmetler.reduce((t, e) => t + Number(e.amount), 0))} ek hizmet ödeme takviminde yok; taksitler açık bakiyeyi karşılamıyor.
+                  </p>
+                  {dagitilmamisEkHizmetler.map((e) => (
+                    <PanelDrawer
+                      key={e.id}
+                      triggerLabel={dagitilmamisEkHizmetler.length > 1 ? `${money(Number(e.amount))} ek hizmeti taksitlere dağıt` : "Ek hizmeti taksitlere dağıt"}
+                      triggerClassName="panel-primary cari-taksit-btn"
+                      kicker="EK HİZMET"
+                      title="Ek hizmeti taksitlere dağıt"
+                      description={`${e.description.replace(/^Ek hizmet · /, "")} · ${money(Number(e.amount))}`}
+                    >
+                      <EkHizmetTaksitFormu entryId={e.id} tutar={Number(e.amount)} planlar={dagitimPlanlari} bagliPlanId={null} eylem={ekHizmetiTaksitlereDagit} />
                     </PanelDrawer>
                   ))}
                 </div>

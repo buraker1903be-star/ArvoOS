@@ -173,8 +173,8 @@ export function EkHizmetTaksitFormu({ entryId, tutar, planlar, bagliPlanId, eyle
       ) : <input type="hidden" name="plan_id" value={planId} />}
       <p className="wide kayit-formu-not">
         {bagliPlanId
-          ? `${para(tutar)} ödenmemiş taksitlerden eşit düşülür; ödenmiş kısımlar olduğu gibi kalır. Sonra ek hizmetin tutarı düzeltilebilir ya da silinebilir.`
-          : `${para(tutar)} ${secili.ad} için ödenmemiş taksitlere eşit dağıtılır, artan kuruş baştaki taksitlere eklenir. Ödenmiş taksitler ve vadeler değişmez.`}
+          ? `${para(tutar)} çıkarılır, kalan ödenmemiş tutar açık taksitlere yeniden eşit bölünür; ödenmiş kısımlar olduğu gibi kalır. Sonra ek hizmetin tutarı düzeltilebilir ya da silinebilir.`
+          : `${para(tutar)} eklenir ve ${secili.ad} için ödenmemiş toplam açık taksitlere eşit bölünür (artan kuruş baştakilere). Ödenmiş taksitler ve vadeler değişmez.`}
       </p>
       <PlanOnizleme satirlar={"hata" in sonuc ? [] : sonuc} eski={eski} toplam={secili.toplam + fark} hata={"hata" in sonuc ? sonuc.hata : null} />
       <div className="wide panel-form-actions kayit-formu-eylem">

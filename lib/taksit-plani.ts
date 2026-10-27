@@ -70,7 +70,7 @@ export function tutarDegistir(plan: PlanTaksidi[], hedefNo: number, yeniTutar: n
       fark += dus;
     }
   }
-  if (fark < 0) return { hata: "Bu tutar, sonraki taksitlerin toplamını aşıyor; plan sözleşme tutarını geçemez." };
+  if (fark < 0) return { hata: "Bu tutar, sonraki taksitlerin toplamını aşıyor; plan sözleşme tutarını geçemez. Ek hizmet eklenecekse Ödeme takvimindeki \"Ek hizmeti taksitlere dağıt\" düğmesini kullanın." };
   if (fark > 0) sirali.push({ no: sirali.length + 1, vade: ayEkle(sirali[sirali.length - 1].vade, 1), tutar: fark });
   // Sıfıra inen taksit plandan çıkar; tamamı sıfırsa (sözleşme 0) en az bir taksit kalır.
   const dolu = sirali.filter((t) => t.tutar > 0);
@@ -155,22 +155,29 @@ export function yenidenBol(
 }
 
 /*
-  EK HİZMETİ AÇIK TAKSİTLERE DAĞITMA (26.10.2026).
+  EK HİZMETİ AÇIK TAKSİTLERE DAĞITMA (26–27.10.2026).
 
-  Müşteri ek hizmet aldığında "kalan taksitlere eşit dağıtın" diyebiliyor
-  (SOZ-2026-000059: 7.000 TL ek hizmet, ödenmemiş iki taksit → her birine
-  3.500 TL). Eskiden bunun yolu yoktu: plan sözleşme tutarına kilitliydi,
-  ek hizmet takvimin dışında kalıyordu.
+  Müşteri ek hizmet aldığında "taksitlere eşit dağıtın" diyebiliyor.
+  Eskiden bunun yolu yoktu: plan sözleşme tutarına kilitliydi, ek hizmet
+  takvimin dışında kalıyordu.
+
+  "EŞİT" = AÇIK TAKSİTLER EŞİTLENİR. İlk sürüm (26.10.2026) ek hizmeti
+  açık taksitlere eşit PAY olarak ekliyordu: SOZ-2026-000059'da
+  9.833,50 + 2.833,50 taksitlere 7.000 eklenince 13.333,50 + 6.333,50
+  çıkıyordu. Kurumun istediği bu değildi (27.10.2026): açık bakiye
+  (19.667) kalan taksitlere eşit bölünsün — 9.833,50 + 9.833,50. Yani
+  ödenmemiş toplam (eski ödenmemişler + ek hizmet) açık taksitlere
+  yeniden eşit bölünüyor.
 
   AÇIK TAKSİT: ödenen kısmı tutarından küçük olan (kısmen ödenmiş dahil).
-  Ödenmiş taksite dokunulmaz — kapanmış bir taksitin yeniden açılması
-  müşteriye "borcunuz var" demek olur. Vadeler değişmez; yalnızca
-  tutarlar. Artan kuruş BAŞTAKİ taksitlere (yenidenBol ile aynı kural).
+  Kısmen ödenmiş taksitin yeni tutarı = ödenen + eşit pay. Ödenmiş
+  taksite dokunulmaz — kapanmış bir taksitin yeniden açılması müşteriye
+  "borcunuz var" demek olur. Vadeler değişmez. Artan kuruş BAŞTAKİ
+  taksitlere (yenidenBol ile aynı kural).
 
-  NEGATİF tutar ters işlemdir (ek hizmet taksitlerden çıkarılıyor): yine
-  eşit düşülür, ama hiçbir taksit ödenen kısmının altına inemez; inen
-  taksitin payı ötekilere kayar. Sıfıra inen (ödemesi olmayan) taksit
-  plandan çıkar, tutarDegistir'deki gibi.
+  NEGATİF tutar ters işlemdir (ek hizmet taksitlerden çıkarılıyor):
+  kalan ödenmemiş toplam yine açık taksitlere eşit bölünür. Sıfıra inen
+  (ödemesi olmayan) taksit plandan çıkar, tutarDegistir'deki gibi.
 */
 export function ekHizmetiDagit(
   plan: (PlanTaksidi & { odenen: number })[],
@@ -178,31 +185,15 @@ export function ekHizmetiDagit(
 ): PlanTaksidi[] | { hata: string } {
   const fark = Math.round(tutar);
   if (!Number.isFinite(fark) || fark === 0) return { hata: "Ek hizmet tutarı geçersiz." };
-  const sirali = [...plan].sort((a, b) => a.no - b.no).map((t) => ({ ...t, odenen: Math.max(0, Math.round(t.odenen)) }));
+  const sirali = [...plan].sort((a, b) => a.no - b.no).map((t) => ({ ...t, odenen: Math.min(t.tutar, Math.max(0, Math.round(t.odenen))) }));
   const acik = sirali.filter((t) => t.odenen < t.tutar);
   if (!acik.length) return { hata: "Ödenmemiş taksit yok; ek hizmet dağıtılacak bir taksit kalmamış." };
 
-  if (fark > 0) {
-    const taban = Math.floor(fark / acik.length);
-    const artan = fark - taban * acik.length;
-    acik.forEach((t, i) => { t.tutar += taban + (i < artan ? 1 : 0); });
-    return numarala(sirali);
-  }
-
-  // Ters işlem: her açık taksit en fazla ödenmemiş kısmı kadar azalır.
-  let kalan = -fark;
-  let adaylar = acik;
-  while (kalan > 0 && adaylar.length) {
-    const taban = Math.floor(kalan / adaylar.length);
-    const artan = kalan - taban * adaylar.length;
-    adaylar.forEach((t, i) => {
-      const dus = Math.min(t.tutar - t.odenen, taban + (i < artan ? 1 : 0));
-      t.tutar -= dus;
-      kalan -= dus;
-    });
-    adaylar = adaylar.filter((t) => t.tutar > t.odenen);
-  }
-  if (kalan > 0) return { hata: "Ek hizmetin tutarı ödenmemiş taksitlerin toplamından büyük; taksitlerden çıkarılamaz." };
+  const odenmemis = acik.reduce((s, t) => s + t.tutar - t.odenen, 0) + fark;
+  if (odenmemis < 0) return { hata: "Ek hizmetin tutarı ödenmemiş taksitlerin toplamından büyük; taksitlerden çıkarılamaz." };
+  const taban = Math.floor(odenmemis / acik.length);
+  const artan = odenmemis - taban * acik.length;
+  acik.forEach((t, i) => { t.tutar = t.odenen + taban + (i < artan ? 1 : 0); });
   const dolu = sirali.filter((t) => t.tutar > 0);
   return numarala(dolu.length ? dolu : sirali.slice(0, 1));
 }
