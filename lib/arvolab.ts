@@ -158,6 +158,21 @@ async function pushArvolabMembers(organizationId: string, lisansAcik: boolean) {
     .map((satir) => [satir.id, satir.full_name!.trim()]));
 
   /*
+    Profilinde adı olmayan kişide İK personel kaydındaki ad. Personeli
+    panelde kurum yöneticisi açıyor ve adı oraya yazıyor; kişinin kendi
+    profili çoğu zaman boş kalıyor. Eskiden yalnızca profil okunuyordu ve
+    böyle biri ArvoLab'da "İsimsiz personel" görünüyordu (27.10.2026,
+    AkademikMerkez). Profil önce geliyor: kişinin kendi yazdığı ad,
+    başkasının girdiği kayıttan önce gelir.
+  */
+  const { data: personel } = await admin.from("hr_employees")
+    .select("user_id,full_name").eq("organization_id", organizationId).in("user_id", kimlikler);
+  for (const satir of (personel ?? []) as { user_id: string | null; full_name: string | null }[]) {
+    const ad = satir.full_name?.trim();
+    if (satir.user_id && ad && !adlar.has(satir.user_id)) adlar.set(satir.user_id, ad);
+  }
+
+  /*
     E-postalar auth.users'ta; REST ile sorgulanamıyor, tek tek yönetim
     API'siyle okunuyor. Bir kurumun üye sayısı onlarla ölçüldüğü için
     kabul edilebilir — bütün kullanıcıları sayfalamaktan ucuz.
