@@ -127,24 +127,30 @@ export async function getArvolabBridgeHealth(): Promise<ArvolabBridgeHealth | nu
  * kendini kuruma bağlayamamalı. Bağlanmış olanlar bağlı kalıyor; lisans
  * kapısı ArvoLab'ın kendi tarafında zaten çalışıyor.
  */
-async function pushArvolabMembers(organizationId: string, lisansAcik: boolean) {
+async function pushArvolabMembers(organizationId: string, lisansAcik: boolean): Promise<boolean> {
   const lab = arvolabClient();
   const admin = createAdminClient();
-  if (!lab || !admin) return;
+  if (!lab || !admin) return false;
 
-  // Eski liste her seferinde siliniyor: kurumdan çıkarılan kişi listede
-  // kalırsa, ArvoLab'a ilk kez girdiğinde hâlâ o kuruma bağlanırdı.
-  const { error: silmeHatasi } = await lab.from("arvoos_members").delete().eq("organization_id", organizationId);
-  if (silmeHatasi) {
-    console.error("[arvolab] üye listesi temizlenemedi", organizationId, silmeHatasi.message);
-    return;
+  if (!lisansAcik) {
+    const { error } = await lab.from("arvoos_members").delete().eq("organization_id", organizationId);
+    if (error) console.error("[arvolab] üye listesi temizlenemedi", organizationId, error.message);
+    return !error;
   }
-  if (!lisansAcik) return;
 
-  const { data: uyelikler } = await admin.from("organization_memberships")
+  /*
+    Üyelik okunamazsa liste OLDUĞU GİBİ kalıyor. Eskiden önce liste
+    siliniyor, sonra üyelik okunuyordu ve okuma düştüğünde (data null)
+    "üye yok" sayılıp liste boş kalıyordu: kurumun yeni personeli
+    ArvoLab'da kuruma bağlanamıyordu. Okunamamak "üye yok" demek değil.
+  */
+  const { data: uyelikler, error: uyelikHatasi } = await admin.from("organization_memberships")
     .select("user_id").eq("organization_id", organizationId).eq("is_active", true);
+  if (uyelikHatasi) {
+    console.error("[arvolab] üyelik okunamadı", organizationId, uyelikHatasi.message);
+    return false;
+  }
   const kimlikler = (uyelikler ?? []).map((satir) => satir.user_id as string);
-  if (!kimlikler.length) return;
 
   /*
     Ad da gönderiliyor. ArvoLab'a ArvoOS üzerinden bağlanan kişi oranın
@@ -152,53 +158,83 @@ async function pushArvolabMembers(organizationId: string, lisansAcik: boolean) {
     panel "Hoş geldiniz, uzman@akademikmerkez.com" yazıyordu. Adın asıl
     kaynağı profiles (konsolun geri kalanı da oradan okuyor).
   */
-  const { data: profiller } = await admin.from("profiles").select("id,full_name").in("id", kimlikler);
-  const adlar = new Map(((profiller ?? []) as { id: string; full_name: string | null }[])
-    .filter((satir) => satir.full_name?.trim())
-    .map((satir) => [satir.id, satir.full_name!.trim()]));
+  const adlar = new Map<string, string>();
+  if (kimlikler.length) {
+    const { data: profiller } = await admin.from("profiles").select("id,full_name").in("id", kimlikler);
+    for (const satir of (profiller ?? []) as { id: string; full_name: string | null }[]) {
+      const ad = satir.full_name?.trim();
+      if (ad) adlar.set(satir.id, ad);
+    }
 
-  /*
-    Profilinde adı olmayan kişide İK personel kaydındaki ad. Personeli
-    panelde kurum yöneticisi açıyor ve adı oraya yazıyor; kişinin kendi
-    profili çoğu zaman boş kalıyor. Eskiden yalnızca profil okunuyordu ve
-    böyle biri ArvoLab'da "İsimsiz personel" görünüyordu (27.10.2026,
-    AkademikMerkez). Profil önce geliyor: kişinin kendi yazdığı ad,
-    başkasının girdiği kayıttan önce gelir.
-  */
-  const { data: personel } = await admin.from("hr_employees")
-    .select("user_id,full_name").eq("organization_id", organizationId).in("user_id", kimlikler);
-  for (const satir of (personel ?? []) as { user_id: string | null; full_name: string | null }[]) {
-    const ad = satir.full_name?.trim();
-    if (satir.user_id && ad && !adlar.has(satir.user_id)) adlar.set(satir.user_id, ad);
+    /*
+      Profilinde adı olmayan kişide İK personel kaydındaki ad. Personeli
+      panelde kurum yöneticisi açıyor ve adı oraya yazıyor; kişinin kendi
+      profili çoğu zaman boş kalıyor. Eskiden yalnızca profil okunuyordu ve
+      böyle biri ArvoLab'da "İsimsiz personel" görünüyordu (27.10.2026,
+      AkademikMerkez). Profil önce geliyor: kişinin kendi yazdığı ad,
+      başkasının girdiği kayıttan önce gelir.
+    */
+    const { data: personel } = await admin.from("hr_employees")
+      .select("user_id,full_name").eq("organization_id", organizationId).in("user_id", kimlikler);
+    for (const satir of (personel ?? []) as { user_id: string | null; full_name: string | null }[]) {
+      const ad = satir.full_name?.trim();
+      if (satir.user_id && ad && !adlar.has(satir.user_id)) adlar.set(satir.user_id, ad);
+    }
   }
 
   /*
     E-postalar auth.users'ta; REST ile sorgulanamıyor, tek tek yönetim
     API'siyle okunuyor. Bir kurumun üye sayısı onlarla ölçüldüğü için
     kabul edilebilir — bütün kullanıcıları sayfalamaktan ucuz.
+
+    Okunamayan bir kişi varsa eski satırlar SİLİNMİYOR: o kişinin satırı
+    "kurumdan çıkmış" sanılıp düşürülürdü.
   */
   const uyeler: { email: string; full_name: string | null }[] = [];
+  let eksik = false;
   for (const kimlik of kimlikler) {
     const { data, error } = await admin.auth.admin.getUserById(kimlik);
-    if (error || !data.user?.email) continue;
+    if (error) { eksik = true; continue; }
+    if (!data.user?.email) continue;
     const ustVeri = (data.user.user_metadata ?? {}) as { full_name?: string; name?: string };
     uyeler.push({
       email: data.user.email.trim().toLocaleLowerCase("tr-TR"),
       full_name: adlar.get(kimlik) ?? ustVeri.full_name ?? ustVeri.name ?? null,
     });
   }
-  if (!uyeler.length) return;
 
-  const { error } = await lab.from("arvoos_members").upsert(
-    uyeler.map((uye) => ({
-      email: uye.email,
-      full_name: uye.full_name,
-      organization_id: organizationId,
-      synced_at: new Date().toISOString(),
-    })),
-    { onConflict: "email" },
-  );
-  if (error) console.error("[arvolab] üye listesi yazılamadı", organizationId, error.message);
+  /*
+    ÖNCE YAZ, SONRA ESKİYİ SİL. Eskiden liste önce bütünüyle siliniyor,
+    sonra yeniden yazılıyordu; arada ArvoLab'a giren personel listede
+    kendini bulamıyor ve kurumsuz kalıyordu. Liste artık on dakikada bir
+    tazelendiği için o boşluk her turda açılırdı. Bu turda yazılmayan
+    satır (damgası eski olan) kurumdan çıkmış kişidir.
+  */
+  const damga = new Date().toISOString();
+  if (uyeler.length) {
+    const { error } = await lab.from("arvoos_members").upsert(
+      uyeler.map((uye) => ({
+        email: uye.email,
+        full_name: uye.full_name,
+        organization_id: organizationId,
+        synced_at: damga,
+      })),
+      { onConflict: "email" },
+    );
+    if (error) {
+      console.error("[arvolab] üye listesi yazılamadı", organizationId, error.message);
+      return false;
+    }
+  }
+  if (eksik) return false;
+
+  const { error: silmeHatasi } = await lab.from("arvoos_members").delete()
+    .eq("organization_id", organizationId).lt("synced_at", damga);
+  if (silmeHatasi) {
+    console.error("[arvolab] eski üyeler temizlenemedi", organizationId, silmeHatasi.message);
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -249,8 +285,14 @@ const ACIK_LISANSLAR = new Set(["active", "trialing", "past_due"]);
 export async function syncArvolabMembers(organizationId: string) {
   const admin = createAdminClient();
   if (!admin) return;
-  const { data: license } = await admin.from("organization_product_licenses")
+  const { data: license, error } = await admin.from("organization_product_licenses")
     .select("status").eq("organization_id", organizationId).eq("product", "arvolab").maybeSingle();
+  // Lisans okunamazsa "kapalı" sayıp listeyi silmek, geçici bir arızada
+  // kurumun bütün personelini ArvoLab'da kurumsuz bırakırdı.
+  if (error) {
+    console.error("[arvolab] lisans okunamadı", organizationId, error.message);
+    return;
+  }
   await pushArvolabMembers(organizationId, ACIK_LISANSLAR.has(license?.status ?? "inactive"));
 }
 
@@ -510,10 +552,29 @@ export async function arvolabLisanslariniEsitle(): Promise<{
   const sapanlar = eskiKopyalar((data ?? []) as KonsolUrunu[], { arvolab: kopyalar });
   const hatalar: string[] = [];
   let duzeltilen = 0;
+  const tazelenen = new Set<string>();
   for (const sapma of sapanlar) {
     const sonuc = await syncArvolabLicense(sapma.organizationId);
+    tazelenen.add(sapma.organizationId);
     if (sonuc === "synced") duzeltilen += 1;
     else hatalar.push(`${sapma.organizationId}: ${sonuc}`);
+  }
+
+  /*
+    ÜYE LİSTESİ DE HER TURDA. Eskiden bu eşitleme yalnızca LİSANSI
+    düzeltiyordu; üye listesi yalnızca birkaç panel işleminden (İK ekip
+    işlemleri, yetkilendirme, platform üyeleri) sonra itiliyordu. Kişi
+    kuruma başka bir yoldan eklendiğinde ArvoLab hiç haberdar olmuyordu:
+    27.10.2026'da AkademikMerkez'in personeli Berkcan Ağca bu yüzden
+    ArvoLab'da kurumsuz ve adsız kaldı. Sapma yakalamak gibi bir kısayol
+    yok — üyeliğin kopyasını karşılaştırmak, yeniden yazmak kadar sürüyor.
+  */
+  const acik = ((data ?? []) as KonsolUrunu[])
+    .filter((satir) => ACIK_LISANSLAR.has(satir.status) && !tazelenen.has(satir.organization_id));
+  for (const satir of acik) {
+    if (!(await pushArvolabMembers(satir.organization_id, true))) {
+      hatalar.push(`${satir.organization_id}: üye listesi`);
+    }
   }
   return {
     durum: hatalar.length ? "kismi" : "tamam",
