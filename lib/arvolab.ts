@@ -328,6 +328,34 @@ export async function arvolabKrediYukle(
 }
 
 /**
+ * Bireysel abonenin satın aldığı krediyi ArvoLab'daki KİŞİSEL bakiyesine
+ * ekler (ArvoLab migration 20261026181929, ai_bireysel_kredi_yukle).
+ *
+ * userId ArvoLab'daki kullanıcı kimliği (product_subscribers.external_user_id).
+ * Tekilleştirme kurumdakiyle aynı: kaynak = PayTR merchant_oid. ArvoLab
+ * kullanıcı bireysel abone değilse (bu arada bir kuruma geçmişse) hata
+ * döndürüyor; sipariş loaded_at'siz kalıyor ve Sağlık ekranında görünüyor.
+ */
+export async function arvolabBireyselKrediYukle(
+  userId: string,
+  kredi: number,
+  kaynak: string,
+): Promise<"loaded" | "not_configured" | "failed"> {
+  const lab = arvolabClient();
+  if (!lab) return "not_configured";
+  const { error } = await lab.rpc("ai_bireysel_kredi_yukle", {
+    p_user_id: userId,
+    p_kredi: kredi,
+    p_kaynak: kaynak,
+  });
+  if (error) {
+    console.error("[arvolab] bireysel kredi yüklenemedi", userId, error.message);
+    return "failed";
+  }
+  return "loaded";
+}
+
+/**
  * aylikLimit/aylikKalan null: ArvoOS bu kuruma henüz hak BİLDİRMEDİ.
  * 0 ise bildirildi ve hak yok. İkisini aynı göstermek, yansıtması
  * gecikmiş kuruma "hiç AI hakkınız yok" demek olurdu — AkademikMerkez'de

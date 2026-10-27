@@ -1,4 +1,4 @@
-// Ek hizmeti sözleşme taksitlerine dağıtma (20261026120852): planın
+// Ek hizmeti sözleşme taksitlerine dağıtma (20261027064850): planın
 // toplamı ek hizmet kadar büyür, taksitler arvo_taksitleri_kaydet'ten
 // geçer; bağlı ek hizmetin tutarı API'den değişmez, silinmez; bağ
 // yalnızca fonksiyonla yazılır; ters işlem toplamı geri indirir.

@@ -124,3 +124,91 @@ export async function createAiKrediCheckout(
 
   return { url: link.url };
 }
+
+/*
+  BİREYSEL ABONENİN KREDİ SATIN ALMASI (26.10.2026).
+
+  Abonenin ArvoOS paneli yok; istek ArvoLab'ın "Abonelik ve kredi"
+  sayfasından abonelik köprüsüyle geliyor (app/api/bridge/subscription,
+  action "credit_checkout"). Paketler kurumunkiyle aynı (kurum sahibinin
+  kararı). Kurumdaki akışla aynı kurallar:
+
+  - Aboneliği kapalıyken kredi satılmıyor: yüklense de kullanamaz.
+  - Önceki açık kredi bağlantısı kapatılıyor (iki bağlantı, yanlış
+    tutarın ödenmesi demek).
+  - Sipariş kaydı yazılamazsa bağlantı iptal: parası alınıp kredisi
+    yüklenemeyen ödeme en kötü sonuç.
+
+  Kuruma geçmiş abone (kurum_id dolu) buradan alamaz: krediyi kurum
+  yöneticisi alıyor, ikinci kez ödemek çift tahsilat olurdu.
+*/
+export async function createBireyselKrediCheckout(
+  admin: Admin,
+  input: { subscriberId: string; paketKodu: string; erisimAcik: boolean },
+): Promise<{ url: string }> {
+  const paket = krediPaketi(input.paketKodu);
+  if (!paket) throw new CheckoutError("not_found", "Geçersiz kredi paketi.");
+  if (!input.erisimAcik) throw new CheckoutError("fee_not_set", "Aboneliğiniz açık olmadığı için kredi satın alınamıyor.");
+  if (!paymentCredentialsConfigured()) throw new CheckoutError("unavailable", UNAVAILABLE);
+
+  const platformId = await getPlatformOrganizationId();
+  if (!platformId) throw new CheckoutError("unavailable", UNAVAILABLE);
+
+  let credentials: PaytrCredentials;
+  try {
+    credentials = await paytrKimligi(admin, platformId);
+  } catch (error) {
+    console.error("[ai-kredi] PayTR kimliği alınamadı", error instanceof Error ? error.message : error);
+    throw new CheckoutError("unavailable", UNAVAILABLE);
+  }
+
+  const { data: previous } = await admin.from("payment_links").select("id,provider_link_id")
+    .eq("subscriber_id", input.subscriberId).eq("purpose", "ai_credit").eq("status", "active").maybeSingle();
+  if (previous) {
+    try { await deletePaytrLink(credentials, previous.provider_link_id); } catch { /* süresi dolmuş olabilir */ }
+    await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", previous.id);
+  }
+
+  const id = randomUUID();
+  const expiry = paytrExpiry(null);
+  let link: { id: string; url: string };
+  try {
+    link = await createPaytrInstallmentLink(credentials, {
+      name: `ArvoLab AI kredisi · bireysel · ${paket.ad}`,
+      amountKurus: paket.fiyat,
+      expiry,
+      callbackUrl: `https://${PLATFORM_HOST}/api/paytr/callback`,
+      callbackId: toCallbackId(id),
+    });
+  } catch (error) {
+    throw new CheckoutError("link_failed", `Ödeme bağlantısı açılamadı: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  const { error } = await admin.from("payment_links").insert({
+    id, organization_id: platformId, purpose: "ai_credit",
+    subscriber_id: input.subscriberId, payer_organization_id: null, product: "arvolab",
+    provider_link_id: link.id, url: link.url, amount: paket.fiyat,
+    expires_at: expiry, created_by: null,
+  });
+  if (error) {
+    try { await deletePaytrLink(credentials, link.id); } catch { /* en iyi çaba */ }
+    throw new CheckoutError("link_failed", "Ödeme bağlantısı hazırlanamadı: " + error.message);
+  }
+
+  const { error: siparisHatasi } = await admin.from("ai_credit_orders").insert({
+    payment_link_id: id,
+    organization_id: null,
+    subscriber_id: input.subscriberId,
+    paket_kodu: paket.kod,
+    kredi: paket.kredi,
+    amount: paket.fiyat,
+    created_by: null,
+  });
+  if (siparisHatasi) {
+    await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", id);
+    try { await deletePaytrLink(credentials, link.id); } catch { /* en iyi çaba */ }
+    throw new CheckoutError("link_failed", "Kredi siparişi kaydedilemedi: " + siparisHatasi.message);
+  }
+
+  return { url: link.url };
+}

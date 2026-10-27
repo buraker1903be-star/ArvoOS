@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { arvolabKrediYukle, syncArvolabLicense } from "@/lib/arvolab";
+import { arvolabBireyselKrediYukle, arvolabKrediYukle, syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { paytrKimligi } from "@/lib/payments/kimlik";
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return text(503, "service unavailable"); // PayTR sonra yeniden dener
 
-  const { data: link } = await admin.from("payment_links").select("id,organization_id,provider_link_id,purpose,product,payer_organization_id").eq("id", linkId).maybeSingle();
+  const { data: link } = await admin.from("payment_links").select("id,organization_id,provider_link_id,purpose,product,payer_organization_id,subscriber_id").eq("id", linkId).maybeSingle();
   if (!link) {
     // Bizim oluşturmadığımız (ya da silinmiş) bir bağlantı: yeniden denemesin.
     console.warn("[paytr] bilinmeyen bağlantı bildirimi", fields.callback_id);
@@ -114,6 +114,28 @@ export async function POST(request: Request) {
           await admin.from("ai_credit_orders").update({ loaded_at: new Date().toISOString() }).eq("id", siparis.id);
         } else {
           console.error("[paytr] AI kredisi yüklenemedi", link.payer_organization_id, yuklendi);
+        }
+      }
+    }
+    /*
+      Bireysel abonenin kredisi (26.10.2026): ArvoLab'daki KİŞİSEL bakiyeye.
+      Kimlik abonenin ArvoLab kullanıcı kimliği (external_user_id). Aynı
+      kural: yüklenemezse OK dönülür, sipariş loaded_at'siz kalır ve
+      bekleyen krediler cron'u yeniden dener (lib/ai-kredi-yukleme.ts).
+    */
+    if (link.purpose === "ai_credit" && link.subscriber_id) {
+      const [{ data: siparis }, { data: abone }] = await Promise.all([
+        admin.from("ai_credit_orders").select("id,kredi").eq("payment_link_id", link.id).maybeSingle(),
+        admin.from("product_subscribers").select("external_user_id").eq("id", link.subscriber_id).maybeSingle(),
+      ]);
+      if (!siparis || !abone?.external_user_id) {
+        console.error("[paytr] bireysel kredi siparişi ya da abone bulunamadı", link.id);
+      } else {
+        const yuklendi = await arvolabBireyselKrediYukle(abone.external_user_id, Number(siparis.kredi), fields.merchant_oid);
+        if (yuklendi === "loaded") {
+          await admin.from("ai_credit_orders").update({ loaded_at: new Date().toISOString() }).eq("id", siparis.id);
+        } else {
+          console.error("[paytr] bireysel AI kredisi yüklenemedi", link.subscriber_id, yuklendi);
         }
       }
     }

@@ -9,6 +9,10 @@ import { isSubscriberProduct, productName } from "@/lib/products";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { kurumLisansiAcik } from "@/lib/kurum-lisansi-erisim";
+import { KREDI_PAKETLERI } from "@/lib/ai-kredi-paketleri";
+import { createBireyselKrediCheckout } from "@/lib/ai-kredi-checkout";
+import { CheckoutError } from "@/lib/license-checkout";
+import { aboneFaturalamasi, kurumFaturalamasi } from "@/lib/faturalama-koprusu";
 
 // Ürünler için abonelik köprüsü (ArvoLab, ileride ArvoARC).
 //
@@ -54,18 +58,24 @@ function hasAccess(subscriber: SubscriberRow) {
   return false;
 }
 
-const state = (subscriber: SubscriberRow, monthlyFee: number | null) => ({
+const state = (subscriber: SubscriberRow, monthlyFee: number | null, product: string) => ({
   status: subscriber.status,
   access: hasAccess(subscriber),
   trialEndsAt: subscriber.trial_ends_at,
   currentPeriodEnd: subscriber.current_period_end,
   monthlyFee,
+  /*
+    AI kredi paketleri (26.10.2026): yalnızca ArvoLab'ın bireysel abonesine.
+    Liste ArvoLab'a kopyalanmıyor, buradan gidiyor: fiyat değiştiği gün iki
+    taraf ayrı fiyat göstermesin (ArvoLab lib/kredi-paketleri.ts).
+  */
+  ...(product === "arvolab" ? { creditPackages: KREDI_PAKETLERI } : {}),
 });
 
 export async function POST(request: Request) {
   if (!authorized(request)) return json(401, { error: "unauthorized" });
 
-  let body: { product?: string; action?: string; userId?: string; email?: string; fullName?: string };
+  let body: { product?: string; action?: string; userId?: string; email?: string; fullName?: string; paket?: string; organizationId?: string };
   try {
     body = await request.json();
   } catch {
@@ -77,8 +87,30 @@ export async function POST(request: Request) {
   const userId = String(body.userId ?? "").trim();
   const email = String(body.email ?? "").trim().toLowerCase();
   if (!isSubscriberProduct(product)) return json(400, { error: "invalid_product" });
+
+  /*
+    org_billing (26.10.2026): kurumun bu üründeki ödemeleri ve faturaları,
+    ArvoLab'daki kurum yöneticisine. Abone kaydına dokunmuyor (kurum abone
+    değil). Yetki ArvoLab'da: çağıran kullanıcının o kurumun yöneticisi
+    olduğunu ArvoLab doğruluyor; burası paylaşılan anahtarla korunuyor.
+  */
+  if (action === "org_billing") {
+    const organizationId = String(body.organizationId ?? "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(organizationId)) return json(400, { error: "missing_organization" });
+    const yonetici = createAdminClient();
+    if (!yonetici) return json(503, { error: "unavailable" });
+    try {
+      return json(200, await kurumFaturalamasi(yonetici, organizationId, product));
+    } catch (error) {
+      console.error("[bridge] kurum faturalaması okunamadı", error instanceof Error ? error.message : error);
+      return json(503, { error: "unavailable" });
+    }
+  }
+
   if (!userId || !email) return json(400, { error: "missing_user" });
-  if (!["ensure", "checkout", "close"].includes(action)) return json(400, { error: "invalid_action" });
+  if (!["ensure", "checkout", "close", "credit_checkout", "billing"].includes(action)) return json(400, { error: "invalid_action" });
+  // Kredi yalnızca ArvoLab'da harcanıyor; başka ürüne satmak anlamsız.
+  if (action === "credit_checkout" && product !== "arvolab") return json(400, { error: "invalid_action" });
 
   const admin = createAdminClient();
   if (!admin) return json(503, { error: "unavailable" });
@@ -106,6 +138,8 @@ export async function POST(request: Request) {
       404 dönseydi ArvoLab'ın silme cron'u takılır, hesap silinmeden kalırdı.
     */
     if (action === "close") return json(200, { closed: true, alreadyAbsent: true });
+    // Faturalama okuması abone yaratmaz: kaydı yoksa ödemesi de yok.
+    if (action === "billing") return json(200, { odemeler: [], toplamOdenen: 0, bekleyenTutar: 0 });
     if (action !== "ensure") return json(404, { error: "subscriber_not_found" });
     // İlk giriş: deneme süresi tanımlıysa denemeyle başlar, değilse kapalı.
     const trialDays = plan?.trial_days ?? 0;
@@ -170,8 +204,22 @@ export async function POST(request: Request) {
     sunmuyor). Kendi adına ödeme bağlantısı da üretilmez: kurum zaten
     ödüyor, kişinin ikinci kez ödemesi çift tahsilat olurdu.
   */
+  /*
+    billing: abonenin kendi kart ödemeleri ve faturaları. Kuruma geçmiş
+    abonenin de geçmiş ödemeleri kendisinin; gösteriliyor.
+  */
+  if (action === "billing") {
+    try {
+      return json(200, await aboneFaturalamasi(admin, subscriber.id));
+    } catch (error) {
+      console.error("[bridge] abone faturalaması okunamadı", error instanceof Error ? error.message : error);
+      return json(503, { error: "unavailable" });
+    }
+  }
+
   if (subscriber.kurum_id) {
-    if (action === "checkout") return json(409, { error: "organization_license" });
+    // Kurumun kredisini de kurum yöneticisi alır: kişinin ödemesi çift tahsilat olurdu.
+    if (action === "checkout" || action === "credit_checkout") return json(409, { error: "organization_license" });
     const { data: lisans, error: lisansHatasi } = await admin.from("organization_product_licenses")
       .select("status,trial_ends_at,current_period_end")
       .eq("organization_id", subscriber.kurum_id).eq("product", product).maybeSingle();
@@ -191,7 +239,27 @@ export async function POST(request: Request) {
     });
   }
 
-  if (action === "ensure") return json(200, state(subscriber, monthlyFee));
+  if (action === "ensure") return json(200, state(subscriber, monthlyFee, product));
+
+  // --- credit_checkout: AI kredi paketi için PayTR bağlantısı (bireysel abone)
+  if (action === "credit_checkout") {
+    try {
+      const { url } = await createBireyselKrediCheckout(admin, {
+        subscriberId: subscriber.id,
+        paketKodu: String(body.paket ?? "").trim(),
+        erisimAcik: hasAccess(subscriber),
+      });
+      return json(200, { ...state(subscriber, monthlyFee, product), checkoutUrl: url });
+    } catch (error) {
+      if (error instanceof CheckoutError) {
+        const status = error.code === "not_found" ? 400 : error.code === "fee_not_set" ? 409 : error.code === "link_failed" ? 502 : 503;
+        console.error("[bridge] kredi bağlantısı açılamadı", error.code, error.message);
+        return json(status, { error: error.code });
+      }
+      console.error("[bridge] kredi bağlantısı açılamadı", error instanceof Error ? error.message : error);
+      return json(500, { error: "credit_checkout_failed" });
+    }
+  }
 
   // --- checkout: PayTR bağlantısı üret
   if (!paymentCredentialsConfigured()) return json(503, { error: "payments_unavailable" });
@@ -243,5 +311,5 @@ export async function POST(request: Request) {
     return json(500, { error: "link_not_saved" });
   }
 
-  return json(200, { ...state(subscriber, monthlyFee), checkoutUrl: link.url });
+  return json(200, { ...state(subscriber, monthlyFee, product), checkoutUrl: link.url });
 }

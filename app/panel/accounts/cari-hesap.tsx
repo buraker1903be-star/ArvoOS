@@ -52,7 +52,7 @@ type Entry = {
   source_type: string | null;
   transaction_date: string;
   created_at: string;
-  /** Ek hizmet sözleşme taksitlerine dağıtıldıysa o plan (20261026120852). */
+  /** Ek hizmet sözleşme taksitlerine dağıtıldıysa o plan (20261027064850). */
   payment_plan_id: string | null;
 };
 type Party = { id: string; name: string; email: string | null; phone: string | null; account_entries: Entry[] };
@@ -124,7 +124,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
     : [{ data: [] }, { data: [], error: null }];
   const taksitler = (taksitData ?? []) as Taksit[];
   /* Planın toplamı sözleşme tutarından büyük olabilir: taksitlere dağıtılan
-     ek hizmetler ona eklenir (20261026120852). Taksit pencereleri toplamı
+     ek hizmetler ona eklenir (20261027064850). Taksit pencereleri toplamı
      buradan alıyor; okunamazsa sözleşme tutarına düşmek yerine hata —
      yanlış toplamla açılan pencere her kayıtta "toplam tutmuyor" derdi. */
   if (planError) throw new Error("Ödeme planları okunamadı: " + planError.message);

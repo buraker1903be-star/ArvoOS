@@ -55,3 +55,12 @@ test("bekleyen yoksa boş liste", () => {
   assert.deepEqual(krediEslestir([], [odeme("link-1", "OID1", "10")]), []);
   assert.deepEqual(krediEslestir([siparis("a", "link-1")], []), []);
 });
+
+test("bireysel abone siparişi kurumsuz taşınıyor, ArvoLab kullanıcı kimliğiyle", () => {
+  const sonuc = krediEslestir(
+    [{ id: "b", organization_id: null, kredi: 500, payment_link_id: "link-9", abone_kullanici_id: "lab-kullanici-1" }],
+    [odeme("link-9", "OID9", "10")],
+  );
+  assert.equal(sonuc[0].organizationId, null);
+  assert.equal(sonuc[0].aboneKullaniciId, "lab-kullanici-1");
+});
