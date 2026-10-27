@@ -66,6 +66,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261026183021_bireysel_ai_kredisi.sql",
   "20261026191235_platform_faturalari.sql",
   "20261027064850_ek_hizmet_taksitlere.sql",
+  "20261027174258_platform_proformalari.sql",
 ];
 
 /*

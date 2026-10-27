@@ -12,7 +12,7 @@ import { kurumLisansiAcik } from "@/lib/kurum-lisansi-erisim";
 import { KREDI_PAKETLERI } from "@/lib/ai-kredi-paketleri";
 import { createBireyselKrediCheckout } from "@/lib/ai-kredi-checkout";
 import { CheckoutError } from "@/lib/license-checkout";
-import { aboneFaturalamasi, kurumFaturalamasi } from "@/lib/faturalama-koprusu";
+import { aboneFaturalamasi, BOS_FATURALAMA, kurumFaturalamasi } from "@/lib/faturalama-koprusu";
 
 // Ürünler için abonelik köprüsü (ArvoLab, ileride ArvoARC).
 //
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     */
     if (action === "close") return json(200, { closed: true, alreadyAbsent: true });
     // Faturalama okuması abone yaratmaz: kaydı yoksa ödemesi de yok.
-    if (action === "billing") return json(200, { odemeler: [], toplamOdenen: 0, bekleyenTutar: 0 });
+    if (action === "billing") return json(200, BOS_FATURALAMA);
     if (action !== "ensure") return json(404, { error: "subscriber_not_found" });
     // İlk giriş: deneme süresi tanımlıysa denemeyle başlar, değilse kapalı.
     const trialDays = plan?.trial_days ?? 0;

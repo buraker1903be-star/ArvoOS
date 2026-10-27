@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getPaymentIncidents } from "@/lib/payment-incidents";
@@ -7,7 +8,9 @@ import { KBos, KListe, KNot, KOge } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PanelModal } from "../../components/panel-modal";
-import { faturaYukle } from "./actions";
+import { faturaYukle, proformaEsle, proformaIptal, proformaOlustur } from "./actions";
+import { eslesmeSirasi, kalemleriCoz, PROFORMA_DURUM_ADI, proformaGorunumu, VARSAYILAN_KDV_ORANI } from "@/lib/proforma";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 import "../platform.css";
 import "../../components/kayit-formu.css";
 
@@ -48,7 +51,24 @@ const KANALLAR = [
   { kod: "kart", ad: "Kart" },
   { kod: "bireysel", ad: "Bireysel" },
   { kod: "fatura", ad: "Faturalar" },
+  { kod: "proforma", ad: "Proformalar" },
 ] as const;
+
+type Proforma = {
+  id: string; proforma_no: string; organization_id: string | null; subscriber_id: string | null; musteri_adi: string;
+  kalemler: unknown; ara_toplam: number; kdv_orani: number; kdv: number; toplam: number; para_birimi: string;
+  duzenleme_tarihi: string; gecerlilik_tarihi: string; durum: string;
+};
+type Aday = { id: string; tutar: number; tarih: string | null };
+
+const DURUM_TONU = { bekliyor: "info", odendi: "success", iptal: "neutral", suresi_doldu: "warning" } as const;
+
+/* Varsayılan geçerlilik: on beş gün (Türkiye günüyle). */
+function onBesGunSonra(bugun: string) {
+  const d = new Date(`${bugun}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 15);
+  return d.toISOString().slice(0, 10);
+}
 
 export default async function TahsilatPage({ searchParams }: { searchParams: Promise<{ kanal?: string }> }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
@@ -164,6 +184,64 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
     });
   }
 
+  /*
+    PROFORMALAR (27.10.2026): yalnızca kendi sekmesinde okunuyor. Son
+    elli proforma; bekleyenlerin her biri için AYNI müşterinin henüz bir
+    proformaya bağlanmamış ödemeleri eşleştirme seçeneği olarak geliyor.
+  */
+  let proformalar: Proforma[] = [];
+  let aboneler: { id: string; ad: string }[] = [];
+  const adaylar = new Map<string, (Aday & { tutarTutuyor: boolean })[]>();
+  if (admin && secili === "proforma") {
+    const [pYaniti, aYaniti] = await Promise.all([
+      admin.from("platform_proformalari")
+        .select("id,proforma_no,organization_id,subscriber_id,musteri_adi,kalemler,ara_toplam,kdv_orani,kdv,toplam,para_birimi,duzenleme_tarihi,gecerlilik_tarihi,durum")
+        .order("created_at", { ascending: false }).limit(LISTE),
+      // Seçim kutusu için; kuruma geçmiş abone de kendi adına proforma alabilir (eski dönem borcu).
+      admin.from("product_subscribers").select("id,full_name,email").eq("product", "arvolab").is("closed_at", null)
+        .order("created_at", { ascending: false }).limit(500),
+    ]);
+    if (pYaniti.error) throw new Error("Proformalar okunamadı: " + pYaniti.error.message);
+    if (aYaniti.error) throw new Error("Aboneler okunamadı: " + aYaniti.error.message);
+    proformalar = (pYaniti.data ?? []) as Proforma[];
+    aboneler = ((aYaniti.data ?? []) as { id: string; full_name: string | null; email: string }[])
+      .map((a) => ({ id: a.id, ad: a.full_name ? `${a.full_name} (${a.email})` : a.email }));
+
+    const bekleyen = proformalar.filter((p) => p.durum === "bekliyor");
+    const kurumIdleri = [...new Set(bekleyen.flatMap((p) => (p.organization_id ? [p.organization_id] : [])))];
+    const aboneIdleri = [...new Set(bekleyen.flatMap((p) => (p.subscriber_id ? [p.subscriber_id] : [])))];
+    const bos = { data: [] as Record<string, unknown>[], error: null };
+    const [kYaniti, sYaniti, eYaniti] = await Promise.all([
+      kurumIdleri.length
+        ? admin.from("organization_payment_requests").select("id,organization_id,amount,reviewed_at")
+            .in("organization_id", kurumIdleri).eq("status", "approved").eq("product", "arvolab")
+            .order("reviewed_at", { ascending: false }).limit(200)
+        : bos,
+      aboneIdleri.length
+        ? admin.from("subscriber_payments").select("id,subscriber_id,amount,paid_at")
+            .in("subscriber_id", aboneIdleri).order("paid_at", { ascending: false }).limit(200)
+        : bos,
+      // Zaten bir proformaya bağlanmış ödemeler seçenekten düşer (bir ödeme bir proforma).
+      admin.from("platform_proformalari").select("payment_request_id,subscriber_payment_id").eq("durum", "odendi"),
+    ]);
+    const eHata = kYaniti.error ?? sYaniti.error ?? eYaniti.error;
+    if (eHata) throw new Error("Eşleştirme seçenekleri okunamadı: " + eHata.message);
+    const bagli = new Set(((eYaniti.data ?? []) as { payment_request_id: string | null; subscriber_payment_id: string | null }[])
+      .flatMap((e) => [e.payment_request_id, e.subscriber_payment_id].filter((x): x is string => !!x)));
+    const kurumOdeme = ((kYaniti.data ?? []) as { id: string; organization_id: string; amount: number; reviewed_at: string | null }[]).filter((o) => !bagli.has(o.id));
+    const aboneOdeme = ((sYaniti.data ?? []) as { id: string; subscriber_id: string; amount: number; paid_at: string | null }[]).filter((o) => !bagli.has(o.id));
+    for (const p of bekleyen) {
+      const liste: Aday[] = p.organization_id
+        ? kurumOdeme.filter((o) => o.organization_id === p.organization_id).map((o) => ({ id: o.id, tutar: Number(o.amount), tarih: o.reviewed_at }))
+        : aboneOdeme.filter((o) => o.subscriber_id === p.subscriber_id).map((o) => ({ id: o.id, tutar: Number(o.amount), tarih: o.paid_at }));
+      adaylar.set(p.id, eslesmeSirasi(Number(p.toplam), liste));
+    }
+  }
+  const bugun = todayInIstanbul();
+  const musteriKurumlar = ((kurumlar ?? []) as { id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null }[])
+    .filter((k) => musteriMi(k))
+    .sort((a, b) => (a.display_name || a.name).localeCompare(b.display_name || b.name, "tr"));
+
   const bekleyenSatirlar = (bekleyenler ?? []) as { amount: number; currency: string }[];
   // tuzak-tamam: sınırsız sorgu (bekleyen havalelerin hepsi), toplam doğru.
   const bekleyenTutar = bekleyenSatirlar.reduce((t, b) => t + Number(b.amount), 0);
@@ -220,7 +298,91 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
 
       {birimKarisik ? <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</KNot> : null}
 
-      {secili === "fatura" ? (
+      {secili === "proforma" ? (
+        <>
+          <div className="talep-bas-eylem">
+            <PanelModal triggerLabel="Yeni proforma" triggerClassName="panel-primary" kicker="Proforma" title="Yeni proforma" boy="genis"
+              description="Tutarları KDV hariç yazın; KDV ayrı satırda hesaplanır. Müşteri proformayı ArvoLab'daki Faturalar ve ödemeler bölümünde görür ve yazdırır." basaridaKapan>
+              <form className="panel-form kayit-formu" action={proformaOlustur}>
+                <label className="wide"><span>Müşteri<b className="req" aria-hidden="true">*</b></span>
+                  <select name="musteri" required defaultValue="">
+                    <option value="" disabled>Seçin</option>
+                    <optgroup label="Kurumlar">
+                      {musteriKurumlar.map((k) => <option key={k.id} value={`kurum:${k.id}`}>{k.display_name || k.name}</option>)}
+                    </optgroup>
+                    <optgroup label="Bireysel aboneler (ArvoLab)">
+                      {aboneler.map((a) => <option key={a.id} value={`abone:${a.id}`}>{a.ad}</option>)}
+                    </optgroup>
+                  </select>
+                </label>
+                {/* Üç kalem satırı: proformaların neredeyse hepsi tek kalem (lisans), en çok
+                    lisans + ek kullanıcı + kredi. Boş bırakılan satır atlanır. */}
+                {[0, 1, 2].map((i) => (
+                  <Fragment key={i}>
+                    <label className="wide"><span>{i + 1}. kalem açıklaması{i === 0 ? <b className="req" aria-hidden="true">*</b> : null}</span>
+                      <input name={`aciklama_${i}`} maxLength={200} required={i === 0} autoComplete="off"
+                        placeholder={i === 0 ? "ArvoLab kurum lisansı (12 ay)" : "İsteğe bağlı"} /></label>
+                    <label><span>Miktar</span><input name={`miktar_${i}`} inputMode="decimal" placeholder="1" autoComplete="off" /></label>
+                    <label><span>Birim fiyat (KDV hariç, ₺){i === 0 ? <b className="req" aria-hidden="true">*</b> : null}</span>
+                      <input name={`birim_fiyat_${i}`} inputMode="decimal" required={i === 0} autoComplete="off" placeholder="0,00" /></label>
+                  </Fragment>
+                ))}
+                <label><span>KDV oranı (%)</span><input name="kdv_orani" inputMode="decimal" defaultValue={String(VARSAYILAN_KDV_ORANI)} autoComplete="off" /></label>
+                <label><span>Geçerlilik tarihi<b className="req" aria-hidden="true">*</b></span><input name="gecerlilik_tarihi" type="date" min={bugun} defaultValue={onBesGunSonra(bugun)} required /></label>
+                <label className="wide"><span>Not</span><textarea name="notlar" maxLength={1000} rows={2} placeholder="Ödeme açıklamasına proforma numarasını yazınız." /></label>
+                <div className="wide panel-form-actions kayit-formu-eylem"><p>Numara (PRF-…) kayıtta verilir; boş bıraktığınız kalemler atlanır.</p><button className="panel-primary" type="submit">Proformayı oluştur</button></div>
+              </form>
+            </PanelModal>
+          </div>
+          {proformalar.length ? (
+            <KListe>
+              {proformalar.map((p) => {
+                const gorunum = proformaGorunumu(p.durum, p.gecerlilik_tarihi, bugun);
+                const kalemler = kalemleriCoz(p.kalemler);
+                const secenekler = adaylar.get(p.id) ?? [];
+                return (
+                  <KOge
+                    key={p.id}
+                    simge={p.musteri_adi}
+                    baslik={`${p.proforma_no} · ${p.musteri_adi}`}
+                    alt={`${kalemler.map((k) => k.aciklama).join(", ")} · ${tarih(p.duzenleme_tarihi)} – ${tarih(p.gecerlilik_tarihi)}`}
+                    durum={{ etiket: PROFORMA_DURUM_ADI[gorunum], ton: DURUM_TONU[gorunum] }}
+                    deger={para(Number(p.toplam), p.para_birimi)}
+                    degerAlt={`KDV %${Number(p.kdv_orani)} dahil`}
+                    sonu={p.durum === "bekliyor" ? (
+                      <PanelModal triggerLabel="Ödemeyle eşleştir" kicker={p.proforma_no} title={`${p.musteri_adi} · ${para(Number(p.toplam), p.para_birimi)}`}
+                        description="Müşterinin bu proforma için yaptığı ödemeyi seçin. Tutarı tutan ödemeler başta; ödeme makbuzunda proforma numarası görünür." basaridaKapan>
+                        {secenekler.length ? (
+                          <form className="panel-form kayit-formu" action={proformaEsle}>
+                            <input type="hidden" name="id" value={p.id} />
+                            <label className="wide"><span>Ödeme<b className="req" aria-hidden="true">*</b></span>
+                              <select name="odeme_id" required defaultValue={secenekler[0]?.tutarTutuyor ? secenekler[0].id : ""}>
+                                <option value="" disabled>Seçin</option>
+                                {secenekler.map((o) => (
+                                  <option key={o.id} value={o.id}>{tarih(o.tarih)} · {para(o.tutar, p.para_birimi)}{o.tutarTutuyor ? " · tutar tutuyor" : ""}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <div className="wide panel-form-actions kayit-formu-eylem"><p>Bir ödeme yalnızca bir proformayı kapatır.</p><button className="panel-primary" type="submit">Eşleştir</button></div>
+                          </form>
+                        ) : (
+                          <KNot>Bu müşterinin henüz eşlenmemiş bir ödemesi yok. Kurumun havalesi önce Ödeme onaylarından onaylanmalı.</KNot>
+                        )}
+                        <form className="panel-form kayit-formu" action={proformaIptal}>
+                          <input type="hidden" name="id" value={p.id} />
+                          <div className="wide panel-form-actions kayit-formu-eylem"><p>Müşteri ödemeyecekse proformayı iptal edin; numara korunur.</p><button className="panel-secondary" type="submit">Proformayı iptal et</button></div>
+                        </form>
+                      </PanelModal>
+                    ) : null}
+                  />
+                );
+              })}
+            </KListe>
+          ) : (
+            <KBos baslik="Henüz proforma yok" aciklama="Ödeme almadan önce müşteriye proforma düzenleyin; müşteri ödedikten sonra burada ödemeyle eşleştirin, faturayı da tahsilatın yanından yükleyin." />
+          )}
+        </>
+      ) : secili === "fatura" ? (
         /* Yüklenen platform faturaları (son elli). Fatura elle kesilip her
            tahsilatın yanından yükleniyor; müşteri ArvoLab'da görüyor. */
         faturaListesi.length ? (

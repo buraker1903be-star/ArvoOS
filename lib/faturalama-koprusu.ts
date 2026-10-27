@@ -17,6 +17,8 @@ import type { createAdminClient } from "@/lib/supabase/admin";
   müşteriye eksik toplam göstermek olurdu).
 */
 
+import { kalemleriCoz, type ProformaKalemi } from "@/lib/proforma";
+
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
 const LISTE = 50;
@@ -40,7 +42,107 @@ export type KopruOdeme = {
   fatura: KopruFatura | null;
 };
 
-export type KopruFaturalama = { odemeler: KopruOdeme[]; toplamOdenen: number; bekleyenTutar: number };
+/*
+  PROFORMA (27.10.2026): ödemeden ÖNCE müşteriye giden belge
+  (platform_proformalari). ArvoLab onu yazdırılabilir sayfada gösteriyor;
+  belge Arvo'nun unvanını ve banka hesaplarını taşıdığı için onlar da
+  burada gidiyor — ArvoLab'ın Arvo'nun hesaplarını bilmesi gerekmesin,
+  hesap değişince eski kopya kalmasın.
+*/
+export type KopruProforma = {
+  id: string;
+  no: string;
+  musteriAdi: string;
+  kalemler: ProformaKalemi[];
+  araToplam: number;
+  kdvOrani: number;
+  kdv: number;
+  toplam: number;
+  paraBirimi: string;
+  duzenlemeTarihi: string;
+  gecerlilikTarihi: string;
+  notlar: string | null;
+  durum: "bekliyor" | "odendi" | "iptal";
+  /** Eşlenen ödemenin kimliği: ArvoLab makbuzda proforma numarasını bununla yazar. */
+  odemeId: string | null;
+};
+
+export type KopruSatici = {
+  unvan: string;
+  adres: string | null;
+  vergiDairesi: string | null;
+  vergiNo: string | null;
+  mersisNo: string | null;
+  hesaplar: { banka: string; hesapSahibi: string | null; iban: string; paraBirimi: string }[];
+};
+
+export type KopruFaturalama = {
+  odemeler: KopruOdeme[];
+  toplamOdenen: number;
+  bekleyenTutar: number;
+  proformalar: KopruProforma[];
+  satici: KopruSatici | null;
+};
+
+/* Abone kaydı olmayan kullanıcının boş faturalaması (köprü bunu döndürüyor). */
+export const BOS_FATURALAMA: KopruFaturalama = { odemeler: [], toplamOdenen: 0, bekleyenTutar: 0, proformalar: [], satici: null };
+
+type ProformaSatiri = {
+  id: string; proforma_no: string; musteri_adi: string; kalemler: unknown; ara_toplam: number; kdv_orani: number;
+  kdv: number; toplam: number; para_birimi: string; duzenleme_tarihi: string; gecerlilik_tarihi: string;
+  notlar: string | null; durum: string; payment_request_id: string | null; subscriber_payment_id: string | null;
+};
+
+/* İptal edilenler gösterilmiyor: müşteriye "ödeme bekleniyor" gibi okunmasın, kafası karışmasın. */
+async function proformalar(admin: Admin, alan: "organization_id" | "subscriber_id", id: string, product?: string): Promise<KopruProforma[]> {
+  let sorgu = admin
+    .from("platform_proformalari")
+    .select("id,proforma_no,musteri_adi,kalemler,ara_toplam,kdv_orani,kdv,toplam,para_birimi,duzenleme_tarihi,gecerlilik_tarihi,notlar,durum,payment_request_id,subscriber_payment_id")
+    .eq(alan, id)
+    .neq("durum", "iptal");
+  if (product) sorgu = sorgu.eq("product", product);
+  const { data, error } = await sorgu.order("created_at", { ascending: false }).limit(LISTE);
+  if (error) throw new Error("Proformalar okunamadı: " + error.message);
+  return ((data ?? []) as ProformaSatiri[]).map((p) => ({
+    id: p.id,
+    no: p.proforma_no,
+    musteriAdi: p.musteri_adi,
+    kalemler: kalemleriCoz(p.kalemler),
+    araToplam: Number(p.ara_toplam),
+    kdvOrani: Number(p.kdv_orani),
+    kdv: Number(p.kdv),
+    toplam: Number(p.toplam),
+    paraBirimi: p.para_birimi || "TRY",
+    duzenlemeTarihi: p.duzenleme_tarihi,
+    gecerlilikTarihi: p.gecerlilik_tarihi,
+    notlar: p.notlar,
+    durum: p.durum === "odendi" ? "odendi" : "bekliyor",
+    odemeId: p.payment_request_id ?? p.subscriber_payment_id,
+  }));
+}
+
+/*
+  Satıcı bilgisi: Arvo kurumunun (slug arvo-os) yasal bilgileri ve
+  platform banka hesapları. Yalnızca proforma varsa okunuyor.
+*/
+async function satici(admin: Admin): Promise<KopruSatici> {
+  const [{ data: kurum, error: kurumHatasi }, { data: hesaplar, error: hesapHatasi }] = await Promise.all([
+    admin.from("organizations").select("name,legal_name,legal_address,legal_district,legal_city,tax_office,tax_number,mersis_no").eq("slug", "arvo-os").maybeSingle(),
+    admin.from("platform_bank_accounts").select("bank_name,account_holder,iban,currency").eq("is_active", true).order("sort_order"),
+  ]);
+  if (kurumHatasi) throw new Error("Satıcı bilgisi okunamadı: " + kurumHatasi.message);
+  if (hesapHatasi) throw new Error("Banka hesapları okunamadı: " + hesapHatasi.message);
+  const adres = [kurum?.legal_address, [kurum?.legal_district, kurum?.legal_city].filter(Boolean).join(" / ")].filter(Boolean).join(", ");
+  return {
+    unvan: kurum?.legal_name || kurum?.name || "Arvo",
+    adres: adres || null,
+    vergiDairesi: kurum?.tax_office ?? null,
+    vergiNo: kurum?.tax_number ?? null,
+    mersisNo: kurum?.mersis_no ?? null,
+    hesaplar: ((hesaplar ?? []) as { bank_name: string; account_holder: string | null; iban: string; currency: string }[])
+      .map((h) => ({ banka: h.bank_name, hesapSahibi: h.account_holder, iban: h.iban, paraBirimi: h.currency })),
+  };
+}
 
 async function imzala(admin: Admin, kova: string, yollar: string[]): Promise<Map<string, string>> {
   const harita = new Map<string, string>();
@@ -98,7 +200,10 @@ export async function aboneFaturalamasi(admin: Admin, subscriberId: string): Pro
     id: string; amount: number; currency: string; paid_at: string | null;
     period_start: string | null; period_end: string | null; merchant_oid: string | null;
   }[];
-  const fatura = await faturalar(admin, "subscriber_payment_id", satirlar.map((s) => s.id));
+  const [fatura, proformaListesi] = await Promise.all([
+    faturalar(admin, "subscriber_payment_id", satirlar.map((s) => s.id)),
+    proformalar(admin, "subscriber_id", subscriberId),
+  ]);
 
   return {
     odemeler: satirlar.map((s) => ({
@@ -119,6 +224,8 @@ export async function aboneFaturalamasi(admin: Admin, subscriberId: string): Pro
     // tuzak-tamam: sınırsız sorgunun toplamı.
     toplamOdenen: ((tutarlar ?? []) as { amount: number }[]).reduce((t, s) => t + Number(s.amount), 0),
     bekleyenTutar: 0,
+    proformalar: proformaListesi,
+    satici: proformaListesi.length ? await satici(admin) : null,
   };
 }
 
@@ -143,9 +250,10 @@ export async function kurumFaturalamasi(admin: Admin, organizationId: string, pr
     receipt_path: string | null; reference_no: string | null; review_note: string | null;
     created_at: string; reviewed_at: string | null;
   }[];
-  const [fatura, dekontlar] = await Promise.all([
+  const [fatura, dekontlar, proformaListesi] = await Promise.all([
     faturalar(admin, "payment_request_id", satirlar.filter((s) => s.status === "approved").map((s) => s.id)),
     imzala(admin, "payment-receipts", satirlar.flatMap((s) => (s.receipt_path ? [s.receipt_path] : []))),
+    proformalar(admin, "organization_id", organizationId, product),
   ]);
   const hepsi = (tutarlar ?? []) as { amount: number; status: string }[];
 
@@ -169,5 +277,7 @@ export async function kurumFaturalamasi(admin: Admin, organizationId: string, pr
     toplamOdenen: hepsi.filter((s) => s.status === "approved").reduce((t, s) => t + Number(s.amount), 0),
     // tuzak-tamam: sınırsız sorgunun toplamı (hepsi = sınırsız sorgu).
     bekleyenTutar: hepsi.filter((s) => s.status === "pending").reduce((t, s) => t + Number(s.amount), 0),
+    proformalar: proformaListesi,
+    satici: proformaListesi.length ? await satici(admin) : null,
   };
 }
