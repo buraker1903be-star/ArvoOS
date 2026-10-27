@@ -65,6 +65,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   // uygulanıp döküm yenilenince listeden çıkar (iki kez uygulanmasın).
   "20261026183021_bireysel_ai_kredisi.sql",
   "20261026191235_platform_faturalari.sql",
+  "20261027064850_ek_hizmet_taksitlere.sql",
 ];
 
 /*

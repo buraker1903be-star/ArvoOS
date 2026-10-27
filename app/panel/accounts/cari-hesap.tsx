@@ -12,11 +12,11 @@ import { SatirTiklama } from "../crm/satir-tiklama";
 import { elleGirilenTur } from "@/lib/cari-hareket";
 import { createAdditionalService, createCollection, createRefund, deleteParty, hareketiDuzelt, hareketiSil } from "./actions";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
-import { taksitiDuzenle, taksitSecenegiDegistir } from "../finance/actions";
+import { ekHizmetiTaksitlerdenCikar, ekHizmetiTaksitlereDagit, taksitiDuzenle, taksitSecenegiDegistir } from "../finance/actions";
 import { type FinTone } from "../finance/finance-ui";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
 import "../components/kayit-formu.css";
-import { TaksitDuzenleFormu, TaksitPlaniFormu } from "./taksit-formlari";
+import { EkHizmetTaksitFormu, TaksitDuzenleFormu, TaksitPlaniFormu } from "./taksit-formlari";
 import { liraYazisi } from "@/lib/turkish-amount";
 
 /*
@@ -52,6 +52,8 @@ type Entry = {
   source_type: string | null;
   transaction_date: string;
   created_at: string;
+  /** Ek hizmet sözleşme taksitlerine dağıtıldıysa o plan (20261027064850). */
+  payment_plan_id: string | null;
 };
 type Party = { id: string; name: string; email: string | null; phone: string | null; account_entries: Entry[] };
 type Contract = { id: string; contract_no: string; title: string; amount: number; status: string; signed_at: string | null; payment_plan_id: string | null };
@@ -92,7 +94,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   const [{ data: party, error }, { data: contracts, error: contractError }] = await Promise.all([
     supabase
       .from("account_parties")
-      .select("id,name,email,phone,account_entries(id,entry_type,amount,description,reference_no,source_type,transaction_date,created_at)")
+      .select("id,name,email,phone,account_entries(id,entry_type,amount,description,reference_no,source_type,transaction_date,created_at,payment_plan_id)")
       .eq("id", partyId)
       .eq("organization_id", org)
       .maybeSingle(),
@@ -114,10 +116,19 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
     bağlı taksitler, vade sırasıyla. Okunamazsa bölüm boş.
   */
   const planlar = new Map(sozlesmeler.filter((c) => c.payment_plan_id).map((c) => [c.payment_plan_id as string, c]));
-  const { data: taksitData } = planlar.size
-    ? await supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status").eq("organization_id", org).in("payment_plan_id", [...planlar.keys()]).order("due_date", { ascending: true, nullsFirst: false })
-    : { data: [] };
+  const [{ data: taksitData }, { data: planData, error: planError }] = planlar.size
+    ? await Promise.all([
+        supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status").eq("organization_id", org).in("payment_plan_id", [...planlar.keys()]).order("due_date", { ascending: true, nullsFirst: false }),
+        supabase.from("payment_plans").select("id,total_amount").eq("organization_id", org).in("id", [...planlar.keys()]),
+      ])
+    : [{ data: [] }, { data: [], error: null }];
   const taksitler = (taksitData ?? []) as Taksit[];
+  /* Planın toplamı sözleşme tutarından büyük olabilir: taksitlere dağıtılan
+     ek hizmetler ona eklenir (20261027064850). Taksit pencereleri toplamı
+     buradan alıyor; okunamazsa sözleşme tutarına düşmek yerine hata —
+     yanlış toplamla açılan pencere her kayıtta "toplam tutmuyor" derdi. */
+  if (planError) throw new Error("Ödeme planları okunamadı: " + planError.message);
+  const planToplami = new Map(((planData ?? []) as { id: string; total_amount: number }[]).map((p) => [p.id, Number(p.total_amount)]));
 
   /*
     Ödeme bağlantıları (PayTR): payment_links kullanıcıya kapalı (RLS
@@ -167,11 +178,14 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   const planOzetleri = [...planlar.entries()].map(([planId, sozlesme]) => {
     const liste = dagitilmis.filter((t) => t.payment_plan_id === planId && t.durum !== "iptal");
     const acik = liste.filter((t) => t.kalan > 0);
+    const toplam = planToplami.get(planId) ?? Number(sozlesme.amount);
     return {
       planId,
       sozlesme,
+      toplam,
+      ekHizmet: toplam - Number(sozlesme.amount),
       odenen: liste.reduce((t, x) => t + x.odenen, 0),
-      kalan: Number(sozlesme.amount) - liste.reduce((t, x) => t + x.odenen, 0),
+      kalan: toplam - liste.reduce((t, x) => t + x.odenen, 0),
       acikAdet: acik.length,
       ilkVade: acik[0]?.due_date ?? todayInIstanbul(),
     };
@@ -184,6 +198,12 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
     .filter((t) => t.payment_plan_id === planId && t.status !== "cancelled")
     .sort((a, b) => a.installment_no - b.installment_no)
     .map((t, i) => ({ id: t.id, no: i + 1, vade: t.due_date ?? todayInIstanbul(), tutar: Number(t.amount), odenen: t.odenen }));
+  /* Ek hizmeti taksitlere dağıtma penceresi için: taksiti olan her plan.
+     Plan sözleşme tutarının tamamı ödenmiş olsa da listede (ters işlem
+     için gerekebilir); açık taksit yoksa önizleme bunu söylüyor. */
+  const dagitimPlanlari = [...planlar.entries()]
+    .filter(([planId]) => taksitler.some((t) => t.payment_plan_id === planId))
+    .map(([planId, sozlesme]) => ({ planId, ad: sozlesme.contract_no, toplam: planToplami.get(planId) ?? Number(sozlesme.amount), taksitler: planTaksitleri(planId) }));
   // Sözleşmeye bağlantı yalnızca CRM'i olana: yoksa sayfa hata verirdi.
   const crmVar = modules.some((m) => m.code === "crm");
   const tahsilOrani = debt + refunds > 0 ? Math.round((collections / (debt + refunds)) * 100) : 0;
@@ -341,13 +361,15 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                 // Elle girilen (tahsilat, iade, ek hizmet) düzeltilebilir; ötekiler bir kayda bağlı.
                 const elleTur = hareketDuzeltir ? elleGirilenTur(e) : null;
                 const aciklamaMetni = e.description.replace(/^(Müşteri iadesi|Ek hizmet) · /, "");
+                // Taksitlere dağıtılmış ek hizmetin tutarı kilitli (arvo_ek_hizmet_plan_koru): önce taksitlerden çıkarılır.
+                const taksitteki = e.payment_plan_id ? planlar.get(e.payment_plan_id) ?? null : null;
                 return (
                   <li key={e.id}>
                     <span className="status-pill" data-tone={kind.tone}>{kind.label}</span>
                     <span className="cari-hareket-metin">
                       <b>{e.description}</b>
                       {/* İç anahtar (TAH:<uuid>) gösterilmez; eskiden satırda ham referans yazıyordu. */}
-                      <small>{date(e.transaction_date)}{referans ? ` · ${referans}` : ""}</small>
+                      <small>{date(e.transaction_date)}{referans ? ` · ${referans}` : ""}{e.payment_plan_id ? ` · ${taksitteki?.contract_no ?? "sözleşme"} taksitlerine dağıtıldı` : ""}</small>
                     </span>
                     <strong className={e.entry_type === "credit" ? "cari-arti" : undefined}>
                       {e.entry_type === "credit" ? "−" : "+"}
@@ -375,7 +397,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                             <input type="hidden" name="entry_id" value={e.id} />
                             <label>
                               <span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span>
-                              <input name="amount" inputMode="decimal" required defaultValue={liraYazisi(Number(e.amount))} />
+                              <input name="amount" inputMode="decimal" required defaultValue={liraYazisi(Number(e.amount))} readOnly={Boolean(e.payment_plan_id)} />
                             </label>
                             <label>
                               <span>İşlem tarihi<b className="req" aria-hidden="true">*</b></span>
@@ -394,6 +416,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                               <button className="panel-primary">Düzeltmeyi kaydet</button>
                             </div>
                           </form>
+                          {e.payment_plan_id ? <p className="fin-form-note">Bu ek hizmet {taksitteki?.contract_no ?? "sözleşme"} taksitlerine dağıtıldı; tutarını değiştirmek ya da silmek için önce aşağıdan taksitlerden çıkarın.</p> : (
                           <details className="cari-hareket-sil">
                             <summary className="panel-danger">Hareketi sil</summary>
                             <form action={hareketiSil}>
@@ -402,10 +425,24 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                               <button className="panel-danger">Evet, sil</button>
                             </form>
                           </details>
+                          )}
                         </>
                       ) : (
                         hareketDuzeltir ? <p className="fin-form-note">Bu hareket bir sözleşmeye, PayTR ödemesine ya da finans kaydına bağlı; buradan değiştirilemez.</p> : null
                       )}
+                      {/* Müşteri ek hizmetin bedelini taksitlere yaymak isteyebiliyor (26.10.2026). */}
+                      {elleTur === "ek-hizmet" && vadeDegistirir && dagitimPlanlari.length ? (
+                        <div className="talep-not">
+                          <h3>{e.payment_plan_id ? "Sözleşme taksitlerinde" : "Sözleşme taksitlerine dağıt"}</h3>
+                          <EkHizmetTaksitFormu
+                            entryId={e.id}
+                            tutar={Number(e.amount)}
+                            planlar={dagitimPlanlari}
+                            bagliPlanId={e.payment_plan_id}
+                            eylem={e.payment_plan_id ? ekHizmetiTaksitlerdenCikar : ekHizmetiTaksitlereDagit}
+                          />
+                        </div>
+                      ) : null}
                     </PanelDrawer>
                   </li>
                 );
@@ -461,9 +498,9 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       triggerClassName="panel-secondary cari-taksit-btn"
                       kicker={`SÖZLEŞME · ${p.sozlesme.contract_no}`}
                       title="Taksit planı"
-                      description={`Sözleşme ${money(Number(p.sozlesme.amount))} · ödenen ${money(p.odenen)} · kalan ${money(p.kalan)}`}
+                      description={`Sözleşme ${money(Number(p.sozlesme.amount))}${p.ekHizmet > 0 ? ` + ek hizmet ${money(p.ekHizmet)}` : ""} · ödenen ${money(p.odenen)} · kalan ${money(p.kalan)}`}
                     >
-                      <TaksitPlaniFormu planId={p.planId} taksitler={planTaksitleri(p.planId)} toplam={Number(p.sozlesme.amount)} ilkVade={p.ilkVade} acikAdet={p.acikAdet} eylem={taksitSecenegiDegistir} />
+                      <TaksitPlaniFormu planId={p.planId} taksitler={planTaksitleri(p.planId)} toplam={p.toplam} ilkVade={p.ilkVade} acikAdet={p.acikAdet} eylem={taksitSecenegiDegistir} />
                     </PanelDrawer>
                   ))}
                 </div>

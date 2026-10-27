@@ -293,6 +293,7 @@ export async function createEntry(formData: FormData) {
 const HAREKET_HATALARI: Record<string, string> = {
   kilitli_cari_hareket: "Bu hareket bir sözleşmeye ya da PayTR ödemesine bağlı; değiştirilemez.",
   cari_hareket_turu_degismez: "Hareketin türü değiştirilemez.",
+  ek_hizmet_taksitlerde: "Bu ek hizmet sözleşme taksitlerine dağıtılmış; tutarını değiştirmek ya da silmek için önce ayrıntısından taksitlerden çıkarın.",
 };
 // Açıklamanın önüne işlemin kendisinin koyduğu ek; formda gösterilmez, geri eklenir.
 const ACIKLAMA_EKI: Record<ElleHareketTuru, string> = { tahsilat: "", iade: "Müşteri iadesi · ", "ek-hizmet": "Ek hizmet · " };

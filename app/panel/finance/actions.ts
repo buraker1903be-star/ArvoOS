@@ -8,7 +8,7 @@ import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { assertYetki } from "@/lib/yetkiler";
 import { gecerliGun, gunFarki, gunKaydir } from "@/lib/taksit-vadesi";
-import { tutarDegistir, yenidenBol, type PlanTaksidi } from "@/lib/taksit-plani";
+import { ekHizmetiDagit, tutarDegistir, yenidenBol, type PlanTaksidi } from "@/lib/taksit-plani";
 import { netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { kurusOku, parseTurkishAmount } from "@/lib/turkish-amount";
 
@@ -346,6 +346,9 @@ const PLAN_HATALARI: Record<string, string> = {
   forbidden: "Ödeme planını yalnızca kurum sahibi ve yöneticisi değiştirebilir.",
   silinemeyen_taksit: "Ödenmiş ya da etkin ödeme bağlantısı olan bir taksit plandan çıkarılamaz; önce bağlantıyı iptal edin.",
   payment_plan_not_found: "Ödeme planı bulunamadı.",
+  ek_hizmet_bulunamadi: "Ek hizmet bu sözleşmenin carisinde bulunamadı.",
+  ek_hizmet_zaten_dagitildi: "Bu ek hizmet zaten taksitlere dağıtılmış.",
+  ek_hizmet_planda_degil: "Bu ek hizmet bu sözleşmenin taksitlerinde değil.",
 };
 
 async function planiOku(supabase: Awaited<ReturnType<typeof financeContext>>["supabase"], organizationId: string, planId: string) {
@@ -428,6 +431,24 @@ export async function taksitiDuzenle(formData: FormData) {
   planlarının taksitlerine en eski vadeden dağıtılıyor (cari penceresi ve
   Müşteriler listesiyle aynı kural, lib/taksit-dagitimi.ts).
 */
+async function taksitOdenenleri(supabase: Awaited<ReturnType<typeof financeContext>>["supabase"], org: string, partyId: string, satirlar: PlanSatiri[]) {
+  /* Okunamayan hareket "tahsilat yok" demek değil: ödenmiş taksit açık
+     sanılır ve ek hizmet ödenmiş taksite de yazılırdı. Hata fırlatılır. */
+  const [{ data: hareketler, error: hareketHatasi }, { data: cariPlanlari, error: planHatasi }] = await Promise.all([
+    supabase.from("account_entries").select("entry_type,source_type,amount").eq("organization_id", org).eq("party_id", partyId),
+    supabase.from("payment_plans").select("id").eq("organization_id", org).eq("party_id", partyId),
+  ]);
+  if (hareketHatasi || planHatasi) throw new Error("Cari tahsilatları okunamadı: " + (hareketHatasi ?? planHatasi)?.message);
+  const planIdleri = ((cariPlanlari ?? []) as { id: string }[]).map((p) => p.id);
+  const { data: tumTaksitler, error } = planIdleri.length
+    ? await supabase.from("payment_installments").select("id,due_date,amount,status").eq("organization_id", org).in("payment_plan_id", planIdleri)
+    : { data: [], error: null };
+  if (error) throw new Error("Taksitler okunamadı: " + error.message);
+  const dagilim = taksitleriDagit((tumTaksitler ?? []) as { id: string; due_date: string | null; amount: number; status: string }[], netTahsilat((hareketler ?? []) as { entry_type: string; source_type: string | null; amount: number }[]), todayInIstanbul());
+  const odenen = new Map(dagilim.map((t) => [t.id, t.odenen]));
+  return satirlar.map((t, i) => ({ no: i + 1, vade: bugunVeyaSonra(t.due_date), tutar: Number(t.amount), odenen: odenen.get(t.id) ?? 0 }));
+}
+
 async function taksitSecenegiDegistir__impl(formData: FormData) {
   const { supabase, membership } = await financeContext();
   const org = membership.organization_id;
@@ -435,19 +456,8 @@ async function taksitSecenegiDegistir__impl(formData: FormData) {
   if (!planId) throw new Error("Ödeme planı seçilemedi.");
   const { plan, satirlar } = await planiOku(supabase, org, planId);
 
-  const [{ data: hareketler }, { data: cariPlanlari }] = await Promise.all([
-    supabase.from("account_entries").select("entry_type,source_type,amount").eq("organization_id", org).eq("party_id", plan.party_id),
-    supabase.from("payment_plans").select("id").eq("organization_id", org).eq("party_id", plan.party_id),
-  ]);
-  const planIdleri = ((cariPlanlari ?? []) as { id: string }[]).map((p) => p.id);
-  const { data: tumTaksitler } = planIdleri.length
-    ? await supabase.from("payment_installments").select("id,due_date,amount,status").eq("organization_id", org).in("payment_plan_id", planIdleri)
-    : { data: [] };
-  const dagilim = taksitleriDagit((tumTaksitler ?? []) as { id: string; due_date: string | null; amount: number; status: string }[], netTahsilat((hareketler ?? []) as { entry_type: string; source_type: string | null; amount: number }[]), todayInIstanbul());
-  const odenen = new Map(dagilim.map((t) => [t.id, t.odenen]));
-
   const sonuc = yenidenBol(
-    satirlar.map((t, i) => ({ no: i + 1, vade: bugunVeyaSonra(t.due_date), tutar: Number(t.amount), odenen: odenen.get(t.id) ?? 0 })),
+    await taksitOdenenleri(supabase, org, plan.party_id, satirlar),
     Number(plan.total_amount),
     { adet: Number(formData.get("adet") ?? 0), ilkVade: String(formData.get("ilk_vade") ?? "").trim(), aralikAy: Number(formData.get("aralik") ?? 1) },
   );
@@ -457,4 +467,46 @@ async function taksitSecenegiDegistir__impl(formData: FormData) {
 
 export async function taksitSecenegiDegistir(formData: FormData) {
   return runPanelAction(() => taksitSecenegiDegistir__impl(formData), "Taksit planı güncellendi");
+}
+
+/*
+  EK HİZMETİ TAKSİTLERE DAĞITMA / ÇIKARMA (26.10.2026): cari penceresinde
+  ek hizmetin ayrıntısından. Yeni planı lib/taksit-plani.ts ekHizmetiDagit
+  hesaplıyor (önizleme de aynı işlevi kullanıyor); planın toplamını
+  büyütmek ve bağı yazmak arvo_ek_hizmet_taksitlere ile, tek işlemde.
+  Ödenen kısım taksitSecenegiDegistir'le aynı yoldan: cari dağılımı.
+*/
+async function ekHizmetTaksitleri__impl(formData: FormData, ekle: boolean) {
+  const { supabase, membership } = await financeContext();
+  const org = membership.organization_id;
+  const entryId = String(formData.get("entry_id") ?? "").trim();
+  const planId = String(formData.get("plan_id") ?? "").trim();
+  if (!entryId || !planId) throw new Error("Ek hizmet ya da sözleşme seçilemedi.");
+  const { data: kayit, error } = await supabase.from("account_entries").select("id,amount").eq("id", entryId).eq("organization_id", org).maybeSingle();
+  if (error) throw new Error("Ek hizmet okunamadı: " + error.message);
+  if (!kayit) throw new Error("Ek hizmet bulunamadı veya erişiminiz yok.");
+  const { plan, satirlar } = await planiOku(supabase, org, planId);
+
+  const tutar = Number(kayit.amount);
+  const sonuc = ekHizmetiDagit(await taksitOdenenleri(supabase, org, plan.party_id, satirlar), ekle ? tutar : -tutar);
+  if ("hata" in sonuc) throw new Error(sonuc.hata);
+
+  const { error: kayitHatasi } = await supabase.rpc("arvo_ek_hizmet_taksitlere", { p_entry_id: entryId, p_plan_id: planId, p_taksitler: sonuc, p_ekle: ekle });
+  if (kayitHatasi) {
+    const bilinen = Object.entries(PLAN_HATALARI).find(([kod]) => kayitHatasi.message.includes(kod));
+    throw new Error(bilinen ? bilinen[1] : "Ek hizmet taksitlere işlenemedi: " + kayitHatasi.message);
+  }
+  revalidatePath("/panel/finance/musteri/[id]", "page");
+  revalidatePath("/panel/crm/musteri/[id]", "page");
+  revalidatePath("/panel/crm/contracts/[id]", "page");
+  revalidatePath("/panel/finance");
+  revalidatePath("/panel/finance/genel-bakis");
+}
+
+export async function ekHizmetiTaksitlereDagit(formData: FormData) {
+  return runPanelAction(() => ekHizmetTaksitleri__impl(formData, true), "Ek hizmet açık taksitlere eşit dağıtıldı");
+}
+
+export async function ekHizmetiTaksitlerdenCikar(formData: FormData) {
+  return runPanelAction(() => ekHizmetTaksitleri__impl(formData, false), "Ek hizmet taksitlerden çıkarıldı");
 }
