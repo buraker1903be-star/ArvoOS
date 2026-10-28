@@ -3,6 +3,11 @@
    yalnızca yükseklikle; süzgeç / yeniden renklendirme YOK.
    ============================================================ */
 .site .brand-logo{display:block;height:var(--h,28px);width:auto;max-width:none}
+/* ArvoBook'ta "Book"un uzun harfleri dosyanın yüksekliğini büyütüyor: ARVO
+   harfleri yüksekliğin %54'ü, ArvoLab'da %73. Aynı --h ile yan yana
+   konunca ArvoBook bir boy küçük görünüyordu; ARVO'lar eşit olsun diye
+   1,34 kat. Taşan pay dikeyde geri alınıyor, satır yüksekliği değişmesin. */
+.site .brand-logo[data-brand="arvobook"]{height:calc(var(--h,28px) * 1.34);margin-block:calc(var(--h,28px) * -.17)}
 .site .hdr-logo .brand-logo{--h:20px}
 .site .pop-product .brand-logo{--h:20px}
 .site .phero-logo .brand-logo{--h:clamp(30px,3vw,44px)}

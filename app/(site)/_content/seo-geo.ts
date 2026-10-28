@@ -40,7 +40,7 @@ export const SEO_GEO_TR: SubContent = {
   band: {
     eyebrow: "Uygulamada", title: "Bu site de aynı yaklaşımla kuruldu.",
     lead: "arvo-os.com; yapılandırılmış veri, llms.txt, hreflang ve soru odaklı içerikle hazırlandı.",
-    items: ["Her sayfada schema.org JSON-LD", "llms.txt ve llms-full.txt", "Türkçe–İngilizce hreflang eşleşmeleri", "Tanım cümlesiyle açılan sayfalar ve kısa SSS’ler"],
+    items: ["Her sayfada schema.org JSON-LD", "llms.txt ve llms-full.txt", "Altı dil sürümü arasında hreflang eşleşmeleri", "Tanım cümlesiyle açılan sayfalar ve kısa SSS’ler"],
   },
   note: "Arama motorları ve yapay zekâ servisleri kendi algoritmalarıyla karar verir; belirli bir sıralama, trafik veya alıntı vaat edilmez.",
   faq: { eyebrow: "Sık sorulan sorular", title: "SEO ve GEO hakkında", items: [

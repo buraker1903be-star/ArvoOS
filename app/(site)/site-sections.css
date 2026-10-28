@@ -23,7 +23,7 @@
 .site .phero-logo{margin-bottom:18px}
 .site .crumbs{margin-bottom:28px}
 .site .crumbs ol{display:flex;flex-wrap:wrap;gap:6px;font-size:12px;color:var(--muted)}
-.site .crumbs li+li::before{content:"›";margin-right:6px;opacity:.6}
+.site .crumbs li+li::before{content:"›";margin-inline-end:6px;opacity:.6}
 .site .crumbs a:hover{color:var(--ink);text-decoration:underline}
 
 /* ---------- kaydırmayla belirme ---------- */

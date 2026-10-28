@@ -3,7 +3,7 @@
 import type { Metadata } from "next";
 import { LOCALES, ROUTES, absoluteUrl, alternatesFor, type Locale, type PageId } from "./routes";
 
-const OG_LOCALE: Record<Locale, string> = { en: "en_US", tr: "tr_TR", de: "de_DE", es: "es_ES", fr: "fr_FR" };
+const OG_LOCALE: Record<Locale, string> = { en: "en_US", tr: "tr_TR", de: "de_DE", es: "es_ES", fr: "fr_FR", ar: "ar_AR" };
 
 export function siteMetadata({
   id,

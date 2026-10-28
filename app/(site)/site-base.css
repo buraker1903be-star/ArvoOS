@@ -39,6 +39,11 @@
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; overflow-x:clip;
 }
 .site *,.site *::before,.site *::after{box-sizing:border-box}
+/* Arapça (/ar, 28.10.2026). Yazı tipi yerleşimde yükleniyor (ar/layout.tsx).
+   Harf aralığı sıfır: eksi aralık Arapçada bitişik harfleri koparıyor;
+   başlıkların kendi aralığını da ezmek için bütün alt öğelere uygulanır. */
+.site [lang="ar"]{font-family:var(--font-arapca),var(--font);line-height:1.6}
+.site [lang="ar"][dir] *{letter-spacing:0}
 .site img,.site svg{display:block;max-width:100%}
 .site a{color:inherit;text-decoration:none}
 .site :where(h1,h2,h3,h4,p,ul,ol,dl,figure,blockquote){margin:0}
@@ -46,7 +51,7 @@
 .site button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 .site ::selection{background:var(--gold-100)}
 .site :focus-visible{outline:2px solid var(--gold-500);outline-offset:3px;border-radius:8px}
-.site .skip{position:absolute;left:12px;top:-100px;z-index:200;padding:12px 18px;border-radius:12px;background:#fff;color:var(--ink);font-weight:600;box-shadow:none;transition:top .2s}
+.site .skip{position:absolute;inset-inline-start:12px;top:-100px;z-index:200;padding:12px 18px;border-radius:12px;background:#fff;color:var(--ink);font-weight:600;box-shadow:none;transition:top .2s}
 .site .skip:focus{top:12px;box-shadow:var(--shadow-m)}
 .site .sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
@@ -91,6 +96,9 @@
 .site .alink:hover::after{transform:translate(3px,-.03em)}
 .site .arrow{display:inline-block;transition:transform .3s var(--ease)}
 .site a:hover>.arrow{transform:translateX(3px)}
+/* → çift yönlü metinde aynalanmıyor (› aynalanıyor): Arapçada ok sola bakmalı. */
+.site [dir="rtl"] .arrow{transform:scaleX(-1)}
+.site [dir="rtl"] a:hover>.arrow{transform:scaleX(-1) translateX(3px)}
 
 .site .chips{display:flex;flex-wrap:wrap;gap:8px}
 .site .chip{display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:999px;background:var(--card);box-shadow:var(--hair);color:var(--ink-soft);font-size:14px}

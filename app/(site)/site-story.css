@@ -31,7 +31,7 @@
 .site .fx-row{display:flex;align-items:center;gap:12px}
 .site .fx-row b,.site .fx-row small{display:block}
 .site .fx-row small,.site .fx-kv small,.site .fx-meta,.site .fx-foot small{color:var(--muted);font-size:12px}
-.site .fx-row .mo-pill{margin-left:auto}
+.site .fx-row .mo-pill{margin-inline-start:auto}
 .site .fx-av{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#eef1f6;color:var(--mid-500);font-weight:700}
 .site .fx-pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .site .fx-pipe span{padding:8px 6px;border-radius:10px;background:#f2f2f7;color:var(--muted);font-size:11.5px;text-align:center}

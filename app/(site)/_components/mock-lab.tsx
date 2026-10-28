@@ -37,6 +37,13 @@ const T = {
     check: "Contrôle des consignes", checks: [["Structure des titres", "ok"], ["Style des références", "ok"], ["Numérotation des tableaux", "warn"], ["Longueur du résumé", "ok"]],
     analysis: "Analyse",
   },
+  ar: {
+    label: "مساحة عمل ArvoLab — عرض توضيحي", cap: "واجهة توضيحية",
+    sources: "المصادر", refs: ["دمير وكايا، 2023", "يلماز، 2022", "آيدن وآخرون، 2021", "شاهين، 2020"],
+    doc: "3. المنهجية", cite: "(دمير وكايا، 2023)",
+    check: "فحص الدليل", checks: [["بنية العناوين", "ok"], ["أسلوب المراجع", "ok"], ["ترقيم الجداول", "warn"], ["طول الملخص", "ok"]],
+    analysis: "التحليل",
+  },
 } as const;
 
 export function LabMock({ locale }: { locale: Locale }) {

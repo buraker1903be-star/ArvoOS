@@ -66,6 +66,18 @@ const T = {
     flow: "Étapes à venir", steps: [["Découverte", 100], ["Réalisation", 64], ["Livraison", 28]],
     dock: ["Accueil", "CRM", "Opérations", "Finances", "Personnel", "Courrier", "Documents", "Rapports"],
   },
+  ar: {
+    label: "واجهة لوحة ArvoOS — عرض توضيحي", cap: "واجهة توضيحية · بيانات للعرض",
+    kurum: "مجموعة الشمال", uygulama: "الرئيسية", ara: "بحث", saat: "09:24",
+    hello: "صباح الخير، عائشة", title: "نظرة عامة",
+    serie: "طلبات جديدة", serieNote: "آخر 14 يومًا", serieDelta: "+18%",
+    widgets: [["طلبات جديدة", "12", "info"], ["بانتظار العرض", "5", "gold"], ["أعمال نشطة", "18", "brand"], ["بانتظار الدفع", "7", "success"]],
+    table: "أحدث العروض",
+    rows: [["عيادة الشمال", "بانتظار التوقيع", "gold"], ["أكاديمية أطلس", "مقبول", "success"], ["بلو للاستشارات", "مُرسَل", "info"], ["استوديو إيجه", "مسودة", "neutral"]],
+    flow: "المراحل القادمة", steps: [["الاستكشاف", 100], ["التنفيذ", 64], ["التسليم", 28]],
+    // الدوك يعرض الحرف الأول فقط؛ أدوات التعريف "ال" كانت ستجعل كل الأيقونات "ا".
+    dock: ["رئيسية", "CRM", "عمليات", "مالية", "موظفون", "بريد", "مستندات", "تقارير"],
+  },
 } as const;
 
 export function OsPanelMock({ locale }: { locale: Locale }) {

@@ -55,7 +55,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ loc
   const { locale, id } = await params;
   if (!isLocale(locale) || !isPageId(id)) return new Response("Not Found", { status: 404 });
 
-  const copy = OG_COPY[id][locale];
+  /*
+    Arapça sayfanın paylaşım görseli İngilizce metinle çizilir (28.10.2026).
+    next/og'un çizicisi (satori) Arapça harfleri birbirine bağlamıyor ve
+    sağdan sola dizmiyor: Arapça yazı tipi verilse de başlık kopuk harfler
+    hâlinde, ters sırada çıkıyordu. Yanlış Arapça, doğru İngilizceden kötü.
+    og-copy.ts'teki Arapça metinler çizici bunu desteklediğinde kullanılmak
+    üzere duruyor.
+  */
+  const copy = OG_COPY[id][locale === "ar" ? "en" : locale];
   const product = OG_PRODUCT[id];
   const fonts = await getFonts();
   const titleSize = copy.title.length > 40 ? 62 : copy.title.length > 26 ? 72 : 88;

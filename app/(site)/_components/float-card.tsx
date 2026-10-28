@@ -7,6 +7,7 @@ const SIGN = {
   de: { kicker: "Vertrag · E-Signatur", status: "Unterzeichnet", title: "Dienstleistungsvertrag", party: "Northside Clinic · 13.09.2026, 14:32", meta: ["Zeitstempel", "IP- und Geräteprotokoll", "Prüf-Hash"] },
   es: { kicker: "Contrato · firma electrónica", status: "Firmado", title: "Contrato de servicios", party: "Northside Clinic · 13 sept. 2026, 14:32", meta: ["Sello de tiempo", "Registro de IP y dispositivo", "Hash de verificación"] },
   fr: { kicker: "Contrat · signature électronique", status: "Signé", title: "Contrat de prestation", party: "Northside Clinic · 13 sept. 2026, 14:32", meta: ["Horodatage", "Journal IP et appareil", "Empreinte de vérification"] },
+  ar: { kicker: "عقد · توقيع إلكتروني", status: "موقَّع", title: "اتفاقية خدمات", party: "عيادة الشمال · 13/09/2026، 14:32", meta: ["الطابع الزمني", "سجل IP والجهاز", "بصمة التحقق"] },
 } as const;
 
 /** E-imza kartı: çizilen imza bir kez "yazılır". */

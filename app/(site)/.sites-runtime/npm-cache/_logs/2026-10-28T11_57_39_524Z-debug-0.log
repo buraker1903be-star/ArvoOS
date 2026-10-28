@@ -1,0 +1,18 @@
+0 verbose cli /opt/node22/bin/node /opt/node22/lib/node_modules/npm/bin/npm-cli.js
+1 info using npm@10.9.4
+2 info using node@v22.22.0
+3 silly config load:file:/opt/node22/lib/node_modules/npm/npmrc
+4 silly config load:file:/home/user/ArvoOS/.npmrc
+5 silly config load:file:/root/.npmrc
+6 silly config load:file:/opt/node22/etc/npmrc
+7 verbose title npm exec tsc --noEmit -p /home/user/ArvoOS
+8 verbose argv "exec" "--" "tsc" "--noEmit" "-p" "/home/user/ArvoOS"
+9 verbose logfile logs-max:10 dir:/home/user/ArvoOS/app/(site)/.sites-runtime/npm-cache/_logs/2026-10-28T11_57_39_524Z-
+10 verbose logfile /home/user/ArvoOS/app/(site)/.sites-runtime/npm-cache/_logs/2026-10-28T11_57_39_524Z-debug-0.log
+11 silly logfile done cleaning log files
+12 verbose cwd /home/user/ArvoOS/app/(site)
+13 verbose os Linux 6.18.44-fc-v180
+14 verbose node v22.22.0
+15 verbose npm  v10.9.4
+16 verbose exit 1
+17 verbose code 1

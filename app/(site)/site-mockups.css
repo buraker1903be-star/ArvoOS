@@ -2,7 +2,7 @@
    Arayüz maketleri (HTML/CSS) — ArvoOS, ArvoLab
    ============================================================ */
 .site .mock{container-type:inline-size;margin:0}
-.site .mock-win{overflow:hidden;border-radius:clamp(14px,2.2cqi,22px);background:#f2f2f7;color:#0b1b2e;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 30px 80px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.06);font-size:13px;letter-spacing:-.005em;text-align:left}
+.site .mock-win{overflow:hidden;border-radius:clamp(14px,2.2cqi,22px);background:#f2f2f7;color:#0b1b2e;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 30px 80px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.06);font-size:13px;letter-spacing:-.005em;text-align:start}
 .site .mock-chrome{display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;background:linear-gradient(#fbfbfd,#f0f0f4);border-bottom:1px solid #e3e3e8}
 .site .mock-chrome i{width:10px;height:10px;border-radius:50%;background:#ff5f57}
 .site .mock-chrome i:nth-child(2){background:#febc2e}.site .mock-chrome i:nth-child(3){background:#28c840}
@@ -29,12 +29,12 @@
 .site .mo-bar-brand i{display:grid;place-items:center;width:26px;height:26px;border-radius:9px;background:linear-gradient(180deg,#14304f,#0b1b2e);color:#fff;font-size:12px;font-style:normal;font-weight:700}
 .site .mo-bar-brand b{display:block;font-size:12.5px;letter-spacing:-.01em}
 .site .mo-bar-brand small{display:block;color:#6e6e73;font-size:11px}
-.site .mo-bar-search{display:flex;align-items:center;gap:8px;margin-left:auto;padding:0 10px;height:28px;border-radius:9px;background:#f5f5f7;box-shadow:inset 0 0 0 1px #e3e3e8;color:#6e6e73;font-size:11.5px}
+.site .mo-bar-search{display:flex;align-items:center;gap:8px;margin-inline-start:auto;padding:0 10px;height:28px;border-radius:9px;background:#f5f5f7;box-shadow:inset 0 0 0 1px #e3e3e8;color:#6e6e73;font-size:11.5px}
 .site .mo-bar-search kbd{padding:1px 5px;border-radius:5px;background:#fff;box-shadow:inset 0 0 0 1px #e3e3e8;font:inherit;font-size:11px}
 .site .mo-bar-right{display:flex;align-items:center;gap:8px}
 .site .mo-bar-clock{color:#6e6e73;font-size:11.5px;font-variant-numeric:tabular-nums}
 .site .mo-bar-icon{position:relative;width:24px;height:24px;border-radius:8px;background:#f0f0f4}
-.site .mo-bar-icon[data-nokta]::after{content:"";position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:#c0392b}
+.site .mo-bar-icon[data-nokta]::after{content:"";position:absolute;top:3px;inset-inline-end:3px;width:6px;height:6px;border-radius:50%;background:#c0392b}
 .site .mo-main{flex:1;padding:clamp(14px,2.4cqi,26px) clamp(14px,2.4cqi,26px) clamp(44px,7cqi,74px);display:flex;flex-direction:column;gap:14px}
 .site .mo-top{display:flex;align-items:center;gap:10px}
 
@@ -67,8 +67,8 @@
 .site .mo-portal{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11.5px;color:#3a3a3c}
 @container (max-width:620px){
   .site .mo-bar-search,.site .mo-bar-clock{display:none}
-  .site .mo-bar-search{margin-left:0}
-  .site .mo-bar-right{margin-left:auto}
+  .site .mo-bar-search{margin-inline-start:0}
+  .site .mo-bar-right{margin-inline-start:auto}
   .site .mo-widgets{grid-template-columns:repeat(2,minmax(0,1fr))}
   .site .mo-grid{grid-template-columns:1fr}
   .site .mo-grid .mo-card:last-child{display:none}
@@ -81,8 +81,8 @@
 /* ArvoLab */
 .site .mock-lab .mock-win{background:#fbfbfd}
 .site .ml-body{display:grid;grid-template-columns:.9fr 1.5fr 1fr;min-height:clamp(260px,50cqi,440px)}
-.site .ml-col{padding:16px;border-right:1px solid #ececf0}
-.site .ml-col:last-child{border-right:0}
+.site .ml-col{padding:16px;border-inline-end:1px solid #ececf0}
+.site .ml-col:last-child{border-inline-end:0}
 .site .ml-h{margin-bottom:10px;color:#6e6e73;font-size:11px;font-weight:600}
 .site .ml-ref{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .site .ml-ref i{flex:none;width:14px;height:18px;border-radius:3px;background:#e4e9f1;box-shadow:inset 0 -5px 0 #cfd6e2}

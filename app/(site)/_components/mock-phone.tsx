@@ -33,6 +33,12 @@ const T = {
     pay: "Récapitulatif des paiements", paid: "2 / 3 échéances", cta: "Payer maintenant", locked: "Les livrables se débloquent après paiement",
     tabs: ["Statut", "Documents", "Messages"],
   },
+  ar: {
+    code: "تتبع · TK-4821", title: "مشروع موقع إلكتروني", progress: "التقدم",
+    stages: [["الاستكشاف", "done"], ["التنفيذ", "now"], ["التسليم", "next"]] as const,
+    pay: "ملخص الدفعات", paid: "2 / 3 أقساط", cta: "ادفع الآن", locked: "تُتاح ملفات التسليم بعد الدفع",
+    tabs: ["الحالة", "المستندات", "الرسائل"],
+  },
 } as const;
 
 export function PhoneFrame({ locale }: { locale: Locale }) {
