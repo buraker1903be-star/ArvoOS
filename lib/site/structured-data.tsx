@@ -2,7 +2,7 @@
 // Sayfalar yalnızca bu yardımcıları çağırır; SEO/GEO ajanı içeriği
 // zenginleştirebilir ama İMZALARI DEĞİŞTİRMEZ.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, LOCALE_TAGS, resolvePath, type Locale } from "./routes";
-import { KDV_HARIC, PARA_BIRIMI, PRICED_PRODUCTS, YILLIK_ODENEN_AY, ldFiyat, planlar, urunAdi, urunAdresi } from "./pricing";
+import { KDV_HARIC, PARA_BIRIMI, SITE_PRODUCTS, YILLIK_ODENEN_AY, ldFiyat, planlar, urunAdi, urunAdresi } from "./pricing";
 import { planTutari, planYillikTutari, type Fiyatlar } from "./fiyat-kaynagi";
 
 type Json = Record<string, unknown>;
@@ -53,7 +53,6 @@ export function organizationLd(): Json {
     brand: [
       { "@type": "Brand", name: PRODUCT_APPS.arvoos.name, url: absoluteUrl(ROUTES.arvoos.tr) },
       { "@type": "Brand", name: PRODUCT_APPS.arvolab.name, url: absoluteUrl(ROUTES.arvolab.tr) },
-      { "@type": "Brand", name: PRODUCT_APPS.arc.name, url: absoluteUrl(ROUTES.arc.tr) },
       { "@type": "Brand", name: PRODUCT_APPS.randevu.name, url: absoluteUrl(ROUTES.randevu.tr) },
     ],
     knowsAbout: [
@@ -87,7 +86,7 @@ export function websiteLd(locale: Locale): Json {
   };
 }
 
-/** Yazılım ürünü (ArvoOS, ArvoLab, ArvoARC). Fiyat bilgisi uydurulmaz. */
+/** Yazılım ürünü (ArvoOS, ArvoLab, ArvoBook). Fiyat bilgisi uydurulmaz. */
 export function productLd(p: {
   name: string;
   description: string;
@@ -167,7 +166,7 @@ export function webPageLd(p: { name: string; description: string; path: string; 
 */
 export function pricingLd(locale: Locale, fiyatlar?: Fiyatlar): Json[] {
   const sayfa = absoluteUrl(ROUTES.pricing[locale]);
-  return PRICED_PRODUCTS.map((product) => {
+  return SITE_PRODUCTS.map((product) => {
     const { href, external } = urunAdresi(product, locale);
     const url = external ? href : absoluteUrl(href);
     const teklifler = planlar(product).flatMap((plan) => {

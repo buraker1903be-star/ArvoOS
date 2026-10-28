@@ -29,9 +29,8 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         <nav className="ftr-brands" aria-label={t.products}>
           <Link href={ROUTES.arvoos[locale]}><BrandLogo brand="arvoos" alt="ArvoOS" /></Link>
           <Link href={ROUTES.arvolab[locale]}><BrandLogo brand="arvolab" alt="ArvoLab" /></Link>
-          <Link href={ROUTES.arc[locale]}><BrandLogo brand="arc" alt="ArvoARC" /></Link>
-          {/* Arvo Randevu'nun logo dosyası yok; adı wordmark olarak basılır. */}
-          <Link href={ROUTES.randevu[locale]}><ProductLogo name="Arvo Randevu" height={16} /></Link>
+          {/* ArvoBook'un logo dosyası yok; adı wordmark olarak basılır. */}
+          <Link href={ROUTES.randevu[locale]}><ProductLogo name="ArvoBook" height={16} /></Link>
           <span className="ftr-tag">{t.footerTagline}</span>
         </nav>
         <div className="ftr-cols">

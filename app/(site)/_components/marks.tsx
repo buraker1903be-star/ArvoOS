@@ -3,11 +3,10 @@
 // koyu zeminde "-on-dark" sürümü kullanılır.
 import Image from "next/image";
 
-type Brand = "arvoos" | "arvolab" | "arc" | "arvoculture";
+type Brand = "arvoos" | "arvolab" | "arvoculture";
 const SIZE: Record<Brand, { w: number; h: number }> = {
   arvoos: { w: 1901, h: 395 },
   arvolab: { w: 1920, h: 468 },
-  arc: { w: 1909, h: 373 },
   arvoculture: { w: 1920, h: 259 },
 };
 
@@ -31,16 +30,16 @@ export function BrandLogo({ brand, tone = "light", height, alt = "", className =
   );
 }
 
-export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC" | "Arvo Randevu";
+export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoBook";
 
 /*
-  Logo dosyası OLMAYAN ürün: Arvo Randevu'nun kırpılmış wordmark'ı henüz
+  Logo dosyası OLMAYAN ürün: ArvoBook'un (eski Arvo Randevu) kırpılmış wordmark'ı henüz
   yok. Yanlış bir logo (başka ürünün dosyası) ya da otomatik üretilmiş bir
   şekil koymaktansa ürünün adı kendi tipografisiyle yazılıyor; dosya
-  public/brand/randevu.png olarak eklendiğinde buraya bir satır girer ve
+  public/brand/arvobook.png olarak eklendiğinde buraya bir satır girer ve
   bütün menüler kendiliğinden logoya döner.
 */
-const BRAND_OF: Partial<Record<ProductName, Brand>> = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc" };
+const BRAND_OF: Partial<Record<ProductName, Brand>> = { ArvoOS: "arvoos", ArvoLab: "arvolab" };
 
 /** Ürünün kırpılmış logo dosyası var mı? Yoksa çağıran, adı iki kez
  *  yazdırmamak için wordmark'ı hiç basmamayı seçebilir. */

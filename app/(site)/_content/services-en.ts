@@ -48,7 +48,7 @@ export const SERVICES_EN: SubContent = {
 export const WEB_DESIGN_EN: SubContent = {
   id: "web-design",
   parent: { id: "services", name: "Services" },
-  meta: { title: "Web Design & Development", description: "Arvo web design: discovery and strategy, content architecture, UX/UI design, fast and accessible development, testing, launch and maintenance in one process." },
+  meta: { title: "Web Design & Development", description: "Arvo website and e-commerce design: discovery and strategy, content architecture, UX/UI design, fast and accessible development, testing, launch and maintenance in one process." },
   hero: {
     eyebrow: "Services · Web design", title: "Your brand", subtitle: "at its digital best.",
     lead: "Arvo’s web design service delivers brand websites end to end — from discovery and strategy to content architecture, UX/UI design, development, launch and maintenance.",
@@ -61,6 +61,7 @@ export const WEB_DESIGN_EN: SubContent = {
       { title: "Distinctive, consistent brand", text: "Colour, typography, visual language and tone of voice come together in one premium identity." },
       { title: "Clear, persuasive experience", text: "Effortless journeys that present strong messages in the right order." },
       { title: "Fast, scalable technology", text: "Mobile-first foundations, ready for search engines and AI answers, that grow easily." },
+      { title: "E-commerce site with its own panel", text: "We design and build your online store; the panel for managing your products and orders is delivered with the site." },
     ],
   },
   steps: {
@@ -76,12 +77,13 @@ export const WEB_DESIGN_EN: SubContent = {
   },
   band: {
     eyebrow: "Deliverables", title: "What you have at the end.",
-    items: ["Strategy and content architecture", "Interface design for every screen size", "Fast, accessible, SEO-ready code", "Structured data and multilingual setup (when needed)", "Launch, testing and handover", "Optional post-launch maintenance"],
+    items: ["Strategy and content architecture", "Interface design for every screen size", "Fast, accessible, SEO-ready code", "Structured data and multilingual setup (when needed)", "Product and order management panel for e-commerce sites", "Launch, testing and handover", "Optional post-launch maintenance"],
   },
   faq: { eyebrow: "FAQ", title: "About web design", items: [
     { q: "What steps does a website project include?", a: "Discovery and strategy, content architecture, UX/UI design, development, testing and launch, and maintenance and growth." },
     { q: "Are the sites mobile-friendly?", a: "Yes. Design is mobile-first and tested across screen sizes." },
     { q: "Will my site be ready for search engines?", a: "Yes. Technical SEO foundations are part of development; for deeper work we offer SEO & GEO. No specific ranking is promised." },
+    { q: "Do you build e-commerce sites too?", a: "Yes. We design and build the online store, and the panel for managing your products (catalogue) and orders is delivered with the site. The panel is not rented separately; it is part of the site." },
     { q: "Can I add content after launch?", a: "Yes. The foundation is built to grow with new pages, and we offer maintenance and growth support." },
   ] },
   cta: { title: "Let’s design your new website together.", actions: [talk, { label: "SEO & GEO", href: R("seo-geo"), variant: "ghost" }] },

@@ -5,21 +5,21 @@
 // Eskiden "fiyat yazmayın" kuralı vardı; liste fiyatı olmadığı içindi. ArvoOS özellikleri panelde
 // arayüzü olan (doğrulanmış) özelliklerle sınırlıdır: stok, satın alma,
 // sevkiyat, e-fatura, banka mutabakatı, pazaryeri entegrasyonu YOK.
-// ArvoARC: e-ticaret ve mağazalar için self servis ürün + sipariş yönetimi;
+// ArvoARC 28.10.2026'da satıştan kalktı (yalnızca e-ticaret sitesi yaptırana panel);
 // entegrasyon/ödeme/kargo iddiası YOK.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, type Locale, type PageId } from "./routes";
-import { PRICED_PRODUCTS, YILLIK_BEDAVA_AY, planlar, tutarYaz, urunAdi } from "./pricing";
+import { SITE_PRODUCTS, YILLIK_BEDAVA_AY, planlar, tutarYaz, urunAdi } from "./pricing";
 import { planTutari, planYillikTutari, type Fiyatlar } from "./fiyat-kaynagi";
 
-export const LLMS_UPDATED = "2026-09-13";
+export const LLMS_UPDATED = "2026-10-28";
 
 type PageInfo = Record<Locale, { name: string; summary: string }>;
 
 /** Her sayfa için kısa, olgusal açıklama (Record → her PageId zorunlu). */
 const PAGES: Record<PageId, PageInfo> = {
   home: {
-    en: { name: "Arvo home", summary: "Overview of the Arvo product ecosystem (ArvoOS, ArvoLab, ArvoARC) and services." },
-    tr: { name: "Arvo ana sayfa", summary: "Arvo ürün ekosistemine (ArvoOS, ArvoLab, ArvoARC) ve hizmetlere genel bakış." },
+    en: { name: "Arvo home", summary: "Overview of the Arvo product ecosystem (ArvoOS, ArvoLab, ArvoBook) and services." },
+    tr: { name: "Arvo ana sayfa", summary: "Arvo ürün ekosistemine (ArvoOS, ArvoLab, ArvoBook) ve hizmetlere genel bakış." },
   },
   arvoos: {
     en: { name: "ArvoOS", summary: "Multi-tenant business operating system for service businesses and institutions: CRM and sales pipeline, proposals with online customer acceptance, e-signed contracts, operations (jobs, tasks, stage board, calendar), a customer tracking portal, finance with online payment links, HR, reports and team communication — one flow from request to collection." },
@@ -42,24 +42,20 @@ const PAGES: Record<PageId, PageInfo> = {
     tr: { name: "ArvoOS paketler", summary: "Üç basamak (Başlangıç, Kurumsal, Özel kurum). Başlangıç ve Kurumsal basamaklarının liste fiyatı yayımlanmıştır; Özel kurum kuruma göre belirlenir (modüller, kullanıcılar, şubeler, iş akışları)." },
   },
   randevu: {
-    en: { name: "Arvo Randevu", summary: "Appointment system for hair and beauty salons: an online booking page where the customer picks the service, the stylist (or 'no preference') and the time without signing up, a per-staff calendar, service and staff definitions, weekly working hours and time off in local time, customer records, and a daily reminder list sent from WhatsApp in one tap. Clashing appointments are rejected at database level." },
-    tr: { name: "Arvo Randevu", summary: "Kuaför ve güzellik salonları için randevu sistemi: müşterinin üye olmadan hizmeti, personeli (ya da 'fark etmez') ve saati seçtiği çevrim içi randevu sayfası, personel bazlı takvim, hizmet ve personel tanımı, yerel saatle haftalık çalışma saatleri ve izinler, müşteri kaydı, tek tıkla WhatsApp'tan gönderilen günlük hatırlatma listesi. Çakışan randevu veritabanı düzeyinde reddedilir." },
+    en: { name: "ArvoBook", summary: "ArvoBook (formerly Arvo Randevu) is an appointment system for hair and beauty salons: an online booking page where the customer picks the service, the stylist (or 'no preference') and the time without signing up, a per-staff calendar, service and staff definitions, weekly working hours and time off in local time, customer records, and a daily reminder list sent from WhatsApp in one tap. Clashing appointments are rejected at database level." },
+    tr: { name: "ArvoBook", summary: "ArvoBook (eski adıyla Arvo Randevu): kuaför ve güzellik salonları için randevu sistemi: müşterinin üye olmadan hizmeti, personeli (ya da 'fark etmez') ve saati seçtiği çevrim içi randevu sayfası, personel bazlı takvim, hizmet ve personel tanımı, yerel saatle haftalık çalışma saatleri ve izinler, müşteri kaydı, tek tıkla WhatsApp'tan gönderilen günlük hatırlatma listesi. Çakışan randevu veritabanı düzeyinde reddedilir." },
   },
   pricing: {
-    en: { name: "Pricing", summary: "Public monthly and annual subscription prices for ArvoOS, ArvoARC, Arvo Randevu and ArvoLab. ArvoOS, ArvoARC and Arvo Randevu are priced per organization, not per user; ArvoLab is priced per researcher; VAT excluded; annual billing costs 10 months for 12 months of use. Add-ons, and subscription terms (no automatic card charge, cancellation at period end, 30 days' notice before a price change)." },
-    tr: { name: "Ücretler", summary: "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. ArvoOS, ArvoARC ve Arvo Randevu kurum başına fiyatlanır, kullanıcı başına değil; ArvoLab araştırmacı başına fiyatlanır; KDV hariçtir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (otomatik kart çekimi yok, iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
+    en: { name: "Pricing", summary: "Public monthly and annual subscription prices for ArvoOS, ArvoBook and ArvoLab. ArvoOS and ArvoBook are priced per organization, not per user; ArvoLab is priced per researcher; VAT excluded; annual billing costs 10 months for 12 months of use. Add-ons, and subscription terms (no automatic card charge, cancellation at period end, 30 days' notice before a price change)." },
+    tr: { name: "Ücretler", summary: "ArvoOS, ArvoBook ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. ArvoOS ve ArvoBook kurum başına fiyatlanır, kullanıcı başına değil; ArvoLab araştırmacı başına fiyatlanır; KDV hariçtir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (otomatik kart çekimi yok, iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
   },
   arvolab: {
     en: { name: "ArvoLab", summary: "Research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, an academic editor and an originality pre-check." },
     tr: { name: "ArvoLab", summary: "Literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü için araştırma çalışma alanı." },
   },
-  arc: {
-    en: { name: "ArvoARC", summary: "Self-service SaaS platform for online stores and retail shops that brings product (catalog) management and order management into one panel." },
-    tr: { name: "ArvoARC", summary: "E-ticaret siteleri ve mağazalar için ürün (katalog) yönetimini ve sipariş yönetimini tek panelde toplayan self servis SaaS hizmeti." },
-  },
   services: {
-    en: { name: "Services", summary: "Website design and development, SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals) and ongoing development support." },
-    tr: { name: "Hizmetler", summary: "Web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım geliştirme, süreç ve deneyim tasarımı, entegrasyon ve otomasyon, kurumsal dijital sistemler (panel, portal) ve sürekli geliştirme desteği." },
+    en: { name: "Services", summary: "Website design and development (including e-commerce websites delivered with their own store management panel), SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals) and ongoing development support." },
+    tr: { name: "Hizmetler", summary: "Web sitesi tasarımı ve yapımı (yönetim paneliyle birlikte teslim edilen e-ticaret siteleri dahil), SEO ve GEO içerik düzenleme, özel yazılım geliştirme, süreç ve deneyim tasarımı, entegrasyon ve otomasyon, kurumsal dijital sistemler (panel, portal) ve sürekli geliştirme desteği." },
   },
   "web-design": {
     en: { name: "Web design", summary: "Brand websites delivered end to end: discovery and strategy, content architecture, UX/UI design, development, testing and launch, maintenance." },
@@ -112,7 +108,7 @@ const url = (id: PageId, locale: Locale) => absoluteUrl(ROUTES[id][locale]);
 */
 function fiyatListesi(locale: Locale, fiyatlar?: Fiyatlar): string {
   const tr = locale === "tr";
-  return PRICED_PRODUCTS.map((product) => {
+  return SITE_PRODUCTS.map((product) => {
     const satirlar = planlar(product).map((plan) => {
       const aylik = planTutari(plan, fiyatlar);
       const yillik = planYillikTutari(plan, fiyatlar);
@@ -136,7 +132,7 @@ function item(id: PageId, extra = ""): string {
 }
 
 const SECTIONS: { title: string; ids: PageId[] }[] = [
-  { title: "Products", ids: ["arvoos", "arvoos-modules", "arvoos-industries", "arvoos-solutions", "arvoos-plans", "arvolab", "arc", "randevu"] },
+  { title: "Products", ids: ["arvoos", "arvoos-modules", "arvoos-industries", "arvoos-solutions", "arvoos-plans", "arvolab", "randevu"] },
   { title: "Pricing", ids: ["pricing"] },
   { title: "Services", ids: ["services", "web-design", "seo-geo", "custom-software"] },
   { title: "Company", ids: ["home", "about"] },
@@ -147,7 +143,6 @@ const SECTIONS: { title: string; ids: PageId[] }[] = [
 const SIGN_IN: Partial<Record<PageId, string>> = {
   arvoos: ` Sign in: ${PRODUCT_APPS.arvoos.url}.`,
   arvolab: ` Sign in: ${PRODUCT_APPS.arvolab.url}.`,
-  arc: ` Web app: ${PRODUCT_APPS.arc.url}.`,
   randevu: ` Panel: ${PRODUCT_APPS.randevu.url}.`,
 };
 
@@ -160,7 +155,7 @@ export function buildLlmsTxt(): string {
   const lines = [
     `# ${COMPANY.brand}`,
     "",
-    `> Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo builds three products: ArvoOS, a multi-tenant business operating system that runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoARC, a self-service SaaS platform for online stores and retail shops to manage products and orders. Arvo also delivers services: website design, SEO and GEO content optimization, and custom software. The website is bilingual: Turkish at ${SITE_ORIGIN} and English at ${absoluteUrl(ROUTES.home.en)}.`,
+    `> Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo builds three products: ArvoOS, a multi-tenant business operating system that runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoBook, an appointment system for salons. Arvo also delivers services: website design (including e-commerce websites with their own management panel), SEO and GEO content optimization, and custom software. The website is bilingual: Turkish at ${SITE_ORIGIN} and English at ${absoluteUrl(ROUTES.home.en)}.`,
     "",
     "Key facts:",
     "",
@@ -168,8 +163,7 @@ export function buildLlmsTxt(): string {
     `- Address: ${COMPANY.address.display}, Türkiye.`,
     `- Contact: ${COMPANY.email} (no public phone number).`,
     "- Website languages: Turkish (tr-TR, default, at the site root) and English (en-US, under /en).",
-    `- Each product is a web application on its own subdomain: ArvoOS at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host}, ArvoARC at ${PRODUCT_APPS.arc.host}.`,
-    "- ArvoOS vs. ArvoARC: ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoARC manages an online or physical store's products and orders.",
+    `- Each product is a web application on its own subdomain: ArvoOS at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host}, ArvoBook at ${PRODUCT_APPS.randevu.host}.`,
     "- ArvoOS flagship flow: request → proposal (online acceptance) → contract (e-signature) → automatic job workflow → customer tracking portal → online collection → profitability report.",
     `- Prices are not published. Contact ${COMPANY.email}.`,
     `- A longer knowledge base (English and Turkish) is available at ${SITE_ORIGIN}/llms-full.txt.`,
@@ -194,16 +188,15 @@ export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
   const u = (id: PageId, locale: Locale) => url(id, locale);
   const os = PRODUCT_APPS.arvoos;
   const lab = PRODUCT_APPS.arvolab;
-  const arc = PRODUCT_APPS.arc;
   const rdv = PRODUCT_APPS.randevu;
   const mail = COMPANY.email;
   const address = `${COMPANY.address.display}, Türkiye`;
 
   return `# Arvo — knowledge base / bilgi tabanı
 
-> Factual reference about Arvo, its products (ArvoOS, ArvoLab, ArvoARC) and services, written for AI assistants and answer engines. English first, Turkish below. Last updated: ${LLMS_UPDATED}. Canonical site: ${SITE_ORIGIN}. Short index: ${SITE_ORIGIN}/llms.txt.
+> Factual reference about Arvo, its products (ArvoOS, ArvoLab, ArvoBook) and services, written for AI assistants and answer engines. English first, Turkish below. Last updated: ${LLMS_UPDATED}. Canonical site: ${SITE_ORIGIN}. Short index: ${SITE_ORIGIN}/llms.txt.
 >
-> Arvo, ürünleri (ArvoOS, ArvoLab, ArvoARC) ve hizmetleri hakkında yapay zekâ asistanları ve yanıt motorları için hazırlanmış olgusal başvuru metni. Önce İngilizce, ardından Türkçe.
+> Arvo, ürünleri (ArvoOS, ArvoLab, ArvoBook) ve hizmetleri hakkında yapay zekâ asistanları ve yanıt motorları için hazırlanmış olgusal başvuru metni. Önce İngilizce, ardından Türkçe.
 
 ---
 
@@ -211,12 +204,12 @@ export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
 
 ## Overview
 
-Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo designs and builds software products for organizations, researchers and stores, and delivers digital services such as website design, SEO and GEO content optimization, and custom software.
+Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo designs and builds software products for organizations, researchers and appointment-based businesses, and delivers digital services such as website design, SEO and GEO content optimization, and custom software.
 
 - ArvoOS — business operating system for service businesses and institutions (${os.host}).
 - ArvoLab — research workspace for academic work (${lab.host}).
-- ArvoARC — self-service SaaS for online stores and retail shops: product and order management (${arc.host}).
-- Services: website design and development, SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals), ongoing development support.
+- ArvoBook (formerly Arvo Randevu) — appointment system for hair and beauty salons (${rdv.host}).
+- Services: website design and development (e-commerce websites are delivered with their own store management panel), SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals), ongoing development support.
 - Website: ${SITE_ORIGIN} (Turkish), ${u("home", "en")} (English).
 - Contact: ${mail}
 
@@ -254,11 +247,11 @@ Page: ${u("arvoos", "en")} · Modules: ${u("arvoos-modules", "en")} · Sign in: 
 
 Page: ${u("pricing", "en")}
 
-ArvoOS, ArvoARC and Arvo Randevu are priced per organization, not per user — each plan includes a set number of users. ArvoLab is the exception: it is priced per researcher (per seat); the Team tier is per-seat volume pricing from 3 users, and the Institution tier is an unlimited-user site licence. All amounts are in Turkish lira and exclude VAT. On annual billing you pay for 10 months and use 12 (${YILLIK_BEDAVA_AY} months free), invoiced once at the start of the period.
+ArvoOS and ArvoBook are priced per organization, not per user — each plan includes a set number of users. ArvoLab is the exception: it is priced per researcher (per seat); the Team tier is per-seat volume pricing from 3 users, and the Institution tier is an unlimited-user site licence. All amounts are in Turkish lira and exclude VAT. On annual billing you pay for 10 months and use 12 (${YILLIK_BEDAVA_AY} months free), invoiced once at the start of the period.
 
 ${fiyatListesi("en", fiyatlar)}
 
-Charged separately: additional user, additional branch (Arvo Randevu), data migration and setup, custom development.
+Charged separately: additional user, additional branch (ArvoBook), data migration and setup, custom development.
 
 Subscription terms: the card is never charged automatically — a payment link is sent for each period and the subscriber approves it. Cancellation takes effect at the end of the paid period. Price changes are announced at least 30 days in advance and apply from the next period only; the current period is unaffected. An upgrade takes effect the same day, charging only the remaining days; a downgrade applies at the end of the period. If an annual plan is cancelled early, the months used are recalculated at the monthly list price and the remaining balance is refunded. Full text: ${u("distance-sales", "en")} and ${u("refund", "en")}.
 
@@ -281,21 +274,11 @@ Page: ${u("arvolab", "en")} · Sign in: ${lab.url}
 
 **Access.** Request access via ${mail}; sign in at ${lab.url}.
 
-## ArvoARC — product and order management for stores
-
-Page: ${u("arc", "en")} · Web app: ${arc.url}
-
-**What it is.** ArvoARC is a self-service SaaS platform for online stores and retail shops. It brings product management (catalog and product information) and order management into one panel.
-
-**Who it is for.** E-commerce businesses, physical stores and retailers, and growing brands.
-
-**How it works.** Stores sign up and set up ArvoARC themselves (self-service). It is cloud-based and runs in the browser. It is multi-tenant: each store has its own space.
-
-## Arvo Randevu — appointment management for salons
+## ArvoBook — appointment management for salons
 
 Page: ${u("randevu", "en")} · Panel: ${rdv.url} · Pricing: ${u("pricing", "en")}
 
-**What it is.** Arvo Randevu is an appointment system for hair and beauty salons: an online booking page for customers, an appointment calendar, staff and service definitions, and customer records with history.
+**What it is.** ArvoBook (formerly Arvo Randevu) is an appointment system for hair and beauty salons: an online booking page for customers, an appointment calendar, staff and service definitions, and customer records with history.
 
 **Who it is for.** Hairdressers, beauty salons and care centres — both single-location salons and multi-branch businesses.
 
@@ -303,7 +286,7 @@ Page: ${u("randevu", "en")} · Panel: ${rdv.url} · Pricing: ${u("pricing", "en"
 
 ## How the products relate
 
-ArvoOS, ArvoLab, ArvoARC and Arvo Randevu are separate web applications, each on its own subdomain of arvo-os.com (${os.host}, ${lab.host}, ${arc.host}, ${rdv.host}), built by the same company under one brand and quality standard. ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoLab supports academic research; ArvoARC manages a store's products and orders; Arvo Randevu runs a salon's appointment book.
+ArvoOS, ArvoLab and ArvoBook are separate web applications, each on its own subdomain of arvo-os.com (${os.host}, ${lab.host}, ${rdv.host}), built by the same company under one brand and quality standard. ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoLab supports academic research; ArvoBook runs a salon's appointment book.
 
 ## Services
 
@@ -366,17 +349,8 @@ ArvoLab is Arvo's research workspace for literature and citation management, aca
 **How do I get access to ArvoLab?**
 Request access at ${mail}. Sign in at ${lab.url}.
 
-**What is ArvoARC?**
-ArvoARC is a self-service SaaS platform for online stores and retail shops that brings product (catalog) management and order management into one panel. It is available at ${arc.url}.
-
-**Who is ArvoARC for?**
-E-commerce businesses, physical stores and retailers, and growing brands.
-
-**What is the difference between ArvoARC and ArvoOS?**
-ArvoOS is a business operating system for a company's operations: CRM, proposals, contracts, jobs, finance and HR. ArvoARC is for e-commerce and stores: managing products and orders in one panel.
-
 **What is the difference between Arvo and ArvoOS?**
-Arvo is the brand (and arvo-os.com the website) of ${COMPANY.legalName}. ArvoOS is one of its products; ArvoLab and ArvoARC are the others.
+Arvo is the brand (and arvo-os.com the website) of ${COMPANY.legalName}. ArvoOS is one of its products; ArvoLab and ArvoBook are the others.
 
 **Does Arvo build websites or custom software?**
 Yes. Arvo's services include website design and development, SEO and GEO content optimization, custom software development (panels, portals, integrations and automation), process and experience design, and ongoing development support. See ${u("services", "en")}.
@@ -393,12 +367,12 @@ ${address}. Email ${mail} or use ${u("contact", "en")}.
 
 ## Genel bakış
 
-Arvo, ${COMPANY.city} merkezli teknoloji şirketi ${COMPANY.legalName} bünyesindeki yazılım markasıdır. Arvo; kurumlar, araştırmacılar ve mağazalar için yazılım ürünleri geliştirir, ayrıca web sitesi tasarımı, SEO ve GEO içerik düzenleme ve özel yazılım gibi dijital hizmetler sunar.
+Arvo, ${COMPANY.city} merkezli teknoloji şirketi ${COMPANY.legalName} bünyesindeki yazılım markasıdır. Arvo; kurumlar, araştırmacılar ve randevuyla çalışan işletmeler için yazılım ürünleri geliştirir, ayrıca web sitesi tasarımı, SEO ve GEO içerik düzenleme ve özel yazılım gibi dijital hizmetler sunar.
 
 - ArvoOS — hizmet işletmeleri ve kurumlar için işletme işletim sistemi (${os.host}).
 - ArvoLab — akademik çalışma için araştırma çalışma alanı (${lab.host}).
-- ArvoARC — e-ticaret siteleri ve mağazalar için self servis SaaS: ürün ve sipariş yönetimi (${arc.host}).
-- Hizmetler: web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım geliştirme, süreç ve deneyim tasarımı, entegrasyon ve otomasyon, kurumsal dijital sistemler (panel, portal), sürekli geliştirme desteği.
+- ArvoBook (eski adıyla Arvo Randevu) — kuaför ve güzellik salonları için randevu sistemi (${rdv.host}).
+- Hizmetler: web sitesi tasarımı ve yapımı (e-ticaret siteleri kendi mağaza yönetim paneliyle teslim edilir), SEO ve GEO içerik düzenleme, özel yazılım geliştirme, süreç ve deneyim tasarımı, entegrasyon ve otomasyon, kurumsal dijital sistemler (panel, portal), sürekli geliştirme desteği.
 - Web sitesi: ${SITE_ORIGIN} (Türkçe), ${u("home", "en")} (İngilizce).
 - İletişim: ${mail}
 
@@ -436,11 +410,11 @@ Sayfa: ${u("arvoos", "tr")} · Modüller: ${u("arvoos-modules", "tr")} · Giriş
 
 Sayfa: ${u("pricing", "tr")}
 
-ArvoOS, ArvoARC ve Arvo Randevu kurum başına fiyatlanır, kullanıcı başına değil — her pakette belirli sayıda kullanıcı dahildir. ArvoLab istisnadır: araştırmacı (koltuk) başına fiyatlanır; Ekip basamağı en az 3 kullanıcıyla koltuk başı hacim indirimidir, Kurum basamağı ise sınırsız kullanıcılı site lisansıdır. Tutarlar Türk lirasıdır ve KDV hariçtir. Yıllık ödemede 12 aylık kullanım için 10 aylık bedel ödenir (${YILLIK_BEDAVA_AY} ay bedava) ve tutar dönem başında tek seferde faturalanır.
+ArvoOS ve ArvoBook kurum başına fiyatlanır, kullanıcı başına değil — her pakette belirli sayıda kullanıcı dahildir. ArvoLab istisnadır: araştırmacı (koltuk) başına fiyatlanır; Ekip basamağı en az 3 kullanıcıyla koltuk başı hacim indirimidir, Kurum basamağı ise sınırsız kullanıcılı site lisansıdır. Tutarlar Türk lirasıdır ve KDV hariçtir. Yıllık ödemede 12 aylık kullanım için 10 aylık bedel ödenir (${YILLIK_BEDAVA_AY} ay bedava) ve tutar dönem başında tek seferde faturalanır.
 
 ${fiyatListesi("tr", fiyatlar)}
 
-Ayrıca ücretlendirilen kalemler: ek kullanıcı, ek şube (Arvo Randevu), veri aktarımı ve kurulum, kuruma özel geliştirme.
+Ayrıca ücretlendirilen kalemler: ek kullanıcı, ek şube (ArvoBook), veri aktarımı ve kurulum, kuruma özel geliştirme.
 
 Abonelik koşulları: karttan otomatik tahsilat yapılmaz — her dönem için ödeme bağlantısı gönderilir ve abone onaylar. İptal, ödenmiş dönemin sonunda yürürlüğe girer. Fiyat değişikliği en az 30 gün önce bildirilir ve yalnızca sonraki dönemde uygulanır; yürürlükteki dönem etkilenmez. Yükseltme aynı gün yürürlüğe girer ve yalnızca dönemin kalan günleri için fark alınır; düşürme dönem sonunda uygulanır. Yıllık abonelik erken iptal edilirse kullanılan aylar aylık liste fiyatı üzerinden hesaplanır ve kalan bakiye iade edilir. Tam metin: ${u("distance-sales", "tr")} ve ${u("refund", "tr")}.
 
@@ -463,21 +437,11 @@ Sayfa: ${u("arvolab", "tr")} · Giriş: ${lab.url}
 
 **Erişim.** ${mail} adresinden erişim talep edin; giriş: ${lab.url}.
 
-## ArvoARC — mağazalar için ürün ve sipariş yönetimi
-
-Sayfa: ${u("arc", "tr")} · Uygulama: ${arc.url}
-
-**Nedir?** ArvoARC, e-ticaret siteleri ve mağazalar için self servis bir SaaS hizmetidir. Ürün yönetimini (katalog ve ürün bilgileri) ve sipariş yönetimini tek panelde toplar.
-
-**Kimler için?** E-ticaret işletmeleri, fiziksel mağazalar ve perakendeciler, büyüyen markalar.
-
-**Nasıl çalışır?** Mağazalar ArvoARC'a kendileri kaydolur ve kurulumu kendileri yapar (self servis). Bulut tabanlıdır, tarayıcıda çalışır. Çok kiracılıdır: her mağazanın kendi alanı vardır.
-
-## Arvo Randevu — salonlar için randevu yönetimi
+## ArvoBook — salonlar için randevu yönetimi
 
 Sayfa: ${u("randevu", "tr")} · Panel: ${rdv.url} · Ücretler: ${u("pricing", "tr")}
 
-**Nedir?** Arvo Randevu, kuaför ve güzellik salonları için randevu sistemidir: müşteriye açık çevrim içi randevu sayfası, randevu takvimi, personel ve hizmet tanımları, geçmişiyle birlikte müşteri kaydı.
+**Nedir?** ArvoBook (eski adıyla Arvo Randevu), kuaför ve güzellik salonları için randevu sistemidir: müşteriye açık çevrim içi randevu sayfası, randevu takvimi, personel ve hizmet tanımları, geçmişiyle birlikte müşteri kaydı.
 
 **Kimler için?** Kuaförler, güzellik salonları ve bakım merkezleri; tek şubeli salonlar ve çok şubeli işletmeler.
 
@@ -485,7 +449,7 @@ Sayfa: ${u("randevu", "tr")} · Panel: ${rdv.url} · Ücretler: ${u("pricing", "
 
 ## Ürünler arasındaki ilişki
 
-ArvoOS, ArvoLab, ArvoARC ve Arvo Randevu; her biri arvo-os.com'un kendi alt alan adında (${os.host}, ${lab.host}, ${arc.host}, ${rdv.host}) çalışan ayrı web uygulamalarıdır ve aynı şirket tarafından ortak marka ve kalite standardıyla geliştirilir. ArvoOS bir şirketin operasyonunu (CRM, teklif, sözleşme, iş, finans, İK) yönetir; ArvoLab akademik araştırmayı destekler; ArvoARC bir mağazanın ürünlerini ve siparişlerini yönetir; Arvo Randevu bir salonun randevu defterini yönetir.
+ArvoOS, ArvoLab ve ArvoBook; her biri arvo-os.com'un kendi alt alan adında (${os.host}, ${lab.host}, ${rdv.host}) çalışan ayrı web uygulamalarıdır ve aynı şirket tarafından ortak marka ve kalite standardıyla geliştirilir. ArvoOS bir şirketin operasyonunu (CRM, teklif, sözleşme, iş, finans, İK) yönetir; ArvoLab akademik araştırmayı destekler; ArvoBook bir salonun randevu defterini yönetir.
 
 ## Hizmetler
 
@@ -548,17 +512,8 @@ ArvoLab, Arvo'nun literatür ve atıf yönetimi, akademik yazım, kılavuz kontr
 **ArvoLab'e nasıl erişilir?**
 ${mail} adresinden erişim talep edin. Giriş: ${lab.url}.
 
-**ArvoARC nedir?**
-ArvoARC, e-ticaret siteleri ve mağazalar için ürün (katalog) yönetimini ve sipariş yönetimini tek panelde toplayan self servis SaaS hizmetidir. Adresi: ${arc.url}.
-
-**ArvoARC kimler için?**
-E-ticaret işletmeleri, fiziksel mağazalar ve perakendeciler, büyüyen markalar.
-
-**ArvoARC ile ArvoOS arasındaki fark nedir?**
-ArvoOS, bir şirketin operasyonunu yöneten işletme işletim sistemidir: CRM, teklif, sözleşme, iş takibi, finans ve İK. ArvoARC ise e-ticaret ve mağazalar içindir: ürünleri ve siparişleri tek panelde yönetir.
-
 **Arvo ile ArvoOS arasındaki fark nedir?**
-Arvo, ${COMPANY.legalName} şirketinin markası (arvo-os.com da web sitesi); ArvoOS ise bu markanın ürünlerinden biridir. Diğer ürünler ArvoLab ve ArvoARC'tır.
+Arvo, ${COMPANY.legalName} şirketinin markası (arvo-os.com da web sitesi); ArvoOS ise bu markanın ürünlerinden biridir. Diğer ürünler ArvoLab ve ArvoBook'tur.
 
 **Arvo web sitesi veya özel yazılım yapıyor mu?**
 Evet. Arvo'nun hizmetleri arasında web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım geliştirme (panel, portal, entegrasyon ve otomasyon), süreç ve deneyim tasarımı ile sürekli geliştirme desteği bulunur. Bkz. ${u("services", "tr")}.

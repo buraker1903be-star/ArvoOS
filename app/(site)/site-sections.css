@@ -1,6 +1,6 @@
 /* ============================================================
    Açık açılışlar, ürün kutuları (apple.com), bölüm başlıkları,
-   eski adım anlatısı (ArvoLab / ArvoARC), kaydırmayla belirme
+   eski adım anlatısı (ArvoLab), kaydırmayla belirme
    ============================================================ */
 
 /* ---------- ana sayfa açılışı ---------- */
@@ -53,8 +53,11 @@
 .site .ptile-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 28px;margin-top:4px}
 .site .ptile-visual{width:min(1240px,100% - 2*var(--gutter));margin:clamp(36px,4.5vw,64px) auto 0}
 .site .ptile-visual.narrow{width:min(980px,100% - 2*var(--gutter))}
+/* Arayüz maketi olmayan ürün (ArvoBook) yüzen kartla çiziliyor; kart
+   maket genişliğine yayılınca boş bir şerit gibi duruyordu. */
+.site .ptile-card{max-width:380px;margin-inline:auto}
 
-/* ---------- ArvoLab / ArvoARC adım anlatısı (açık) ---------- */
+/* ---------- ArvoLab adım anlatısı (açık) ---------- */
 .site .story{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(40px,6vw,96px)}
 .site .story-pin{position:sticky;top:calc(var(--header-h) + 40px);align-self:start}
 .site .story-pin .lead{margin-top:16px}

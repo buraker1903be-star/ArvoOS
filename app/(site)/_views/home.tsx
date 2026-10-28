@@ -5,12 +5,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { COMPANY, ROUTES, type Locale } from "@/lib/site/routes";
 import { JsonLd, faqLd, organizationLd, webPageLd, websiteLd } from "@/lib/site/structured-data";
-import { ARC_CONTENT } from "../_content/arc";
 import type { HomeContent } from "../_content/home";
 import { Fragment } from "../_components/frags";
 import { HeroStage } from "../_components/hero-stage";
 import { BrandLogo, ProductLogo, type ProductName } from "../_components/marks";
-import { ArcMock } from "../_components/mock-arc";
+import { FloatCard } from "../_components/float-card";
 import { LabMock } from "../_components/mock-lab";
 import { StoryStage } from "../_components/story-stage";
 import { ArvoosTrio } from "../_components/trio";
@@ -39,9 +38,13 @@ function ProductTile({ id, name, kicker, title, sub, href, app, more, signIn, na
   );
 }
 
+const BOOK_CARD = {
+  tr: { kicker: "Yeni randevu", status: "Onaylandı", title: "Saç kesimi · Elif", sub: "Perşembe 14:30 · 45 dk", rows: [["Personel takvimi uygun", "ok"], ["Müşteriye bildirim hazır", "ok"]] as [string, "ok" | "warn"][] },
+  en: { kicker: "New booking", status: "Confirmed", title: "Haircut · Elif", sub: "Thursday 2:30 pm · 45 min", rows: [["Stylist calendar free", "ok"], ["Customer notice ready", "ok"]] as [string, "ok" | "warn"][] },
+} as const;
+
 export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
-  const arc = ARC_CONTENT[locale];
-  const { os, lab } = c.products;
+  const { os, lab, book } = c.products;
   const more = locale === "tr" ? "Daha fazla bilgi" : "Learn more";
   const signIn = locale === "tr" ? "Giriş" : "Sign in";
   const visuals = ["web", "seo", "software"] as const;
@@ -68,8 +71,10 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
           <LabMock locale={locale} />
         </ProductTile>
 
-        <ProductTile name="ArvoARC" kicker={arc.category} title={`${arc.title} ${arc.subtitle}`} sub={arc.short} href={c.products.arcCta.href} app={c.products.arcSignIn.href} more={more} signIn={signIn} narrow>
-          <ArcMock locale={locale} />
+        {/* ArvoARC'ın yeri 28.10.2026'dan beri ArvoBook: ARC satılmıyor. Arayüz
+            maketi henüz yok; mevcut yüzen kart örnek bir randevuyla çiziliyor. */}
+        <ProductTile name="ArvoBook" kicker={book.label} title={book.title} sub={book.text} href={book.cta.href} app={book.signIn.href} more={more} signIn={signIn} narrow>
+          <div className="ptile-card"><FloatCard {...BOOK_CARD[locale]} /></div>
         </ProductTile>
 
         <section className="section" aria-labelledby="svc-title">

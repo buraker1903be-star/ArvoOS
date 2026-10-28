@@ -1,5 +1,5 @@
 // Üst menü ve alt bilgi metinleri (TR + EN). Bağlantılar yalnızca ROUTES'tan.
-import { PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/routes";
+import { ARC_APP, PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/routes";
 
 export type NavLink = { label: string; href: string; desc?: string; external?: boolean };
 
@@ -13,15 +13,19 @@ type Chrome = {
   footerTagline: string; footerCta: string; company: string; rights: string; addressLabel: string; group: string;
 };
 
-/* Dört ürünün de giriş adresi menüde: liste PRODUCT_APPS'ten geliyor,
-   yeni ürün eklenince menüye elle eklenmesi gerekmesin. Arvo Randevu
-   eskiden burada yoktu ve panele yalnızca adresi bilen girebiliyordu. */
-const signInLinks: NavLink[] = (["arvoos", "arvolab", "arc", "randevu"] as const).map((key) => ({
-  label: PRODUCT_APPS[key].name,
-  desc: PRODUCT_APPS[key].host,
-  href: PRODUCT_APPS[key].url,
-  external: true,
-}));
+/* Ürünlerin giriş adresi menüde: liste PRODUCT_APPS'ten geliyor, yeni
+   ürün eklenince menüye elle eklenmesi gerekmesin. ArvoARC ürün olarak
+   satılmıyor (28.10.2026) ama e-ticaret sitesini Arvo'ya yaptıranlar
+   paneline buradan giriyor; listenin sonunda, ayrı. */
+const signInLinks: NavLink[] = [
+  ...(["arvoos", "arvolab", "randevu"] as const).map((key) => ({
+    label: PRODUCT_APPS[key].name,
+    desc: PRODUCT_APPS[key].host,
+    href: PRODUCT_APPS[key].url,
+    external: true,
+  })),
+  { label: ARC_APP.name, desc: ARC_APP.host, href: ARC_APP.url, external: true },
+];
 
 export const CHROME: Record<Locale, Chrome> = {
   tr: {
@@ -32,8 +36,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "İşletme işletim sistemi", href: ROUTES.arvoos.tr },
       { label: "ArvoLab", desc: "Araştırma çalışma alanı", href: ROUTES.arvolab.tr },
-      { label: "ArvoARC", desc: "E-ticaret ve mağaza yönetimi", href: ROUTES.arc.tr },
-      { label: "Arvo Randevu", desc: "Salon randevu yönetimi", href: ROUTES.randevu.tr },
+      { label: "ArvoBook", desc: "Salon randevu yönetimi", href: ROUTES.randevu.tr },
     ],
     arvoosTitle: "ArvoOS’u keşfedin",
     arvoosLinks: [
@@ -61,8 +64,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "Business operating system", href: ROUTES.arvoos.en },
       { label: "ArvoLab", desc: "Research workspace", href: ROUTES.arvolab.en },
-      { label: "ArvoARC", desc: "E-commerce and store management", href: ROUTES.arc.en },
-      { label: "Arvo Randevu", desc: "Salon appointment management", href: ROUTES.randevu.en },
+      { label: "ArvoBook", desc: "Salon appointment management", href: ROUTES.randevu.en },
     ],
     arvoosTitle: "Explore ArvoOS",
     arvoosLinks: [

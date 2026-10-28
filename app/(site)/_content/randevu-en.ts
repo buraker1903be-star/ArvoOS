@@ -1,5 +1,5 @@
 /*
-  Arvo Randevu product page — English. Mirrors randevu.ts; the same
+  ArvoBook product page — English. Mirrors randevu.ts; the same
   rule applies: only shipped features. No automatic reminders (Meta
   template approval pending), no multi-branch, reports, deposits or
   loyalty — those are on the roadmap, not in the product.
@@ -11,7 +11,7 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].en;
 
 export const RANDEVU_EN: ProductContent = {
   id: "randevu",
-  name: "Arvo Randevu",
+  name: "ArvoBook",
   category: "BusinessApplication",
   appUrl: PRODUCT_APPS.randevu.url,
   featureList: [
@@ -23,12 +23,12 @@ export const RANDEVU_EN: ProductContent = {
     "WhatsApp reminders",
   ],
   meta: {
-    title: "Arvo Randevu — Salon Appointment Management",
+    title: "ArvoBook — Salon Appointment Management",
     description:
       "Online booking for hair and beauty salons: customers pick the service, the stylist and the time themselves; per-staff calendar, working hours and time off, WhatsApp reminders.",
   },
   hero: {
-    eyebrow: "Arvo Randevu · Salon appointment management",
+    eyebrow: "ArvoBook · Salon appointment management",
     title: "Let the booking page",
     subtitle: "answer the phone.",
     lead:
@@ -42,7 +42,7 @@ export const RANDEVU_EN: ProductContent = {
     eyebrow: "Capabilities",
     title: "The salon's day on one screen.",
     lead:
-      "An appointment taken by phone goes into a paper book, the book is misread, the hour clashes. Arvo Randevu rebuilds that chain from the start.",
+      "An appointment taken by phone goes into a paper book, the book is misread, the hour clashes. ArvoBook rebuilds that chain from the start.",
     items: [
       {
         title: "Online booking page",
@@ -91,7 +91,7 @@ export const RANDEVU_EN: ProductContent = {
   },
   faq: {
     eyebrow: "Frequently asked questions",
-    title: "About Arvo Randevu",
+    title: "About ArvoBook",
     items: [
       { q: "Do customers have to register?", a: "No. The customer picks a service, a stylist and a time and enters a phone number; they are identified by that number and receive a cancellation link." },
       { q: "Can two appointments land on the same slot?", a: "No. A clashing appointment for the same stylist — counting the service's gap — is rejected at database level, not by an interface check." },

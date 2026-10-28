@@ -11,12 +11,22 @@
   olduğu için `tl()` ile yazılır; yıllık bedel aylığın tam katı olduğundan
   bölme ve yuvarlama hiç yoktur.
 */
-import { PRODUCT_APPS, ROUTES, type Locale } from "./routes";
+import { ARC_APP, PRODUCT_APPS, ROUTES, type Locale } from "./routes";
 
-/** Fiyatı yayımlanan ürünler. Arvo Randevu'nun tanıtım sayfası henüz yok;
- *  kendi adresine bağlanır (PRODUCT_APPS.randevu). */
+/*
+  İki liste, çünkü iki ayrı soru:
+   - PRICED_PRODUCTS: fiyat kaydı olan ürünler. Kurucu Konsolu (Ücret ve
+     Paketler, lisans formu) bunları okur; ArvoARC'ın basamakları burada
+     KALIYOR — e-ticaret sitesi yaptıran kurumların paneli lisansla
+     açılıyor ve kurulumda liste fiyatı buradan uygulanıyor.
+   - SITE_PRODUCTS: arvo-os.com'da satılanlar. ArvoARC 28.10.2026'da
+     satıştan kalktı (kiralama yok); ücretler sayfası, JSON-LD ve llms.txt
+     yalnızca bunları yayımlar.
+*/
 export const PRICED_PRODUCTS = ["arvoos", "arc", "randevu", "arvolab"] as const;
 export type PricedProduct = (typeof PRICED_PRODUCTS)[number];
+export const SITE_PRODUCTS = ["arvoos", "randevu", "arvolab"] as const satisfies readonly PricedProduct[];
+export type SiteProduct = (typeof SITE_PRODUCTS)[number];
 
 /** Liste fiyatları KDV hariçtir; B2B karşılaştırmasında rakiplerin listesi de öyle. */
 export const KDV_HARIC = true;
@@ -157,11 +167,11 @@ export function tutarYaz(kurus: number, locale: Locale): string {
 /** JSON-LD `price` alanı: ondalık noktalı, ayırıcısız ("2990.00"). */
 export const ldFiyat = (kurus: number): string => (kurus / 100).toFixed(2);
 
-/* Dört ürünün de tanıtım sayfası var; Arvo Randevu'nunki 30.09.2026'da
-   açıldı (öncesinde burası panelin kendi adresine çıkıyordu). */
-export function urunAdresi(product: PricedProduct, locale: Locale): { href: string; external: boolean } {
-  return { href: ROUTES[product === "arc" ? "arc" : product][locale], external: false };
+/* Sitede satılan her ürünün tanıtım sayfası var. ArvoARC'ınki
+   28.10.2026'da kalktı; ürün sitede listelenmediği için adresi de yok. */
+export function urunAdresi(product: SiteProduct, locale: Locale): { href: string; external: boolean } {
+  return { href: ROUTES[product][locale], external: false };
 }
 
 export const urunAdi = (product: PricedProduct): string =>
-  product === "arc" ? PRODUCT_APPS.arc.name : PRODUCT_APPS[product].name;
+  product === "arc" ? ARC_APP.name : PRODUCT_APPS[product].name;

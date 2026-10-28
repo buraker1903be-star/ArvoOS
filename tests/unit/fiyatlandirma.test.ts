@@ -4,6 +4,7 @@ import {
   ADD_ONS,
   PLANS,
   PRICED_PRODUCTS,
+  SITE_PRODUCTS,
   YILLIK_BEDAVA_AY,
   YILLIK_ODENEN_AY,
   ldFiyat,
@@ -97,19 +98,30 @@ describe("fiyat kaynağı", () => {
     }
   });
 
-  test("dört ürünün de tanıtım sayfası var, adresler site içi", () => {
+  test("sitede satılan her ürünün tanıtım sayfası var, adresler site içi", () => {
     /* Arvo Randevu 30.09.2026'ya kadar dışarı, panelin kendi adresine
        çıkıyordu; sayfası açılınca içeri alındı. Bir ürünün sayfası
        yoksa bu test onu yakalar. */
-    for (const product of PRICED_PRODUCTS) {
+    for (const product of SITE_PRODUCTS) {
       const adres = urunAdresi(product, "tr");
       assert.equal(adres.external, false, `${product}: dış adrese gidiyor`);
       assert.match(adres.href, /^\/[a-z]/, `${product}: ${adres.href}`);
     }
     assert.equal(urunAdresi("arvoos", "tr").href, "/urunler/arvoos");
-    assert.equal(urunAdresi("randevu", "tr").href, "/urunler/randevu");
-    assert.equal(urunAdresi("arc", "en").href, "/en/products/arc");
+    // Arvo Randevu → ArvoBook (28.10.2026); kod adı "randevu" kaldı.
+    assert.equal(urunAdresi("randevu", "tr").href, "/urunler/arvobook");
+    assert.equal(urunAdi("randevu"), "ArvoBook");
+    // ArvoARC satıştan kalktı ama fiyat kaydı konsol için duruyor.
     assert.equal(urunAdi("arc"), "ArvoARC");
+  });
+
+  test("ArvoARC sitede satılmıyor; basamakları konsol için kayıtta kalıyor", () => {
+    /* 28.10.2026: ARC kiralanmıyor, yalnızca e-ticaret sitesi yaptıranlara
+       panel olarak veriliyor. Basamaklar PLANS'ta durmalı (lisans formu
+       liste fiyatını oradan uyguluyor) ama sitedeki listeye girmemeli. */
+    assert.ok(!(SITE_PRODUCTS as readonly string[]).includes("arc"));
+    assert.ok((PRICED_PRODUCTS as readonly string[]).includes("arc"));
+    assert.ok(planlar("arc").length > 0);
   });
 
   test("biçimlendirme: TR binlik ayırıcı nokta, JSON-LD ayırıcısız", () => {
@@ -142,7 +154,7 @@ describe("ücretler sayfası içeriği", () => {
       const gosterilen = c.groups.flatMap((g) => g.cards.map((k) => k.code));
       assert.deepEqual(
         [...gosterilen].sort(),
-        PLANS.map((p) => p.code).sort(),
+        PLANS.filter((p) => (SITE_PRODUCTS as readonly string[]).includes(p.product)).map((p) => p.code).sort(),
         `${dil}: sayfadaki basamaklar pricing.ts ile aynı değil`,
       );
       assert.equal(new Set(gosterilen).size, gosterilen.length, `${dil}: aynı plan iki kez`);
@@ -216,13 +228,13 @@ describe("ücretler sayfasının görünürlük kuralları", () => {
   /*
     Ürün sekmesi CSS ile çalışıyor: `.pricing[data-urun="X"] .pgroup[data-urun="X"]`.
     CSS iki niteliği birbiriyle karşılaştıramadığı için her ürünün kendi
-    satırı gerekiyor. PRICED_PRODUCTS'a yeni ürün eklenip bu satır
+    satırı gerekiyor. SITE_PRODUCTS'a yeni ürün eklenip bu satır
     unutulursa grup HİÇ görünmez — sekmeye basılır, sayfa boş kalır.
   */
   const css = readFileSync(new URL("../../app/(site)/site-pricing.css", import.meta.url), "utf8");
 
   test("her ürünün kendi görünürlük satırı var", () => {
-    for (const product of PRICED_PRODUCTS) {
+    for (const product of SITE_PRODUCTS) {
       assert.ok(
         css.includes(`.pricing[data-urun="${product}"] .pgroup[data-urun="${product}"]`),
         `${product}: site-pricing.css'te görünürlük kuralı yok`,

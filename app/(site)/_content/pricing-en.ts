@@ -15,13 +15,13 @@ export const PRICING_EN: PricingContent = {
   meta: {
     title: "Pricing",
     description:
-      "Subscription pricing for ArvoOS, ArvoARC, Arvo Randevu and ArvoLab: monthly and annual prices, what each plan includes, add-ons and subscription terms. Priced per organization, not per user.",
+      "Subscription pricing for ArvoOS, ArvoBook and ArvoLab: monthly and annual prices, what each plan includes, add-ons and subscription terms. Priced per organization, not per user.",
   },
   hero: {
     eyebrow: "Pricing",
     title: "For business products, per organization —",
     subtitle: "not per seat.",
-    lead: "ArvoOS, ArvoARC and Arvo Randevu are priced per organization: your bill does not multiply as the team grows, and every card states how many users are included. ArvoLab is the exception — its value sits with the person doing the writing, not in the organization's flow, so it is priced per researcher.",
+    lead: "ArvoOS and ArvoBook are priced per organization: your bill does not multiply as the team grows, and every card states how many users are included. ArvoLab is the exception — its value sits with the person doing the writing, not in the organization's flow, so it is priced per researcher.",
     actions: [demo, { label: "Subscription terms", href: "#kosullar", variant: "ghost" }],
   },
   cycle: {
@@ -63,33 +63,10 @@ export const PRICING_EN: PricingContent = {
       ],
     },
     {
-      product: "arc",
-      tag: "E-commerce and store management",
-      lead: "Product (catalogue) and order management in one panel. Self-service setup; each store works in its own workspace.",
-      linkLabel: "Explore ArvoARC",
-      cards: [
-        {
-          code: "arc-baslangic",
-          text: "For stores moving their catalogue and orders out of scattered spreadsheets.",
-          items: ["Up to 500 products", "Single store", "3 users", "Product (catalogue) management", "Order management", "Email support"],
-        },
-        {
-          code: "arc-buyume",
-          text: "For brands with a growing catalogue that want to run on their own domain.",
-          items: ["Up to 5,000 products", "Single store", "10 users", "Custom domain", "Product and order management", "Priority support"],
-        },
-        {
-          code: "arc-olcek",
-          text: "For businesses running several stores in the same order.",
-          items: ["Unlimited products", "Up to 5 stores", "Unlimited users", "Custom domain", "Per-store permissions", "Priority support"],
-        },
-      ],
-    },
-    {
       product: "randevu",
       tag: "Appointment management",
       lead: "An online booking page, calendar and customer records for hair and beauty salons. Working hours are defined in Türkiye local time.",
-      linkLabel: "Open Arvo Randevu",
+      linkLabel: "Explore ArvoBook",
       cards: [
         {
           code: "randevu-tek",
@@ -140,7 +117,7 @@ export const PRICING_EN: PricingContent = {
     quote: "On request",
     items: [
       { code: "ek-kullanici", name: "Additional user", text: "For each user beyond the number included in an ArvoOS plan. It does not apply to ArvoLab, which is already priced per researcher." },
-      { code: "ek-sube", name: "Additional branch", text: "For each branch beyond the three included in the Arvo Randevu Multi-branch plan." },
+      { code: "ek-sube", name: "Additional branch", text: "For each branch beyond the three included in the ArvoBook Multi-branch plan." },
       { code: "veri-aktarimi", name: "Data migration and setup", text: "Moving data from your current system, defining users and training the team. Charged once, based on scope." },
       { code: "ozel-gelistirme", name: "Custom development", text: "A workflow, screen or report specific to your organization. Quoted once the scope is clear." },
     ],
@@ -170,7 +147,7 @@ export const PRICING_EN: PricingContent = {
     title: "About pricing",
     items: [
       { q: "Do the prices include VAT?", a: "No. Amounts on this page exclude VAT; VAT is added on the invoice at the rate in force." },
-      { q: "Are we charged per user?", a: "For ArvoOS, ArvoARC and Arvo Randevu, no: prices are per organization and each plan includes a set number of users; beyond that number only the additional-user fee applies and the plan price does not multiply. For ArvoLab, yes: it is priced per researcher, because there the value is produced directly by the person using it." },
+      { q: "Are we charged per user?", a: "For ArvoOS and ArvoBook, no: prices are per organization and each plan includes a set number of users; beyond that number only the additional-user fee applies and the plan price does not multiply. For ArvoLab, yes: it is priced per researcher, because there the value is produced directly by the person using it." },
       { q: "What is the difference between ArvoLab Team and Institution?", a: "Team is paid per seat: from three researchers, at a lower per-person rate than Researcher, and you add or remove seats as you go. Institution is a site licence: seats are not counted, the whole department or university uses it, and it is invoiced to the institution." },
       { q: "What does annual billing save?", a: "On the annual option you pay for 10 months and use 12 — two months free. The amount is invoiced once at the start of the period." },
       { q: "Does the subscription renew automatically?", a: "No. Your card is not charged automatically; a payment link is sent for each period and you approve the payment." },

@@ -65,7 +65,7 @@
 /*
   Ürün satırı: ad ÜSTTE, açıklama ALTINDA. Eskiden ikisi tek satırda yan
   yanaydı (`justify-content:space-between`) ve 375 pikselde çarpışıyordu:
-  "Arvo Randevu" ile "Salon randevu yönetimi" arasında bir karakterlik
+  "ArvoBook" ile "Salon randevu yönetimi" arasında bir karakterlik
   boşluk kalıyordu. Punto da 28'den 22'ye indi — telefonda dört ürün +
   dört hizmet + üç kurumsal bağlantı ekrana sığmıyordu.
 */

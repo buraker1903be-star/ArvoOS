@@ -2,7 +2,11 @@
 // (lead-actions.ts) yalnızca async fonksiyon dışa aktarabildiği için
 // tipler burada durur.
 
-export const LEAD_INTERESTS = ["arvoos", "arvolab", "arc", "services", "other"] as const;
+/* "randevu" = ArvoBook (kod adı lisans ve fiyat kodlarıyla aynı). "arc"
+   28.10.2026'da çıktı: ArvoARC satılmıyor, e-ticaret sitesi talebi
+   "services" ile geliyor. Veritabanı eski sayfadan gelen 'arc'ı hâlâ
+   kabul ediyor (20261028083410), form artık göndermiyor. */
+export const LEAD_INTERESTS = ["arvoos", "arvolab", "randevu", "services", "other"] as const;
 export type LeadInterest = (typeof LEAD_INTERESTS)[number];
 
 export type LeadField = "interest" | "name" | "email" | "phone" | "company" | "message" | "consent";

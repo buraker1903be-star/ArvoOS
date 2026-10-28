@@ -18,7 +18,6 @@ export type PageId =
   | "arvoos-plans"
   | "pricing"
   | "arvolab"
-  | "arc"
   | "randevu"
   | "services"
   | "web-design"
@@ -43,8 +42,9 @@ export const ROUTES: Record<PageId, Record<Locale, string>> = {
   // karşılaştırma yapılamıyor ve arama motoru hangisini göstereceğini seçemiyor.
   pricing: { tr: "/ucretler", en: "/en/pricing" },
   arvolab: { tr: "/urunler/arvolab", en: "/en/products/arvolab" },
-  arc: { tr: "/urunler/arc", en: "/en/products/arc" },
-  randevu: { tr: "/urunler/randevu", en: "/en/products/randevu" },
+  /* Kimlik "randevu" kalıyor: lisans, köprü ve fiyat kodları bu adla
+     (randevu-tek …). Ürünün adı 28.10.2026'dan beri ArvoBook. */
+  randevu: { tr: "/urunler/arvobook", en: "/en/products/arvobook" },
   services: { tr: "/hizmetler", en: "/en/services" },
   "web-design": { tr: "/hizmetler/web-sitesi-tasarimi", en: "/en/services/web-design" },
   "seo-geo": { tr: "/hizmetler/seo-ve-geo", en: "/en/services/seo-geo" },
@@ -64,7 +64,6 @@ export const PAGE_PRIORITY: Record<PageId, number> = {
   home: 1,
   arvoos: 0.9,
   arvolab: 0.9,
-  arc: 0.9,
   randevu: 0.9,
   "arvoos-modules": 0.8,
   "arvoos-industries": 0.7,
@@ -90,15 +89,33 @@ export const LEGACY_REDIRECTS: { from: string; to: string }[] = [
   { from: "/sektorler", to: ROUTES["arvoos-industries"].tr },
   { from: "/cozumler", to: ROUTES["arvoos-solutions"].tr },
   { from: "/paketler", to: ROUTES["arvoos-plans"].tr },
+  /*
+    ArvoARC 28.10.2026'da satıştan kalktı: kiralama yok, yalnızca e-ticaret
+    sitesini Arvo'ya yaptıranlara sitenin yanında panel olarak veriliyor.
+    Eski adres dizinde ve paylaşılmış bağlantılarda yaşıyor; 404 yerine
+    bu işin bugünkü karşılığı olan web sitesi hizmetine iner.
+  */
+  { from: "/urunler/arc", to: ROUTES["web-design"].tr },
+  { from: "/en/products/arc", to: ROUTES["web-design"].en },
+  // Arvo Randevu → ArvoBook (28.10.2026).
+  { from: "/urunler/randevu", to: ROUTES.randevu.tr },
+  { from: "/en/products/randevu", to: ROUTES.randevu.en },
 ];
 
 /** Ürünlerin kiracılı panelleri (giriş adresleri). */
 export const PRODUCT_APPS = {
   arvoos: { name: "ArvoOS", url: "https://app.arvo-os.com/login", host: "app.arvo-os.com" },
   arvolab: { name: "ArvoLab", url: "https://lab.arvo-os.com", host: "lab.arvo-os.com" },
-  arc: { name: "ArvoARC", url: "https://arc.arvo-os.com", host: "arc.arvo-os.com" },
-  randevu: { name: "Arvo Randevu", url: "https://randevu.arvo-os.com", host: "randevu.arvo-os.com" },
+  randevu: { name: "ArvoBook", url: "https://randevu.arvo-os.com", host: "randevu.arvo-os.com" },
 } as const;
+
+/*
+  ArvoARC sitede ÜRÜN OLARAK YOK (28.10.2026) ama paneli yaşıyor: e-ticaret
+  sitesini Arvo'ya yaptıran kurum mağazasını onunla yönetiyor ve giriş
+  adresine ihtiyacı var. Bu yüzden PRODUCT_APPS'te değil — orada olsaydı
+  ürün listesine, hukuki metinlere ve llms.txt'ye kendiliğinden girerdi.
+*/
+export const ARC_APP = { name: "ArvoARC", url: "https://arc.arvo-os.com", host: "arc.arvo-os.com" } as const;
 
 /*
   Hukuki metinler (mesafeli satış, iptal-iade, teslimat) tek bir ürünün değil
@@ -107,7 +124,7 @@ export const PRODUCT_APPS = {
 */
 export const PRODUCT_NAMES: string[] = Object.values(PRODUCT_APPS).map((p) => p.name);
 
-/** "ArvoOS, ArvoLab, ArvoARC ve Arvo Randevu" — cümle içinde ürün listesi. */
+/** "ArvoOS, ArvoLab ve ArvoBook" — cümle içinde ürün listesi. */
 export function productList(locale: Locale): string {
   const names = [...PRODUCT_NAMES];
   const last = names.pop()!;
