@@ -9,10 +9,11 @@ import { ArvoosSubnav } from "../_components/subnav";
 import { CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
 import { KISA } from "../_content/kisa";
 
-export function SubView({ locale, c, homeName = "ArvoOS" }: { locale: Locale; c: SubContent; homeName?: string }) {
+export function SubView({ locale, c, homeName }: { locale: Locale; c: SubContent; homeName?: string }) {
   const path = ROUTES[c.id][locale];
   const crumbs = [
-    { name: homeName, href: ROUTES.home[locale] },
+    // Öteki sayfalarla aynı ilk halka ("Ana sayfa"); eskiden burada marka adı kalmıştı.
+    { name: homeName ?? KISA[locale].homeCrumb, href: ROUTES.home[locale] },
     ...(c.parent ? [{ name: c.parent.name, href: ROUTES[c.parent.id][locale] }] : []),
     { name: c.hero.eyebrow.split(" · ").pop() ?? c.meta.title, href: path },
   ];

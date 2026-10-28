@@ -22,7 +22,7 @@ export function Bento({ items, locale, numbered = false }: { items: Card[]; loca
               <h3>{c.title}</h3>
               <p>{c.text}</p>
               {c.items?.length ? <ul>{c.items.map((x) => <li key={x}><Check />{x}</li>)}</ul> : null}
-              {c.href ? <span className="link">{more} <span className="arrow" aria-hidden="true">→</span></span> : null}
+              {c.href ? <span className="link">{more} <span className="arrow" aria-hidden="true">›</span></span> : null}
             </div>
             {c.visual ? <div className="b-visual mock-win" aria-hidden="true"><Fragment v={c.visual} locale={locale} /></div> : null}
           </>
