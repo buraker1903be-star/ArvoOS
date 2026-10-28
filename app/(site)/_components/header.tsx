@@ -6,8 +6,9 @@ import { LOCALE_NAMES, ROUTES, type Locale } from "@/lib/site/routes";
 import { CHROME, type NavLink } from "../_content/chrome";
 import { BrandLogo, Chevron, Globe, ProductLogo, type ProductName } from "./marks";
 import { DilBaglantilari } from "./lang-link";
+import { GirisPenceresi } from "./giris-penceresi";
 
-type MenuId = "products" | "services" | "signin" | "lang";
+type MenuId = "products" | "services" | "lang";
 
 function Item({ link, onNavigate }: { link: NavLink; onNavigate: () => void }) {
   const inner = <><b>{link.label}</b>{link.desc ? <span>{link.desc}</span> : null}</>;
@@ -22,6 +23,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<MenuId | null>(null);
   const [sheet, setSheet] = useState(false);
+  const [giris, setGiris] = useState(false);
   const ref = useRef<HTMLElement>(null);
   const hoverTimer = useRef<number>(0);
   const close = useCallback(() => { setOpen(null); setSheet(false); }, []);
@@ -116,12 +118,8 @@ export function SiteHeader({ locale }: { locale: Locale }) {
               <DilBaglantilari locale={locale} className="pop-item" onNavigate={close} hepsi />
             </div>
           </div>
-          <div className="hdr-item hdr-signin" onPointerEnter={hover("signin")} onPointerLeave={hover(null)}>
-            {trigger("signin", t.signIn)}
-            <div id="hdr-signin" className="hdr-pop hdr-pop-right" hidden={open !== "signin"}>
-              {t.signInLinks.map((l) => <Item key={l.href} link={l} onNavigate={close} />)}
-            </div>
-          </div>
+          {/* Giriş açılır menü değil, pencere (giris-penceresi.tsx): üzerine gelince açılmıyor, tıklayınca açılıyor. */}
+          <button type="button" className="hdr-link hdr-signin" aria-haspopup="dialog" onClick={() => { setOpen(null); setGiris(true); }}>{t.signIn}</button>
           <Link className="btn btn-s hdr-cta" href={demoHref}>{t.demo}</Link>
           <button type="button" className="hdr-burger" aria-expanded={sheet} aria-controls="hdr-sheet" aria-label={sheet ? t.close : t.menu} onClick={() => { setOpen(null); setSheet((s) => !s); }}>
             <span /><span />
@@ -147,7 +145,9 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             <Link className="sheet-link sheet-link-s" href={ROUTES.about[locale]} onClick={close}><b>{t.about}</b></Link>
             <Link className="sheet-link sheet-link-s" href={ROUTES.contact[locale]} onClick={close}><b>{t.contact}</b></Link>
             <p className="sheet-label">{t.signIn}</p>
-            <div className="sheet-signin">{t.signInLinks.map((l) => <a key={l.href} href={l.href} target="_blank" rel="noopener">{l.label} <span aria-hidden="true">↗</span></a>)}</div>
+            <div className="sheet-signin">
+              <button type="button" aria-haspopup="dialog" onClick={() => { setSheet(false); setGiris(true); }}>{t.signIn}: {t.signInLinks.map((l) => l.label).join(" · ")}</button>
+            </div>
           </div>
         </div>
         <div className="sheet-foot">
@@ -157,6 +157,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           </div>
         </div>
       </div>
+      <GirisPenceresi locale={locale} acik={giris} kapat={() => setGiris(false)} />
     </header>
   );
 }
