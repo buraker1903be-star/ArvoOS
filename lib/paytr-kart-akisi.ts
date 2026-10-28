@@ -5,6 +5,9 @@ import { paytrKimligi } from "@/lib/payments/kimlik";
 import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
 import { productName, type ProductCode } from "@/lib/products";
+import { PRODUCT_APPS } from "@/lib/site/routes";
+import { PAYTR_LINK_TABANI } from "@/lib/odeme-baglantisi";
+import { deletePaytrLink } from "@/lib/paytr";
 import { paketAdi } from "@/lib/paket-adlari";
 import type { PaytrCredentials } from "@/lib/paytr";
 import {
@@ -38,7 +41,7 @@ export const kartSaklamaAcik = () => process.env.PAYTR_KART_SAKLAMA === "acik";
    onayın neye verildiği yine okunabilsin. Sürüm öneki o yüzden var. */
 export const OTOMATIK_YENILEME_ONAY_METNI =
   "v1 · Kartımın kaydedilmesini ve aboneliğimin her dönem sonunda bu karttan otomatik yenilenmesini kabul ediyorum. " +
-  "Her çekimden en az 3 gün önce panel ve telefon bildirimiyle bilgilendirileceğimi, otomatik yenilemeyi ve kayıtlı kartı Ödeme ve Lisans " +
+  "Her çekimden en az 3 gün önce bildirimle bilgilendirileceğimi, otomatik yenilemeyi ve kayıtlı kartı hesabımın ödeme " +
   "ekranından istediğim zaman kapatabileceğimi biliyorum.";
 
 const DONUS = `https://${PLATFORM_HOST}/api/paytr/kart-donus`;
@@ -53,11 +56,7 @@ export type KartFormu = {
   varsayilan: { adres: string; telefon: string };
 };
 
-export async function kurumUtokeni(admin: Admin, organizationId: string): Promise<string | null> {
-  const { data, error } = await admin.from("paytr_kayitli_kartlar").select("utoken").eq("organization_id", organizationId).limit(1).maybeSingle();
-  if (error) throw new Error("Kayıtlı kart okunamadı: " + error.message);
-  return data?.utoken ?? null;
-}
+export const kurumUtokeni = (admin: Admin, organizationId: string) => odeyenUtokeni(admin, { organizationId });
 
 /**
  * Kurumun bir ürün lisansı için kartla ödemeyi AÇAR: tutarı hesaplar,
@@ -142,21 +141,83 @@ export async function kurumKartFormu(admin: Admin, input: {
  * sunucuda (an, IP, metin, kim). Bildirimde kart geldiği hâlde onay
  * kaydı yoksa otomatik yenileme AÇILMAZ.
  */
+/* Ödeyen: kurum (ArvoOS paneli) ya da bireysel abone (ArvoLab köprüsü). */
+export type Odeyen = { organizationId: string } | { subscriberId: string };
+
 export async function kartOnayiniKaydet(admin: Admin, input: {
-  merchantOid: string; organizationId: string; actorId: string; ip: string; otomatikYenileme: boolean;
+  merchantOid: string; odeyen: Odeyen; actorId: string | null; ip: string; otomatikYenileme: boolean;
 }): Promise<void> {
   const { data: islem, error } = await admin.from("paytr_kart_islemleri")
-    .select("merchant_oid,durum,payment_link_id,payment_links!inner(payer_organization_id)")
+    .select("merchant_oid,durum,payment_link_id,payment_links!inner(payer_organization_id,subscriber_id)")
     .eq("merchant_oid", input.merchantOid).maybeSingle();
   if (error) throw new Error("Ödeme okunamadı: " + error.message);
-  const sahip = (islem?.payment_links as unknown as { payer_organization_id: string | null } | null)?.payer_organization_id;
-  if (!islem || sahip !== input.organizationId) throw new Error("Ödeme bulunamadı.");
+  const link = islem?.payment_links as unknown as { payer_organization_id: string | null; subscriber_id: string | null } | null;
+  const bizim = "organizationId" in input.odeyen ? link?.payer_organization_id === input.odeyen.organizationId : link?.subscriber_id === input.odeyen.subscriberId;
+  if (!islem || !bizim) throw new Error("Ödeme bulunamadı.");
   if (islem.durum !== "bekliyor") throw new Error("Bu ödeme artık beklemede değil; sayfayı yenileyin.");
+  // Bireysel abonenin ArvoOS'ta kullanıcı hesabı yok: onaylayan boş, kanıt an + IP + metin.
   const { error: yazmaHatasi } = await admin.from("paytr_kart_islemleri").update(input.otomatikYenileme
     ? { kart_sakla: true, otomatik_onay: true, onay_at: new Date().toISOString(), onay_ip: input.ip, onay_metni: OTOMATIK_YENILEME_ONAY_METNI, onaylayan: input.actorId }
     : { kart_sakla: false, otomatik_onay: false, onay_at: null, onay_ip: null, onay_metni: null, onaylayan: null })
     .eq("merchant_oid", input.merchantOid).eq("durum", "bekliyor");
   if (yazmaHatasi) throw new Error("Onay kaydedilemedi: " + yazmaHatasi.message);
+}
+
+/* Ödeyenin satırlarını süzen alan adı ve değeri (kart, yenileme tabloları). */
+export const odeyenSuzgeci = (o: Odeyen): [string, string] =>
+  "organizationId" in o ? ["organization_id", o.organizationId] : ["subscriber_id", o.subscriberId];
+
+export async function odeyenUtokeni(admin: Admin, o: Odeyen): Promise<string | null> {
+  const [alan, deger] = odeyenSuzgeci(o);
+  const { data, error } = await admin.from("paytr_kayitli_kartlar").select("utoken").eq(alan, deger).limit(1).maybeSingle();
+  if (error) throw new Error("Kayıtlı kart okunamadı: " + error.message);
+  return data?.utoken ?? null;
+}
+
+/**
+ * Bireysel abonenin kartla ödemesini açar ve formu döndürür (ArvoLab
+ * köprüsü çağırır: sunucudan sunucuya, sayfa çiziminden değil). Tutarı
+ * köprü hesaplıyor (bireysel liste fiyatı); dönüş adresleri ArvoLab'da.
+ */
+export async function aboneKartOdemesiAc(admin: Admin, input: {
+  subscriberId: string; product: string; fee: number; ip: string; email: string; adSoyad: string | null;
+}): Promise<{ merchantOid: string; tutar: number; baslik: string; alanlar: Record<string, string>; utoken: string | null }> {
+  const platformId = await getPlatformOrganizationId();
+  if (!platformId) throw new CheckoutError("unavailable", "Kartla ödeme şu an kullanılamıyor.");
+  const kimlik = await paytrKimligi(admin, platformId);
+  // Abone başına tek açık abonelik ödemesi (payment_links_one_active_subscriber).
+  const { data: onceki, error: oncekiHatasi } = await admin.from("payment_links").select("id,provider_link_id,url")
+    .eq("subscriber_id", input.subscriberId).eq("product", input.product).eq("purpose", "subscription").eq("status", "active").maybeSingle();
+  if (oncekiHatasi) throw new CheckoutError("link_failed", "Önceki ödeme okunamadı: " + oncekiHatasi.message);
+  if (onceki) {
+    if (String(onceki.url).startsWith(PAYTR_LINK_TABANI)) { try { await deletePaytrLink(kimlik, onceki.provider_link_id); } catch { /* süresi dolmuş olabilir */ } }
+    await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", onceki.id);
+  }
+  const merchantOid = siparisNo(input.product);
+  const baslik = `${productName(input.product)} · bireysel aylık abonelik`;
+  const { data: link, error: linkHatasi } = await admin.from("payment_links").insert({
+    id: randomUUID(), organization_id: platformId, installment_id: null, purpose: "subscription", provider: "paytr",
+    product: input.product, subscriber_id: input.subscriberId, payer_organization_id: null, plan_code: null,
+    provider_link_id: merchantOid, url: PAYTR_ODEME_ADRESI, amount: input.fee, status: "active", created_by: null, note: baslik,
+  }).select("id").single();
+  if (linkHatasi || !link) throw new CheckoutError("link_failed", "Ödeme hazırlanamadı: " + (linkHatasi?.message ?? ""));
+  const { error: islemHatasi } = await admin.from("paytr_kart_islemleri").insert({
+    merchant_oid: merchantOid, payment_link_id: link.id, tur: "ilk", tutar: input.fee, kullanici_ip: input.ip,
+  });
+  if (islemHatasi) {
+    await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", link.id);
+    throw new CheckoutError("link_failed", "Ödeme hazırlanamadı: " + islemHatasi.message);
+  }
+  const donus = `${PRODUCT_APPS.arvolab.url}/api/odeme-donus`;
+  const alanlar = odemeFormuAlanlari(kimlik, {
+    kullaniciIp: input.ip, siparisNo: merchantOid, eposta: input.email, tutarKurus: input.fee,
+    adSoyad: (input.adSoyad || input.email.split("@")[0]).slice(0, 60),
+    // Bireysel abonenin adresi ve telefonu bizde yok; formda kendisi yazar (imzaya girmiyorlar).
+    adres: "Türkiye", telefon: "0",
+    sepet: [{ ad: baslik, kurus: input.fee, adet: 1 }],
+    basariliAdres: `${donus}?sonuc=tamam`, hataAdres: `${donus}?sonuc=hata`,
+  });
+  return { merchantOid, tutar: input.fee, baslik, alanlar, utoken: await odeyenUtokeni(admin, { subscriberId: input.subscriberId }) };
 }
 
 const kurusOku = (v: string) => (/^\d{1,15}$/.test(v) ? Number(v) : null);
@@ -202,9 +263,10 @@ export async function direktBildirimiIsle(admin: Admin, alan: (ad: string) => st
     await admin.from("paytr_kart_islemleri").update({ durum: "basarisiz", hata_kodu: alan("failed_reason_code") || null, hata_mesaji: metin, sonuc_at: new Date().toISOString() })
       .eq("merchant_oid", b.merchant_oid).eq("durum", "bekliyor");
     await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", islem.payment_link_id).eq("status", "active");
-    if (islem.tur === "otomatik" && link.payer_organization_id) {
+    const kimin = link.payer_organization_id ? ["organization_id", link.payer_organization_id] : link.subscriber_id ? ["subscriber_id", link.subscriber_id] : null;
+    if (islem.tur === "otomatik" && kimin) {
       await admin.from("paytr_otomatik_yenileme").update({ son_hata: metin, updated_at: new Date().toISOString() })
-        .eq("organization_id", link.payer_organization_id).eq("product", link.product);
+        .eq(kimin[0], kimin[1]).eq("product", link.product);
     }
     return "ok";
   }
@@ -229,9 +291,10 @@ export async function direktBildirimiIsle(admin: Admin, alan: (ad: string) => st
   await admin.from("paytr_kart_islemleri").update({ durum: "basarili", sonuc_at: new Date().toISOString() })
     .eq("merchant_oid", b.merchant_oid).eq("durum", "bekliyor");
   // Başarılı otomatik çekim deneme sayacını sıfırlar: bir sonraki dönem üç hakla başlar.
-  if (islem.tur === "otomatik" && link.payer_organization_id) {
+  const yenilemeSahibi = link.payer_organization_id ? ["organization_id", link.payer_organization_id] : link.subscriber_id ? ["subscriber_id", link.subscriber_id] : null;
+  if (islem.tur === "otomatik" && yenilemeSahibi) {
     await admin.from("paytr_otomatik_yenileme").update({ deneme_sayisi: 0, son_hata: null, updated_at: new Date().toISOString() })
-      .eq("organization_id", link.payer_organization_id).eq("product", link.product);
+      .eq(yenilemeSahibi[0], yenilemeSahibi[1]).eq("product", link.product);
   }
   if (sonuc !== "recorded" && sonuc !== "duplicate" && sonuc !== "test") {
     console.error("[paytr-direkt] ödeme işlenmedi", b.merchant_oid, sonuc);
@@ -239,10 +302,11 @@ export async function direktBildirimiIsle(admin: Admin, alan: (ad: string) => st
 
   // Kart saklama: para çoktan kaydedildi; buradaki bir hata bildirimi düşürmez, yalnızca günlüğe gider.
   const utoken = alan("utoken");
-  if (islem.kart_sakla && utoken && link.payer_organization_id) {
+  const odeyen: Odeyen | null = link.payer_organization_id ? { organizationId: link.payer_organization_id } : link.subscriber_id ? { subscriberId: link.subscriber_id } : null;
+  if (islem.kart_sakla && utoken && odeyen) {
     try {
       await kartlariEsitle(admin, kimlik, {
-        organizationId: link.payer_organization_id, product: link.product, utoken,
+        odeyen, product: link.product, utoken,
         onay: islem.otomatik_onay && islem.onay_at && islem.onay_ip && islem.onay_metni
           ? { at: islem.onay_at, ip: islem.onay_ip, metin: islem.onay_metni, kim: islem.onaylayan }
           : null,
@@ -261,20 +325,22 @@ export async function direktBildirimiIsle(admin: Admin, alan: (ad: string) => st
   olmayan ctoken; otomatik yenileme o karta bağlanır.
 */
 async function kartlariEsitle(admin: Admin, kimlik: PaytrCredentials, input: {
-  organizationId: string; product: string; utoken: string;
+  odeyen: Odeyen; product: string; utoken: string;
   onay: { at: string; ip: string; metin: string; kim: string | null } | null;
 }) {
   const liste = await kayitliKartlar(kimlik, input.utoken);
   if ("hata" in liste) throw new Error(liste.hata);
   if (!liste.kartlar.length) return;
-  const { data: mevcut, error } = await admin.from("paytr_kayitli_kartlar").select("id,ctoken").eq("organization_id", input.organizationId);
+  const [alan, deger] = odeyenSuzgeci(input.odeyen);
+  const sahip: Record<string, string> = { [alan]: deger };
+  const { data: mevcut, error } = await admin.from("paytr_kayitli_kartlar").select("id,ctoken").eq(alan, deger);
   if (error) throw new Error(error.message);
   const bilinen = new Set(((mevcut ?? []) as { ctoken: string }[]).map((k) => k.ctoken));
   const yeniler = liste.kartlar.filter((k) => !bilinen.has(k.ctoken));
   let yeniKartId: string | null = null;
   for (const k of yeniler) {
     const { data, error: ekleHatasi } = await admin.from("paytr_kayitli_kartlar").insert({
-      organization_id: input.organizationId, utoken: input.utoken, ctoken: k.ctoken, son4: k.son4,
+      ...sahip, utoken: input.utoken, ctoken: k.ctoken, son4: k.son4,
       banka: k.banka, program: k.program, kart_turu: k.tur, sema: k.sema, son_kullanma_ay: k.ay, son_kullanma_yil: k.yil,
     }).select("id").single();
     if (ekleHatasi) throw new Error(ekleHatasi.message);
@@ -282,12 +348,12 @@ async function kartlariEsitle(admin: Admin, kimlik: PaytrCredentials, input: {
   }
   if (!input.onay || !yeniKartId) return;
   const satir = {
-    organization_id: input.organizationId, product: input.product, kart_id: yeniKartId, aktif: true,
+    ...sahip, product: input.product, kart_id: yeniKartId, aktif: true,
     onay_at: input.onay.at, onay_ip: input.onay.ip, onay_metni: input.onay.metin, onaylayan: input.onay.kim,
     kapatildi_at: null, kapatan: null, deneme_sayisi: 0, son_hata: null, updated_at: new Date().toISOString(),
   };
   const { data: var_, error: okumaHatasi } = await admin.from("paytr_otomatik_yenileme").select("id")
-    .eq("organization_id", input.organizationId).eq("product", input.product).maybeSingle();
+    .eq(alan, deger).eq("product", input.product).maybeSingle();
   if (okumaHatasi) throw new Error(okumaHatasi.message);
   const { error: yazmaHatasi } = var_
     ? await admin.from("paytr_otomatik_yenileme").update(satir).eq("id", var_.id)

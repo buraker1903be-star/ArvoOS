@@ -88,6 +88,28 @@ describe("PayTR kart saklama", () => {
       assert.equal((await tek(`select count(*)::int as n from public.paytr_otomatik_yenileme`)).n, 0);
     }));
 
+  test("MEŞRU: bireysel abonenin kartla ödemesi abonelik dönemini uzatır; kartı ve onaylayansız yenilemesi yazılır", () =>
+    islem(db, async () => {
+      await tohum();
+      const ABONE = "00000000-0000-4000-8000-0000000000f1";
+      await rol(db, "postgres");
+      await db.query(`insert into public.product_subscribers (id, product, external_user_id, email, status, created_at, updated_at)
+                      values ($1, 'arvolab', gen_random_uuid(), 'ogrenci@x.co', 'suspended', now(), now())`, [ABONE]);
+      await rol(db, "service_role");
+      const link = await tek(
+        `insert into public.payment_links (id, organization_id, purpose, provider, subscriber_id, product, provider_link_id, url, amount, status, created_by, note)
+         values (gen_random_uuid(), $1, 'subscription', 'paytr', $2, 'arvolab', 'ARVOLABT1', 'https://www.paytr.com/odeme', 499000, 'active', null, 'ArvoLab · bireysel aylık abonelik')
+         returning id`, [ARVO, ABONE]);
+      await db.query(`insert into public.paytr_kart_islemleri (merchant_oid, payment_link_id, tur, tutar, kullanici_ip, kart_sakla, otomatik_onay, onay_at, onay_ip, onay_metni)
+                      values ('ARVOLABT1', $1, 'ilk', 499000, '85.105.1.2', true, true, now(), '85.105.1.2', 'v1 · ...')`, [link.id]);
+      assert.equal((await tek(`select public.arvo_record_paytr_payment($1, 'ARVOLABT1', 499000, 499000, 'TL', false, '{}'::jsonb) as r`, [link.id])).r, "recorded");
+      const a = await tek(`select status, current_period_end > now() + interval '27 days' as bir_ay from public.product_subscribers where id = $1`, [ABONE]);
+      assert.deepEqual([a.status, a.bir_ay], ["active", true]);
+      const kart = await tek(`insert into public.paytr_kayitli_kartlar (subscriber_id, utoken, ctoken, son4) values ($1, 'UT9', 'CT9', '5403') returning id`, [ABONE]);
+      await db.query(`insert into public.paytr_otomatik_yenileme (subscriber_id, product, kart_id, onay_at, onay_ip, onay_metni) values ($1, 'arvolab', $2, now(), '85.105.1.2', 'v1 · ...')`, [ABONE, kart.id]);
+      assert.equal((await tek(`select count(*)::int as n from public.paytr_otomatik_yenileme where subscriber_id = $1 and aktif`, [ABONE])).n, 1);
+    }));
+
   test("otomatik yenileme onayı kaydı olmadan verilemez; son 4 hane dört rakam", () =>
     islem(db, async () => {
       await tohum();

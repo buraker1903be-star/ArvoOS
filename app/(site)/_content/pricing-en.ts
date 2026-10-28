@@ -126,7 +126,7 @@ export const PRICING_EN: PricingContent = {
     title: "The rules behind the price.",
     lead: "These are the rules we actually apply; the full text is in the distance sales agreement and the cancellation and refund policy.",
     items: [
-      { title: "No automatic charge", text: "Your card is never charged on its own. A payment link is sent for each period and you approve the payment." },
+      { title: "No charge without your consent", text: "Your card is never charged without your explicit consent. By default, a payment link is sent for each period and you approve the payment. If you save your card and choose automatic renewal at checkout, you are notified at least 3 days before each charge and can switch automatic renewal off at any time." },
       { title: "Cancellation at period end", text: "You can cancel from the panel or by email. Cancellation takes effect at the end of the paid period; the service stays available until then." },
       { title: "Price changes", text: "Your current period is unaffected. Changes are announced by email at least 30 days in advance and apply from the next period only." },
       { title: "Upgrades and downgrades", text: "An upgrade takes effect the same day and only the remaining days of the period are charged. A downgrade applies at the end of the current period." },
@@ -148,7 +148,7 @@ export const PRICING_EN: PricingContent = {
       { q: "Are we charged per user?", a: "For ArvoOS and ArvoCal, no: prices are per organization and each plan includes a set number of users; beyond that number only the additional-user fee applies and the plan price does not multiply. For ArvoLab, yes: it is priced per researcher, because there the value is produced directly by the person using it." },
       { q: "Can a team or a company buy ArvoLab?", a: "ArvoLab is sold to individual researchers. Institutional licences are offered only to universities and educational institutions, on request." },
       { q: "What does annual billing save?", a: "On the annual option you pay for 10 months and use 12 — two months free. The amount is invoiced once at the start of the period." },
-      { q: "Does the subscription renew automatically?", a: "No. Your card is not charged automatically; a payment link is sent for each period and you approve the payment." },
+      { q: "Does the subscription renew automatically?", a: "Not unless you choose it. By default your card is not charged automatically; a payment link is sent for each period. You can save your card and choose automatic renewal at checkout; you are notified at least 3 days before each charge and can switch automatic renewal off at any time from the payment screen in your account." },
       { q: "Can we change plan later?", a: "Yes. An upgrade takes effect the same day and only the remaining days of the period are charged; a downgrade applies at the end of the current period." },
       { q: "What happens if prices change?", a: "Your current period is unaffected. Changes are announced at least 30 days in advance and apply from the next period." },
       { q: "We paid annually — what if we cancel early?", a: "The months you used are recalculated at the monthly list price and the remaining balance is refunded; the annual discount is only withdrawn for the unused months." },

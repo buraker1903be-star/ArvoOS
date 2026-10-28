@@ -67,7 +67,14 @@ export const DISTANCE_SALES_TR: PrivacyContent = {
       "Aylık abonelikte bedel her dönemin başında faturalanır. Yıllık abonelikte 12 (on iki) aylık kullanım için 10 (on) aylık bedel, dönemin başında tek seferde faturalanır.",
       "Pakette dahil olan kullanıcı, şube, mağaza ve ürün sayıları aşıldığında yalnızca aynı sayfada yayımlanan ek kalem ücretleri uygulanır; paket bedeli kendiliğinden değişmez.",
       "Ödeme, Satıcı'nın anlaşmalı ödeme kuruluşu üzerinden kredi/banka kartı ile veya havale/EFT ile yapılır. Kart bilgileri Satıcı tarafından saklanmaz.",
-      "Otomatik yenilenen bir çekim yapılmaz; her dönem için ödeme bağlantısı abonenin onayıyla kullanılır.",
+      // 28.10.2026'ya kadar "otomatik yenilenen çekim yapılmaz" yazıyordu;
+      // isteğe bağlı kart kaydı ve otomatik yenileme eklendi. Varsayılan
+      // değişmedi, bu yüzden madde önce varsayılanı söylüyor.
+      "Varsayılan olarak karttan otomatik çekim yapılmaz; her dönem için ödeme bağlantısı gönderilir ve ödeme abonenin onayıyla yapılır.",
+      "Abone, ödeme sırasında kartını kaydetmeyi ve otomatik yenilemeyi açıkça seçerse, dönem bedeli her dönemin sonunda kayıtlı karttan ödeme kuruluşu aracılığıyla tahsil edilir. Kart bilgileri Satıcı (ArvoCulture Group) tarafından değil, ödeme kuruluşu (PayTR) tarafından saklanır.",
+      "Otomatik yenilemede abone her çekimden en az 3 (üç) gün önce bilgilendirilir. Abone, otomatik yenilemeyi kapatabilir veya kayıtlı kartını panelden dilediği zaman silebilir; kapatma bir sonraki dönemden itibaren geçerli olur.",
+      "Otomatik çekim başarısız olursa en fazla iki kez daha denenir ve abone bilgilendirilir.",
+      "Abonenin otomatik yenileme onayı tarih, saat ve IP adresiyle kayıt altına alınır.",
       "Ödeme alınamadığında Satıcı, hizmeti askıya alma hakkını saklı tutar; askı öncesinde abone bilgilendirilir.",
     ] },
     /*
@@ -138,7 +145,11 @@ export const DISTANCE_SALES_EN: PrivacyContent = {
       "Monthly subscriptions are invoiced at the start of each period. Annual subscriptions are invoiced once at the start of the 12-month period, for 10 months of fees.",
       "Where a plan's included users, branches, stores or products are exceeded, only the add-on fees published on the same page apply; the plan fee itself does not change.",
       "Payment is made by credit/debit card through the Seller's payment provider, or by bank transfer. Card details are not stored by the Seller.",
-      "There is no automatic recurring charge; each period is paid through a link the subscriber approves.",
+      "By default there is no automatic charge to the card; a payment link is sent for each period and payment is made with the subscriber's approval.",
+      "If the subscriber explicitly chooses at checkout to save the card and enable automatic renewal, the period fee is charged at the end of each period from the saved card through the payment provider. Card data is stored by the payment provider (PayTR), not by the Seller (ArvoCulture Group).",
+      "With automatic renewal, the subscriber is notified at least 3 days before each charge. The subscriber may switch off automatic renewal or delete the saved card from the panel at any time; switching off takes effect from the next period.",
+      "If an automatic charge fails, it is retried at most twice more and the subscriber is notified.",
+      "The subscriber's consent to automatic renewal is recorded with date, time and IP address.",
     ] },
     { h: "4. Price and plan changes", list: [
       "The Seller may update list prices. A price change does not affect the subscriber's current (paid) period.",

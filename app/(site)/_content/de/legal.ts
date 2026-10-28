@@ -43,7 +43,11 @@ export const DISTANCE_SALES_DE: PrivacyContent = {
       "Monatsabonnements werden zu Beginn jedes Zeitraums in Rechnung gestellt. Jahresabonnements werden einmalig zu Beginn des 12-monatigen Zeitraums über die Gebühr für 10 Monate in Rechnung gestellt.",
       "Werden die in einem Paket enthaltenen Nutzer, Filialen, Shops oder Produkte überschritten, fallen nur die auf derselben Seite veröffentlichten Zusatzgebühren an; die Paketgebühr selbst ändert sich nicht.",
       "Die Zahlung erfolgt per Kredit-/Debitkarte über den Zahlungsdienstleister des Verkäufers oder per Banküberweisung. Kartendaten werden vom Verkäufer nicht gespeichert.",
-      "Es gibt keine automatische wiederkehrende Abbuchung; jeder Zeitraum wird über einen Link bezahlt, den der Abonnent bestätigt.",
+      "Standardmäßig erfolgt keine automatische Abbuchung von der Karte; für jeden Zeitraum wird ein Zahlungslink gesendet, und die Zahlung erfolgt mit Bestätigung des Abonnenten.",
+      "Wählt der Abonnent beim Bezahlen ausdrücklich, die Karte zu speichern und die automatische Verlängerung zu aktivieren, wird die Gebühr für den Zeitraum jeweils am Ende jedes Zeitraums über den Zahlungsdienstleister von der gespeicherten Karte abgebucht. Die Kartendaten werden vom Zahlungsdienstleister (PayTR) gespeichert, nicht vom Verkäufer (ArvoCulture Group).",
+      "Bei automatischer Verlängerung wird der Abonnent mindestens 3 Tage vor jeder Abbuchung benachrichtigt. Der Abonnent kann die automatische Verlängerung jederzeit im Panel abschalten oder die gespeicherte Karte löschen; das Abschalten wirkt ab dem nächsten Zeitraum.",
+      "Schlägt eine automatische Abbuchung fehl, wird sie höchstens zwei weitere Male versucht, und der Abonnent wird benachrichtigt.",
+      "Die Zustimmung des Abonnenten zur automatischen Verlängerung wird mit Datum, Uhrzeit und IP-Adresse protokolliert.",
     ] },
     { h: "4. Preis- und Paketänderungen", list: [
       "Der Verkäufer kann die Listenpreise anpassen. Eine Preisänderung berührt den laufenden (bezahlten) Zeitraum des Abonnenten nicht.",

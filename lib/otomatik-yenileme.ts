@@ -82,14 +82,14 @@ export function yenilemeBildirimi(g:
     case "hatirlat":
       return {
         baslik: `${g.urun} aboneliğiniz otomatik yenilenecek`,
-        metin: `${uzunTarih.format(new Date(`${g.donem}T12:00:00Z`))} tarihinde •••• ${g.son4} kartınızdan ${g.tutar ? tl(g.tutar) : "dönem ücreti"} çekilecek. Otomatik yenilemeyi Ödeme ve Lisans ekranından kapatabilirsiniz.`,
+        metin: `${uzunTarih.format(new Date(`${g.donem}T12:00:00Z`))} tarihinde •••• ${g.son4} kartınızdan ${g.tutar ? tl(g.tutar) : "dönem ücreti"} çekilecek. Otomatik yenilemeyi hesabınızdaki ödeme ekranından kapatabilirsiniz.`,
       };
     case "basarisiz":
       return {
         baslik: `${g.urun} otomatik yenilemesi alınamadı`,
         metin: g.kalanDeneme > 0
-          ? `Kartınızdan çekim yapılamadı: ${g.mesaj}. Yarın yeniden denenecek (kalan ${g.kalanDeneme} deneme). İsterseniz Ödeme ve Lisans ekranından şimdi ödeyebilirsiniz.`
-          : `Kartınızdan çekim yapılamadı: ${g.mesaj}. Ödemenizi Ödeme ve Lisans ekranından yapabilirsiniz.`,
+          ? `Kartınızdan çekim yapılamadı: ${g.mesaj}. Yarın yeniden denenecek (kalan ${g.kalanDeneme} deneme). İsterseniz hesabınızdaki ödeme ekranından şimdi ödeyebilirsiniz.`
+          : `Kartınızdan çekim yapılamadı: ${g.mesaj}. Ödemenizi hesabınızdaki ödeme ekranından yapabilirsiniz.`,
       };
     case "durdu": {
       const neden = {
@@ -101,7 +101,7 @@ export function yenilemeBildirimi(g:
       }[g.neden];
       return {
         baslik: `${g.urun} otomatik yenilemesi durdu`,
-        metin: `${neden} Aboneliğinizi sürdürmek için Ödeme ve Lisans ekranından kartla ya da havaleyle ödeyin; dilerseniz yeni kartınızı kaydedip otomatik yenilemeyi yeniden açın.`,
+        metin: `${neden} Aboneliğinizi sürdürmek için hesabınızdaki ödeme ekranından kartla ya da havaleyle ödeyin; dilerseniz yeni kartınızı kaydedip otomatik yenilemeyi yeniden açın.`,
       };
     }
   }

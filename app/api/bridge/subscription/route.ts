@@ -6,13 +6,14 @@ import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId,
 import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
 import { isSubscriberProduct, productName } from "@/lib/products";
-import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
-import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
+import { bireyselAylikUcret } from "@/lib/bireysel-ucret";
 import { kurumLisansiAcik } from "@/lib/kurum-lisansi-erisim";
 import { KREDI_PAKETLERI } from "@/lib/ai-kredi-paketleri";
 import { createBireyselKrediCheckout } from "@/lib/ai-kredi-checkout";
 import { CheckoutError } from "@/lib/license-checkout";
 import { aboneFaturalamasi, BOS_FATURALAMA, kurumFaturalamasi } from "@/lib/faturalama-koprusu";
+import { aboneKartOdemesiAc, kartOnayiniKaydet, kartSaklamaAcik, OTOMATIK_YENILEME_ONAY_METNI, platformKimligi } from "@/lib/paytr-kart-akisi";
+import { kayitliKartiSil, PAYTR_ODEME_ADRESI, paytrEpostasiUygunMu } from "@/lib/paytr-direkt";
 
 // Ürünler için abonelik köprüsü (ArvoLab, ileride ArvoARC).
 //
@@ -70,12 +71,21 @@ const state = (subscriber: SubscriberRow, monthlyFee: number | null, product: st
     taraf ayrı fiyat göstermesin (ArvoLab lib/kredi-paketleri.ts).
   */
   ...(product === "arvolab" ? { creditPackages: KREDI_PAKETLERI } : {}),
+  /* Kart saklama (28.10.2026): ArvoLab kart düğmesini ve kayıtlı kart
+     bölümünü yalnızca bu true iken gösterir — bayrak ArvoOS'ta. */
+  cardStorage: kartSaklamaAcik() && Boolean(monthlyFee && monthlyFee > 0),
 });
+
+const KART_ISLEMLERI = ["card_checkout", "card_consent", "card_state", "card_disable_renewal", "card_delete"];
+const ipGecerli = (ip: string) => /^[0-9a-fA-F:.]{3,39}$/.test(ip);
 
 export async function POST(request: Request) {
   if (!authorized(request)) return json(401, { error: "unauthorized" });
 
-  let body: { product?: string; action?: string; userId?: string; email?: string; fullName?: string; paket?: string; organizationId?: string };
+  let body: {
+    product?: string; action?: string; userId?: string; email?: string; fullName?: string; paket?: string; organizationId?: string;
+    ip?: string; merchantOid?: string; autoRenew?: boolean; cardId?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -108,24 +118,14 @@ export async function POST(request: Request) {
   }
 
   if (!userId || !email) return json(400, { error: "missing_user" });
-  if (!["ensure", "checkout", "close", "credit_checkout", "billing"].includes(action)) return json(400, { error: "invalid_action" });
+  if (!["ensure", "checkout", "close", "credit_checkout", "billing", ...KART_ISLEMLERI].includes(action)) return json(400, { error: "invalid_action" });
   // Kredi yalnızca ArvoLab'da harcanıyor; başka ürüne satmak anlamsız.
   if (action === "credit_checkout" && product !== "arvolab") return json(400, { error: "invalid_action" });
 
   const admin = createAdminClient();
   if (!admin) return json(503, { error: "unavailable" });
 
-  const [{ data: plan }, fiyatlar] = await Promise.all([
-    admin.from("product_plans").select("individual_monthly_fee,trial_days").eq("product", product).maybeSingle(),
-    yayimlananFiyatlar(),
-  ]);
-  /* Listede karşılığı olan ürünün (ArvoLab → Araştırmacı) fiyatı
-     YAYIMLANMIŞ listeden; öteki ürün product_plans'tan. Teklif usulüne
-     çevrilmiş basamak (null) kartla satılmaz. */
-  const listeFiyati = bireyselListeFiyatiKurus(product, fiyatlar);
-  const monthlyFee = listeFiyati !== undefined
-    ? (listeFiyati && listeFiyati > 0 ? listeFiyati : null)
-    : plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) : null;
+  const { aylik: monthlyFee, denemeGunu } = await bireyselAylikUcret(admin, product);
 
   const columns = "id,status,trial_ends_at,current_period_start,current_period_end,kurum_id";
   let { data: subscriber } = await admin.from("product_subscribers").select(columns)
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     if (action === "billing") return json(200, BOS_FATURALAMA);
     if (action !== "ensure") return json(404, { error: "subscriber_not_found" });
     // İlk giriş: deneme süresi tanımlıysa denemeyle başlar, değilse kapalı.
-    const trialDays = plan?.trial_days ?? 0;
+    const trialDays = denemeGunu;
     const trialEndsAt = trialDays > 0 ? new Date(Date.now() + trialDays * 86400000).toISOString() : null;
     const { data: created, error } = await admin.from("product_subscribers").insert({
       product,
@@ -240,6 +240,75 @@ export async function POST(request: Request) {
   }
 
   if (action === "ensure") return json(200, state(subscriber, monthlyFee, product));
+
+  /*
+    KART SAKLAMA (28.10.2026). Bireysel abone kartla öder ve dilerse
+    kartını kaydedip otomatik yenilemeyi seçer. Kart bilgisi ArvoLab'a da
+    buraya da gelmez: ArvoLab formu tarayıcıdan doğrudan PayTR'ye
+    gönderir, buradan yalnızca imzalı gizli alanlar gider. Lisans
+    (abonelik dönemi) yalnızca PayTR bildirimiyle uzar
+    (lib/paytr-kart-akisi). Kural ve onay metni ArvoOS'ta; ArvoLab
+    onay metnini buradan alıp gösterir, iki tarafta ayrı metin olmasın.
+  */
+  if (KART_ISLEMLERI.includes(action)) {
+    if (!kartSaklamaAcik()) return json(503, { error: "card_storage_disabled" });
+    const odeyen = { subscriberId: subscriber.id };
+    try {
+      if (action === "card_checkout") {
+        if (!monthlyFee || monthlyFee <= 0) return json(409, { error: "fee_not_set" });
+        const ip = String(body.ip ?? "").trim();
+        if (!ipGecerli(ip)) return json(400, { error: "invalid_ip" });
+        if (!paytrEpostasiUygunMu(email)) return json(400, { error: "invalid_email" });
+        const form = await aboneKartOdemesiAc(admin, { subscriberId: subscriber.id, product, fee: monthlyFee, ip, email, adSoyad: body.fullName?.trim() || null });
+        return json(200, {
+          paymentUrl: PAYTR_ODEME_ADRESI, merchantOid: form.merchantOid, amount: form.tutar, title: form.baslik,
+          fields: form.alanlar, utoken: form.utoken, consentText: OTOMATIK_YENILEME_ONAY_METNI.replace(/^v\d+ · /, ""),
+        });
+      }
+      if (action === "card_consent") {
+        const ip = String(body.ip ?? "").trim();
+        if (!ipGecerli(ip)) return json(400, { error: "invalid_ip" });
+        await kartOnayiniKaydet(admin, { merchantOid: String(body.merchantOid ?? ""), odeyen, actorId: null, ip, otomatikYenileme: body.autoRenew === true });
+        return json(200, { ok: true });
+      }
+      if (action === "card_state") {
+        const [k, y] = await Promise.all([
+          admin.from("paytr_kayitli_kartlar").select("id,son4,banka,sema,son_kullanma_ay,son_kullanma_yil").eq("subscriber_id", subscriber.id).order("created_at", { ascending: false }),
+          admin.from("paytr_otomatik_yenileme").select("aktif,kart_id,son_hata,onay_at").eq("subscriber_id", subscriber.id).eq("product", product).maybeSingle(),
+        ]);
+        if (k.error || y.error) throw new Error((k.error ?? y.error)!.message);
+        return json(200, {
+          cards: (k.data ?? []).map((c) => ({ id: c.id, last4: c.son4, bank: c.banka, scheme: c.sema, expMonth: c.son_kullanma_ay, expYear: c.son_kullanma_yil })),
+          autoRenew: y.data ? { active: y.data.aktif, cardId: y.data.kart_id, lastError: y.data.son_hata, consentAt: y.data.onay_at } : null,
+        });
+      }
+      if (action === "card_disable_renewal") {
+        const { error } = await admin.from("paytr_otomatik_yenileme")
+          .update({ aktif: false, kapatildi_at: new Date().toISOString(), kapatan: null, updated_at: new Date().toISOString() })
+          .eq("subscriber_id", subscriber.id).eq("product", product).eq("aktif", true);
+        if (error) throw new Error(error.message);
+        return json(200, { ok: true });
+      }
+      // card_delete: önce PayTR'den, sonra bizden (tersi PayTR'de görünmez bir kart bırakırdı).
+      const { data: kart, error } = await admin.from("paytr_kayitli_kartlar").select("id,utoken,ctoken")
+        .eq("id", String(body.cardId ?? "")).eq("subscriber_id", subscriber.id).maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!kart) return json(404, { error: "card_not_found" });
+      await kayitliKartiSil(await platformKimligi(admin), kart.utoken, kart.ctoken);
+      const { error: silmeHatasi } = await admin.from("paytr_kayitli_kartlar").delete().eq("id", kart.id);
+      if (silmeHatasi) throw new Error(silmeHatasi.message);
+      return json(200, { ok: true });
+    } catch (error) {
+      if (error instanceof CheckoutError) {
+        console.error("[bridge] kartla ödeme", action, error.code, error.message);
+        return json(error.code === "link_failed" ? 502 : 503, { error: error.code });
+      }
+      const mesaj = error instanceof Error ? error.message : String(error);
+      console.error("[bridge] kartla ödeme", action, mesaj);
+      // Onay ve silme hataları kullanıcıya gösterilebilir metin taşıyor (Türkçe).
+      return json(action === "card_consent" || action === "card_delete" ? 400 : 503, { error: action === "card_consent" || action === "card_delete" ? mesaj : "unavailable" });
+    }
+  }
 
   // --- credit_checkout: AI kredi paketi için PayTR bağlantısı (bireysel abone)
   if (action === "credit_checkout") {
