@@ -18,7 +18,7 @@ export const CONTACT_ES: ContactContent = {
     items: [
       { q: "¿Cómo solicito una demo?", a: "Elija en el formulario de esta página el producto que le interesa y describa sus necesidades; nuestro equipo se pondrá en contacto con usted." },
       { q: "¿De qué otra forma puedo contactar con ustedes?", a: `Envíe un correo electrónico a ${COMPANY.email}.` },
-      { q: "Mi organización ya usa un panel: ¿dónde inicio sesión?", a: "ArvoOS funciona en app.arvo-os.com, ArvoLab en lab.arvo-os.com y ArvoBook en randevu.arvo-os.com; las organizaciones cuyo sitio de comercio electrónico incluía un panel de tienda inician sesión en arc.arvo-os.com; si su organización tiene un dominio propio, también puede iniciar sesión allí." },
+      { q: "Mi organización ya usa un panel: ¿dónde inicio sesión?", a: "ArvoOS funciona en app.arvo-os.com, ArvoLab en lab.arvo-os.com y ArvoBook en randevu.arvo-os.com; si su organización tiene un dominio propio, también puede iniciar sesión allí." },
       { q: "¿Cómo se utilizan los datos de mi formulario?", a: `Solo para responder a su solicitud. Encontrará los detalles en el Aviso de privacidad (${ROUTES.privacy.es}).` },
     ],
   },

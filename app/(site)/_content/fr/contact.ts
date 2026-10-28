@@ -18,7 +18,7 @@ export const CONTACT_FR: ContactContent = {
     items: [
       { q: "Comment demander une démo ?", a: "Choisissez le produit qui vous intéresse dans le formulaire de cette page et décrivez votre besoin ; notre équipe reviendra vers vous." },
       { q: "Comment vous joindre autrement ?", a: `Envoyez un e-mail à ${COMPANY.email}.` },
-      { q: "Mon organisation utilise déjà un panneau — où me connecter ?", a: "ArvoOS fonctionne sur app.arvo-os.com, ArvoLab sur lab.arvo-os.com et ArvoBook sur randevu.arvo-os.com ; les organisations dont le site e-commerce a été livré avec un panneau boutique se connectent sur arc.arvo-os.com ; si votre organisation dispose de son propre domaine, vous pouvez aussi vous y connecter." },
+      { q: "Mon organisation utilise déjà un panneau — où me connecter ?", a: "ArvoOS fonctionne sur app.arvo-os.com, ArvoLab sur lab.arvo-os.com et ArvoBook sur randevu.arvo-os.com ; si votre organisation dispose de son propre domaine, vous pouvez aussi vous y connecter." },
       { q: "Comment mes données de formulaire sont-elles utilisées ?", a: `Uniquement pour répondre à votre demande. Le détail figure dans la Politique de confidentialité (${ROUTES.privacy.fr}).` },
     ],
   },

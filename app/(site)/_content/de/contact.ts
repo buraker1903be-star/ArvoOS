@@ -18,7 +18,7 @@ export const CONTACT_DE: ContactContent = {
     items: [
       { q: "Wie fordere ich eine Demo an?", a: "Wählen Sie im Formular auf dieser Seite das Produkt, das Sie interessiert, und beschreiben Sie Ihren Bedarf; unser Team meldet sich bei Ihnen." },
       { q: "Wie kann ich Sie sonst erreichen?", a: `Schreiben Sie eine E-Mail an ${COMPANY.email}.` },
-      { q: "Meine Organisation nutzt bereits ein Panel – wo melde ich mich an?", a: "ArvoOS läuft unter app.arvo-os.com, ArvoLab unter lab.arvo-os.com und ArvoBook unter randevu.arvo-os.com; Organisationen, deren E-Commerce-Website mit einem Shop-Panel geliefert wurde, melden sich unter arc.arvo-os.com an; hat Ihre Organisation eine eigene Domain, können Sie sich auch dort anmelden." },
+      { q: "Meine Organisation nutzt bereits ein Panel – wo melde ich mich an?", a: "ArvoOS läuft unter app.arvo-os.com, ArvoLab unter lab.arvo-os.com und ArvoBook unter randevu.arvo-os.com; hat Ihre Organisation eine eigene Domain, können Sie sich auch dort anmelden." },
       { q: "Wie werden meine Formulardaten verwendet?", a: `Ausschließlich zur Beantwortung Ihrer Anfrage. Einzelheiten finden Sie in der Datenschutzerklärung (${ROUTES.privacy.de}).` },
     ],
   },
