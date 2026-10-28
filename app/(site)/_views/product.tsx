@@ -28,10 +28,7 @@ export async function ProductView({ locale, c }: { locale: Locale; c: ProductCon
            etikette geçiyor ve iki kez yan yana yazılıyordu. */
         : undefined}
         extra={<><p className="phero-price rise">{fiyat}</p><HeroBadges items={g.badges} /></>}>
-        {/* ArvoBook'un arayüz maketi henüz yok; sahnesiz kahraman
-            PageHero tarafından ortalanır. Uydurma bir ekran çizmektense
-            sahneyi hiç basmamak doğru. */}
-        {c.id === "randevu" ? null : <HeroStage locale={locale} product={c.id} />}
+        <HeroStage locale={locale} product={c.id} />
       </PageHero>
       {c.id === "arvoos" ? <ArvoosSubnav locale={locale} current="arvoos" /> : null}
 
