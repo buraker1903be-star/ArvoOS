@@ -101,16 +101,34 @@
   .site .hdr-burger{display:block}
 }
 
-/* ---------- alt bilgi: apple.com gibi küçük punto, açık gri ---------- */
-.site .ftr{background:var(--grey);color:var(--muted);padding:32px 0 24px;font-size:12px;line-height:1.4;letter-spacing:-.01em}
-.site .ftr-brands{display:flex;flex-wrap:wrap;align-items:center;gap:12px 28px;padding-bottom:18px;border-bottom:1px solid var(--line)}
-.site .ftr-brands a{display:inline-flex;align-items:center;min-height:36px}
-.site .ftr-tag{margin-inline-start:auto;color:var(--ink-soft)}
-.site .ftr-cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;padding:22px 0;border-bottom:1px solid var(--line)}
-.site .ftr-h{margin-bottom:8px;color:var(--ink);font-size:12px;font-weight:600}
-.site .ftr-cols a{display:inline-flex;align-items:center;min-height:28px;color:var(--ink-soft)}
+/* ---------- alt bilgi (28.10.2026) ----------
+   Kapanış sahnesi + ürün kartları + sütunlar + dev ARVO yazısı. Eskiden
+   yalnızca küçük punto sütunlardı; sayfa bir anda bitiyordu. Zemin açık. */
+.site .ftr{position:relative;isolation:isolate;overflow:hidden;background:var(--grey);color:var(--muted);padding:clamp(64px,8vw,120px) 0 0;font-size:13px;line-height:1.45;letter-spacing:-.01em}
+.site .ftr::before{content:"";position:absolute;inset:0 0 auto;height:620px;z-index:-1;pointer-events:none;
+  background:radial-gradient(50% 60% at 50% 0%,color-mix(in srgb,var(--gold-100) 95%,transparent),transparent 70%),
+             radial-gradient(30% 40% at 85% 10%,color-mix(in srgb,var(--green) 10%,transparent),transparent 70%)}
+
+.site .ftr-hero{display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:clamp(48px,6vw,88px)}
+.site .ftr-hero-eyebrow{color:var(--gold-600);font-size:14px;font-weight:600}
+.site .ftr-hero-title{max-width:16ch;margin-top:12px;padding-block:.1em;font-size:clamp(40px,6.4vw,92px);font-weight:700;line-height:1.02;letter-spacing:-.035em;
+  background:linear-gradient(180deg,var(--navy) 35%,color-mix(in srgb,var(--navy) 35%,var(--green)));-webkit-background-clip:text;background-clip:text;color:transparent}
+.site .ftr-hero .hero-badges{margin-top:28px}
+
+.site .ftr-products{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-bottom:clamp(36px,4vw,56px)}
+.site .ftr-product{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:22px 24px;border-radius:var(--radius-m);background:#fff;box-shadow:var(--hair);transition:transform .4s var(--ease),box-shadow .4s var(--ease)}
+.site .ftr-product:hover{transform:translateY(-3px);box-shadow:var(--hair),var(--shadow-m)}
+.site .ftr-product-desc{color:var(--ink-soft);font-size:14px}
+.site .ftr-product-go{position:absolute;inset-inline-end:22px;top:22px;color:var(--gold-600);font-size:18px;transition:transform .3s var(--ease)}
+.site .ftr-product:hover .ftr-product-go{transform:translateX(4px)}
+.site [dir="rtl"] .ftr-product-go{transform:scaleX(-1)}
+.site [dir="rtl"] .ftr-product:hover .ftr-product-go{transform:scaleX(-1) translateX(4px)}
+
+.site .ftr-cols{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:24px;padding:clamp(28px,3vw,40px) 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.site .ftr-h{margin-bottom:10px;color:var(--ink);font-size:13px;font-weight:600}
+.site .ftr-cols a{display:inline-flex;align-items:center;min-height:30px;color:var(--ink-soft);transition:color .2s}
 .site .ftr-cols a:hover,.site .ftr-legal a:hover,.site .ftr-lang:hover{color:var(--ink);text-decoration:underline}
-.site .ftr-legal{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 24px;padding-top:16px}
+.site .ftr-legal{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 24px;padding:18px 0 8px;font-size:12px}
 .site .ftr-address{font-style:normal}
 .site .ftr-address strong{color:var(--ink-soft);font-weight:500}
 .site .ftr-address a{color:var(--ink-soft)}
@@ -123,8 +141,29 @@
 .site .ftr-credit .brand-logo{--h:14px;opacity:.85;transition:opacity .2s}
 .site .ftr-credit:hover{color:var(--ink)}
 .site .ftr-credit:hover .brand-logo{opacity:1}
+
+/* Dev ARVO: sayfanın imzası. Harfler alttan kesik, renk çizgi grisinden
+   saydama iner; kaydırma destekleyen tarayıcıda yükselerek gelir. Yazı
+   tipi Inter (her sistemde aynı), satır yüksekliği sıfıra yakın: alt
+   boşluğu yazının kendisi belirler. */
+.site .ftr-giant{display:flex;justify-content:center;margin-top:clamp(8px,2vw,24px);height:clamp(56px,19vw,300px);overflow:hidden;pointer-events:none;user-select:none}
+.site .ftr-giant span{display:block;font-family:var(--font);font-size:clamp(80px,28vw,440px);font-weight:800;line-height:.78;letter-spacing:-.06em;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--navy) 16%,transparent) 0%,color-mix(in srgb,var(--gold-400) 22%,transparent) 55%,transparent 92%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+@supports (animation-timeline:view()){
+  .site .ftr-giant span{animation:ftr-yuksel linear both;animation-timeline:view();animation-range:entry 0% cover 60%}
+  @keyframes ftr-yuksel{from{transform:translateY(40%);opacity:.2}to{transform:none;opacity:1}}
+}
+@media (prefers-reduced-motion:reduce){
+  .site .ftr-giant span{animation:none}
+  .site .ftr-product,.site .ftr-product:hover,.site .ftr-product-go{transition:none;transform:none}
+}
+
+@media (max-width:980px){
+  .site .ftr-cols{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 @media (max-width:767px){
+  .site .ftr-products{grid-template-columns:1fr}
   .site .ftr-cols{grid-template-columns:repeat(2,minmax(0,1fr))}
   .site .ftr-cols a{min-height:36px}
-  .site .ftr-tag{margin-inline-start:0;width:100%}
 }
