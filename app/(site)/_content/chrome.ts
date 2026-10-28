@@ -10,6 +10,11 @@ type Chrome = {
   signIn: string; demo: string; language: string;
   productLinks: NavLink[]; arvoosTitle: string; arvoosLinks: NavLink[];
   serviceLinks: NavLink[]; signInLinks: NavLink[];
+  /* Giriş penceresi (28.10.2026): üç ürün yan yana, logo + amaç +
+     "Talep et" ve "Giriş yap". Eskiden açılır menüde yalnızca ad ve alan
+     adı vardı; ziyaretçi hangi ürüne gireceğini adresten çıkarmak
+     zorundaydı, hesabı olmayan da nereden başlayacağını göremiyordu. */
+  signInPanel: { title: string; lead: string; request: string; login: string; close: string; purposes: Record<"arvoos" | "arvolab" | "randevu", string> };
   footerTagline: string; footerCta: string; company: string; rights: string; addressLabel: string; group: string;
 };
 
@@ -52,6 +57,16 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "Özel yazılım", desc: "Panel, portal ve iş akışları", href: ROUTES["custom-software"].tr },
     ],
     signInLinks,
+    signInPanel: {
+      title: "Hangi ürüne giriş yapacaksınız?",
+      lead: "Her ürünün kendi paneli var. Hesabınız yoksa talep bırakın, kurulumu birlikte yapalım.",
+      request: "Talep et", login: "Giriş yap", close: "Kapat",
+      purposes: {
+        arvoos: "Müşteri talebinden tahsilata kadar CRM, teklif, sözleşme, operasyon ve finansı tek akışta yönetin.",
+        arvolab: "Tezinizi ve makalenizi literatürden analize, kılavuz kontrolünden özgünlüğe tek çalışma alanında yürütün.",
+        randevu: "Salonunuzun çevrim içi randevu sayfası, takvimi ve müşteri kaydı tek yerde.",
+      },
+    },
     footerTagline: "Daha iyi çalışmak için daha iyi sistemler.",
     footerCta: "Birlikte tasarlayalım",
     company: "Kurumsal", rights: "Tüm hakları saklıdır.", addressLabel: "Adres", group: "bir ArvoCulture Group markasıdır",
@@ -80,6 +95,16 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "Custom software", desc: "Panels, portals, workflows", href: ROUTES["custom-software"].en },
     ],
     signInLinks,
+    signInPanel: {
+      title: "Which product are you signing in to?",
+      lead: "Each product has its own panel. No account yet? Leave a request and we will set it up with you.",
+      request: "Request access", login: "Sign in", close: "Close",
+      purposes: {
+        arvoos: "Run CRM, proposals, contracts, operations and finance in one flow, from first request to final payment.",
+        arvolab: "Carry your thesis or paper from literature to analysis, guideline checks and originality in one workspace.",
+        randevu: "Your salon’s online booking page, calendar and customer records in one place.",
+      },
+    },
     footerTagline: "Better systems for better work.",
     footerCta: "Let’s design it together",
     company: "Company", rights: "All rights reserved.", addressLabel: "Address", group: "an ArvoCulture Group brand",
@@ -108,6 +133,16 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "Individuelle Software", desc: "Panels, Portale, Workflows", href: ROUTES["custom-software"].de },
     ],
     signInLinks,
+    signInPanel: {
+      title: "Bei welchem Produkt möchten Sie sich anmelden?",
+      lead: "Jedes Produkt hat sein eigenes Panel. Noch kein Konto? Senden Sie eine Anfrage – wir richten es gemeinsam ein.",
+      request: "Anfragen", login: "Anmelden", close: "Schließen",
+      purposes: {
+        arvoos: "CRM, Angebote, Verträge, Betrieb und Finanzen in einem Ablauf – von der ersten Anfrage bis zur Zahlung.",
+        arvolab: "Abschlussarbeit oder Artikel von der Literatur bis zur Analyse, Richtlinienprüfung und Originalität in einem Arbeitsbereich.",
+        randevu: "Online-Buchungsseite, Kalender und Kundenkartei Ihres Salons an einem Ort.",
+      },
+    },
     footerTagline: "Bessere Systeme für bessere Arbeit.",
     footerCta: "Lassen Sie es uns gemeinsam gestalten",
     company: "Unternehmen", rights: "Alle Rechte vorbehalten.", addressLabel: "Adresse", group: "eine Marke der ArvoCulture Group",
@@ -136,6 +171,16 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "Software a medida", desc: "Paneles, portales, flujos de trabajo", href: ROUTES["custom-software"].es },
     ],
     signInLinks,
+    signInPanel: {
+      title: "¿En qué producto quiere iniciar sesión?",
+      lead: "Cada producto tiene su propio panel. ¿Aún no tiene cuenta? Envíe una solicitud y lo configuramos juntos.",
+      request: "Solicitar", login: "Iniciar sesión", close: "Cerrar",
+      purposes: {
+        arvoos: "Gestione CRM, propuestas, contratos, operaciones y finanzas en un solo flujo, de la primera solicitud al cobro.",
+        arvolab: "Lleve su tesis o artículo de la literatura al análisis, la revisión de normas y la originalidad en un solo espacio.",
+        randevu: "La página de reservas en línea, la agenda y la ficha de clientes de su salón en un solo lugar.",
+      },
+    },
     footerTagline: "Mejores sistemas para un mejor trabajo.",
     footerCta: "Diseñémoslo juntos",
     company: "Empresa", rights: "Todos los derechos reservados.", addressLabel: "Dirección", group: "una marca de ArvoCulture Group",
@@ -164,6 +209,16 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "Logiciel sur mesure", desc: "Panneaux, portails, flux de travail", href: ROUTES["custom-software"].fr },
     ],
     signInLinks,
+    signInPanel: {
+      title: "À quel produit souhaitez-vous vous connecter ?",
+      lead: "Chaque produit a son propre panneau. Pas encore de compte ? Laissez une demande, nous le configurons avec vous.",
+      request: "Faire une demande", login: "Se connecter", close: "Fermer",
+      purposes: {
+        arvoos: "Pilotez CRM, devis, contrats, opérations et finances dans un seul flux, de la première demande à l’encaissement.",
+        arvolab: "Menez votre thèse ou votre article de la littérature à l’analyse, au contrôle des normes et à l’originalité dans un seul espace.",
+        randevu: "La page de réservation en ligne, l’agenda et le fichier clients de votre salon au même endroit.",
+      },
+    },
     footerTagline: "De meilleurs systèmes pour un meilleur travail.",
     footerCta: "Concevons-le ensemble",
     company: "Entreprise", rights: "Tous droits réservés.", addressLabel: "Adresse", group: "une marque d’ArvoCulture Group",
@@ -192,6 +247,16 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "برمجيات مخصصة", desc: "لوحات وبوابات وسير عمل", href: ROUTES["custom-software"].ar },
     ],
     signInLinks,
+    signInPanel: {
+      title: "إلى أي منتج تريد تسجيل الدخول؟",
+      lead: "لكل منتج لوحة خاصة به. ليس لديك حساب بعد؟ أرسل طلبًا وسنُعدّه معك.",
+      request: "اطلب", login: "تسجيل الدخول", close: "إغلاق",
+      purposes: {
+        arvoos: "أدِر علاقات العملاء والعروض والعقود والعمليات والمالية في مسار واحد، من أول طلب حتى التحصيل.",
+        arvolab: "أنجِز أطروحتك أو بحثك من المراجع إلى التحليل وفحص الدليل والأصالة في مساحة عمل واحدة.",
+        randevu: "صفحة الحجز عبر الإنترنت وتقويم صالونك وسجل عملائه في مكان واحد.",
+      },
+    },
     footerTagline: "أنظمة أفضل لعمل أفضل.",
     footerCta: "لنصمّمه معًا",
     company: "الشركة", rights: "جميع الحقوق محفوظة.", addressLabel: "العنوان", group: "علامة تجارية تابعة لـ ArvoCulture Group",
