@@ -7,8 +7,9 @@
 // okunamadığında sayfa fiyatsız kalmıyor.
 import Link from "next/link";
 import { ROUTES, type Locale } from "@/lib/site/routes";
-import { PLANS, tutarYaz, urunAdi, urunAdresi } from "@/lib/site/pricing";
-import { ekKalemTutari, planTutari, planYillikTutari, type Fiyatlar } from "@/lib/site/fiyat-kaynagi";
+import { PLANS, urunAdi, urunAdresi } from "@/lib/site/pricing";
+import type { Fiyatlar } from "@/lib/site/fiyat-kaynagi";
+import { paraYaz, sayfaEkKalemTutari, sayfaPlanTutari, sayfaPlanYillikTutari } from "@/lib/site/doviz";
 import { JsonLd, breadcrumbLd, faqLd, pricingLd, webPageLd } from "@/lib/site/structured-data";
 import type { PricingContent } from "../_content/types";
 import { Check } from "../_components/marks";
@@ -22,7 +23,7 @@ const planByCode = new Map(PLANS.map((p) => [p.code, p]));
 function Fiyat({ kurus, suffix, locale }: { kurus: number; suffix: string; locale: Locale }) {
   return (
     <>
-      <b>{tutarYaz(kurus, locale)} TL</b>
+      <b>{paraYaz(kurus, locale)}</b>
       <small>{suffix}</small>
     </>
   );
@@ -77,8 +78,9 @@ export function PricingView({ locale, c, fiyatlar }: {
                       {group.cards.map((card, i) => {
                         const plan = planByCode.get(card.code);
                         if (!plan) return null;
-                        const aylik = planTutari(plan, fiyatlar);
-                        const yillik = planYillikTutari(plan, fiyatlar);
+                        // Para birimi sayfanın dilinden (lib/site/doviz): TL, USD ya da EUR.
+                        const aylik = sayfaPlanTutari(plan, locale, fiyatlar);
+                        const yillik = sayfaPlanYillikTutari(plan, locale, fiyatlar);
                         return (
                           <article
                             key={card.code}
@@ -115,13 +117,13 @@ export function PricingView({ locale, c, fiyatlar }: {
             {/* Kart yerine satır: dört ek kalem, dört kutu kadar yer kaplamasın. */}
             <dl className="addon-list" data-reveal>
               {c.addOns.items.map((item) => {
-                const ekTutar = ekKalemTutari(item.code, fiyatlar);
+                const ekTutar = sayfaEkKalemTutari(item.code, locale, fiyatlar);
                 return (
                   <div className="addon-row" key={item.code}>
                     <dt>{item.name}</dt>
                     <dd className="addon-price">
                       {ekTutar
-                        ? <><b>{tutarYaz(ekTutar, locale)} TL</b><small>{c.cycle.perMonth}</small></>
+                        ? <><b>{paraYaz(ekTutar, locale)}</b><small>{c.cycle.perMonth}</small></>
                         : <span className="price-quote">{c.addOns.quote}</span>}
                     </dd>
                     <dd className="addon-text">{item.text}</dd>

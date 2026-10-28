@@ -39,7 +39,7 @@ export const DISTANCE_SALES_FR: PrivacyContent = {
     { h: "2. Objet", p: [`L’abonnement à un ou plusieurs des services ${produits}, ainsi que les droits et obligations des parties au titre de la loi turque n° 6502 relative à la protection des consommateurs et du Règlement sur les contrats à distance. Les services sont hébergés dans le cloud et utilisés dans un navigateur ; aucun bien physique n’est livré.`] },
     { h: "3. Prix et paiement", list: [
       `Le prix de l’abonnement est le prix catalogue publié sur ${ROUTES.pricing.fr} ; pour les offres établies sur devis, il s’agit du montant indiqué dans l’offre.`,
-      "Les montants sont exprimés en livres turques (TL) hors TVA ; la TVA est ajoutée sur la facture au taux en vigueur.",
+      "Les montants sont exprimés dans la devise indiquée lors de la commande (livres turques, dollars américains ou euros) hors TVA ; la TVA est ajoutée sur la facture au taux en vigueur.",
       "Les abonnements mensuels sont facturés au début de chaque période. Les abonnements annuels sont facturés une seule fois au début de la période de 12 mois, pour 10 mois de redevance.",
       "En cas de dépassement des utilisateurs, agences, boutiques ou produits inclus dans une offre, seuls les frais d’options publiés sur la même page s’appliquent ; le prix de l’offre lui-même ne change pas.",
       "Le paiement s’effectue par carte de crédit/débit via le prestataire de paiement du Vendeur, ou par virement bancaire. Les données de carte ne sont pas conservées par le Vendeur.",
