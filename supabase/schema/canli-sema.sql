@@ -1,4 +1,4 @@
--- Canlı şema dışa aktarımı: 2026-10-24
+-- Canlı şema dışa aktarımı: 2026-10-28
 -- scripts/sema-disa-aktar.sql ile üretildi. Elle düzenlemeyin.
 -- Sıra: tipler, sekanslar, tablolar, fonksiyonlar, varsayılanlar,
 -- kısıtlar, yabancı anahtarlar, indeksler, görünümler, RLS, politikalar,
@@ -16,6 +16,8 @@ do $t$ begin create type public.plan_code as enum ('starter', 'professional', 'e
 
 create sequence if not exists public.analitik_olaylar_id_seq;
 
+create sequence if not exists public.platform_proforma_sira;
+
 create table if not exists public.account_entries (
   id uuid not null,
   organization_id uuid not null,
@@ -29,7 +31,8 @@ create table if not exists public.account_entries (
   transaction_date date not null,
   due_date date,
   created_by uuid not null,
-  created_at timestamp with time zone not null
+  created_at timestamp with time zone not null,
+  payment_plan_id uuid
 );
 
 create table if not exists public.account_parties (
@@ -62,14 +65,15 @@ create table if not exists public.activity_logs (
 create table if not exists public.ai_credit_orders (
   id uuid not null,
   payment_link_id uuid not null,
-  organization_id uuid not null,
+  organization_id uuid,
   paket_kodu text not null,
   kredi bigint not null,
   amount bigint not null,
   currency text not null,
   created_by uuid,
   created_at timestamp with time zone not null,
-  loaded_at timestamp with time zone
+  loaded_at timestamp with time zone,
+  subscriber_id uuid
 );
 
 create table if not exists public.analitik_olaylar (
@@ -1605,6 +1609,18 @@ create table if not exists public.platform_cron_kayitlari (
   ayrinti jsonb not null
 );
 
+create table if not exists public.platform_faturalari (
+  id uuid not null,
+  fatura_no text not null,
+  fatura_tarihi date not null,
+  dosya_yolu text not null,
+  subscriber_payment_id uuid,
+  payment_request_id uuid,
+  yukleyen uuid,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
 create table if not exists public.platform_fiyat_gecmisi (
   id bigint generated always as identity not null,
   kod text not null,
@@ -1625,6 +1641,31 @@ create table if not exists public.platform_fiyat_listesi (
   updated_by uuid,
   updated_at timestamp with time zone not null,
   taslak_bekliyor boolean not null
+);
+
+create table if not exists public.platform_proformalari (
+  id uuid not null,
+  proforma_no text not null,
+  product text not null,
+  organization_id uuid,
+  subscriber_id uuid,
+  musteri_adi text not null,
+  kalemler jsonb not null,
+  ara_toplam bigint not null,
+  kdv_orani numeric not null,
+  kdv bigint not null,
+  toplam bigint not null,
+  para_birimi text not null,
+  duzenleme_tarihi date not null,
+  gecerlilik_tarihi date not null,
+  notlar text,
+  durum text not null,
+  payment_request_id uuid,
+  subscriber_payment_id uuid,
+  odendi_at timestamp with time zone,
+  olusturan uuid,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
 );
 
 create table if not exists public.platform_subscription_requests (
@@ -3058,6 +3099,33 @@ begin
     perform private.arvo_sync_management_owner(r.organization_id, r.user_id);
   end loop;
   return null;
+end
+$function$
+;
+
+CREATE OR REPLACE FUNCTION private.arvo_ek_hizmet_plan_koru()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+begin
+  if current_user not in ('authenticated', 'anon') then
+    return coalesce(new, old);
+  end if;
+  if tg_op = 'INSERT' then
+    if new.payment_plan_id is not null then
+      raise exception 'ek_hizmet_plan_bagi_dogrudan_yazilmaz';
+    end if;
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.payment_plan_id is distinct from old.payment_plan_id then
+    raise exception 'ek_hizmet_plan_bagi_dogrudan_yazilmaz';
+  end if;
+  if old.payment_plan_id is not null
+     and (tg_op = 'DELETE' or new.amount is distinct from old.amount) then
+    raise exception 'ek_hizmet_taksitlerde';
+  end if;
+  return coalesce(new, old);
 end
 $function$
 ;
@@ -7555,6 +7623,53 @@ AS $function$
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.arvo_ek_hizmet_taksitlere(p_entry_id uuid, p_plan_id uuid, p_taksitler jsonb, p_ekle boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_plan public.payment_plans%rowtype;
+  v_kayit public.account_entries%rowtype;
+begin
+  if (select auth.uid()) is null then
+    raise exception 'forbidden';
+  end if;
+  select * into v_plan from public.payment_plans where id = p_plan_id for update;
+  if v_plan.id is null then
+    raise exception 'payment_plan_not_found';
+  end if;
+  if not private.arvo_is_finance_manager(v_plan.organization_id) then
+    raise exception 'forbidden';
+  end if;
+  select * into v_kayit from public.account_entries where id = p_entry_id for update;
+  if v_kayit.id is null
+     or v_kayit.organization_id <> v_plan.organization_id
+     or v_kayit.party_id is distinct from v_plan.party_id
+     or v_kayit.entry_type <> 'debit'
+     or v_kayit.source_type is distinct from 'manual'
+     or v_kayit.description not like 'Ek hizmet ·%' then
+    raise exception 'ek_hizmet_bulunamadi';
+  end if;
+  if p_ekle then
+    if v_kayit.payment_plan_id is not null then
+      raise exception 'ek_hizmet_zaten_dagitildi';
+    end if;
+    update public.payment_plans set total_amount = total_amount + v_kayit.amount where id = v_plan.id;
+    update public.account_entries set payment_plan_id = v_plan.id where id = v_kayit.id;
+  else
+    if v_kayit.payment_plan_id is distinct from v_plan.id then
+      raise exception 'ek_hizmet_planda_degil';
+    end if;
+    update public.payment_plans set total_amount = total_amount - v_kayit.amount where id = v_plan.id;
+    update public.account_entries set payment_plan_id = null where id = v_kayit.id;
+  end if;
+  perform public.arvo_taksitleri_kaydet(v_plan.id, p_taksitler);
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.arvo_is_member(target_org uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -8231,7 +8346,6 @@ begin
     return 'duplicate';
   end if;
 
-  -- Test ödemesi: bağlantının çalıştığını gösterir; cariye/lisansa dokunmaz.
   if coalesce(p_test_mode, false) then
     update public.organization_payment_providers
     set last_test_payment_at = now()
@@ -8244,18 +8358,7 @@ begin
     return 'invalid_amount';
   end if;
 
-  /*
-    AI kredisi. Eskiden 'subscription' olmayan her şey taksit sayılıyordu;
-    bu amaç o dala düşseydi 'no_party' ile reddedilirdi.
-
-    Kredi ArvoLab'ın veritabanında ve buradan ulaşılamıyor: yükleme
-    bildirimi alan yolda yapılıyor (app/api/paytr/callback). Burada
-    yalnızca ödeme kaydı yazılıyor ki tahsilat raporlarında görünsün;
-    "para alındı ama kredi yüklenmedi" durumu ai_credit_orders.loaded_at
-    ile izleniyor.
-  */
   if v_link.purpose = 'ai_credit' then
-    -- Eksik ödeme kredi yüklemez (bağlantı tutarı sunucuda belirlendi).
     if p_payment_amount < v_link.amount then
       update public.payment_provider_events set result = 'amount_mismatch' where id = v_event;
       return 'amount_mismatch';
@@ -8267,15 +8370,18 @@ begin
       return 'no_order';
     end if;
 
-    /*
-      Kredi satışı da gelirdir; tahsilat listesinde görünmeli.
+    -- Bireysel abone: tahsilat abonenin ödeme geçmişine, dönemsiz (kredi dönemi uzatmaz).
+    if v_order.subscriber_id is not null then
+      insert into public.subscriber_payments (subscriber_id, provider, merchant_oid, amount, currency, period_start, period_end)
+      values (v_order.subscriber_id, 'paytr', p_merchant_oid, p_payment_amount, 'TRY', null, null);
 
-      plan_code ve submitted_by bu tabloda NOT NULL. Kredi satışının bir
-      paketi yok, o yüzden kurumun YÜRÜRLÜKTEKİ paketi yazılıyor —
-      "hangi paketteki müşteri kredi alıyor" sorusu da böylece
-      yanıtlanabiliyor. Null geçilseydi kayıt düşer ve ödeme alınmış
-      olmasına rağmen hiçbir yerde görünmezdi.
-    */
+      update public.payment_links set status = 'paid', paid_at = now() where id = v_link.id;
+      update public.organization_payment_providers
+      set last_payment_at = now()
+      where organization_id = v_link.organization_id and provider = 'paytr';
+      return 'recorded';
+    end if;
+
     select coalesce(l.plan_code, o.plan_code) into v_plan
       from public.organizations o
       left join public.organization_licenses l on l.organization_id = o.id
@@ -8300,7 +8406,6 @@ begin
   end if;
 
   if v_link.purpose = 'subscription' then
-    -- Eksik ödeme lisans açmaz (bağlantı tutarı sunucuda belirlenir).
     if p_payment_amount < v_link.amount then
       update public.payment_provider_events set result = 'amount_mismatch' where id = v_event;
       return 'amount_mismatch';
@@ -8309,7 +8414,6 @@ begin
     v_product := coalesce(v_link.product, 'arvoos');
 
     if v_link.subscriber_id is not null then
-      -- Bireysel abone: kurum kaydı yok, ödeme kendi geçmişine yazılır.
       perform private.arvo_activate_subscriber_period(
         v_link.subscriber_id, p_payment_amount, 'TRY', 'paytr', p_merchant_oid
       );
@@ -8334,12 +8438,6 @@ begin
       end if;
     end if;
   elsif v_link.purpose = 'account' then
-    /*
-      Cari ödeme bağlantısı: tutarı müşterinin söylediği rakam, bir taksite
-      bağlı değil. Eksik ödeme reddedilmiyor; ne geldiyse cariye o yazılır
-      (taksit dalıyla aynı). Kapanan taksitleri arvo_account_entry_reconcile
-      tetikleyicisi buluyor.
-    */
     if v_link.party_id is null then
       update public.payment_provider_events set result = 'no_party' where id = v_event;
       return 'no_party';
@@ -8377,7 +8475,6 @@ begin
       v_link.created_by
     )
     returning id into v_entry;
-    -- arvo_account_entry_reconcile tetikleyicisi bekleyen taksitleri kapatır.
     update public.payment_provider_events set account_entry_id = v_entry where id = v_event;
   end if;
 
@@ -12445,6 +12542,20 @@ end
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.platform_proforma_numarasi()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  new.proforma_no := 'PRF-' || to_char(coalesce(new.duzenleme_tarihi, current_date), 'YYYY') || '-'
+    || lpad(nextval('public.platform_proforma_sira')::text, 4, '0');
+  return new;
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.platform_tahsilat_ozeti()
  RETURNS jsonb
  LANGUAGE sql
@@ -14891,6 +15002,12 @@ alter table public.platform_cron_kayitlari alter column ayrinti set default '{}'
 
 alter table public.platform_cron_kayitlari alter column basladi_at set default now();
 
+alter table public.platform_faturalari alter column created_at set default now();
+
+alter table public.platform_faturalari alter column id set default gen_random_uuid();
+
+alter table public.platform_faturalari alter column updated_at set default now();
+
 alter table public.platform_fiyat_gecmisi alter column onceki_yayimli set default false;
 
 alter table public.platform_fiyat_gecmisi alter column zaman set default now();
@@ -14898,6 +15015,22 @@ alter table public.platform_fiyat_gecmisi alter column zaman set default now();
 alter table public.platform_fiyat_listesi alter column taslak_bekliyor set default false;
 
 alter table public.platform_fiyat_listesi alter column updated_at set default now();
+
+alter table public.platform_proformalari alter column created_at set default now();
+
+alter table public.platform_proformalari alter column durum set default 'bekliyor'::text;
+
+alter table public.platform_proformalari alter column duzenleme_tarihi set default CURRENT_DATE;
+
+alter table public.platform_proformalari alter column id set default gen_random_uuid();
+
+alter table public.platform_proformalari alter column kdv_orani set default 20;
+
+alter table public.platform_proformalari alter column para_birimi set default 'TRY'::text;
+
+alter table public.platform_proformalari alter column product set default 'arvolab'::text;
+
+alter table public.platform_proformalari alter column updated_at set default now();
 
 alter table public.platform_subscription_requests alter column created_at set default now();
 
@@ -15072,6 +15205,8 @@ alter table public.ai_credit_orders add constraint ai_credit_orders_kredi_check 
 alter table public.ai_credit_orders add constraint ai_credit_orders_payment_link_id_key UNIQUE (payment_link_id);
 
 alter table public.ai_credit_orders add constraint ai_credit_orders_pkey PRIMARY KEY (id);
+
+alter table public.ai_credit_orders add constraint ai_credit_orders_sahibi_check CHECK (((organization_id IS NULL) <> (subscriber_id IS NULL)));
 
 alter table public.analitik_olaylar add constraint analitik_olaylar_cihaz_check CHECK ((cihaz = ANY (ARRAY['mobil'::text, 'tablet'::text, 'masaustu'::text])));
 
@@ -15867,7 +16002,7 @@ alter table public.payment_links add constraint payment_links_pkey PRIMARY KEY (
 
 alter table public.payment_links add constraint payment_links_provider_check CHECK ((provider = ANY ('{paytr,garanti}'::text[])));
 
-alter table public.payment_links add constraint payment_links_purpose_check CHECK ((((purpose = 'installment'::text) AND (installment_id IS NOT NULL)) OR ((purpose = 'subscription'::text) AND (product IS NOT NULL) AND (product = ANY (ARRAY['arvoos'::text, 'arvolab'::text, 'arc'::text, 'randevu'::text])) AND (((payer_organization_id IS NOT NULL) AND (plan_code IS NOT NULL)) OR (subscriber_id IS NOT NULL)) AND (NOT ((payer_organization_id IS NOT NULL) AND (subscriber_id IS NOT NULL)))) OR ((purpose = 'ai_credit'::text) AND (payer_organization_id IS NOT NULL)) OR ((purpose = 'account'::text) AND (party_id IS NOT NULL))));
+alter table public.payment_links add constraint payment_links_purpose_check CHECK ((((purpose = 'installment'::text) AND (installment_id IS NOT NULL)) OR ((purpose = 'subscription'::text) AND (product IS NOT NULL) AND (product = ANY (ARRAY['arvoos'::text, 'arvolab'::text, 'arc'::text, 'randevu'::text])) AND (((payer_organization_id IS NOT NULL) AND (plan_code IS NOT NULL)) OR (subscriber_id IS NOT NULL)) AND (NOT ((payer_organization_id IS NOT NULL) AND (subscriber_id IS NOT NULL)))) OR ((purpose = 'ai_credit'::text) AND ((payer_organization_id IS NOT NULL) <> (subscriber_id IS NOT NULL))) OR ((purpose = 'account'::text) AND (party_id IS NOT NULL))));
 
 alter table public.payment_links add constraint payment_links_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paid'::text, 'cancelled'::text])));
 
@@ -15895,6 +16030,16 @@ alter table public.platform_cron_kayitlari add constraint platform_cron_kayitlar
 
 alter table public.platform_cron_kayitlari add constraint platform_cron_kayitlari_sonuc_check CHECK ((sonuc = ANY (ARRAY['tamam'::text, 'eksik'::text, 'hata'::text])));
 
+alter table public.platform_faturalari add constraint platform_faturalari_fatura_no_check CHECK (((char_length(btrim(fatura_no)) >= 1) AND (char_length(btrim(fatura_no)) <= 60)));
+
+alter table public.platform_faturalari add constraint platform_faturalari_odeme_check CHECK (((subscriber_payment_id IS NULL) <> (payment_request_id IS NULL)));
+
+alter table public.platform_faturalari add constraint platform_faturalari_payment_request_id_key UNIQUE (payment_request_id);
+
+alter table public.platform_faturalari add constraint platform_faturalari_pkey PRIMARY KEY (id);
+
+alter table public.platform_faturalari add constraint platform_faturalari_subscriber_payment_id_key UNIQUE (subscriber_payment_id);
+
 alter table public.platform_fiyat_gecmisi add constraint platform_fiyat_gecmisi_islem_check CHECK ((islem = ANY (ARRAY['taslak'::text, 'taslak_iptal'::text, 'yayim'::text, 'koda_donus'::text])));
 
 alter table public.platform_fiyat_gecmisi add constraint platform_fiyat_gecmisi_pkey PRIMARY KEY (id);
@@ -15906,6 +16051,38 @@ alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_
 alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_taslak_check CHECK (((taslak_kurus IS NULL) OR (taslak_kurus >= 0)));
 
 alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_tur_check CHECK ((tur = ANY (ARRAY['plan'::text, 'ek'::text])));
+
+alter table public.platform_proformalari add constraint platform_proformalari_ara_toplam_check CHECK ((ara_toplam > 0));
+
+alter table public.platform_proformalari add constraint platform_proformalari_durum_check CHECK ((durum = ANY (ARRAY['bekliyor'::text, 'odendi'::text, 'iptal'::text])));
+
+alter table public.platform_proformalari add constraint platform_proformalari_gecerlilik CHECK ((gecerlilik_tarihi >= duzenleme_tarihi));
+
+alter table public.platform_proformalari add constraint platform_proformalari_kalemler_check CHECK (((jsonb_typeof(kalemler) = 'array'::text) AND ((jsonb_array_length(kalemler) >= 1) AND (jsonb_array_length(kalemler) <= 20))));
+
+alter table public.platform_proformalari add constraint platform_proformalari_kdv_check CHECK ((kdv >= 0));
+
+alter table public.platform_proformalari add constraint platform_proformalari_kdv_orani_check CHECK (((kdv_orani >= (0)::numeric) AND (kdv_orani <= (100)::numeric)));
+
+alter table public.platform_proformalari add constraint platform_proformalari_musteri CHECK (((organization_id IS NULL) <> (subscriber_id IS NULL)));
+
+alter table public.platform_proformalari add constraint platform_proformalari_musteri_adi_check CHECK (((char_length(btrim(musteri_adi)) >= 1) AND (char_length(btrim(musteri_adi)) <= 200)));
+
+alter table public.platform_proformalari add constraint platform_proformalari_notlar_check CHECK (((notlar IS NULL) OR (char_length(notlar) <= 1000)));
+
+alter table public.platform_proformalari add constraint platform_proformalari_odeme CHECK ((((durum = 'odendi'::text) = ((payment_request_id IS NOT NULL) OR (subscriber_payment_id IS NOT NULL))) AND (NOT ((payment_request_id IS NOT NULL) AND (subscriber_payment_id IS NOT NULL)))));
+
+alter table public.platform_proformalari add constraint platform_proformalari_odeme_turu CHECK ((((payment_request_id IS NULL) OR (organization_id IS NOT NULL)) AND ((subscriber_payment_id IS NULL) OR (subscriber_id IS NOT NULL))));
+
+alter table public.platform_proformalari add constraint platform_proformalari_payment_request_id_key UNIQUE (payment_request_id);
+
+alter table public.platform_proformalari add constraint platform_proformalari_pkey PRIMARY KEY (id);
+
+alter table public.platform_proformalari add constraint platform_proformalari_proforma_no_key UNIQUE (proforma_no);
+
+alter table public.platform_proformalari add constraint platform_proformalari_subscriber_payment_id_key UNIQUE (subscriber_payment_id);
+
+alter table public.platform_proformalari add constraint platform_proformalari_toplam CHECK ((toplam = (ara_toplam + kdv)));
 
 alter table public.platform_subscription_requests add constraint platform_subscription_requests_pkey PRIMARY KEY (id);
 
@@ -16013,6 +16190,8 @@ alter table public.whatsapp_quick_replies add constraint whatsapp_quick_replies_
 
 CREATE INDEX account_entries_party_date_idx ON public.account_entries USING btree (party_id, transaction_date DESC, created_at DESC);
 
+CREATE INDEX account_entries_payment_plan_idx ON public.account_entries USING btree (payment_plan_id) WHERE (payment_plan_id IS NOT NULL);
+
 CREATE INDEX account_parties_org_type_idx ON public.account_parties USING btree (organization_id, party_type, name);
 
 CREATE INDEX activity_logs_entity_idx ON public.activity_logs USING btree (organization_id, entity_type, entity_id, created_at DESC);
@@ -16020,6 +16199,8 @@ CREATE INDEX activity_logs_entity_idx ON public.activity_logs USING btree (organ
 CREATE INDEX activity_logs_metadata_idx ON public.activity_logs USING gin (metadata jsonb_path_ops);
 
 CREATE INDEX activity_logs_organization_created_idx ON public.activity_logs USING btree (organization_id, created_at DESC);
+
+CREATE INDEX ai_credit_orders_abone_idx ON public.ai_credit_orders USING btree (subscriber_id, created_at DESC) WHERE (subscriber_id IS NOT NULL);
 
 CREATE INDEX ai_credit_orders_org_idx ON public.ai_credit_orders USING btree (organization_id, created_at DESC);
 
@@ -16369,6 +16550,10 @@ CREATE INDEX platform_cron_kayitlari_is_zaman ON public.platform_cron_kayitlari 
 
 CREATE INDEX platform_fiyat_gecmisi_zaman_idx ON public.platform_fiyat_gecmisi USING btree (zaman DESC);
 
+CREATE INDEX platform_proformalari_abone_idx ON public.platform_proformalari USING btree (subscriber_id, created_at DESC);
+
+CREATE INDEX platform_proformalari_kurum_idx ON public.platform_proformalari USING btree (organization_id, created_at DESC);
+
 CREATE INDEX platform_subscription_requests_bekleyen_idx ON public.platform_subscription_requests USING btree (created_at DESC) WHERE (status = 'pending'::text);
 
 CREATE UNIQUE INDEX platform_subscription_requests_sozlesme_uniq ON public.platform_subscription_requests USING btree (contract_id);
@@ -16435,6 +16620,8 @@ alter table public.account_entries add constraint account_entries_organization_i
 
 alter table public.account_entries add constraint account_entries_party_org_fk FOREIGN KEY (party_id, organization_id) REFERENCES account_parties(id, organization_id) ON DELETE CASCADE;
 
+alter table public.account_entries add constraint account_entries_payment_plan_id_fkey FOREIGN KEY (payment_plan_id) REFERENCES payment_plans(id) ON DELETE SET NULL;
+
 alter table public.account_parties add constraint account_parties_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT;
 
 alter table public.account_parties add constraint account_parties_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
@@ -16448,6 +16635,8 @@ alter table public.ai_credit_orders add constraint ai_credit_orders_created_by_f
 alter table public.ai_credit_orders add constraint ai_credit_orders_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 alter table public.ai_credit_orders add constraint ai_credit_orders_payment_link_id_fkey FOREIGN KEY (payment_link_id) REFERENCES payment_links(id) ON DELETE CASCADE;
+
+alter table public.ai_credit_orders add constraint ai_credit_orders_subscriber_id_fkey FOREIGN KEY (subscriber_id) REFERENCES product_subscribers(id) ON DELETE CASCADE;
 
 alter table public.analitik_olaylar add constraint analitik_olaylar_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
@@ -16936,6 +17125,22 @@ alter table public.payment_plans add constraint payment_plans_organization_id_pa
 alter table public.payment_provider_events add constraint payment_provider_events_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 alter table public.payment_provider_events add constraint payment_provider_events_payment_link_id_fkey FOREIGN KEY (payment_link_id) REFERENCES payment_links(id) ON DELETE SET NULL;
+
+alter table public.platform_faturalari add constraint platform_faturalari_payment_request_id_fkey FOREIGN KEY (payment_request_id) REFERENCES organization_payment_requests(id) ON DELETE RESTRICT;
+
+alter table public.platform_faturalari add constraint platform_faturalari_subscriber_payment_id_fkey FOREIGN KEY (subscriber_payment_id) REFERENCES subscriber_payments(id) ON DELETE RESTRICT;
+
+alter table public.platform_faturalari add constraint platform_faturalari_yukleyen_fkey FOREIGN KEY (yukleyen) REFERENCES auth.users(id);
+
+alter table public.platform_proformalari add constraint platform_proformalari_olusturan_fkey FOREIGN KEY (olusturan) REFERENCES auth.users(id);
+
+alter table public.platform_proformalari add constraint platform_proformalari_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+alter table public.platform_proformalari add constraint platform_proformalari_payment_request_id_fkey FOREIGN KEY (payment_request_id) REFERENCES organization_payment_requests(id) ON DELETE RESTRICT;
+
+alter table public.platform_proformalari add constraint platform_proformalari_subscriber_id_fkey FOREIGN KEY (subscriber_id) REFERENCES product_subscribers(id) ON DELETE RESTRICT;
+
+alter table public.platform_proformalari add constraint platform_proformalari_subscriber_payment_id_fkey FOREIGN KEY (subscriber_payment_id) REFERENCES subscriber_payments(id) ON DELETE RESTRICT;
 
 alter table public.platform_subscription_requests add constraint platform_subscription_requests_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES crm_contracts(id) ON DELETE CASCADE;
 
@@ -17534,9 +17739,13 @@ alter table public.platform_bank_accounts enable row level security;
 
 alter table public.platform_cron_kayitlari enable row level security;
 
+alter table public.platform_faturalari enable row level security;
+
 alter table public.platform_fiyat_gecmisi enable row level security;
 
 alter table public.platform_fiyat_listesi enable row level security;
+
+alter table public.platform_proformalari enable row level security;
 
 alter table public.platform_subscription_requests enable row level security;
 
@@ -18702,6 +18911,9 @@ create policy founder_manage_bank_accounts on public.platform_bank_accounts as P
 create policy kurucu_cron_kayitlarini_okur on public.platform_cron_kayitlari as PERMISSIVE for SELECT to authenticated
   using (private.is_arvoos_founder());
 
+create policy platform_faturalari_kurucu_okur on public.platform_faturalari as PERMISSIVE for SELECT to authenticated
+  using (( SELECT private.is_arvoos_founder() AS is_arvoos_founder));
+
 create policy kurucu_fiyat_gecmisini_okur on public.platform_fiyat_gecmisi as PERMISSIVE for SELECT to authenticated
   using (private.is_arvoos_founder());
 
@@ -18717,6 +18929,9 @@ create policy kurucu_fiyati_okur on public.platform_fiyat_listesi as PERMISSIVE 
 
 create policy kurucu_fiyati_yazar on public.platform_fiyat_listesi as PERMISSIVE for INSERT to authenticated
   with check (private.is_arvoos_founder());
+
+create policy platform_proformalari_kurucu_okur on public.platform_proformalari as PERMISSIVE for SELECT to authenticated
+  using (( SELECT private.is_arvoos_founder() AS is_arvoos_founder));
 
 create policy founder_manage_product_plans on public.product_plans as PERMISSIVE for ALL to authenticated
   using (( SELECT private.is_arvoos_founder() AS is_arvoos_founder))
@@ -18892,8 +19107,8 @@ grant execute on function private.arvo_contract_tracking_code() to public;
 revoke all on function private.arvo_contract_tracking_open(p_status text, p_open boolean) from public;
 
 revoke all on function private.arvo_contract_workflow_completed(target_contract uuid, target_workflow uuid) from public;
-grant execute on function private.arvo_contract_workflow_completed(target_contract uuid, target_workflow uuid) to authenticated;
 grant execute on function private.arvo_contract_workflow_completed(target_contract uuid, target_workflow uuid) to service_role;
+grant execute on function private.arvo_contract_workflow_completed(target_contract uuid, target_workflow uuid) to authenticated;
 
 revoke all on function private.arvo_crm_customer_units(p_organization_id uuid) from public;
 
@@ -18904,6 +19119,8 @@ grant execute on function private.arvo_department_management_guard() to public;
 
 revoke all on function private.arvo_department_management_sync() from public;
 grant execute on function private.arvo_department_management_sync() to public;
+
+revoke all on function private.arvo_ek_hizmet_plan_koru() from public;
 
 revoke all on function private.arvo_employee_management_guard() from public;
 grant execute on function private.arvo_employee_management_guard() to public;
@@ -18918,8 +19135,8 @@ grant execute on function private.arvo_firsat_kurumu(p_firsat uuid) to authentic
 grant execute on function private.arvo_firsat_kurumu(p_firsat uuid) to service_role;
 
 revoke all on function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid) from public;
-grant execute on function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid) to service_role;
 grant execute on function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid) to authenticated;
+grant execute on function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid) to service_role;
 
 revoke all on function private.arvo_fiyat_gecmisi_yaz() from public;
 
@@ -18936,8 +19153,8 @@ grant execute on function private.arvo_freeze_signed_work_plan() to public;
 revoke all on function private.arvo_generate_tracking_code() from public;
 
 revoke all on function private.arvo_gorunur_harita_mi(deger jsonb) from public;
-grant execute on function private.arvo_gorunur_harita_mi(deger jsonb) to authenticated;
 grant execute on function private.arvo_gorunur_harita_mi(deger jsonb) to service_role;
+grant execute on function private.arvo_gorunur_harita_mi(deger jsonb) to authenticated;
 
 revoke all on function private.arvo_guard_account_entry() from public;
 grant execute on function private.arvo_guard_account_entry() to public;
@@ -18968,16 +19185,16 @@ revoke all on function private.arvo_is_management_name(p_name text) from public;
 grant execute on function private.arvo_is_management_name(p_name text) to public;
 
 revoke all on function private.arvo_is_operations_name(p_name text) from public;
-grant execute on function private.arvo_is_operations_name(p_name text) to service_role;
 grant execute on function private.arvo_is_operations_name(p_name text) to authenticated;
+grant execute on function private.arvo_is_operations_name(p_name text) to service_role;
 
 revoke all on function private.arvo_is_org_admin(target_org uuid) from public;
-grant execute on function private.arvo_is_org_admin(target_org uuid) to authenticated;
 grant execute on function private.arvo_is_org_admin(target_org uuid) to service_role;
+grant execute on function private.arvo_is_org_admin(target_org uuid) to authenticated;
 
 revoke all on function private.arvo_is_org_owner(target_org uuid) from public;
-grant execute on function private.arvo_is_org_owner(target_org uuid) to authenticated;
 grant execute on function private.arvo_is_org_owner(target_org uuid) to service_role;
+grant execute on function private.arvo_is_org_owner(target_org uuid) to authenticated;
 
 revoke all on function private.arvo_is_privileged_member(target_org uuid) from public;
 grant execute on function private.arvo_is_privileged_member(target_org uuid) to service_role;
@@ -19002,19 +19219,19 @@ revoke all on function private.arvo_message_preview(p_body text, p_attachment_na
 grant execute on function private.arvo_message_preview(p_body text, p_attachment_name text) to public;
 
 revoke all on function private.arvo_modul_acik(p_organization_id uuid, p_module_key text) from public;
-grant execute on function private.arvo_modul_acik(p_organization_id uuid, p_module_key text) to service_role;
 grant execute on function private.arvo_modul_acik(p_organization_id uuid, p_module_key text) to authenticated;
+grant execute on function private.arvo_modul_acik(p_organization_id uuid, p_module_key text) to service_role;
 
 revoke all on function private.arvo_musteri_adi_ise_yansit() from public;
-grant execute on function private.arvo_musteri_adi_ise_yansit() to service_role;
 grant execute on function private.arvo_musteri_adi_ise_yansit() to authenticated;
+grant execute on function private.arvo_musteri_adi_ise_yansit() to service_role;
 
 revoke all on function private.arvo_musteri_bilgisi_yansit() from public;
 grant execute on function private.arvo_musteri_bilgisi_yansit() to service_role;
 
 revoke all on function private.arvo_musteri_verisi_acik(p_org uuid, p_module text) from public;
-grant execute on function private.arvo_musteri_verisi_acik(p_org uuid, p_module text) to authenticated;
 grant execute on function private.arvo_musteri_verisi_acik(p_org uuid, p_module text) to service_role;
+grant execute on function private.arvo_musteri_verisi_acik(p_org uuid, p_module text) to authenticated;
 
 revoke all on function private.arvo_name_key(value text) from public;
 
@@ -19034,8 +19251,8 @@ grant execute on function private.arvo_operation_step_status_sync() to authentic
 revoke all on function private.arvo_phone_key(value text) from public;
 
 revoke all on function private.arvo_posta_firsat_kurumu() from public;
-grant execute on function private.arvo_posta_firsat_kurumu() to service_role;
 grant execute on function private.arvo_posta_firsat_kurumu() to authenticated;
+grant execute on function private.arvo_posta_firsat_kurumu() to service_role;
 
 revoke all on function private.arvo_posta_konusma_korumasi() from public;
 grant execute on function private.arvo_posta_konusma_korumasi() to public;
@@ -19093,8 +19310,8 @@ revoke all on function private.arvo_teklif_tutari_korunsun() from public;
 revoke all on function private.arvo_try_date(p_value text) from public;
 
 revoke all on function private.arvo_tutar_yazabilir(p_firsat uuid) from public;
-grant execute on function private.arvo_tutar_yazabilir(p_firsat uuid) to authenticated;
 grant execute on function private.arvo_tutar_yazabilir(p_firsat uuid) to service_role;
+grant execute on function private.arvo_tutar_yazabilir(p_firsat uuid) to authenticated;
 
 revoke all on function private.arvo_unreconcile_party_installments(p_organization_id uuid, p_party_id uuid) from public;
 
@@ -19107,8 +19324,8 @@ grant execute on function private.arvo_yetki_istisnasi_uyesi() to authenticated;
 grant execute on function private.arvo_yetki_istisnasi_uyesi() to service_role;
 
 revoke all on function private.arvo_yorum_erisimi(p_opportunity uuid, p_context_type text, p_context_id uuid) from public;
-grant execute on function private.arvo_yorum_erisimi(p_opportunity uuid, p_context_type text, p_context_id uuid) to authenticated;
 grant execute on function private.arvo_yorum_erisimi(p_opportunity uuid, p_context_type text, p_context_id uuid) to service_role;
+grant execute on function private.arvo_yorum_erisimi(p_opportunity uuid, p_context_type text, p_context_id uuid) to authenticated;
 
 revoke all on function private.can_manage_organization_assets(organization_id_text text) from public;
 grant execute on function private.can_manage_organization_assets(organization_id_text text) to authenticated;
@@ -19147,9 +19364,9 @@ grant execute on function public.analitik_canli(p_site uuid) to service_role;
 grant execute on function public.analitik_canli(p_site uuid) to authenticated;
 
 revoke all on function public.analitik_olay_yaz(p_anahtar text, p_kaynak_konak text, p_tur text, p_yol text, p_kaynak text, p_kaynak_ham text, p_kampanya text, p_ortam text, p_ulke text, p_sehir text, p_enlem double precision, p_boylam double precision, p_cihaz text, p_tarayici text, p_ip text, p_ua text) from public;
+grant execute on function public.analitik_olay_yaz(p_anahtar text, p_kaynak_konak text, p_tur text, p_yol text, p_kaynak text, p_kaynak_ham text, p_kampanya text, p_ortam text, p_ulke text, p_sehir text, p_enlem double precision, p_boylam double precision, p_cihaz text, p_tarayici text, p_ip text, p_ua text) to authenticated;
 grant execute on function public.analitik_olay_yaz(p_anahtar text, p_kaynak_konak text, p_tur text, p_yol text, p_kaynak text, p_kaynak_ham text, p_kampanya text, p_ortam text, p_ulke text, p_sehir text, p_enlem double precision, p_boylam double precision, p_cihaz text, p_tarayici text, p_ip text, p_ua text) to anon;
 grant execute on function public.analitik_olay_yaz(p_anahtar text, p_kaynak_konak text, p_tur text, p_yol text, p_kaynak text, p_kaynak_ham text, p_kampanya text, p_ortam text, p_ulke text, p_sehir text, p_enlem double precision, p_boylam double precision, p_cihaz text, p_tarayici text, p_ip text, p_ua text) to service_role;
-grant execute on function public.analitik_olay_yaz(p_anahtar text, p_kaynak_konak text, p_tur text, p_yol text, p_kaynak text, p_kaynak_ham text, p_kampanya text, p_ortam text, p_ulke text, p_sehir text, p_enlem double precision, p_boylam double precision, p_cihaz text, p_tarayici text, p_ip text, p_ua text) to authenticated;
 
 revoke all on function public.analitik_ozet(p_site uuid, p_bas date, p_bit date) from public;
 grant execute on function public.analitik_ozet(p_site uuid, p_bas date, p_bit date) to service_role;
@@ -19158,8 +19375,8 @@ grant execute on function public.analitik_ozet(p_site uuid, p_bas date, p_bit da
 revoke all on function public.arc_address_before_write() from public;
 grant execute on function public.arc_address_before_write() to anon;
 grant execute on function public.arc_address_before_write() to service_role;
-grant execute on function public.arc_address_before_write() to authenticated;
 grant execute on function public.arc_address_before_write() to public;
+grant execute on function public.arc_address_before_write() to authenticated;
 
 revoke all on function public.arc_address_line(p_addr jsonb) from public;
 grant execute on function public.arc_address_line(p_addr jsonb) to authenticated;
@@ -19188,44 +19405,44 @@ grant execute on function public.arc_check_coupon(p_organization_id uuid, p_code
 
 revoke all on function public.arc_check_supplier_stock() from public;
 grant execute on function public.arc_check_supplier_stock() to public;
+grant execute on function public.arc_check_supplier_stock() to anon;
 grant execute on function public.arc_check_supplier_stock() to authenticated;
 grant execute on function public.arc_check_supplier_stock() to service_role;
-grant execute on function public.arc_check_supplier_stock() to anon;
 
 revoke all on function public.arc_clean(p_value text) from public;
-grant execute on function public.arc_clean(p_value text) to service_role;
 grant execute on function public.arc_clean(p_value text) to authenticated;
+grant execute on function public.arc_clean(p_value text) to service_role;
 
 revoke all on function public.arc_count_coupon_use() from public;
 grant execute on function public.arc_count_coupon_use() to service_role;
 
 revoke all on function public.arc_create_order(p_customer_name text, p_customer_email text, p_items jsonb, p_source text) from public;
-grant execute on function public.arc_create_order(p_customer_name text, p_customer_email text, p_items jsonb, p_source text) to authenticated;
 grant execute on function public.arc_create_order(p_customer_name text, p_customer_email text, p_items jsonb, p_source text) to service_role;
+grant execute on function public.arc_create_order(p_customer_name text, p_customer_email text, p_items jsonb, p_source text) to authenticated;
 
 revoke all on function public.arc_create_storefront_order(p_organization_id uuid, p_email text, p_name text, p_phone text, p_address jsonb, p_items jsonb, p_coupon_code text) from public;
 grant execute on function public.arc_create_storefront_order(p_organization_id uuid, p_email text, p_name text, p_phone text, p_address jsonb, p_items jsonb, p_coupon_code text) to service_role;
 
 revoke all on function public.arc_decode_entities(t text) from public;
-grant execute on function public.arc_decode_entities(t text) to service_role;
-grant execute on function public.arc_decode_entities(t text) to authenticated;
 grant execute on function public.arc_decode_entities(t text) to public;
 grant execute on function public.arc_decode_entities(t text) to anon;
+grant execute on function public.arc_decode_entities(t text) to authenticated;
+grant execute on function public.arc_decode_entities(t text) to service_role;
 
 revoke all on function public.arc_extract_vat(p_gross bigint, p_rate numeric) from public;
-grant execute on function public.arc_extract_vat(p_gross bigint, p_rate numeric) to service_role;
-grant execute on function public.arc_extract_vat(p_gross bigint, p_rate numeric) to authenticated;
 grant execute on function public.arc_extract_vat(p_gross bigint, p_rate numeric) to anon;
+grant execute on function public.arc_extract_vat(p_gross bigint, p_rate numeric) to authenticated;
+grant execute on function public.arc_extract_vat(p_gross bigint, p_rate numeric) to service_role;
 
 revoke all on function public.arc_fill_order_tax() from public;
 grant execute on function public.arc_fill_order_tax() to authenticated;
+grant execute on function public.arc_fill_order_tax() to service_role;
 grant execute on function public.arc_fill_order_tax() to public;
 grant execute on function public.arc_fill_order_tax() to anon;
-grant execute on function public.arc_fill_order_tax() to service_role;
 
 revoke all on function public.arc_find_address(p_meta jsonb) from public;
-grant execute on function public.arc_find_address(p_meta jsonb) to authenticated;
 grant execute on function public.arc_find_address(p_meta jsonb) to service_role;
+grant execute on function public.arc_find_address(p_meta jsonb) to authenticated;
 
 revoke all on function public.arc_first_text(p_source jsonb, VARIADIC p_keys text[]) from public;
 grant execute on function public.arc_first_text(p_source jsonb, VARIADIC p_keys text[]) to service_role;
@@ -19246,8 +19463,8 @@ grant execute on function public.arc_resolve_commerce_tenant() to service_role;
 grant execute on function public.arc_resolve_commerce_tenant() to authenticated;
 
 revoke all on function public.arc_sale_price(p_cost bigint, p_margin integer, p_shipping bigint, p_round integer) from public;
-grant execute on function public.arc_sale_price(p_cost bigint, p_margin integer, p_shipping bigint, p_round integer) to service_role;
 grant execute on function public.arc_sale_price(p_cost bigint, p_margin integer, p_shipping bigint, p_round integer) to authenticated;
+grant execute on function public.arc_sale_price(p_cost bigint, p_margin integer, p_shipping bigint, p_round integer) to service_role;
 
 revoke all on function public.arc_sale_price(p_cost bigint, p_margin numeric, p_shipping bigint, p_round integer, p_service bigint) from public;
 grant execute on function public.arc_sale_price(p_cost bigint, p_margin numeric, p_shipping bigint, p_round integer, p_service bigint) to authenticated;
@@ -19261,9 +19478,9 @@ grant execute on function public.arc_slugify(p_text text) to authenticated;
 grant execute on function public.arc_slugify(p_text text) to service_role;
 
 revoke all on function public.arc_store_stage(p_organization_id uuid) from public;
-grant execute on function public.arc_store_stage(p_organization_id uuid) to anon;
-grant execute on function public.arc_store_stage(p_organization_id uuid) to authenticated;
 grant execute on function public.arc_store_stage(p_organization_id uuid) to service_role;
+grant execute on function public.arc_store_stage(p_organization_id uuid) to authenticated;
+grant execute on function public.arc_store_stage(p_organization_id uuid) to anon;
 
 revoke all on function public.arc_total_stock_units() from public;
 grant execute on function public.arc_total_stock_units() to service_role;
@@ -19274,26 +19491,26 @@ grant execute on function public.arc_update_order_status(p_order_id uuid, p_stat
 grant execute on function public.arc_update_order_status(p_order_id uuid, p_status text, p_payment_status text) to authenticated;
 
 revoke all on function public.arc_variant_available(p_stock integer, p_allow_backorder boolean, p_supplier text) from public;
-grant execute on function public.arc_variant_available(p_stock integer, p_allow_backorder boolean, p_supplier text) to service_role;
 grant execute on function public.arc_variant_available(p_stock integer, p_allow_backorder boolean, p_supplier text) to anon;
 grant execute on function public.arc_variant_available(p_stock integer, p_allow_backorder boolean, p_supplier text) to authenticated;
+grant execute on function public.arc_variant_available(p_stock integer, p_allow_backorder boolean, p_supplier text) to service_role;
 
 revoke all on function public.archive_inactive_crm_proposal() from public;
 grant execute on function public.archive_inactive_crm_proposal() to service_role;
-grant execute on function public.archive_inactive_crm_proposal() to public;
-grant execute on function public.archive_inactive_crm_proposal() to anon;
 grant execute on function public.archive_inactive_crm_proposal() to authenticated;
+grant execute on function public.archive_inactive_crm_proposal() to anon;
+grant execute on function public.archive_inactive_crm_proposal() to public;
 
 revoke all on function public.arvo_auth_kullanici_id(p_email text) from public;
 grant execute on function public.arvo_auth_kullanici_id(p_email text) to service_role;
 
 revoke all on function public.arvo_bildirim_ozeti(p_org uuid, p_kurucu boolean, p_bugun timestamp with time zone) from public;
-grant execute on function public.arvo_bildirim_ozeti(p_org uuid, p_kurucu boolean, p_bugun timestamp with time zone) to authenticated;
 grant execute on function public.arvo_bildirim_ozeti(p_org uuid, p_kurucu boolean, p_bugun timestamp with time zone) to service_role;
+grant execute on function public.arvo_bildirim_ozeti(p_org uuid, p_kurucu boolean, p_bugun timestamp with time zone) to authenticated;
 
 revoke all on function public.arvo_bildirimler(p_org uuid, p_kurucu boolean, p_kategoriler text[], p_diger boolean, p_okunmamis boolean) from public;
-grant execute on function public.arvo_bildirimler(p_org uuid, p_kurucu boolean, p_kategoriler text[], p_diger boolean, p_okunmamis boolean) to authenticated;
 grant execute on function public.arvo_bildirimler(p_org uuid, p_kurucu boolean, p_kategoriler text[], p_diger boolean, p_okunmamis boolean) to service_role;
+grant execute on function public.arvo_bildirimler(p_org uuid, p_kurucu boolean, p_kategoriler text[], p_diger boolean, p_okunmamis boolean) to authenticated;
 
 revoke all on function public.arvo_can_access_message_channel(p_channel_id uuid) from public;
 grant execute on function public.arvo_can_access_message_channel(p_channel_id uuid) to authenticated;
@@ -19304,8 +19521,8 @@ grant execute on function public.arvo_can_access_opportunity(target_opportunity 
 grant execute on function public.arvo_can_access_opportunity(target_opportunity uuid) to service_role;
 
 revoke all on function public.arvo_cancel_contract_addendum(p_addendum_id uuid) from public;
-grant execute on function public.arvo_cancel_contract_addendum(p_addendum_id uuid) to authenticated;
 grant execute on function public.arvo_cancel_contract_addendum(p_addendum_id uuid) to service_role;
+grant execute on function public.arvo_cancel_contract_addendum(p_addendum_id uuid) to authenticated;
 
 revoke all on function public.arvo_confirm_proposal_decision(public_token text, p_decision text, p_ip text, p_user_agent text) from public;
 grant execute on function public.arvo_confirm_proposal_decision(public_token text, p_decision text, p_ip text, p_user_agent text) to service_role;
@@ -19317,18 +19534,22 @@ grant execute on function public.arvo_create_contract_addendum(p_contract_id uui
 grant execute on function public.arvo_create_contract_addendum(p_contract_id uuid, p_work_plan jsonb, p_payment_dates jsonb, p_note text) to service_role;
 
 revoke all on function public.arvo_custom_domain_available(p_domain text, p_organization_id uuid) from public;
-grant execute on function public.arvo_custom_domain_available(p_domain text, p_organization_id uuid) to service_role;
 grant execute on function public.arvo_custom_domain_available(p_domain text, p_organization_id uuid) to authenticated;
+grant execute on function public.arvo_custom_domain_available(p_domain text, p_organization_id uuid) to service_role;
+
+revoke all on function public.arvo_ek_hizmet_taksitlere(p_entry_id uuid, p_plan_id uuid, p_taksitler jsonb, p_ekle boolean) from public;
+grant execute on function public.arvo_ek_hizmet_taksitlere(p_entry_id uuid, p_plan_id uuid, p_taksitler jsonb, p_ekle boolean) to service_role;
+grant execute on function public.arvo_ek_hizmet_taksitlere(p_entry_id uuid, p_plan_id uuid, p_taksitler jsonb, p_ekle boolean) to authenticated;
 
 revoke all on function public.arvo_is_member(target_org uuid) from public;
-grant execute on function public.arvo_is_member(target_org uuid) to anon;
+grant execute on function public.arvo_is_member(target_org uuid) to public;
 grant execute on function public.arvo_is_member(target_org uuid) to service_role;
 grant execute on function public.arvo_is_member(target_org uuid) to authenticated;
-grant execute on function public.arvo_is_member(target_org uuid) to public;
+grant execute on function public.arvo_is_member(target_org uuid) to anon;
 
 revoke all on function public.arvo_is_message_channel_member(p_channel_id uuid) from public;
-grant execute on function public.arvo_is_message_channel_member(p_channel_id uuid) to authenticated;
 grant execute on function public.arvo_is_message_channel_member(p_channel_id uuid) to service_role;
+grant execute on function public.arvo_is_message_channel_member(p_channel_id uuid) to authenticated;
 
 revoke all on function public.arvo_is_turunu_degistir(p_workflow uuid, p_set text) from public;
 grant execute on function public.arvo_is_turunu_degistir(p_workflow uuid, p_set text) to service_role;
@@ -19338,39 +19559,39 @@ revoke all on function public.arvo_kimlik_postasi_markasi(p_user_id uuid, p_emai
 grant execute on function public.arvo_kimlik_postasi_markasi(p_user_id uuid, p_email text, p_claimed_org uuid) to service_role;
 
 revoke all on function public.arvo_message_unread_counts(p_organization_id uuid) from public;
-grant execute on function public.arvo_message_unread_counts(p_organization_id uuid) to service_role;
 grant execute on function public.arvo_message_unread_counts(p_organization_id uuid) to authenticated;
+grant execute on function public.arvo_message_unread_counts(p_organization_id uuid) to service_role;
 
 revoke all on function public.arvo_ops_musteri_kunyesi_yaz(p_opportunity uuid, p_kunye jsonb, p_iletisim jsonb) from public;
 grant execute on function public.arvo_ops_musteri_kunyesi_yaz(p_opportunity uuid, p_kunye jsonb, p_iletisim jsonb) to service_role;
 grant execute on function public.arvo_ops_musteri_kunyesi_yaz(p_opportunity uuid, p_kunye jsonb, p_iletisim jsonb) to authenticated;
 
 revoke all on function public.arvo_panel_baglami(p_org uuid) from public;
-grant execute on function public.arvo_panel_baglami(p_org uuid) to service_role;
 grant execute on function public.arvo_panel_baglami(p_org uuid) to authenticated;
+grant execute on function public.arvo_panel_baglami(p_org uuid) to service_role;
 
 revoke all on function public.arvo_panel_kabugu(p_org uuid, p_kurucu boolean, p_posta boolean, p_mesaj boolean, p_esik timestamp with time zone) from public;
-grant execute on function public.arvo_panel_kabugu(p_org uuid, p_kurucu boolean, p_posta boolean, p_mesaj boolean, p_esik timestamp with time zone) to authenticated;
 grant execute on function public.arvo_panel_kabugu(p_org uuid, p_kurucu boolean, p_posta boolean, p_mesaj boolean, p_esik timestamp with time zone) to service_role;
+grant execute on function public.arvo_panel_kabugu(p_org uuid, p_kurucu boolean, p_posta boolean, p_mesaj boolean, p_esik timestamp with time zone) to authenticated;
 
 revoke all on function public.arvo_prim_odemesi_dagit(p_payment_id uuid, p_kalemler jsonb) from public;
-grant execute on function public.arvo_prim_odemesi_dagit(p_payment_id uuid, p_kalemler jsonb) to authenticated;
 grant execute on function public.arvo_prim_odemesi_dagit(p_payment_id uuid, p_kalemler jsonb) to service_role;
+grant execute on function public.arvo_prim_odemesi_dagit(p_payment_id uuid, p_kalemler jsonb) to authenticated;
 
 revoke all on function public.arvo_public_contract_audit(public_token text) from public;
-grant execute on function public.arvo_public_contract_audit(public_token text) to anon;
-grant execute on function public.arvo_public_contract_audit(public_token text) to authenticated;
 grant execute on function public.arvo_public_contract_audit(public_token text) to service_role;
+grant execute on function public.arvo_public_contract_audit(public_token text) to authenticated;
+grant execute on function public.arvo_public_contract_audit(public_token text) to anon;
 
 revoke all on function public.arvo_public_contract_links(public_token text) from public;
-grant execute on function public.arvo_public_contract_links(public_token text) to authenticated;
 grant execute on function public.arvo_public_contract_links(public_token text) to anon;
+grant execute on function public.arvo_public_contract_links(public_token text) to authenticated;
 grant execute on function public.arvo_public_contract_links(public_token text) to service_role;
 
 revoke all on function public.arvo_public_contract_plan(public_token text) from public;
+grant execute on function public.arvo_public_contract_plan(public_token text) to service_role;
 grant execute on function public.arvo_public_contract_plan(public_token text) to authenticated;
 grant execute on function public.arvo_public_contract_plan(public_token text) to anon;
-grant execute on function public.arvo_public_contract_plan(public_token text) to service_role;
 
 revoke all on function public.arvo_public_document_text(public_token text, document_type text) from public;
 grant execute on function public.arvo_public_document_text(public_token text, document_type text) to anon;
@@ -19379,8 +19600,8 @@ grant execute on function public.arvo_public_document_text(public_token text, do
 
 revoke all on function public.arvo_public_organization_legal(public_token text, document_type text) from public;
 grant execute on function public.arvo_public_organization_legal(public_token text, document_type text) to anon;
-grant execute on function public.arvo_public_organization_legal(public_token text, document_type text) to service_role;
 grant execute on function public.arvo_public_organization_legal(public_token text, document_type text) to authenticated;
+grant execute on function public.arvo_public_organization_legal(public_token text, document_type text) to service_role;
 
 revoke all on function public.arvo_public_proposal_decision(public_token text) from public;
 grant execute on function public.arvo_public_proposal_decision(public_token text) to anon;
@@ -19388,9 +19609,9 @@ grant execute on function public.arvo_public_proposal_decision(public_token text
 grant execute on function public.arvo_public_proposal_decision(public_token text) to service_role;
 
 revoke all on function public.arvo_record_contract_consents(public_token text, p_legal_version text, p_consents jsonb) from public;
+grant execute on function public.arvo_record_contract_consents(public_token text, p_legal_version text, p_consents jsonb) to service_role;
 grant execute on function public.arvo_record_contract_consents(public_token text, p_legal_version text, p_consents jsonb) to authenticated;
 grant execute on function public.arvo_record_contract_consents(public_token text, p_legal_version text, p_consents jsonb) to anon;
-grant execute on function public.arvo_record_contract_consents(public_token text, p_legal_version text, p_consents jsonb) to service_role;
 
 revoke all on function public.arvo_record_paytr_payment(p_payment_link_id uuid, p_merchant_oid text, p_total_amount bigint, p_payment_amount bigint, p_currency text, p_test_mode boolean, p_payload jsonb) from public;
 grant execute on function public.arvo_record_paytr_payment(p_payment_link_id uuid, p_merchant_oid text, p_total_amount bigint, p_payment_amount bigint, p_currency text, p_test_mode boolean, p_payload jsonb) to service_role;
@@ -19401,8 +19622,8 @@ grant execute on function public.arvo_record_proposal_response_agent(public_toke
 grant execute on function public.arvo_record_proposal_response_agent(public_token text, p_user_agent text) to anon;
 
 revoke all on function public.arvo_respond_contract_addendum(public_token text, p_addendum_id uuid, p_decision text, p_name text, p_note text, p_ip text, p_user_agent text) from public;
-grant execute on function public.arvo_respond_contract_addendum(public_token text, p_addendum_id uuid, p_decision text, p_name text, p_note text, p_ip text, p_user_agent text) to anon;
 grant execute on function public.arvo_respond_contract_addendum(public_token text, p_addendum_id uuid, p_decision text, p_name text, p_note text, p_ip text, p_user_agent text) to authenticated;
+grant execute on function public.arvo_respond_contract_addendum(public_token text, p_addendum_id uuid, p_decision text, p_name text, p_note text, p_ip text, p_user_agent text) to anon;
 grant execute on function public.arvo_respond_contract_addendum(public_token text, p_addendum_id uuid, p_decision text, p_name text, p_note text, p_ip text, p_user_agent text) to service_role;
 
 revoke all on function public.arvo_son_temaslar(p_org uuid, p_firsatlar uuid[]) from public;
@@ -19418,8 +19639,8 @@ grant execute on function public.arvo_taksitleri_kaydet(p_plan_id uuid, p_taksit
 
 revoke all on function public.arvo_tracking_asamalar(p_tracking_code text) from public;
 grant execute on function public.arvo_tracking_asamalar(p_tracking_code text) to authenticated;
-grant execute on function public.arvo_tracking_asamalar(p_tracking_code text) to service_role;
 grant execute on function public.arvo_tracking_asamalar(p_tracking_code text) to anon;
+grant execute on function public.arvo_tracking_asamalar(p_tracking_code text) to service_role;
 
 revoke all on function public.arvo_tracking_attempts_prune() from public;
 grant execute on function public.arvo_tracking_attempts_prune() to service_role;
@@ -19440,18 +19661,18 @@ revoke all on function public.arvo_tracking_work_plan(p_tracking_code text) from
 grant execute on function public.arvo_tracking_work_plan(p_tracking_code text) to service_role;
 
 revoke all on function public.arvo_unread_notification_count(p_organization_id uuid) from public;
-grant execute on function public.arvo_unread_notification_count(p_organization_id uuid) to service_role;
 grant execute on function public.arvo_unread_notification_count(p_organization_id uuid) to authenticated;
+grant execute on function public.arvo_unread_notification_count(p_organization_id uuid) to service_role;
 
 revoke all on function public.arvo_varlik_kaydet(p_org uuid, p_oturum uuid, p_yol text, p_ip text, p_ua text) from public;
-grant execute on function public.arvo_varlik_kaydet(p_org uuid, p_oturum uuid, p_yol text, p_ip text, p_ua text) to service_role;
 grant execute on function public.arvo_varlik_kaydet(p_org uuid, p_oturum uuid, p_yol text, p_ip text, p_ua text) to authenticated;
+grant execute on function public.arvo_varlik_kaydet(p_org uuid, p_oturum uuid, p_yol text, p_ip text, p_ua text) to service_role;
 
 revoke all on function public.attach_arvoculture_order_owner() from public;
-grant execute on function public.attach_arvoculture_order_owner() to anon;
 grant execute on function public.attach_arvoculture_order_owner() to service_role;
-grant execute on function public.attach_arvoculture_order_owner() to authenticated;
 grant execute on function public.attach_arvoculture_order_owner() to public;
+grant execute on function public.attach_arvoculture_order_owner() to anon;
+grant execute on function public.attach_arvoculture_order_owner() to authenticated;
 
 revoke all on function public.authorize_customer_portal_file_download(p_tracking_code text, p_file_id uuid, p_client_ip text, p_user_agent text) from public;
 grant execute on function public.authorize_customer_portal_file_download(p_tracking_code text, p_file_id uuid, p_client_ip text, p_user_agent text) to service_role;
@@ -19464,37 +19685,37 @@ revoke all on function public.check_arvoculture_coupon(p_code text, p_subtotal b
 grant execute on function public.check_arvoculture_coupon(p_code text, p_subtotal bigint, p_email text) to service_role;
 
 revoke all on function public.claim_arvoculture_orders() from public;
-grant execute on function public.claim_arvoculture_orders() to service_role;
 grant execute on function public.claim_arvoculture_orders() to authenticated;
+grant execute on function public.claim_arvoculture_orders() to service_role;
 
 revoke all on function public.collect_payment_installment(target_installment_id uuid) from public;
-grant execute on function public.collect_payment_installment(target_installment_id uuid) to service_role;
-grant execute on function public.collect_payment_installment(target_installment_id uuid) to anon;
 grant execute on function public.collect_payment_installment(target_installment_id uuid) to public;
+grant execute on function public.collect_payment_installment(target_installment_id uuid) to anon;
 grant execute on function public.collect_payment_installment(target_installment_id uuid) to authenticated;
+grant execute on function public.collect_payment_installment(target_installment_id uuid) to service_role;
 
 revoke all on function public.complete_organization_onboarding(p_organization_id uuid, p_legal_name text, p_phone text, p_website text, p_logo_url text, p_primary_color text) from public;
 grant execute on function public.complete_organization_onboarding(p_organization_id uuid, p_legal_name text, p_phone text, p_website text, p_logo_url text, p_primary_color text) to authenticated;
 grant execute on function public.complete_organization_onboarding(p_organization_id uuid, p_legal_name text, p_phone text, p_website text, p_logo_url text, p_primary_color text) to service_role;
 
 revoke all on function public.create_arvoculture_return_request(p_order_number text, p_items jsonb, p_reason text, p_note text) from public;
-grant execute on function public.create_arvoculture_return_request(p_order_number text, p_items jsonb, p_reason text, p_note text) to service_role;
 grant execute on function public.create_arvoculture_return_request(p_order_number text, p_items jsonb, p_reason text, p_note text) to authenticated;
+grant execute on function public.create_arvoculture_return_request(p_order_number text, p_items jsonb, p_reason text, p_note text) to service_role;
 
 revoke all on function public.create_arvoculture_storefront_order(p_email text, p_name text, p_phone text, p_address jsonb, p_items jsonb, p_coupon_code text) from public;
 grant execute on function public.create_arvoculture_storefront_order(p_email text, p_name text, p_phone text, p_address jsonb, p_items jsonb, p_coupon_code text) to service_role;
 
 revoke all on function public.create_crm_proposal(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) from public;
+grant execute on function public.create_crm_proposal(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) to public;
 grant execute on function public.create_crm_proposal(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) to service_role;
 grant execute on function public.create_crm_proposal(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) to authenticated;
 grant execute on function public.create_crm_proposal(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) to anon;
-grant execute on function public.create_crm_proposal(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) to public;
 
 revoke all on function public.create_crm_proposal_revision(target_proposal_id uuid, revision_reason text) from public;
-grant execute on function public.create_crm_proposal_revision(target_proposal_id uuid, revision_reason text) to authenticated;
 grant execute on function public.create_crm_proposal_revision(target_proposal_id uuid, revision_reason text) to anon;
-grant execute on function public.create_crm_proposal_revision(target_proposal_id uuid, revision_reason text) to public;
+grant execute on function public.create_crm_proposal_revision(target_proposal_id uuid, revision_reason text) to authenticated;
 grant execute on function public.create_crm_proposal_revision(target_proposal_id uuid, revision_reason text) to service_role;
+grant execute on function public.create_crm_proposal_revision(target_proposal_id uuid, revision_reason text) to public;
 
 revoke all on function public.create_crm_proposal_v2(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_tax_status text, proposal_payment_plan_type text, proposal_payment_plan text, proposal_payment_schedule jsonb, proposal_valid_until date, proposal_estimated_delivery_date date) from public;
 grant execute on function public.create_crm_proposal_v2(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_tax_status text, proposal_payment_plan_type text, proposal_payment_plan text, proposal_payment_schedule jsonb, proposal_valid_until date, proposal_estimated_delivery_date date) to service_role;
@@ -19502,28 +19723,28 @@ grant execute on function public.create_crm_proposal_v2(target_opportunity_id uu
 grant execute on function public.create_crm_proposal_v2(target_opportunity_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_tax_status text, proposal_payment_plan_type text, proposal_payment_plan text, proposal_payment_schedule jsonb, proposal_valid_until date, proposal_estimated_delivery_date date) to authenticated;
 
 revoke all on function public.create_customer_organization(p_name text, p_slug text, p_sector text, p_plan_code text, p_custom_domain text) from public;
-grant execute on function public.create_customer_organization(p_name text, p_slug text, p_sector text, p_plan_code text, p_custom_domain text) to authenticated;
 grant execute on function public.create_customer_organization(p_name text, p_slug text, p_sector text, p_plan_code text, p_custom_domain text) to service_role;
+grant execute on function public.create_customer_organization(p_name text, p_slug text, p_sector text, p_plan_code text, p_custom_domain text) to authenticated;
 
 revoke all on function public.create_direct_message_channel(target_user_id uuid, target_organization_id uuid) from public;
-grant execute on function public.create_direct_message_channel(target_user_id uuid, target_organization_id uuid) to authenticated;
 grant execute on function public.create_direct_message_channel(target_user_id uuid, target_organization_id uuid) to service_role;
+grant execute on function public.create_direct_message_channel(target_user_id uuid, target_organization_id uuid) to authenticated;
 
 revoke all on function public.create_group_message_channel(p_organization_id uuid, p_name text, p_member_ids uuid[]) from public;
 grant execute on function public.create_group_message_channel(p_organization_id uuid, p_name text, p_member_ids uuid[]) to authenticated;
 grant execute on function public.create_group_message_channel(p_organization_id uuid, p_name text, p_member_ids uuid[]) to service_role;
 
 revoke all on function public.crm_customer_history(p_organization_id uuid, p_customer_key text, p_phone text, p_name text, p_exclude_opportunity_id uuid, p_limit integer) from public;
-grant execute on function public.crm_customer_history(p_organization_id uuid, p_customer_key text, p_phone text, p_name text, p_exclude_opportunity_id uuid, p_limit integer) to service_role;
 grant execute on function public.crm_customer_history(p_organization_id uuid, p_customer_key text, p_phone text, p_name text, p_exclude_opportunity_id uuid, p_limit integer) to authenticated;
+grant execute on function public.crm_customer_history(p_organization_id uuid, p_customer_key text, p_phone text, p_name text, p_exclude_opportunity_id uuid, p_limit integer) to service_role;
 
 revoke all on function public.crm_customer_search(p_organization_id uuid, p_query text, p_limit integer) from public;
-grant execute on function public.crm_customer_search(p_organization_id uuid, p_query text, p_limit integer) to service_role;
 grant execute on function public.crm_customer_search(p_organization_id uuid, p_query text, p_limit integer) to authenticated;
+grant execute on function public.crm_customer_search(p_organization_id uuid, p_query text, p_limit integer) to service_role;
 
 revoke all on function public.crm_genel_bakis_ozeti(p_organization_id uuid, p_yeni_asamalar text[], p_imzali text[], p_gun integer) from public;
-grant execute on function public.crm_genel_bakis_ozeti(p_organization_id uuid, p_yeni_asamalar text[], p_imzali text[], p_gun integer) to service_role;
 grant execute on function public.crm_genel_bakis_ozeti(p_organization_id uuid, p_yeni_asamalar text[], p_imzali text[], p_gun integer) to authenticated;
+grant execute on function public.crm_genel_bakis_ozeti(p_organization_id uuid, p_yeni_asamalar text[], p_imzali text[], p_gun integer) to service_role;
 
 revoke all on function public.crm_sozlesme_istatistikleri(p_organization_id uuid) from public;
 grant execute on function public.crm_sozlesme_istatistikleri(p_organization_id uuid) to service_role;
@@ -19534,12 +19755,12 @@ grant execute on function public.crm_talebi_birak(p_talep uuid, p_sebep text) to
 grant execute on function public.crm_talebi_birak(p_talep uuid, p_sebep text) to authenticated;
 
 revoke all on function public.crm_talep_birakmayi_geri_al(p_talep uuid) from public;
-grant execute on function public.crm_talep_birakmayi_geri_al(p_talep uuid) to service_role;
 grant execute on function public.crm_talep_birakmayi_geri_al(p_talep uuid) to authenticated;
+grant execute on function public.crm_talep_birakmayi_geri_al(p_talep uuid) to service_role;
 
 revoke all on function public.crm_talep_istatistikleri(p_organization_id uuid, p_aktif text[], p_ilerleyen text[]) from public;
-grant execute on function public.crm_talep_istatistikleri(p_organization_id uuid, p_aktif text[], p_ilerleyen text[]) to service_role;
 grant execute on function public.crm_talep_istatistikleri(p_organization_id uuid, p_aktif text[], p_ilerleyen text[]) to authenticated;
+grant execute on function public.crm_talep_istatistikleri(p_organization_id uuid, p_aktif text[], p_ilerleyen text[]) to service_role;
 
 revoke all on function public.crm_talep_serit(p_org uuid, p_desen text, p_telefon text, p_temsilci text) from public;
 grant execute on function public.crm_talep_serit(p_org uuid, p_desen text, p_telefon text, p_temsilci text) to service_role;
@@ -19550,55 +19771,55 @@ grant execute on function public.crm_talep_suz(p_org uuid, p_desen text, p_telef
 grant execute on function public.crm_talep_suz(p_org uuid, p_desen text, p_telefon text, p_temsilci text) to service_role;
 
 revoke all on function public.crm_teklif_istatistikleri(p_organization_id uuid) from public;
-grant execute on function public.crm_teklif_istatistikleri(p_organization_id uuid) to authenticated;
 grant execute on function public.crm_teklif_istatistikleri(p_organization_id uuid) to service_role;
+grant execute on function public.crm_teklif_istatistikleri(p_organization_id uuid) to authenticated;
 
 revoke all on function public.delete_group_message_channel(p_channel_id uuid) from public;
-grant execute on function public.delete_group_message_channel(p_channel_id uuid) to service_role;
 grant execute on function public.delete_group_message_channel(p_channel_id uuid) to authenticated;
+grant execute on function public.delete_group_message_channel(p_channel_id uuid) to service_role;
 
 revoke all on function public.expire_due_crm_proposals() from public;
 grant execute on function public.expire_due_crm_proposals() to service_role;
 
 revoke all on function public.generate_contract_tracking_code() from public;
 grant execute on function public.generate_contract_tracking_code() to authenticated;
-grant execute on function public.generate_contract_tracking_code() to anon;
 grant execute on function public.generate_contract_tracking_code() to service_role;
+grant execute on function public.generate_contract_tracking_code() to anon;
 grant execute on function public.generate_contract_tracking_code() to public;
 
 revoke all on function public.get_arvoculture_my_orders() from public;
-grant execute on function public.get_arvoculture_my_orders() to authenticated;
 grant execute on function public.get_arvoculture_my_orders() to service_role;
+grant execute on function public.get_arvoculture_my_orders() to authenticated;
 
 revoke all on function public.get_arvoculture_my_returns() from public;
-grant execute on function public.get_arvoculture_my_returns() to service_role;
 grant execute on function public.get_arvoculture_my_returns() to authenticated;
+grant execute on function public.get_arvoculture_my_returns() to service_role;
 
 revoke all on function public.get_arvoculture_storefront_collection_products(p_collection_slug text, p_menu_groups text[], p_limit integer) from public;
-grant execute on function public.get_arvoculture_storefront_collection_products(p_collection_slug text, p_menu_groups text[], p_limit integer) to authenticated;
 grant execute on function public.get_arvoculture_storefront_collection_products(p_collection_slug text, p_menu_groups text[], p_limit integer) to service_role;
 grant execute on function public.get_arvoculture_storefront_collection_products(p_collection_slug text, p_menu_groups text[], p_limit integer) to anon;
+grant execute on function public.get_arvoculture_storefront_collection_products(p_collection_slug text, p_menu_groups text[], p_limit integer) to authenticated;
 
 revoke all on function public.get_arvoculture_storefront_collections() from public;
+grant execute on function public.get_arvoculture_storefront_collections() to authenticated;
 grant execute on function public.get_arvoculture_storefront_collections() to anon;
 grant execute on function public.get_arvoculture_storefront_collections() to service_role;
-grant execute on function public.get_arvoculture_storefront_collections() to authenticated;
 
 revoke all on function public.get_arvoculture_storefront_deals(p_limit integer) from public;
-grant execute on function public.get_arvoculture_storefront_deals(p_limit integer) to service_role;
-grant execute on function public.get_arvoculture_storefront_deals(p_limit integer) to anon;
 grant execute on function public.get_arvoculture_storefront_deals(p_limit integer) to authenticated;
+grant execute on function public.get_arvoculture_storefront_deals(p_limit integer) to anon;
+grant execute on function public.get_arvoculture_storefront_deals(p_limit integer) to service_role;
 
 revoke all on function public.get_arvoculture_storefront_discounts() from public;
-grant execute on function public.get_arvoculture_storefront_discounts() to anon;
 grant execute on function public.get_arvoculture_storefront_discounts() to authenticated;
+grant execute on function public.get_arvoculture_storefront_discounts() to anon;
 grant execute on function public.get_arvoculture_storefront_discounts() to service_role;
 
 revoke all on function public.get_arvoculture_storefront_facets() from public;
-grant execute on function public.get_arvoculture_storefront_facets() to authenticated;
-grant execute on function public.get_arvoculture_storefront_facets() to public;
 grant execute on function public.get_arvoculture_storefront_facets() to anon;
+grant execute on function public.get_arvoculture_storefront_facets() to authenticated;
 grant execute on function public.get_arvoculture_storefront_facets() to service_role;
+grant execute on function public.get_arvoculture_storefront_facets() to public;
 
 revoke all on function public.get_arvoculture_storefront_product(p_slug text) from public;
 grant execute on function public.get_arvoculture_storefront_product(p_slug text) to authenticated;
@@ -19606,36 +19827,36 @@ grant execute on function public.get_arvoculture_storefront_product(p_slug text)
 grant execute on function public.get_arvoculture_storefront_product(p_slug text) to anon;
 
 revoke all on function public.get_arvoculture_storefront_product_badges() from public;
-grant execute on function public.get_arvoculture_storefront_product_badges() to authenticated;
-grant execute on function public.get_arvoculture_storefront_product_badges() to service_role;
 grant execute on function public.get_arvoculture_storefront_product_badges() to anon;
+grant execute on function public.get_arvoculture_storefront_product_badges() to service_role;
+grant execute on function public.get_arvoculture_storefront_product_badges() to authenticated;
 
 revoke all on function public.get_arvoculture_storefront_product_count() from public;
-grant execute on function public.get_arvoculture_storefront_product_count() to authenticated;
-grant execute on function public.get_arvoculture_storefront_product_count() to service_role;
 grant execute on function public.get_arvoculture_storefront_product_count() to anon;
+grant execute on function public.get_arvoculture_storefront_product_count() to service_role;
+grant execute on function public.get_arvoculture_storefront_product_count() to authenticated;
 
 revoke all on function public.get_arvoculture_storefront_product_slugs(p_limit integer) from public;
-grant execute on function public.get_arvoculture_storefront_product_slugs(p_limit integer) to authenticated;
-grant execute on function public.get_arvoculture_storefront_product_slugs(p_limit integer) to anon;
 grant execute on function public.get_arvoculture_storefront_product_slugs(p_limit integer) to public;
 grant execute on function public.get_arvoculture_storefront_product_slugs(p_limit integer) to service_role;
+grant execute on function public.get_arvoculture_storefront_product_slugs(p_limit integer) to authenticated;
+grant execute on function public.get_arvoculture_storefront_product_slugs(p_limit integer) to anon;
 
 revoke all on function public.get_arvoculture_storefront_products(p_limit integer, p_offset integer) from public;
-grant execute on function public.get_arvoculture_storefront_products(p_limit integer, p_offset integer) to authenticated;
 grant execute on function public.get_arvoculture_storefront_products(p_limit integer, p_offset integer) to anon;
+grant execute on function public.get_arvoculture_storefront_products(p_limit integer, p_offset integer) to authenticated;
 grant execute on function public.get_arvoculture_storefront_products(p_limit integer, p_offset integer) to service_role;
 
 revoke all on function public.get_arvoculture_storefront_products_page(p_limit integer, p_offset integer, p_brand text, p_size text, p_max_price bigint, p_only_discounted boolean, p_only_available boolean, p_sort text) from public;
+grant execute on function public.get_arvoculture_storefront_products_page(p_limit integer, p_offset integer, p_brand text, p_size text, p_max_price bigint, p_only_discounted boolean, p_only_available boolean, p_sort text) to service_role;
 grant execute on function public.get_arvoculture_storefront_products_page(p_limit integer, p_offset integer, p_brand text, p_size text, p_max_price bigint, p_only_discounted boolean, p_only_available boolean, p_sort text) to authenticated;
 grant execute on function public.get_arvoculture_storefront_products_page(p_limit integer, p_offset integer, p_brand text, p_size text, p_max_price bigint, p_only_discounted boolean, p_only_available boolean, p_sort text) to anon;
 grant execute on function public.get_arvoculture_storefront_products_page(p_limit integer, p_offset integer, p_brand text, p_size text, p_max_price bigint, p_only_discounted boolean, p_only_available boolean, p_sort text) to public;
-grant execute on function public.get_arvoculture_storefront_products_page(p_limit integer, p_offset integer, p_brand text, p_size text, p_max_price bigint, p_only_discounted boolean, p_only_available boolean, p_sort text) to service_role;
 
 revoke all on function public.get_arvoculture_storefront_search_index(p_limit integer) from public;
-grant execute on function public.get_arvoculture_storefront_search_index(p_limit integer) to service_role;
 grant execute on function public.get_arvoculture_storefront_search_index(p_limit integer) to authenticated;
 grant execute on function public.get_arvoculture_storefront_search_index(p_limit integer) to anon;
+grant execute on function public.get_arvoculture_storefront_search_index(p_limit integer) to service_role;
 grant execute on function public.get_arvoculture_storefront_search_index(p_limit integer) to public;
 
 revoke all on function public.get_arvoculture_storefront_settings() from public;
@@ -19644,35 +19865,35 @@ grant execute on function public.get_arvoculture_storefront_settings() to anon;
 grant execute on function public.get_arvoculture_storefront_settings() to service_role;
 
 revoke all on function public.get_arvoculture_storefront_variants(p_slug text) from public;
-grant execute on function public.get_arvoculture_storefront_variants(p_slug text) to service_role;
 grant execute on function public.get_arvoculture_storefront_variants(p_slug text) to authenticated;
 grant execute on function public.get_arvoculture_storefront_variants(p_slug text) to anon;
+grant execute on function public.get_arvoculture_storefront_variants(p_slug text) to service_role;
 
 revoke all on function public.get_my_workspaces() from public;
-grant execute on function public.get_my_workspaces() to service_role;
-grant execute on function public.get_my_workspaces() to authenticated;
 grant execute on function public.get_my_workspaces() to anon;
+grant execute on function public.get_my_workspaces() to authenticated;
+grant execute on function public.get_my_workspaces() to service_role;
 
 revoke all on function public.get_public_crm_contract(public_token text) from public;
-grant execute on function public.get_public_crm_contract(public_token text) to anon;
 grant execute on function public.get_public_crm_contract(public_token text) to authenticated;
+grant execute on function public.get_public_crm_contract(public_token text) to anon;
 grant execute on function public.get_public_crm_contract(public_token text) to service_role;
 
 revoke all on function public.get_public_crm_proposal(public_token text) from public;
-grant execute on function public.get_public_crm_proposal(public_token text) to anon;
-grant execute on function public.get_public_crm_proposal(public_token text) to service_role;
-grant execute on function public.get_public_crm_proposal(public_token text) to authenticated;
 grant execute on function public.get_public_crm_proposal(public_token text) to public;
+grant execute on function public.get_public_crm_proposal(public_token text) to service_role;
+grant execute on function public.get_public_crm_proposal(public_token text) to anon;
+grant execute on function public.get_public_crm_proposal(public_token text) to authenticated;
 
 revoke all on function public.get_public_organization_branding(p_slug text) from public;
+grant execute on function public.get_public_organization_branding(p_slug text) to service_role;
 grant execute on function public.get_public_organization_branding(p_slug text) to authenticated;
 grant execute on function public.get_public_organization_branding(p_slug text) to anon;
-grant execute on function public.get_public_organization_branding(p_slug text) to service_role;
 
 revoke all on function public.get_public_organization_branding_by_id(p_org_id uuid) from public;
+grant execute on function public.get_public_organization_branding_by_id(p_org_id uuid) to service_role;
 grant execute on function public.get_public_organization_branding_by_id(p_org_id uuid) to authenticated;
 grant execute on function public.get_public_organization_branding_by_id(p_org_id uuid) to anon;
-grant execute on function public.get_public_organization_branding_by_id(p_org_id uuid) to service_role;
 
 revoke all on function public.get_storefront_seller(p_tenant text) from public;
 grant execute on function public.get_storefront_seller(p_tenant text) to anon;
@@ -19689,16 +19910,16 @@ revoke all on function public.guard_operation_workflow_archive() from public;
 grant execute on function public.guard_operation_workflow_archive() to service_role;
 
 revoke all on function public.issue_crm_contract_link(target_contract_id uuid) from public;
-grant execute on function public.issue_crm_contract_link(target_contract_id uuid) to service_role;
-grant execute on function public.issue_crm_contract_link(target_contract_id uuid) to authenticated;
-grant execute on function public.issue_crm_contract_link(target_contract_id uuid) to anon;
 grant execute on function public.issue_crm_contract_link(target_contract_id uuid) to public;
+grant execute on function public.issue_crm_contract_link(target_contract_id uuid) to anon;
+grant execute on function public.issue_crm_contract_link(target_contract_id uuid) to authenticated;
+grant execute on function public.issue_crm_contract_link(target_contract_id uuid) to service_role;
 
 revoke all on function public.issue_crm_proposal_link(target_proposal_id uuid) from public;
+grant execute on function public.issue_crm_proposal_link(target_proposal_id uuid) to public;
 grant execute on function public.issue_crm_proposal_link(target_proposal_id uuid) to service_role;
 grant execute on function public.issue_crm_proposal_link(target_proposal_id uuid) to authenticated;
 grant execute on function public.issue_crm_proposal_link(target_proposal_id uuid) to anon;
-grant execute on function public.issue_crm_proposal_link(target_proposal_id uuid) to public;
 
 revoke all on function public.leave_message_channel(p_channel_id uuid) from public;
 grant execute on function public.leave_message_channel(p_channel_id uuid) to authenticated;
@@ -19711,22 +19932,22 @@ revoke all on function public.list_customer_portal_files(p_tracking_code text) f
 grant execute on function public.list_customer_portal_files(p_tracking_code text) to service_role;
 
 revoke all on function public.log_document_access(target_document_type text, target_document_id uuid, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) from public;
+grant execute on function public.log_document_access(target_document_type text, target_document_id uuid, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to anon;
 grant execute on function public.log_document_access(target_document_type text, target_document_id uuid, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to public;
 grant execute on function public.log_document_access(target_document_type text, target_document_id uuid, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to authenticated;
-grant execute on function public.log_document_access(target_document_type text, target_document_id uuid, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to anon;
 grant execute on function public.log_document_access(target_document_type text, target_document_id uuid, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to service_role;
 
 revoke all on function public.log_public_document_access(public_token text, target_document_type text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) from public;
-grant execute on function public.log_public_document_access(public_token text, target_document_type text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to public;
+grant execute on function public.log_public_document_access(public_token text, target_document_type text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to service_role;
 grant execute on function public.log_public_document_access(public_token text, target_document_type text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to authenticated;
 grant execute on function public.log_public_document_access(public_token text, target_document_type text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to anon;
-grant execute on function public.log_public_document_access(public_token text, target_document_type text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to service_role;
+grant execute on function public.log_public_document_access(public_token text, target_document_type text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to public;
 
 revoke all on function public.log_public_document_access_by_token(target_document_type text, public_token text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) from public;
-grant execute on function public.log_public_document_access_by_token(target_document_type text, public_token text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to anon;
+grant execute on function public.log_public_document_access_by_token(target_document_type text, public_token text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to service_role;
 grant execute on function public.log_public_document_access_by_token(target_document_type text, public_token text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to authenticated;
 grant execute on function public.log_public_document_access_by_token(target_document_type text, public_token text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to public;
-grant execute on function public.log_public_document_access_by_token(target_document_type text, public_token text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to service_role;
+grant execute on function public.log_public_document_access_by_token(target_document_type text, public_token text, target_access_type text, target_ip text, target_user_agent text, target_referrer text, target_metadata jsonb) to anon;
 
 revoke all on function public.lookup_contract_by_tracking_code(p_org_slug text, p_tracking_code text) from public;
 grant execute on function public.lookup_contract_by_tracking_code(p_org_slug text, p_tracking_code text) to service_role;
@@ -19738,36 +19959,36 @@ revoke all on function public.lookup_contracts_by_phone_suffix(p_org_slug text, 
 grant execute on function public.lookup_contracts_by_phone_suffix(p_org_slug text, p_phone_suffix text) to service_role;
 
 revoke all on function public.mark_crm_contract_viewed(public_token text) from public;
-grant execute on function public.mark_crm_contract_viewed(public_token text) to public;
-grant execute on function public.mark_crm_contract_viewed(public_token text) to service_role;
 grant execute on function public.mark_crm_contract_viewed(public_token text) to authenticated;
 grant execute on function public.mark_crm_contract_viewed(public_token text) to anon;
+grant execute on function public.mark_crm_contract_viewed(public_token text) to service_role;
+grant execute on function public.mark_crm_contract_viewed(public_token text) to public;
 
 revoke all on function public.mark_crm_proposal_viewed(public_token text) from public;
-grant execute on function public.mark_crm_proposal_viewed(public_token text) to service_role;
 grant execute on function public.mark_crm_proposal_viewed(public_token text) to public;
-grant execute on function public.mark_crm_proposal_viewed(public_token text) to anon;
+grant execute on function public.mark_crm_proposal_viewed(public_token text) to service_role;
 grant execute on function public.mark_crm_proposal_viewed(public_token text) to authenticated;
+grant execute on function public.mark_crm_proposal_viewed(public_token text) to anon;
 
 revoke all on function public.mark_message_channel_read(p_channel_id uuid) from public;
-grant execute on function public.mark_message_channel_read(p_channel_id uuid) to authenticated;
 grant execute on function public.mark_message_channel_read(p_channel_id uuid) to service_role;
+grant execute on function public.mark_message_channel_read(p_channel_id uuid) to authenticated;
 
 revoke all on function public.next_document_number(target_organization_id uuid, target_document_type text, default_prefix text, target_date date) from public;
-grant execute on function public.next_document_number(target_organization_id uuid, target_document_type text, default_prefix text, target_date date) to authenticated;
 grant execute on function public.next_document_number(target_organization_id uuid, target_document_type text, default_prefix text, target_date date) to service_role;
+grant execute on function public.next_document_number(target_organization_id uuid, target_document_type text, default_prefix text, target_date date) to authenticated;
 
 revoke all on function public.operasyon_ekip_yuku(p_organization_id uuid, p_aktif text[], p_suren text[]) from public;
-grant execute on function public.operasyon_ekip_yuku(p_organization_id uuid, p_aktif text[], p_suren text[]) to service_role;
 grant execute on function public.operasyon_ekip_yuku(p_organization_id uuid, p_aktif text[], p_suren text[]) to authenticated;
+grant execute on function public.operasyon_ekip_yuku(p_organization_id uuid, p_aktif text[], p_suren text[]) to service_role;
 
 revoke all on function public.operasyon_genel_bakis_ozeti(p_organization_id uuid, p_aktif text[], p_suren text[], p_gun integer) from public;
-grant execute on function public.operasyon_genel_bakis_ozeti(p_organization_id uuid, p_aktif text[], p_suren text[], p_gun integer) to service_role;
 grant execute on function public.operasyon_genel_bakis_ozeti(p_organization_id uuid, p_aktif text[], p_suren text[], p_gun integer) to authenticated;
+grant execute on function public.operasyon_genel_bakis_ozeti(p_organization_id uuid, p_aktif text[], p_suren text[], p_gun integer) to service_role;
 
 revoke all on function public.operasyon_is_istatistikleri(p_organization_id uuid) from public;
-grant execute on function public.operasyon_is_istatistikleri(p_organization_id uuid) to authenticated;
 grant execute on function public.operasyon_is_istatistikleri(p_organization_id uuid) to service_role;
+grant execute on function public.operasyon_is_istatistikleri(p_organization_id uuid) to authenticated;
 
 revoke all on function public.operasyon_is_serit(p_org uuid, p_desen text, p_sorumlu text, p_bugun date) from public;
 grant execute on function public.operasyon_is_serit(p_org uuid, p_desen text, p_sorumlu text, p_bugun date) to service_role;
@@ -19781,15 +20002,18 @@ revoke all on function public.platform_cron_kaydet(p_is_adi text, p_basladi time
 grant execute on function public.platform_cron_kaydet(p_is_adi text, p_basladi timestamp with time zone, p_sonuc text, p_ayrinti jsonb) to service_role;
 
 revoke all on function public.platform_fiyatlari_yayimla() from public;
-grant execute on function public.platform_fiyatlari_yayimla() to authenticated;
 grant execute on function public.platform_fiyatlari_yayimla() to service_role;
+grant execute on function public.platform_fiyatlari_yayimla() to authenticated;
 
 revoke all on function public.platform_gecikenleri_isaretle() from public;
 grant execute on function public.platform_gecikenleri_isaretle() to service_role;
 
+revoke all on function public.platform_proforma_numarasi() from public;
+grant execute on function public.platform_proforma_numarasi() to service_role;
+
 revoke all on function public.platform_tahsilat_ozeti() from public;
-grant execute on function public.platform_tahsilat_ozeti() to authenticated;
 grant execute on function public.platform_tahsilat_ozeti() to service_role;
+grant execute on function public.platform_tahsilat_ozeti() to authenticated;
 
 revoke all on function public.portal_payment_settled(p_workflow_id uuid) from public;
 grant execute on function public.portal_payment_settled(p_workflow_id uuid) to service_role;
@@ -19807,35 +20031,35 @@ grant execute on function public.rebuild_payment_plan_installments(p_plan_id uui
 grant execute on function public.rebuild_payment_plan_installments(p_plan_id uuid, p_installment_count integer, p_first_due_date date, p_interval_months integer) to authenticated;
 
 revoke all on function public.resolve_organization_by_domain(p_domain text) from public;
-grant execute on function public.resolve_organization_by_domain(p_domain text) to service_role;
 grant execute on function public.resolve_organization_by_domain(p_domain text) to authenticated;
 grant execute on function public.resolve_organization_by_domain(p_domain text) to anon;
+grant execute on function public.resolve_organization_by_domain(p_domain text) to service_role;
 
 revoke all on function public.respond_to_crm_proposal(public_token text, decision text, p_ip text) from public;
-grant execute on function public.respond_to_crm_proposal(public_token text, decision text, p_ip text) to anon;
 grant execute on function public.respond_to_crm_proposal(public_token text, decision text, p_ip text) to service_role;
 grant execute on function public.respond_to_crm_proposal(public_token text, decision text, p_ip text) to authenticated;
+grant execute on function public.respond_to_crm_proposal(public_token text, decision text, p_ip text) to anon;
 
 revoke all on function public.review_bank_transfer_payment(p_payment_id uuid, p_decision text, p_review_note text) from public;
-grant execute on function public.review_bank_transfer_payment(p_payment_id uuid, p_decision text, p_review_note text) to service_role;
 grant execute on function public.review_bank_transfer_payment(p_payment_id uuid, p_decision text, p_review_note text) to authenticated;
+grant execute on function public.review_bank_transfer_payment(p_payment_id uuid, p_decision text, p_review_note text) to service_role;
 
 revoke all on function public.seed_organization_demo_data(p_organization_id uuid, p_seed_crm boolean, p_seed_operations boolean) from public;
 grant execute on function public.seed_organization_demo_data(p_organization_id uuid, p_seed_crm boolean, p_seed_operations boolean) to service_role;
 grant execute on function public.seed_organization_demo_data(p_organization_id uuid, p_seed_crm boolean, p_seed_operations boolean) to authenticated;
 
 revoke all on function public.seed_standard_operation_steps_trigger() from public;
-grant execute on function public.seed_standard_operation_steps_trigger() to public;
 grant execute on function public.seed_standard_operation_steps_trigger() to authenticated;
-grant execute on function public.seed_standard_operation_steps_trigger() to anon;
 grant execute on function public.seed_standard_operation_steps_trigger() to service_role;
+grant execute on function public.seed_standard_operation_steps_trigger() to anon;
+grant execute on function public.seed_standard_operation_steps_trigger() to public;
 
 revoke all on function public.send_customer_file_message(p_tracking_code text, p_body text) from public;
 grant execute on function public.send_customer_file_message(p_tracking_code text, p_body text) to service_role;
 
 revoke all on function public.send_management_announcement(p_organization_id uuid, p_title text, p_message text, p_target_user_id uuid) from public;
-grant execute on function public.send_management_announcement(p_organization_id uuid, p_title text, p_message text, p_target_user_id uuid) to service_role;
 grant execute on function public.send_management_announcement(p_organization_id uuid, p_title text, p_message text, p_target_user_id uuid) to authenticated;
+grant execute on function public.send_management_announcement(p_organization_id uuid, p_title text, p_message text, p_target_user_id uuid) to service_role;
 
 revoke all on function public.settle_arvoculture_storefront_order(p_order_id uuid, p_paid boolean, p_payment_reference text, p_failure_reason text) from public;
 grant execute on function public.settle_arvoculture_storefront_order(p_order_id uuid, p_paid boolean, p_payment_reference text, p_failure_reason text) to service_role;
@@ -19844,10 +20068,10 @@ revoke all on function public.sign_crm_contract(public_token text, signer_name t
 grant execute on function public.sign_crm_contract(public_token text, signer_name text, signer_ip text, signer_user_agent text) to service_role;
 
 revoke all on function public.sign_crm_contract_v2(public_token text, signer_name text, signature_data text, signer_ip text, signer_user_agent text) from public;
-grant execute on function public.sign_crm_contract_v2(public_token text, signer_name text, signature_data text, signer_ip text, signer_user_agent text) to public;
 grant execute on function public.sign_crm_contract_v2(public_token text, signer_name text, signature_data text, signer_ip text, signer_user_agent text) to anon;
-grant execute on function public.sign_crm_contract_v2(public_token text, signer_name text, signature_data text, signer_ip text, signer_user_agent text) to authenticated;
 grant execute on function public.sign_crm_contract_v2(public_token text, signer_name text, signature_data text, signer_ip text, signer_user_agent text) to service_role;
+grant execute on function public.sign_crm_contract_v2(public_token text, signer_name text, signature_data text, signer_ip text, signer_user_agent text) to authenticated;
+grant execute on function public.sign_crm_contract_v2(public_token text, signer_name text, signature_data text, signer_ip text, signer_user_agent text) to public;
 
 revoke all on function public.sozlesme_maliyet_toplamlari(p_organization_id uuid, p_durumlar text[]) from public;
 grant execute on function public.sozlesme_maliyet_toplamlari(p_organization_id uuid, p_durumlar text[]) to authenticated;
@@ -19855,8 +20079,8 @@ grant execute on function public.sozlesme_maliyet_toplamlari(p_organization_id u
 
 revoke all on function public.submit_public_lead(org_slug text, p_customer_name text, p_email text, p_phone text, p_service text, p_message text) from public;
 grant execute on function public.submit_public_lead(org_slug text, p_customer_name text, p_email text, p_phone text, p_service text, p_message text) to authenticated;
-grant execute on function public.submit_public_lead(org_slug text, p_customer_name text, p_email text, p_phone text, p_service text, p_message text) to service_role;
 grant execute on function public.submit_public_lead(org_slug text, p_customer_name text, p_email text, p_phone text, p_service text, p_message text) to anon;
+grant execute on function public.submit_public_lead(org_slug text, p_customer_name text, p_email text, p_phone text, p_service text, p_message text) to service_role;
 
 revoke all on function public.submit_site_lead(p_name text, p_email text, p_phone text, p_company text, p_interest text, p_message text, p_locale text, p_page text, p_ip_hash text, p_consent boolean) from public;
 grant execute on function public.submit_site_lead(p_name text, p_email text, p_phone text, p_company text, p_interest text, p_message text, p_locale text, p_page text, p_ip_hash text, p_consent boolean) to service_role;
@@ -19870,16 +20094,16 @@ grant execute on function public.sync_contract_status_from_workflow() to public;
 grant execute on function public.sync_contract_status_from_workflow() to anon;
 
 revoke all on function public.sync_contract_workflow_link() from public;
-grant execute on function public.sync_contract_workflow_link() to public;
-grant execute on function public.sync_contract_workflow_link() to anon;
-grant execute on function public.sync_contract_workflow_link() to service_role;
 grant execute on function public.sync_contract_workflow_link() to authenticated;
+grant execute on function public.sync_contract_workflow_link() to public;
+grant execute on function public.sync_contract_workflow_link() to service_role;
+grant execute on function public.sync_contract_workflow_link() to anon;
 
 revoke all on function public.sync_workflow_completion_from_steps() from public;
-grant execute on function public.sync_workflow_completion_from_steps() to public;
-grant execute on function public.sync_workflow_completion_from_steps() to anon;
 grant execute on function public.sync_workflow_completion_from_steps() to service_role;
 grant execute on function public.sync_workflow_completion_from_steps() to authenticated;
+grant execute on function public.sync_workflow_completion_from_steps() to anon;
+grant execute on function public.sync_workflow_completion_from_steps() to public;
 
 revoke all on function public.update_arvoculture_profile(p_full_name text, p_phone text) from public;
 grant execute on function public.update_arvoculture_profile(p_full_name text, p_phone text) to service_role;
@@ -19887,9 +20111,9 @@ grant execute on function public.update_arvoculture_profile(p_full_name text, p_
 
 revoke all on function public.update_crm_contract(target_contract_id uuid, contract_title text, contract_scope text, contract_amount bigint, contract_payment_plan text, contract_start_date date, contract_due_date date) from public;
 grant execute on function public.update_crm_contract(target_contract_id uuid, contract_title text, contract_scope text, contract_amount bigint, contract_payment_plan text, contract_start_date date, contract_due_date date) to authenticated;
-grant execute on function public.update_crm_contract(target_contract_id uuid, contract_title text, contract_scope text, contract_amount bigint, contract_payment_plan text, contract_start_date date, contract_due_date date) to service_role;
-grant execute on function public.update_crm_contract(target_contract_id uuid, contract_title text, contract_scope text, contract_amount bigint, contract_payment_plan text, contract_start_date date, contract_due_date date) to anon;
 grant execute on function public.update_crm_contract(target_contract_id uuid, contract_title text, contract_scope text, contract_amount bigint, contract_payment_plan text, contract_start_date date, contract_due_date date) to public;
+grant execute on function public.update_crm_contract(target_contract_id uuid, contract_title text, contract_scope text, contract_amount bigint, contract_payment_plan text, contract_start_date date, contract_due_date date) to anon;
+grant execute on function public.update_crm_contract(target_contract_id uuid, contract_title text, contract_scope text, contract_amount bigint, contract_payment_plan text, contract_start_date date, contract_due_date date) to service_role;
 
 revoke all on function public.update_crm_proposal(target_proposal_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) from public;
 grant execute on function public.update_crm_proposal(target_proposal_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) to public;
@@ -19898,12 +20122,12 @@ grant execute on function public.update_crm_proposal(target_proposal_id uuid, pr
 grant execute on function public.update_crm_proposal(target_proposal_id uuid, proposal_title text, proposal_scope text, proposal_amount bigint, proposal_payment_plan text, proposal_valid_until date) to service_role;
 
 revoke all on function public.update_group_message_channel(p_channel_id uuid, p_name text, p_member_ids uuid[]) from public;
-grant execute on function public.update_group_message_channel(p_channel_id uuid, p_name text, p_member_ids uuid[]) to service_role;
 grant execute on function public.update_group_message_channel(p_channel_id uuid, p_name text, p_member_ids uuid[]) to authenticated;
+grant execute on function public.update_group_message_channel(p_channel_id uuid, p_name text, p_member_ids uuid[]) to service_role;
 
 revoke all on function public.update_member_display_name(p_organization_id uuid, p_user_id uuid, p_full_name text) from public;
-grant execute on function public.update_member_display_name(p_organization_id uuid, p_user_id uuid, p_full_name text) to authenticated;
 grant execute on function public.update_member_display_name(p_organization_id uuid, p_user_id uuid, p_full_name text) to service_role;
+grant execute on function public.update_member_display_name(p_organization_id uuid, p_user_id uuid, p_full_name text) to authenticated;
 grant execute on function public.update_member_display_name(p_organization_id uuid, p_user_id uuid, p_full_name text) to anon;
 
 revoke all on function public.whatsapp_sohbetler(p_organization_id uuid, p_limit integer) from public;
@@ -19916,6 +20140,8 @@ CREATE TRIGGER arvo_account_entry_reconcile_update AFTER UPDATE OF amount, entry
 CREATE TRIGGER arvo_account_entry_refund_unreconcile AFTER INSERT ON public.account_entries FOR EACH ROW EXECUTE FUNCTION private.arvo_account_entry_refund_unreconcile();
 
 CREATE TRIGGER arvo_account_entry_unreconcile AFTER DELETE ON public.account_entries FOR EACH ROW EXECUTE FUNCTION private.arvo_account_entry_unreconcile();
+
+CREATE TRIGGER arvo_ek_hizmet_plan_koru BEFORE INSERT OR DELETE OR UPDATE ON public.account_entries FOR EACH ROW EXECUTE FUNCTION private.arvo_ek_hizmet_plan_koru();
 
 CREATE TRIGGER arvo_guard_account_entry BEFORE DELETE OR UPDATE ON public.account_entries FOR EACH ROW EXECUTE FUNCTION private.arvo_guard_account_entry();
 
@@ -20076,5 +20302,7 @@ CREATE TRIGGER arvo_step_template_set_ensure BEFORE INSERT ON public.organizatio
 CREATE TRIGGER create_default_organization_license AFTER INSERT ON public.organizations FOR EACH ROW EXECUTE FUNCTION private.create_default_organization_license();
 
 CREATE TRIGGER arvo_fiyat_gecmisi_yaz AFTER INSERT OR UPDATE ON public.platform_fiyat_listesi FOR EACH ROW EXECUTE FUNCTION private.arvo_fiyat_gecmisi_yaz();
+
+CREATE TRIGGER platform_proforma_numarasi BEFORE INSERT ON public.platform_proformalari FOR EACH ROW EXECUTE FUNCTION platform_proforma_numarasi();
 
 CREATE TRIGGER touch_support_ticket AFTER INSERT ON public.support_messages FOR EACH ROW EXECUTE FUNCTION private.touch_support_ticket();

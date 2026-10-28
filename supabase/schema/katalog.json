@@ -11,6 +11,7 @@
       "id",
       "organization_id",
       "party_id",
+      "payment_plan_id",
       "reference_no",
       "source_type",
       "transaction_date"
@@ -50,7 +51,8 @@
       "loaded_at",
       "organization_id",
       "paket_kodu",
-      "payment_link_id"
+      "payment_link_id",
+      "subscriber_id"
     ],
     "analitik_olaylar": [
       "boylam",
@@ -1650,6 +1652,17 @@
       "sonuc",
       "sure_ms"
     ],
+    "platform_faturalari": [
+      "created_at",
+      "dosya_yolu",
+      "fatura_no",
+      "fatura_tarihi",
+      "id",
+      "payment_request_id",
+      "subscriber_payment_id",
+      "updated_at",
+      "yukleyen"
+    ],
     "platform_fiyat_gecmisi": [
       "id",
       "islem",
@@ -1697,6 +1710,30 @@
       "storage_limit_mb",
       "trial_ends_at",
       "user_limit"
+    ],
+    "platform_proformalari": [
+      "ara_toplam",
+      "created_at",
+      "durum",
+      "duzenleme_tarihi",
+      "gecerlilik_tarihi",
+      "id",
+      "kalemler",
+      "kdv",
+      "kdv_orani",
+      "musteri_adi",
+      "notlar",
+      "odendi_at",
+      "olusturan",
+      "organization_id",
+      "para_birimi",
+      "payment_request_id",
+      "product",
+      "proforma_no",
+      "subscriber_id",
+      "subscriber_payment_id",
+      "toplam",
+      "updated_at"
     ],
     "platform_subscription_requests": [
       "amount",
@@ -1979,6 +2016,7 @@
     "arvo_confirm_proposal_decision",
     "arvo_create_contract_addendum",
     "arvo_custom_domain_available",
+    "arvo_ek_hizmet_taksitlere",
     "arvo_is_member",
     "arvo_is_message_channel_member",
     "arvo_is_turunu_degistir",
@@ -2086,6 +2124,7 @@
     "platform_cron_kaydet",
     "platform_fiyatlari_yayimla",
     "platform_gecikenleri_isaretle",
+    "platform_proforma_numarasi",
     "platform_tahsilat_ozeti",
     "portal_payment_settled",
     "portal_workflow_payment_status",
