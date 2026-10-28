@@ -114,6 +114,11 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
         { key: "tahsilatlar", href: "/panel/platform/tahsilat", label: "Tahsilatlar" },
         { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
         { key: "faturalar", href: "/panel/platform/tahsilat?kanal=fatura", label: "Faturalar" },
+        /* Proforma sayfada 27.10.2026'dan beri vardı ama yalnızca listenin
+           süzgeç çiplerinin sonundaydı: bölüm şeridinde yoktu, telefonda da
+           çip rayı kaydırılmadan görünmüyordu — kurum sahibi "proforma
+           sekmesi gözükmüyor" dedi (28.10.2026). */
+        { key: "proformalar", href: "/panel/platform/tahsilat?kanal=proforma", label: "Proformalar" },
       ],
     },
     {
