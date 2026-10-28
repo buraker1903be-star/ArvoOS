@@ -4,6 +4,7 @@ import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { paytrKimligi } from "@/lib/payments/kimlik";
 import { deletePaytrLink, fromCallbackId, verifyPaytrCallback, type PaytrCredentials } from "@/lib/paytr";
+import { direktBildirimiIsle } from "@/lib/paytr-kart-akisi";
 
 // PayTR "Link ile Ödeme" bildirimi (herkese açık, giriş yok).
 //
@@ -38,6 +39,25 @@ export async function POST(request: Request) {
     total_amount: field("total_amount"),
     hash: field("hash"),
   };
+  /*
+    DİREKT API BİLDİRİMİ DE BURAYA GELEBİLİR (28.10.2026). PayTR mağaza
+    panelindeki "Bildirim URL" bu adres olarak ayarlı; Link API bildirimi
+    adresi her bağlantıyla kendisi taşıdığı için o ayardan etkilenmiyor,
+    ama kart saklama (Direkt API) ödemeleri panel adresine geliyor.
+    Ayırt edici callback_id: yalnızca Link API'de var. Yoksa bildirim
+    Direkt API'ninkidir ve kendi imza formülüyle işlenir
+    (lib/paytr-kart-akisi). Eskiden callback_id'siz her istek 400
+    alıyordu: kartla ödemeler panelde "Devam Ediyor"da kalırdı.
+  */
+  if (!fields.callback_id && fields.merchant_oid && fields.hash) {
+    const yonetici = createAdminClient();
+    if (!yonetici) return text(503, "service unavailable");
+    const sonuc = await direktBildirimiIsle(yonetici, field);
+    if (sonuc === "ok") return OK();
+    if (sonuc === "gecersiz") return text(400, "PAYTR notification failed: bad hash");
+    return text(503, "try again");
+  }
+
   const linkId = fromCallbackId(fields.callback_id);
   if (!linkId || !fields.merchant_oid || !fields.hash) return text(400, "invalid request");
 

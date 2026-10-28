@@ -1,13 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { direktBildirimiIsle } from "@/lib/paytr-kart-akisi";
 
-// PayTR Direkt API bildirimi (herkese açık, giriş yok). PayTR Mağaza
-// Paneli → Destek & Kurulum → Ayarlar → Bildirim URL olarak bu adres
-// tanımlanır: https://app.arvo-os.com/api/paytr/bildirim
+// PayTR Direkt API bildirimi (herkese açık, giriş yok).
 //
-// "Link ile Ödeme" bildirimi ayrı adrese gelir (/api/paytr/callback;
-// adres her bağlantıyla birlikte gönderiliyor). İkisi ayrı tutuldu çünkü
-// imza formülleri farklı: biri callback_id içeriyor, öteki içermiyor.
+// Mağaza panelindeki "Bildirim URL" bugün /api/paytr/callback olarak
+// ayarlı ve o rota callback_id'siz (Direkt API) bildirimi de buraya
+// yönlendiriyor (28.10.2026) — panel ayarına dokunmak gerekmesin. Bu
+// adres panelde doğrudan tanımlanırsa da aynı işlev çalışır.
 //
 // Yanıt YALNIZCA düz "OK" olmalı; öncesinde ya da sonrasında hiçbir şey
 // yazılmaz. OK dönmezsek PayTR yeniden dener ve işlem panelde "Devam
