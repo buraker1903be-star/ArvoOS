@@ -9,7 +9,7 @@ export const PRIVACY_FR: PrivacyContent = {
     lead: "Cette notice explique comment vos données personnelles sont traitées en application de la loi turque n° 6698 sur la protection des données personnelles (KVKK) lorsque vous visitez arvo-os.com et utilisez son formulaire de démo / contact.",
     actions: [],
   },
-  updated: "Dernière mise à jour : 13 septembre 2026",
+  updated: "Dernière mise à jour : 28 octobre 2026",
   sections: [
     { h: "1. Responsable du traitement", p: [
       "Cette traduction est fournie à titre informatif ; en cas de divergence, la version turque fait foi.",
@@ -38,7 +38,7 @@ export const PRIVACY_FR: PrivacyContent = {
       "Les données sont stockées sur les serveurs des fournisseurs d’infrastructure cloud et de bases de données qui hébergent le site et le panneau ; ces serveurs peuvent être situés hors de Türkiye. Ces transferts sont effectués conformément à l’article 9 de la KVKK. Les données ne peuvent être communiquées aux autorités publiques habilitées que lorsque la loi l’exige.",
     ] },
     { h: "7. Durée de conservation", p: ["Les données du formulaire sont conservées aussi longtemps que nécessaire pour examiner votre demande et mener toute relation commerciale qui en découle, ainsi que pendant les durées imposées par la législation applicable ; elles sont ensuite supprimées, détruites ou anonymisées. Les empreintes IP de sécurité sont supprimées automatiquement en quelques jours."] },
-    { h: "8. Cookies", p: ["Ce site n’utilise pas de cookies ni d’outils de suivi à des fins de publicité, d’analyse d’audience ou de profilage. Seuls des cookies techniques éventuellement nécessaires au fonctionnement sécurisé du site peuvent être utilisés."] },
+    { h: "8. Cookies", p: ["Ce site n’utilise pas de cookies ni d’outils de suivi à des fins de publicité, d’analyse d’audience ou de profilage. Seuls sont utilisés des cookies techniques éventuellement nécessaires au fonctionnement sécurisé du site et un cookie de préférence qui mémorise la langue choisie (arvo_site_dil, un an)."] },
     { h: "9. Vos droits au titre de l’article 11 de la KVKK", p: ["En vous adressant au responsable du traitement, vous pouvez :"], list: [
       "Savoir si vos données personnelles sont traitées et, le cas échéant, demander des informations à ce sujet",
       "Connaître la finalité du traitement et savoir si les données sont utilisées conformément à celle-ci",
@@ -50,6 +50,19 @@ export const PRIVACY_FR: PrivacyContent = {
       "Réclamer réparation du préjudice causé par un traitement illicite",
     ] },
     { h: "10. Comment exercer vos droits", p: [`Adressez vos demandes par e-mail à ${COMPANY.email} ou par écrit à ${COMPANY.address.display}, Türkiye. Les demandes sont traitées gratuitement dans un délai maximal de trente jours, selon leur nature (article 13 de la KVKK).`] },
-    { h: "11. Modifications", p: ["Cette notice peut être mise à jour si nécessaire ; la version en vigueur est toujours publiée sur cette page."] },
+    { h: "11. Visiteurs de l’Espace économique européen et du Royaume-Uni (RGPD)", p: [
+      "Si vous vous trouvez dans l’EEE ou au Royaume-Uni et que nous vous proposons nos services, vos données personnelles sont également traitées conformément au Règlement général sur la protection des données (UE) 2016/679 (RGPD) et au UK GDPR. Le responsable du traitement est Arvo, comme indiqué à la section 1.",
+      "Bases juridiques (art. 6, paragraphe 1, RGPD) : mesures précontractuelles — répondre à votre demande, préparer démonstrations et propositions (b) ; intérêt légitime — sécurité du formulaire et gestion des demandes (f) ; respect d’obligations légales (c).",
+      "Vos données peuvent être traitées en Türkiye et sur des serveurs d’hébergeurs situés hors de l’EEE. Vous pouvez nous écrire pour obtenir des informations sur les garanties sur lesquelles reposent ces transferts. Adressez vos demandes par les canaux de la section 10 ; les demandes fondées sur le RGPD reçoivent une réponse dans un délai d’un mois.",
+      "En vertu du RGPD, vous pouvez :",
+    ], list: [
+      "Accéder à vos données et en obtenir une copie (art. 15)",
+      "Faire rectifier des données inexactes (art. 16) et les faire effacer (art. 17)",
+      "Limiter le traitement (art. 18)",
+      "Demander la portabilité de vos données (art. 20)",
+      "Vous opposer au traitement fondé sur l’intérêt légitime (art. 21)",
+      "Introduire une réclamation auprès de l’autorité de contrôle de la protection des données du pays de l’EEE où vous vivez ou travaillez ou, au Royaume-Uni, auprès de l’Information Commissioner’s Office (ICO)",
+    ] },
+    { h: "12. Modifications", p: ["Cette notice peut être mise à jour si nécessaire ; la version en vigueur est toujours publiée sur cette page."] },
   ],
 };

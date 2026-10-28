@@ -9,7 +9,7 @@ export const PRIVACY_DE: PrivacyContent = {
     lead: "Diese Erklärung erläutert, wie Ihre personenbezogenen Daten nach dem türkischen Gesetz Nr. 6698 zum Schutz personenbezogener Daten (KVKK) verarbeitet werden, wenn Sie arvo-os.com besuchen und das Demo- / Kontaktformular nutzen.",
     actions: [],
   },
-  updated: "Zuletzt aktualisiert: 13. September 2026",
+  updated: "Zuletzt aktualisiert: 28. Oktober 2026",
   sections: [
     { h: "1. Verantwortlicher", p: [
       "Diese Übersetzung dient der Information; bei Abweichungen ist die türkische Fassung maßgeblich.",
@@ -38,7 +38,7 @@ export const PRIVACY_DE: PrivacyContent = {
       "Die Daten werden auf den Servern der Cloud-Infrastruktur- und Datenbankanbieter gespeichert, die die Website und das Panel hosten; diese Server können sich außerhalb der Türkei befinden. Solche Übermittlungen erfolgen im Einklang mit Artikel 9 KVKK. Daten können nur dann an befugte Behörden weitergegeben werden, wenn das Gesetz dies verlangt.",
     ] },
     { h: "7. Speicherdauer", p: ["Formulardaten werden so lange aufbewahrt, wie es für die Prüfung Ihrer Anfrage und die Durchführung einer daraus entstehenden Geschäftsbeziehung erforderlich ist, sowie für die nach geltendem Recht vorgeschriebenen Fristen; danach werden sie gelöscht, vernichtet oder anonymisiert. Die Sicherheits-Hashwerte der IP-Adressen werden innerhalb weniger Tage automatisch gelöscht."] },
-    { h: "8. Cookies", p: ["Diese Website verwendet keine Cookies oder Tracking-Tools für Werbung, Analyse oder Profilbildung. Es können lediglich technische Cookies verwendet werden, die für den sicheren Betrieb der Website erforderlich sein können."] },
+    { h: "8. Cookies", p: ["Diese Website verwendet keine Cookies oder Tracking-Tools für Werbung, Analyse oder Profilbildung. Verwendet werden lediglich technische Cookies, die für den sicheren Betrieb der Website erforderlich sein können, sowie ein Präferenz-Cookie, das Ihre gewählte Sprache speichert (arvo_site_dil, ein Jahr)."] },
     { h: "9. Ihre Rechte nach Artikel 11 KVKK", p: ["Durch einen Antrag beim Verantwortlichen können Sie:"], list: [
       "erfahren, ob Ihre personenbezogenen Daten verarbeitet werden, und gegebenenfalls Auskunft darüber verlangen",
       "den Zweck der Verarbeitung erfahren und ob die Daten entsprechend verwendet werden",
@@ -50,6 +50,19 @@ export const PRIVACY_DE: PrivacyContent = {
       "Schadensersatz für Schäden verlangen, die durch eine rechtswidrige Verarbeitung entstanden sind",
     ] },
     { h: "10. So stellen Sie einen Antrag", p: [`Senden Sie Ihre Anträge per E-Mail an ${COMPANY.email} oder schriftlich an ${COMPANY.address.display}, Türkei. Anträge werden je nach ihrer Art spätestens innerhalb von dreißig Tagen kostenlos abgeschlossen (Artikel 13 KVKK).`] },
-    { h: "11. Änderungen", p: ["Diese Erklärung kann bei Bedarf aktualisiert werden; die aktuelle Fassung wird stets auf dieser Seite veröffentlicht."] },
+    { h: "11. Besucher im Europäischen Wirtschaftsraum und im Vereinigten Königreich (DSGVO)", p: [
+      "Wenn Sie sich im EWR oder im Vereinigten Königreich befinden und wir Ihnen unsere Dienste anbieten, werden Ihre personenbezogenen Daten zusätzlich nach der Datenschutz-Grundverordnung (EU) 2016/679 (DSGVO) und der UK GDPR verarbeitet. Verantwortlicher ist Arvo, wie in Abschnitt 1 angegeben.",
+      "Rechtsgrundlagen (Art. 6 Abs. 1 DSGVO): vorvertragliche Maßnahmen — Beantwortung Ihrer Anfrage, Vorbereitung von Demos und Angeboten (b); berechtigte Interessen — Formularsicherheit und Anfrageverwaltung (f); Erfüllung rechtlicher Pflichten (c).",
+      "Ihre Daten können in der Türkei und auf Servern von Hosting-Anbietern außerhalb des EWR verarbeitet werden. Informationen zu den Garantien, auf die sich diese Übermittlungen stützen, erhalten Sie auf Anfrage. Anträge richten Sie über die Kanäle in Abschnitt 10 an uns; Anträge nach der DSGVO werden innerhalb eines Monats beantwortet.",
+      "Nach der DSGVO stehen Ihnen folgende Rechte zu:",
+    ], list: [
+      "Auskunft über Ihre Daten und Erhalt einer Kopie (Art. 15)",
+      "Berichtigung unrichtiger Daten (Art. 16) und Löschung (Art. 17)",
+      "Einschränkung der Verarbeitung (Art. 18)",
+      "Datenübertragbarkeit (Art. 20)",
+      "Widerspruch gegen eine auf berechtigten Interessen beruhende Verarbeitung (Art. 21)",
+      "Beschwerde bei der Datenschutzaufsichtsbehörde des EWR-Staates, in dem Sie leben oder arbeiten, im Vereinigten Königreich beim Information Commissioner’s Office (ICO)",
+    ] },
+    { h: "12. Änderungen", p: ["Diese Erklärung kann bei Bedarf aktualisiert werden; die aktuelle Fassung wird stets auf dieser Seite veröffentlicht."] },
   ],
 };

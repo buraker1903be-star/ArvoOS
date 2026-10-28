@@ -9,7 +9,7 @@ export const PRIVACY_ES: PrivacyContent = {
     lead: "Este aviso explica cómo se tratan sus datos personales conforme a la Ley turca n.º 6698 de Protección de Datos Personales (KVKK) cuando visita arvo-os.com y utiliza su formulario de demo / contacto.",
     actions: [],
   },
-  updated: "Última actualización: 13 de septiembre de 2026",
+  updated: "Última actualización: 28 de octubre de 2026",
   sections: [
     { h: "1. Responsable del tratamiento", p: [
       "Esta traducción se ofrece con fines informativos; en caso de discrepancia prevalece la versión en turco.",
@@ -38,7 +38,7 @@ export const PRIVACY_ES: PrivacyContent = {
       "Los datos se almacenan en los servidores de los proveedores de infraestructura en la nube y de bases de datos que alojan el sitio web y el panel; estos servidores pueden estar ubicados fuera de Turquía. Dichas transferencias se realizan conforme al artículo 9 de la KVKK. Los datos solo pueden comunicarse a organismos públicos autorizados cuando la ley lo exija.",
     ] },
     { h: "7. Conservación", p: ["Los datos del formulario se conservan durante el tiempo necesario para evaluar su solicitud y llevar a cabo la relación comercial que pueda derivarse de ella, y durante los plazos exigidos por la legislación aplicable; después se suprimen, destruyen o anonimizan. Los resúmenes de IP de seguridad se eliminan automáticamente en pocos días."] },
-    { h: "8. Cookies", p: ["Este sitio web no utiliza cookies ni herramientas de seguimiento con fines publicitarios, analíticos o de elaboración de perfiles. Solo pueden utilizarse las cookies técnicas que resulten necesarias para el funcionamiento seguro del sitio."] },
+    { h: "8. Cookies", p: ["Este sitio web no utiliza cookies ni herramientas de seguimiento con fines publicitarios, analíticos o de elaboración de perfiles. Solo se utilizan las cookies técnicas que resulten necesarias para el funcionamiento seguro del sitio y una cookie de preferencia que recuerda el idioma elegido (arvo_site_dil, un año)."] },
     { h: "9. Sus derechos conforme al artículo 11 de la KVKK", p: ["Dirigiéndose al responsable del tratamiento, usted puede:"], list: [
       "Saber si se tratan sus datos personales y, en tal caso, solicitar información al respecto",
       "Conocer la finalidad del tratamiento y si los datos se utilizan conforme a ella",
@@ -50,6 +50,19 @@ export const PRIVACY_ES: PrivacyContent = {
       "Reclamar una indemnización por los daños causados por un tratamiento ilícito",
     ] },
     { h: "10. Cómo presentar una solicitud", p: [`Envíe sus solicitudes por correo electrónico a ${COMPANY.email} o por escrito a ${COMPANY.address.display}, Turquía. Las solicitudes se resuelven de forma gratuita en un plazo máximo de treinta días, según su naturaleza (artículo 13 de la KVKK).`] },
-    { h: "11. Cambios", p: ["Este aviso puede actualizarse cuando sea necesario; la versión vigente se publica siempre en esta página."] },
+    { h: "11. Visitantes del Espacio Económico Europeo y del Reino Unido (RGPD)", p: [
+      "Si se encuentra en el EEE o en el Reino Unido y le ofrecemos nuestros servicios, sus datos personales se tratan además conforme al Reglamento General de Protección de Datos (UE) 2016/679 (RGPD) y al RGPD del Reino Unido. El responsable es Arvo, según se indica en el apartado 1.",
+      "Bases jurídicas (art. 6.1 RGPD): medidas precontractuales — responder a su solicitud y preparar demostraciones y propuestas (b); interés legítimo — seguridad del formulario y gestión de solicitudes (f); cumplimiento de obligaciones legales (c).",
+      "Sus datos pueden tratarse en Turquía y en servidores de proveedores de alojamiento situados fuera del EEE. Puede escribirnos para obtener información sobre las garantías en que se basan estas transferencias. Envíe sus solicitudes por los canales del apartado 10; las solicitudes conforme al RGPD se responden en el plazo de un mes.",
+      "Conforme al RGPD, usted puede:",
+    ], list: [
+      "Acceder a sus datos y obtener una copia (art. 15)",
+      "Rectificar datos inexactos (art. 16) y suprimirlos (art. 17)",
+      "Limitar el tratamiento (art. 18)",
+      "Solicitar la portabilidad de sus datos (art. 20)",
+      "Oponerse al tratamiento basado en el interés legítimo (art. 21)",
+      "Presentar una reclamación ante la autoridad de control de protección de datos del país del EEE donde viva o trabaje o, en el Reino Unido, ante la Information Commissioner’s Office (ICO)",
+    ] },
+    { h: "12. Cambios", p: ["Este aviso puede actualizarse cuando sea necesario; la versión vigente se publica siempre en esta página."] },
   ],
 };
