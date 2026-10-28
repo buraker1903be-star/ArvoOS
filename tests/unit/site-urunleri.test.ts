@@ -30,7 +30,10 @@ describe("sitedeki ürünler", () => {
     assert.equal(ROUTES.home.tr, "/tr");
     assert.equal(yonlendir("/ucretler"), "/tr/ucretler");
     assert.equal(yonlendir("/urunler/arvoos/moduller"), "/tr/urunler/arvoos/moduller");
-    assert.equal(yonlendir("/en"), "/");
+    // "/en" tabloda değil: ara katman köke indirirken İngilizce seçimini
+    // çereze yazıyor (dil-secimi.test.ts); tablodan gitseydi Türkçe
+    // tarayıcı köke inip /tr'ye atılırdı.
+    assert.equal(yonlendir("/en"), undefined);
     assert.equal(yonlendir("/en/pricing"), "/pricing");
     assert.equal(yonlendir("/en/products/arvobook"), "/products/arvobook");
     // Kök yönlendirilmez: artık İngilizce ana sayfa (dil seçimi taşıyor).
@@ -38,7 +41,7 @@ describe("sitedeki ürünler", () => {
     // Her sayfanın iki eski adresi de var (ana sayfanın Türkçesi hariç).
     for (const id of Object.keys(ROUTES) as (keyof typeof ROUTES)[]) {
       if (id !== "home") assert.ok(LEGACY_REDIRECTS.some((r) => r.to === ROUTES[id].tr), `${id}: eski Türkçe adres yönlenmiyor`);
-      assert.ok(LEGACY_REDIRECTS.some((r) => r.to === ROUTES[id].en), `${id}: eski İngilizce adres yönlenmiyor`);
+      if (id !== "home") assert.ok(LEGACY_REDIRECTS.some((r) => r.to === ROUTES[id].en), `${id}: eski İngilizce adres yönlenmiyor`);
     }
   });
 

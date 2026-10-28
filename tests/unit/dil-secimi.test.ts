@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { kokDilYonlendirmesi, tercihEdilenDil } from "@/lib/site/dil-secimi";
+import { eskiIngilizceKokMu, kokDilYonlendirmesi, tercihEdilenDil } from "@/lib/site/dil-secimi";
 
 const CHROME = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 const yon = (o: Partial<Parameters<typeof kokDilYonlendirmesi>[0]>) =>
@@ -27,6 +27,13 @@ describe("kök adreste dil seçimi", () => {
     assert.equal(yon({ acceptLanguage: "en-US", cookie: "tr" }), "/tr");
     // Bozuk çerez yok sayılır.
     assert.equal(yon({ acceptLanguage: "tr-TR", cookie: "xx" }), "/tr");
+  });
+
+  test("eski İngilizce ana sayfa (/en) tanınır; /en ile başlayan başka yol değil", () => {
+    assert.ok(eskiIngilizceKokMu("/en"));
+    assert.ok(eskiIngilizceKokMu("/en/"));
+    assert.ok(!eskiIngilizceKokMu("/en/pricing"));
+    assert.ok(!eskiIngilizceKokMu("/english"));
   });
 
   test("botlar, iç sayfalar ve GET dışı istekler yönlendirilmez", () => {

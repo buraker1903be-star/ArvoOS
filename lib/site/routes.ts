@@ -100,11 +100,21 @@ const eskiTr = (yeni: string) => (yeni === "/tr" ? "/" : yeni.slice(3));
 const eskiEn = (yeni: string) => (yeni === "/" ? "/en" : `/en${yeni}`);
 
 /** Eski adresler → yeni yerleri (kalıcı 301). */
+/*
+  İki ana sayfa bu tabloda YOK:
+   - eski Türkçe kök "/" artık İngilizce ana sayfa (dil seçimi taşıyor);
+   - eski İngilizce kök "/en" ara katmanda yönlenir (lib/site/dil-secimi.ts
+     → ESKI_INGILIZCE_KOK): "/"e inerken İngilizce seçimini çereze yazar.
+     Buradan yönlenseydi Türkçe tarayıcı "/"de dil seçimine takılıp "/tr"ye
+     giderdi; eski İngilizce adres dilini korumazdı (Codex incelemesi,
+     28.10.2026).
+*/
 export const LEGACY_REDIRECTS: { from: string; to: string }[] = [
-  ...(Object.keys(ROUTES) as PageId[]).flatMap((id) => [
-    ...(id === "home" ? [] : [{ from: eskiTr(ROUTES[id].tr), to: ROUTES[id].tr }]),
-    { from: eskiEn(ROUTES[id].en), to: ROUTES[id].en },
-  ]),
+  ...(Object.keys(ROUTES) as PageId[]).flatMap((id) =>
+    id === "home" ? [] : [
+      { from: eskiTr(ROUTES[id].tr), to: ROUTES[id].tr },
+      { from: eskiEn(ROUTES[id].en), to: ROUTES[id].en },
+    ]),
   // ArvoOS'un eski kurumsal sayfaları (Türkçe).
   { from: "/urun", to: ROUTES.arvoos.tr },
   { from: "/moduller", to: ROUTES["arvoos-modules"].tr },

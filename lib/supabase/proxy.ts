@@ -2,8 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
 import { isDevOrPreviewHost, isManagementHost, isMarketingHost, konsolaTasinanYol, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
-import { kokDilYonlendirmesi, SITE_DIL_COOKIE } from "@/lib/site/dil-secimi";
-import { resolvePath } from "@/lib/site/routes";
+import { eskiIngilizceKokMu, kokDilYonlendirmesi, SITE_DIL_COOKIE } from "@/lib/site/dil-secimi";
+import { resolvePath, ROUTES } from "@/lib/site/routes";
 import { supabaseAyarlari } from "./yapilandirma";
 
 // arvo-os.com'da oturum/kurum sorgusu gerektirmeyen yollar: pazarlama
@@ -40,6 +40,11 @@ export async function updateSession(request: NextRequest) {
   */
   const siteHostu = normalizeHost(request.headers.get("host"));
   if (isMarketingHost(siteHostu) || isDevOrPreviewHost(siteHostu)) {
+    if (eskiIngilizceKokMu(request.nextUrl.pathname)) {
+      const yanit = NextResponse.redirect(new URL(ROUTES.home.en + request.nextUrl.search, request.url), 308);
+      yanit.cookies.set(SITE_DIL_COOKIE, "en", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+      return yanit;
+    }
     const dilHedefi = kokDilYonlendirmesi({
       pathname: request.nextUrl.pathname,
       method: request.method,

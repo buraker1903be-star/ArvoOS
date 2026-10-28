@@ -31,6 +31,14 @@ import { DEFAULT_LOCALE, LOCALES, ROUTES, type Locale } from "./routes";
 
 export const SITE_DIL_COOKIE = "arvo_site_dil";
 
+/*
+  28.10.2026'ya kadarki İngilizce ana sayfa. "/"e yönlenir ve İngilizce
+  seçimini çereze yazar (proxy): o adresi açan ziyaretçi İngilizce
+  istemiş demektir, "/"deki dil seçimi onu Türkçe'ye atmamalı.
+*/
+export const ESKI_INGILIZCE_KOK = "/en";
+export const eskiIngilizceKokMu = (pathname: string) => pathname === ESKI_INGILIZCE_KOK || pathname === `${ESKI_INGILIZCE_KOK}/`;
+
 const BOT = /bot|crawl|spider|slurp|bingpreview|facebookexternalhit|embedly|quora link preview|whatsapp|telegram|discord|lighthouse|pagespeed|headless|curl|wget|python-requests/i;
 
 /** "tr-TR,tr;q=0.9,en;q=0.8" → desteklenen dillerin tercih sırası. */
