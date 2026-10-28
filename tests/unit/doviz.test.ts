@@ -47,6 +47,7 @@ describe("döviz fiyatları", () => {
 
   test("para yazımı", () => {
     assert.equal(paraYaz(5900, "en"), "$59");
+    assert.equal(paraYaz(5900, "ar"), "$59");
     assert.match(paraYaz(5500, "de"), /^55\s€$/);
     assert.match(paraYaz(199000, "tr"), /TL$/);
   });

@@ -40,7 +40,7 @@ export const SEO_GEO_AR: SubContent = {
   band: {
     eyebrow: "على أرض الواقع", title: "بُني هذا الموقع بالطريقة نفسها.",
     lead: "بُني arvo-os.com ببيانات منظّمة وllms.txt وhreflang ومحتوى قائم على الأسئلة.",
-    items: ["بيانات JSON-LD وفق schema.org في كل صفحة", "llms.txt وllms-full.txt", "أزواج hreflang تركية–إنجليزية", "صفحات تبدأ بتعريف، مع أسئلة شائعة قصيرة"],
+    items: ["بيانات JSON-LD وفق schema.org في كل صفحة", "llms.txt وllms-full.txt", "ربط hreflang بين ست نسخ لغوية", "صفحات تبدأ بتعريف، مع أسئلة شائعة قصيرة"],
   },
   note: "تتخذ محركات البحث وخدمات الذكاء الاصطناعي قراراتها وفق خوارزمياتها الخاصة؛ ولا نَعِد بترتيب أو زيارات أو استشهاد محدد.",
   faq: { eyebrow: "الأسئلة الشائعة", title: "حول SEO وGEO", items: [

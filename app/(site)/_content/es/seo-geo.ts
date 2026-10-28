@@ -40,7 +40,7 @@ export const SEO_GEO_ES: SubContent = {
   band: {
     eyebrow: "En la práctica", title: "Este sitio se construyó de la misma manera.",
     lead: "arvo-os.com se construyó con datos estructurados, llms.txt, hreflang y contenidos formulados como preguntas.",
-    items: ["JSON-LD de schema.org en cada página", "llms.txt y llms-full.txt", "Pares hreflang turco–inglés", "Páginas que empiezan con una definición, además de preguntas frecuentes breves"],
+    items: ["JSON-LD de schema.org en cada página", "llms.txt y llms-full.txt", "hreflang entre seis versiones de idioma", "Páginas que empiezan con una definición, además de preguntas frecuentes breves"],
   },
   note: "Los buscadores y los servicios de IA deciden con sus propios algoritmos; no se promete ningún posicionamiento, tráfico ni cita concretos.",
   faq: { eyebrow: "Preguntas frecuentes", title: "Sobre SEO y GEO", items: [
