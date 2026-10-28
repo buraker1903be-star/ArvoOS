@@ -106,7 +106,7 @@ export const HOME_FR: HomeContent = {
       { q: "Qu’est-ce qu’Arvo ?", a: `Arvo est la marque de logiciels de ${COMPANY.legalName}. Elle conçoit ArvoOS pour les entreprises, ArvoLab pour les chercheurs et ArvoBook pour les salons, et propose également la création de sites web et e-commerce ainsi que le développement de logiciels sur mesure.` },
       { q: "Quelle est la différence entre ArvoOS, ArvoLab et ArvoBook ?", a: "ArvoOS pilote les opérations d’une entreprise, de la demande au paiement. ArvoLab accompagne la recherche et la rédaction académiques. ArvoBook gère le carnet de rendez-vous d’un salon : les clients réservent eux-mêmes et l’agenda s’organise par collaborateur." },
       { q: "Où me connecter aux produits Arvo ?", a: `ArvoOS fonctionne sur ${PRODUCT_APPS.arvoos.host}, ArvoLab sur ${PRODUCT_APPS.arvolab.host} et ArvoBook sur ${PRODUCT_APPS.randevu.host}. Les trois sont des applications web qui s’exécutent dans le navigateur.` },
-      { q: "Combien coûte ArvoOS ?", a: `Les prix catalogue mensuels et annuels sont publiés sur ${ROUTES.pricing.fr} ; la tarification se fait par organisation, et non par utilisateur. Pour l’offre Enterprise, le tarif est défini avec chaque organisation.` },
+      { q: "Combien coûte ArvoOS ?", a: `Les prix catalogue mensuels et annuels sont publiés sur ${ROUTES.pricing.fr} ; la tarification se fait par organisation, et non par utilisateur. Pour l’offre Sur mesure, le tarif est défini avec chaque organisation.` },
       { q: "Comment demander une démo ?", a: `Remplissez le formulaire de la page contact ou écrivez à ${COMPANY.email} ; votre demande est transmise à l’équipe produit concernée.` },
     ],
   },

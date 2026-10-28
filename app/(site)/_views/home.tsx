@@ -42,6 +42,9 @@ function ProductTile({ id, name, kicker, title, sub, href, app, more, signIn, na
 const BOOK_CARD = {
   tr: { kicker: "Yeni randevu", status: "Onaylandı", title: "Saç kesimi · Elif", sub: "Perşembe 14:30 · 45 dk", rows: [["Personel takvimi uygun", "ok"], ["Müşteriye bildirim hazır", "ok"]] as [string, "ok" | "warn"][] },
   en: { kicker: "New booking", status: "Confirmed", title: "Haircut · Elif", sub: "Thursday 2:30 pm · 45 min", rows: [["Stylist calendar free", "ok"], ["Customer notice ready", "ok"]] as [string, "ok" | "warn"][] },
+  de: { kicker: "Neuer Termin", status: "Bestätigt", title: "Haarschnitt · Elif", sub: "Donnerstag 14:30 · 45 Min.", rows: [["Kalender der Mitarbeiterin frei", "ok"], ["Kundenbenachrichtigung bereit", "ok"]] as [string, "ok" | "warn"][] },
+  es: { kicker: "Nueva cita", status: "Confirmada", title: "Corte de pelo · Elif", sub: "Jueves 14:30 · 45 min", rows: [["Agenda de la estilista libre", "ok"], ["Aviso al cliente listo", "ok"]] as [string, "ok" | "warn"][] },
+  fr: { kicker: "Nouveau rendez-vous", status: "Confirmé", title: "Coupe · Elif", sub: "Jeudi 14 h 30 · 45 min", rows: [["Agenda de la coiffeuse libre", "ok"], ["Notification client prête", "ok"]] as [string, "ok" | "warn"][] },
 } as const;
 
 export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
