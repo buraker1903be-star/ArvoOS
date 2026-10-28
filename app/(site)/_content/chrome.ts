@@ -1,5 +1,5 @@
 // Üst menü ve alt bilgi metinleri (TR, EN, DE, ES, FR, AR). Bağlantılar yalnızca ROUTES'tan.
-import { ARC_APP, PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/routes";
+import { PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/routes";
 
 export type NavLink = { label: string; href: string; desc?: string; external?: boolean };
 
@@ -14,9 +14,10 @@ type Chrome = {
 };
 
 /* Ürünlerin giriş adresi menüde: liste PRODUCT_APPS'ten geliyor, yeni
-   ürün eklenince menüye elle eklenmesi gerekmesin. ArvoARC ürün olarak
-   satılmıyor (28.10.2026) ama e-ticaret sitesini ArvoOS'a yaptıranlar
-   paneline buradan giriyor; listenin sonunda, ayrı. */
+   ürün eklenince menüye elle eklenmesi gerekmesin. ArvoARC listede YOK
+   (kurum sahibinin kararı, 28.10.2026): ürün olarak satılmıyor; e-ticaret
+   sitesini ArvoOS'a yaptıranlar panelin adresini teslimde alıyor. Eskiden
+   listenin sonunda ayrı bir satırdı. */
 const signInLinks: NavLink[] = [
   ...(["arvoos", "arvolab", "randevu"] as const).map((key) => ({
     label: PRODUCT_APPS[key].name,
@@ -24,7 +25,6 @@ const signInLinks: NavLink[] = [
     href: PRODUCT_APPS[key].url,
     external: true,
   })),
-  { label: ARC_APP.name, desc: ARC_APP.host, href: ARC_APP.url, external: true },
 ];
 
 export const CHROME: Record<Locale, Chrome> = {
