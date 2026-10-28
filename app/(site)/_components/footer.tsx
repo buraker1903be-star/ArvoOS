@@ -1,8 +1,15 @@
-// apple.com tarzı açık gri, küçük punto alt bilgi. Logolar özgün renkli ve küçük.
+// Alt bilgi (28.10.2026'da yeniden kuruldu). Eskiden yalnızca küçük
+// punto bağlantı sütunlarıydı ve sayfa sessizce bitiyordu; şimdi bir
+// kapanış sahnesi var: büyük slogan + rozetler, ürün kartları,
+// sütunlar ve en altta kaydırdıkça yükselen dev ARVO yazısı. Zemin açık
+// kalır (site-base.css: koyu yalnızca maketlerde). Düğme YOK: sayfaların
+// çoğu zaten demo/ücretler düğmeli kapanışla bitiyor, alt alta tekrar ederdi.
 import Link from "next/link";
 import { COMPANY, ROUTES, type Locale } from "@/lib/site/routes";
 import { CHROME, type NavLink } from "../_content/chrome";
-import { BrandLogo, InstagramMark, ProductLogo } from "./marks";
+import { BrandLogo, InstagramMark, ProductLogo, type ProductName } from "./marks";
+import { HOME_ICERIGI } from "../_content/home-icerik";
+import { HeroBadges } from "./global";
 import { DilBaglantilari } from "./lang-link";
 
 function Col({ title, links }: { title: string; links: NavLink[] }) {
@@ -26,12 +33,20 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   return (
     <footer className="ftr">
       <div className="wrap">
-        <nav className="ftr-brands" aria-label={t.products}>
-          <Link href={ROUTES.arvoos[locale]}><BrandLogo brand="arvoos" alt="ArvoOS" /></Link>
-          <Link href={ROUTES.arvolab[locale]}><BrandLogo brand="arvolab" alt="ArvoLab" /></Link>
-          {/* ArvoBook'un logo dosyası yok; adı wordmark olarak basılır. */}
-          <Link href={ROUTES.randevu[locale]}><ProductLogo name="ArvoBook" height={16} /></Link>
-          <span className="ftr-tag">{t.footerTagline}</span>
+        <section className="ftr-hero" aria-labelledby="ftr-hero-title">
+          <p className="ftr-hero-eyebrow">{t.footerCta}</p>
+          <h2 id="ftr-hero-title" className="ftr-hero-title">{t.footerTagline}</h2>
+          <HeroBadges items={HOME_ICERIGI[locale].global.badges} />
+        </section>
+
+        <nav className="ftr-products" aria-label={t.products}>
+          {t.productLinks.map((p) => (
+            <Link key={p.href} href={p.href} className="ftr-product">
+              <ProductLogo name={p.label as ProductName} height={22} withAlt />
+              <span className="ftr-product-desc">{p.desc}</span>
+              <span className="ftr-product-go" aria-hidden="true">→</span>
+            </Link>
+          ))}
         </nav>
         <div className="ftr-cols">
           <Col title={t.products} links={[...t.productLinks, ...t.arvoosLinks]} />
@@ -65,6 +80,8 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           </div>
         </div>
       </div>
+      {/* Dev yazı süs: ekran okuyucuya kapalı, marka adı zaten yukarıda geçiyor. */}
+      <div className="ftr-giant" aria-hidden="true"><span>ARVO</span></div>
     </footer>
   );
 }

@@ -12,12 +12,11 @@
    yana durduğunda (kartlar, ürün menüsü, alt bilgi, ürün kutuları ve
    sayfa açılışları) ArvoOS bir boy büyük görünüyordu. Yalnızca bu
    yerlerde küçülür; başlıktaki tek başına logo olduğu gibi kalır. */
-.site :is(.suite-card,.pop-product,.ftr-brands,.ptile-copy,.phero-logo) .brand-logo[data-brand="arvoos"]{height:calc(var(--h,28px) * .83);margin-block:calc(var(--h,28px) * .085)}
+.site :is(.suite-card,.pop-product,.ftr-products,.ptile-copy,.phero-logo) .brand-logo[data-brand="arvoos"]{height:calc(var(--h,28px) * .83);margin-block:calc(var(--h,28px) * .085)}
 .site .hdr-logo .brand-logo{--h:20px}
 .site .pop-product .brand-logo{--h:20px}
 .site .phero-logo .brand-logo{--h:clamp(30px,3vw,44px)}
-.site .ftr-brands .brand-logo{--h:16px}
-.site .ftr-brands .ftr-group .brand-logo{--h:12px}
+.site .ftr-product .brand-logo{--h:22px}
 .site .ref .brand-logo{--h:auto;width:min(70%,380px);height:auto}
 .site .mo-brand .brand-logo{--h:16px}
 @media (max-width:767px){ .site .hdr-logo .brand-logo{--h:18px} }
@@ -32,4 +31,4 @@
 }
 .site .brand-word.on-dark{color:#fff}
 .site .pop-product .brand-word{--h:20px}
-.site .ftr-brands .brand-word{--h:16px}
+.site .ftr-product .brand-word{--h:22px}
