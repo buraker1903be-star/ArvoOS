@@ -20,7 +20,7 @@
   null — bir para biriminde rakam yayımlayıp ötekinde "teklif" demek
   çelişki olurdu (birim testi sabitliyor).
 */
-import { YILLIK_ODENEN_AY, tutarYaz, type Plan } from "./pricing";
+import { YILLIK_ODENEN_AY, planlar, tutarYaz, type Plan, type SiteProduct } from "./pricing";
 import { ekKalemTutari, planTutari, type Fiyatlar } from "./fiyat-kaynagi";
 import { LOCALE_TAGS, type Locale } from "./routes";
 
@@ -83,4 +83,23 @@ export function paraYaz(kucukBirim: number, locale: Locale): string {
     Körfez'deki SaaS sitelerinin de yaptığı gibi tanıdık biçim kalsın.
   */
   return new Intl.NumberFormat(locale === "ar" ? "en-US" : LOCALE_TAGS[locale], { style: "currency", currency: kur, maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(kucukBirim / 100);
+}
+
+/*
+  Ana sayfadaki ürün kartının "Başlangıç: …" fiyatı: o ürünün rakamı
+  yayımlanmış en ucuz basamağı, sayfanın para biriminde. Ücretler
+  sayfasıyla AYNI kaynak (sayfaPlanTutari) — kartta ayrı bir rakam
+  yazılsaydı fiyat değişince biri eski kalırdı. Kişi başı fiyatlanan
+  basamak (ArvoLab) birimini de taşır; "$45" yazıp kişi başı olduğunu
+  söylememek fiyatı olduğundan düşük gösterirdi. Hiçbir basamağın
+  rakamı yoksa null: kart "teklif usulü" yazar.
+*/
+export function baslangicFiyati(urun: SiteProduct, locale: Locale, fiyatlar?: Fiyatlar): { tutar: number; kisiBasi: boolean } | null {
+  let enUcuz: { tutar: number; kisiBasi: boolean } | null = null;
+  for (const plan of planlar(urun)) {
+    const tutar = sayfaPlanTutari(plan, locale, fiyatlar);
+    if (tutar === null) continue;
+    if (!enUcuz || tutar < enUcuz.tutar) enUcuz = { tutar, kisiBasi: Boolean(plan.kisiBasi) };
+  }
+  return enUcuz;
 }

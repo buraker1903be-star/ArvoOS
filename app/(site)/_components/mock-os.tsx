@@ -25,7 +25,7 @@ const T = {
   en: {
     label: "ArvoOS panel interface — sample view", cap: "Illustrative interface · sample data",
     kurum: "Northside Group", uygulama: "Home", ara: "Search", saat: "09:24",
-    hello: "Good morning, Ayse", title: "Overview",
+    hello: "Good morning, Emma", title: "Overview",
     serie: "New requests", serieNote: "Last 14 days", serieDelta: "+18%",
     widgets: [["New requests", "12", "info"], ["Awaiting proposal", "5", "gold"], ["Active jobs", "18", "brand"], ["Awaiting payment", "7", "success"]],
     table: "Recent proposals",
@@ -36,7 +36,7 @@ const T = {
   de: {
     label: "ArvoOS-Panel — Beispielansicht", cap: "Beispieloberfläche · Beispieldaten",
     kurum: "Northside Group", uygulama: "Start", ara: "Suchen", saat: "09:24",
-    hello: "Guten Morgen, Ayse", title: "Überblick",
+    hello: "Guten Morgen, Lena", title: "Überblick",
     serie: "Neue Anfragen", serieNote: "Letzte 14 Tage", serieDelta: "+18 %",
     widgets: [["Neue Anfragen", "12", "info"], ["Angebot ausstehend", "5", "gold"], ["Aktive Aufträge", "18", "brand"], ["Zahlung ausstehend", "7", "success"]],
     table: "Letzte Angebote",
@@ -47,7 +47,7 @@ const T = {
   es: {
     label: "Panel de ArvoOS — vista de ejemplo", cap: "Interfaz ilustrativa · datos de ejemplo",
     kurum: "Northside Group", uygulama: "Inicio", ara: "Buscar", saat: "09:24",
-    hello: "Buenos días, Ayse", title: "Resumen",
+    hello: "Buenos días, Lucía", title: "Resumen",
     serie: "Nuevas solicitudes", serieNote: "Últimos 14 días", serieDelta: "+18 %",
     widgets: [["Nuevas solicitudes", "12", "info"], ["Pendiente de propuesta", "5", "gold"], ["Trabajos activos", "18", "brand"], ["Pendiente de pago", "7", "success"]],
     table: "Propuestas recientes",
@@ -58,7 +58,7 @@ const T = {
   fr: {
     label: "Panneau ArvoOS — vue d’exemple", cap: "Interface illustrative · données d’exemple",
     kurum: "Northside Group", uygulama: "Accueil", ara: "Rechercher", saat: "09:24",
-    hello: "Bonjour, Ayse", title: "Vue d’ensemble",
+    hello: "Bonjour, Camille", title: "Vue d’ensemble",
     serie: "Nouvelles demandes", serieNote: "14 derniers jours", serieDelta: "+18 %",
     widgets: [["Nouvelles demandes", "12", "info"], ["Proposition en attente", "5", "gold"], ["Projets actifs", "18", "brand"], ["Paiement en attente", "7", "success"]],
     table: "Propositions récentes",

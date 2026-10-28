@@ -49,7 +49,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         </div>
         <div className="ftr-legal">
           <address className="ftr-address">
-            <strong>{COMPANY.legalName}</strong> · {COMPANY.address.display} · <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
+            <strong>{COMPANY.legalName}</strong> · {locale === "tr" ? COMPANY.address.display : COMPANY.address.displayIntl} · <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
           </address>
           <div className="ftr-meta">
             {/* Hesap adı COMPANY'de tek yerde; schema.org sameAs'ı da

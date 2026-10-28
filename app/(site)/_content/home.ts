@@ -8,6 +8,21 @@ export type HomeContent = {
   hero: { eyebrow: string; title: string; subtitle?: string; lead: string; actions: Cta[]; familyLabel: string };
   statement: string[];
   products: { eyebrow: string; title: string; lead: string; os: Product; lab: Product; book: Product };
+  /*
+    Global düzen (28.10.2026): açılıştaki üç kısa rozet, "her yerde
+    çalışır" şeridi ve ürün kartlarındaki başlangıç fiyatı. Fiyat RAKAMI
+    burada yok — "{price}" yer tutucusu; tutar pricing.ts / doviz.ts'ten,
+    sayfanın para biriminde geliyor (ücretler sayfasıyla aynı kaynak).
+    Şerit yalnızca doğrulanabilir şey söyler: dil, para birimi, tarayıcı,
+    kurum başına ayrı alan. Sertifika, veri merkezi, çalışma süresi gibi
+    kanıtı olmayan iddia YAZILMAZ.
+  */
+  global: {
+    badges: [string, string, string];
+    eyebrow: string; title: string; lead: string;
+    items: [{ title: string; text: string }, { title: string; text: string }, { title: string; text: string }, { title: string; text: string }];
+    from: string; perMonth: string; perUserMonth: string; onRequest: string;
+  };
   band: { words: string[]; caption: string };
   story: { eyebrow: string; title: string; lead: string; cta: Cta; steps: { title: string; text: string }[] };
   eco: { eyebrow: string; title: string; lead: string; roles: [string, string, string]; principles: { title: string; text: string }[] };
@@ -61,6 +76,19 @@ export const HOME_TR: HomeContent = {
       cta: { label: "ArvoBook’u keşfedin", href: R("randevu"), variant: "gold" },
       signIn: { label: "Giriş", href: PRODUCT_APPS.randevu.url, external: true, variant: "ghost" },
     },
+  },
+  global: {
+    badges: ["6 dil", "TRY · USD · EUR", "Her cihazda, tarayıcıda"],
+    eyebrow: "Her yerde çalışır",
+    title: "Nerede çalışırsanız orada.",
+    lead: "Arvo ürünleri tarayıcıda çalışan web uygulamalarıdır: kurulum yok, sunucu yok, ekibiniz hangi ülkede olursa olsun aynı sistem.",
+    items: [
+      { title: "Altı dil", text: "Türkçe, English, Deutsch, Español, Français ve العربية — sağdan sola yazım dahil." },
+      { title: "TRY, USD ve EUR fiyat", text: "Her para biriminde sabit liste fiyatı; kur değiştikçe ay ay değişen tutar yok." },
+      { title: "Her tarayıcıda, her cihazda", text: "Masaüstü, tablet ve telefonda aynı deneyim. Sunucunuza kurulacak bir şey yok." },
+      { title: "Veriniz sizin alanınızda", text: "Her kurum kendi ayrı alanında çalışır; kimin neyi göreceğine roller karar verir." },
+    ],
+    from: "Başlangıç: {price}", perMonth: "/ay", perUserMonth: "/kişi/ay", onRequest: "Teklif usulü",
   },
   band: {
     words: ["CRM", "Teklif", "E-imza", "Operasyon", "Müşteri portalı", "Finans", "İnsan kaynakları", "Raporlar"],

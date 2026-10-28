@@ -32,11 +32,11 @@ export const ABOUT_EN: SubContent = {
   },
   band: {
     eyebrow: "Company details", title: "The company behind Arvo.",
-    items: [COMPANY.legalName, COMPANY.address.display, COMPANY.email],
+    items: [COMPANY.legalName, COMPANY.address.displayIntl, COMPANY.email],
   },
   faq: { eyebrow: "FAQ", title: "About Arvo", items: [
     { q: "Which company is behind Arvo?", a: `Arvo is a brand of ${COMPANY.legalName}.` },
-    { q: "Where is Arvo based?", a: `${COMPANY.address.display}, Türkiye.` },
+    { q: "Where is Arvo based?", a: `${COMPANY.address.displayIntl}.` },
     { q: "What is the difference between Arvo and ArvoOS?", a: "Arvo is the brand (and arvo-os.com its website); ArvoOS is one of its products. The others are ArvoLab and ArvoBook." },
     { q: "How do I contact Arvo?", a: `Use the form on the contact page or write to ${COMPANY.email}.` },
   ] },

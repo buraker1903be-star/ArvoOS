@@ -121,7 +121,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ loc
               <div key={name} style={{ display: "flex", marginRight: 34, color: name === product ? CHAMPAGNE : "rgba(233,238,247,0.5)", fontWeight: name === product ? 600 : 400 }}>{name}</div>
             ))}
           </div>
-          <div style={{ display: "flex", color: "rgba(233,238,247,0.45)" }}>ArvoCulture Group · İstanbul</div>
+          <div style={{ display: "flex", color: "rgba(233,238,247,0.45)" }}>{locale === "tr" ? "ArvoCulture Group · İstanbul" : "ArvoCulture Group · Istanbul, Türkiye"}</div>
         </div>
       </div>
     ),

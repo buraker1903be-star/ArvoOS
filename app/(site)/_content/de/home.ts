@@ -46,6 +46,19 @@ export const HOME_DE: HomeContent = {
       signIn: { label: "Anmelden", href: PRODUCT_APPS.randevu.url, external: true, variant: "ghost" },
     },
   },
+  global: {
+    badges: ["6 Sprachen", "EUR · USD · TRY", "Jeder Browser, jedes Gerät"],
+    eyebrow: "Funktioniert überall",
+    title: "Wo immer Sie arbeiten.",
+    lead: "Arvo-Produkte sind Webanwendungen, die im Browser laufen: keine Installation, keine eigenen Server, dasselbe System, wo auch immer Ihr Team arbeitet.",
+    items: [
+      { title: "Sechs Sprachen", text: "Deutsch, English, Türkçe, Español, Français und العربية — einschließlich Rechts-nach-links." },
+      { title: "Preise in EUR, USD und TRY", text: "Ein fester Listenpreis je Währung; keine Beträge, die mit dem Wechselkurs schwanken." },
+      { title: "Jeder Browser, jedes Gerät", text: "Dasselbe Erlebnis auf Desktop, Tablet und Smartphone. Nichts auf Ihren Servern zu installieren." },
+      { title: "Ihre Daten, Ihr Bereich", text: "Jede Organisation arbeitet in ihrem eigenen, getrennten Bereich; Rollen entscheiden, wer was sieht." },
+    ],
+    from: "Ab {price}", perMonth: "/Monat", perUserMonth: "/Nutzer/Monat", onRequest: "Auf Anfrage",
+  },
   band: {
     words: ["CRM", "Angebote", "E-Signatur", "Operations", "Kundenportal", "Finanzen", "Personal", "Berichte"],
     caption: "Ein Kern. Dreizehn vernetzte Funktionsbereiche.",

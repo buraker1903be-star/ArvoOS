@@ -85,6 +85,14 @@
 .site .sheet-langs{display:flex;flex-basis:100%;flex-wrap:wrap;justify-content:center;gap:0 18px}
 .site .sheet-lang{display:inline-flex;align-items:center;min-height:44px;font-size:15px;color:var(--ink-soft)}
 .site .hdr-pop-lang{min-width:180px}
+/* Küreli dil düğmesi ve altı dilin tamamı (28.10.2026). Bulunulan dil
+   işaretli ve tıklanamaz; yanında onay işareti. */
+.site .hdr-lang .hdr-link{display:inline-flex;align-items:center;gap:6px}
+.site .hdr-globe{flex:none;opacity:.85}
+.site .hdr-pop-lang .pop-item{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+.site .hdr-pop-lang .pop-item.on{font-weight:600;cursor:default}
+.site .hdr-pop-lang .pop-item.on::after{content:"✓";color:var(--green)}
+.site .hdr-pop-lang .pop-item.on:hover{background:transparent}
 .site .ftr-langs{display:inline-flex;flex-wrap:wrap;gap:0 12px}
 @keyframes site-sheet{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @media (max-width:1023px){

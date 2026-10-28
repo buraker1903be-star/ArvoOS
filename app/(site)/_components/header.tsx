@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LOCALE_NAMES, ROUTES, type Locale } from "@/lib/site/routes";
 import { CHROME, type NavLink } from "../_content/chrome";
-import { BrandLogo, Chevron, ProductLogo, type ProductName } from "./marks";
+import { BrandLogo, Chevron, Globe, ProductLogo, type ProductName } from "./marks";
 import { DilBaglantilari } from "./lang-link";
 
 type MenuId = "products" | "services" | "signin" | "lang";
@@ -110,10 +110,10 @@ export function SiteHeader({ locale }: { locale: Locale }) {
         <div className="hdr-actions">
           <div className="hdr-item hdr-lang" onPointerEnter={hover("lang")} onPointerLeave={hover(null)}>
             <button type="button" className="hdr-link" aria-expanded={open === "lang"} aria-controls="hdr-lang" aria-label={`${t.language}: ${LOCALE_NAMES[locale]}`} onClick={() => toggle("lang")}>
-              {locale.toUpperCase()}<Chevron className="hdr-chev" />
+              <Globe className="hdr-globe" />{LOCALE_NAMES[locale]}<Chevron className="hdr-chev" />
             </button>
             <div id="hdr-lang" className="hdr-pop hdr-pop-right hdr-pop-lang" hidden={open !== "lang"}>
-              <DilBaglantilari locale={locale} className="pop-item" onNavigate={close} />
+              <DilBaglantilari locale={locale} className="pop-item" onNavigate={close} hepsi />
             </div>
           </div>
           <div className="hdr-item hdr-signin" onPointerEnter={hover("signin")} onPointerLeave={hover(null)}>

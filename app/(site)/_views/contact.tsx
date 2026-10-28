@@ -35,7 +35,7 @@ export function ContactView({ locale, c, interest }: { locale: Locale; c: Contac
             <p className="lead" style={{ marginTop: 16 }}>{c.formLead}</p>
             <div className="contact-aside" style={{ marginTop: 40 }}>
               <div><small>{c.emailLabel}</small><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></div>
-              <div><small>{c.addressLabel}</small><p>{COMPANY.legalName}<br /><span style={{ fontWeight: 400, color: "var(--muted)" }}>{COMPANY.address.display}</span></p></div>
+              <div><small>{c.addressLabel}</small><p>{COMPANY.legalName}<br /><span style={{ fontWeight: 400, color: "var(--muted)" }}>{locale === "tr" ? COMPANY.address.display : COMPANY.address.displayIntl}</span></p></div>
               <div>
                 <small>{c.appsLabel}</small>
                 {[...(["arvoos", "arvolab", "randevu"] as const).map((k) => PRODUCT_APPS[k]), ARC_APP].map((u) => <a key={u.host} href={u.url} target="_blank" rel="noopener">{u.name} · {u.host} ↗</a>)}

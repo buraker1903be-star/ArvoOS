@@ -46,6 +46,19 @@ export const HOME_FR: HomeContent = {
       signIn: { label: "Se connecter", href: PRODUCT_APPS.randevu.url, external: true, variant: "ghost" },
     },
   },
+  global: {
+    badges: ["6 langues", "EUR · USD · TRY", "Tout navigateur, tout appareil"],
+    eyebrow: "Fonctionne partout",
+    title: "Où que vous travailliez.",
+    lead: "Les produits Arvo sont des applications web qui fonctionnent dans le navigateur : rien à installer, aucun serveur à gérer, le même système où que soit votre équipe.",
+    items: [
+      { title: "Six langues", text: "Français, English, Türkçe, Deutsch, Español et العربية — y compris l’écriture de droite à gauche." },
+      { title: "Prix en EUR, USD et TRY", text: "Un prix catalogue fixe dans chaque devise ; pas de montants qui varient avec le taux de change." },
+      { title: "Tout navigateur, tout appareil", text: "La même expérience sur ordinateur, tablette et téléphone. Rien à installer sur vos serveurs." },
+      { title: "Vos données, votre espace", text: "Chaque organisation travaille dans son propre espace séparé ; les rôles décident qui voit quoi." },
+    ],
+    from: "À partir de {price}", perMonth: "/mois", perUserMonth: "/utilisateur/mois", onRequest: "Sur devis",
+  },
   band: {
     words: ["CRM", "Devis", "Signature électronique", "Opérations", "Portail client", "Finance", "Équipes", "Rapports"],
     caption: "Un seul socle. Treize domaines fonctionnels connectés.",
