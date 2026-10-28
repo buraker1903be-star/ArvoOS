@@ -39,7 +39,7 @@ export function PricingView({ locale, c, fiyatlar }: {
 }) {
   const path = ROUTES.pricing[locale];
   const crumbs = [
-    { name: "ArvoOS", href: ROUTES.home[locale] },
+    { name: KISA[locale].homeCrumb, href: ROUTES.home[locale] },
     { name: c.meta.title, href: path },
   ];
 

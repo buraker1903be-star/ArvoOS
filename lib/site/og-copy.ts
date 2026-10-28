@@ -18,12 +18,12 @@ export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
 
 export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
   home: {
-    tr: { eyebrow: "ARVO ÜRÜN EKOSİSTEMİ", title: "Daha iyi çalışmak için daha iyi sistemler.", tagline: "Kurumlar, araştırmacılar ve salonlar için dijital ürünler: ArvoOS, ArvoLab ve ArvoBook." },
-    en: { eyebrow: "THE ARVO PRODUCT ECOSYSTEM", title: "Better systems for better work.", tagline: "Software for organizations, researchers and salons: ArvoOS, ArvoLab and ArvoBook." },
-    de: { eyebrow: "DAS ARVO-PRODUKTÖKOSYSTEM", title: "Bessere Systeme für bessere Arbeit.", tagline: "Software für Organisationen, Forschende und Salons: ArvoOS, ArvoLab und ArvoBook." },
-    es: { eyebrow: "EL ECOSISTEMA DE PRODUCTOS ARVO", title: "Mejores sistemas para un mejor trabajo.", tagline: "Software para organizaciones, investigadores y salones: ArvoOS, ArvoLab y ArvoBook." },
-    fr: { eyebrow: "L’ÉCOSYSTÈME DE PRODUITS ARVO", title: "De meilleurs systèmes pour un meilleur travail.", tagline: "Des logiciels pour les organisations, les chercheurs et les salons : ArvoOS, ArvoLab et ArvoBook." },
-    ar: { eyebrow: "منظومة منتجات ARVO", title: "أنظمة أفضل لعمل أفضل.", tagline: "برمجيات للمؤسسات والباحثين والصالونات: ArvoOS وArvoLab وArvoBook." },
+    tr: { eyebrow: "ARVOOS ÜRÜN EKOSİSTEMİ", title: "Daha iyi çalışmak için daha iyi sistemler.", tagline: "Kurumlar, araştırmacılar ve salonlar için dijital ürünler: ArvoOS, ArvoLab ve ArvoBook." },
+    en: { eyebrow: "THE ARVOOS PRODUCT ECOSYSTEM", title: "Better systems for better work.", tagline: "Software for organizations, researchers and salons: ArvoOS, ArvoLab and ArvoBook." },
+    de: { eyebrow: "DAS ARVOOS-PRODUKTÖKOSYSTEM", title: "Bessere Systeme für bessere Arbeit.", tagline: "Software für Organisationen, Forschende und Salons: ArvoOS, ArvoLab und ArvoBook." },
+    es: { eyebrow: "EL ECOSISTEMA DE PRODUCTOS ARVOOS", title: "Mejores sistemas para un mejor trabajo.", tagline: "Software para organizaciones, investigadores y salones: ArvoOS, ArvoLab y ArvoBook." },
+    fr: { eyebrow: "L’ÉCOSYSTÈME DE PRODUITS ARVOOS", title: "De meilleurs systèmes pour un meilleur travail.", tagline: "Des logiciels pour les organisations, les chercheurs et les salons : ArvoOS, ArvoLab et ArvoBook." },
+    ar: { eyebrow: "منظومة منتجات ARVOOS", title: "أنظمة أفضل لعمل أفضل.", tagline: "برمجيات للمؤسسات والباحثين والصالونات: ArvoOS وArvoLab وArvoBook." },
   },
   arvoos: {
     tr: { eyebrow: "ARVOOS · İŞLETME İŞLETİM SİSTEMİ", title: "İşletmenizin tamamı. Tek bir akışta.", tagline: "CRM, teklif, e-imzalı sözleşme, operasyon, finans, İK ve raporlama tek sistemde." },

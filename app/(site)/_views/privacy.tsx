@@ -6,7 +6,7 @@ import { KISA } from "../_content/kisa";
 
 export function PrivacyView({ locale, c }: { locale: Locale; c: PrivacyContent }) {
   const path = ROUTES.privacy[locale];
-  const crumbs = [{ name: "ArvoOS", href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
+  const crumbs = [{ name: KISA[locale].homeCrumb, href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
   return (
     <>
       <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />

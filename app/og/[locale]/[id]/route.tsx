@@ -11,7 +11,9 @@ type Fonts = NonNullable<NonNullable<ConstructorParameters<typeof ImageResponse>
 
 const SIZE = { width: 1200, height: 630 };
 const PRODUCTS: ProductName[] = ["ArvoOS", "ArvoLab", "ArvoBook"];
-const CHAMPAGNE = "#c9a66a";
+// Vurgu logonun "OS" yeşili (28.10.2026; eskiden şampanya altını #c9a66a).
+// Lacivert zeminde okunsun diye açık tonu.
+const CHAMPAGNE = "#a9c78a";
 // Eski bir Safari UA'sı: Google Fonts woff2 yerine (satori'nin okuyabildiği) TTF döndürür.
 const LEGACY_UA = "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1";
 
@@ -81,14 +83,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ loc
           position: "relative",
           color: "#ffffff",
           ...(fonts ? { fontFamily: "Inter" } : {}),
-          backgroundColor: "#050c1a",
+          backgroundColor: "#00152f",
           // Katmanlı zemin: sağ üstte şampanya ışıltısı, sol altta soğuk mavi
           // yansıma, altta gece mavisi geçiş. (Taşan mutlak konumlu daire
           // satori'de dikdörtgen kenar bırakıyordu.)
           backgroundImage: [
-            "radial-gradient(circle at 86% 6%, rgba(201,166,106,0.34) 0%, rgba(201,166,106,0.12) 24%, rgba(201,166,106,0) 50%)",
+            "radial-gradient(circle at 86% 6%, rgba(111,149,72,0.34) 0%, rgba(111,149,72,0.12) 24%, rgba(111,149,72,0) 50%)",
             "radial-gradient(circle at 0% 100%, rgba(96,134,196,0.16) 0%, rgba(96,134,196,0) 42%)",
-            "linear-gradient(135deg, #050c1a 0%, #0a172c 52%, #13243f 100%)",
+            "linear-gradient(135deg, #00152f 0%, #002045 52%, #0a2c55 100%)",
           ].join(", "),
         }}
       >
@@ -96,11 +98,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ loc
         {/* üst şerit: wordmark + alan adı */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
-            <div style={{ width: 46, height: 46, borderRadius: 13, border: "1.5px solid rgba(201,166,106,0.75)", background: "rgba(201,166,106,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 46, height: 46, borderRadius: 13, border: "1.5px solid rgba(111,149,72,0.75)", background: "rgba(111,149,72,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ width: 14, height: 14, background: CHAMPAGNE, transform: "rotate(45deg)", display: "flex" }} />
             </div>
             {/* Marka adı ArvoOS (28.10.2026); eskiden aralıklı büyük harfle "ARVO" yazılıyordu. */}
-            <div style={{ marginLeft: 18, fontSize: 30, fontWeight: 600, letterSpacing: -0.5, color: "#f3ead8" }}>ArvoOS</div>
+            <div style={{ marginLeft: 18, fontSize: 30, fontWeight: 600, letterSpacing: -0.5, color: "#ffffff" }}>ArvoOS</div>
           </div>
           <div style={{ fontSize: 22, color: "rgba(233,238,247,0.55)", letterSpacing: 0.5 }}>{`arvo-os.com${ROUTES.home[locale] === "/" ? "" : ROUTES.home[locale]}`}</div>
         </div>
@@ -116,7 +118,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ loc
         </div>
 
         {/* alt şerit: ürün ailesi */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 24, borderTop: "1px solid rgba(201,166,106,0.28)", fontSize: 21 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 24, borderTop: "1px solid rgba(111,149,72,0.28)", fontSize: 21 }}>
           <div style={{ display: "flex" }}>
             {PRODUCTS.map((name) => (
               <div key={name} style={{ display: "flex", marginRight: 34, color: name === product ? CHAMPAGNE : "rgba(233,238,247,0.5)", fontWeight: name === product ? 600 : 400 }}>{name}</div>

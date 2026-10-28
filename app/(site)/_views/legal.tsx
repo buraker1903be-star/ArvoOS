@@ -11,7 +11,7 @@ import { KISA } from "../_content/kisa";
 */
 export function LegalView({ locale, id, c }: { locale: Locale; id: PageId; c: PrivacyContent }) {
   const path = ROUTES[id][locale];
-  const crumbs = [{ name: "ArvoOS", href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
+  const crumbs = [{ name: KISA[locale].homeCrumb, href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
   return (
     <>
       <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />

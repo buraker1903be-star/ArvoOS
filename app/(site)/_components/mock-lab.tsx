@@ -69,9 +69,9 @@ export function LabMock({ locale }: { locale: Locale }) {
             {t.checks.map(([c, s]) => <div key={c} className="ml-check" data-s={s}><i />{c}</div>)}
             <p className="ml-h" style={{ marginTop: 14 }}>{t.analysis}</p>
             <svg className="ml-chart" viewBox="0 0 120 48" preserveAspectRatio="none">
-              <path d="M0 40 L20 32 L40 35 L60 22 L80 25 L100 12 L120 8" fill="none" stroke="#b28a49" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M0 40 L20 32 L40 35 L60 22 L80 25 L100 12 L120 8" fill="none" stroke="#5a7f3a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M0 40 L20 32 L40 35 L60 22 L80 25 L100 12 L120 8 V48 H0Z" fill="url(#ml-g)" />
-              <defs><linearGradient id="ml-g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#dcc28c" stopOpacity=".45" /><stop offset="1" stopColor="#dcc28c" stopOpacity="0" /></linearGradient></defs>
+              <defs><linearGradient id="ml-g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#a9c78a" stopOpacity=".45" /><stop offset="1" stopColor="#a9c78a" stopOpacity="0" /></linearGradient></defs>
             </svg>
           </div>
         </div>

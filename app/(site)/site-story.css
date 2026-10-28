@@ -60,7 +60,7 @@
 .site .fx-funnel div{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:12px;font-size:12.5px}
 .site .fx-funnel i{height:14px;border-radius:6px;background:#f2f2f7;overflow:hidden}
 .site .fx-funnel b{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#2c4368,#8497b5)}
-.site .fx-funnel b[data-weak]{background:linear-gradient(90deg,#b28a49,#dcc28c)}
+.site .fx-funnel b[data-weak]{background:linear-gradient(90deg,#5a7f3a,#a9c78a)}
 
 /* mobil ve azaltılmış hareket: adımlar alt alta, her biri kendi ekranıyla */
 @media (max-width:980px){

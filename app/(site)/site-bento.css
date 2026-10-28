@@ -48,7 +48,7 @@
 .site .fg-soft{display:grid;grid-template-columns:44px 1fr;gap:12px}
 .site .fg-side{display:grid;align-content:start;gap:8px;padding:10px 8px;border-radius:12px;background:linear-gradient(180deg,#0e2139,#050c1a)}
 .site .fg-side i{height:22px;border-radius:7px;background:rgba(255,255,255,.1)}
-.site .fg-side i:first-child{background:linear-gradient(180deg,#dcc28c,#b28a49)}
+.site .fg-side i:first-child{background:linear-gradient(180deg,#a9c78a,#5a7f3a)}
 .site .fg-main b{display:block;margin-bottom:4px;font-size:14px}
 
 @media (max-width:1100px){
