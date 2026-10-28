@@ -7,11 +7,24 @@
 
 /* Açılışın arkasında çok hafif bir ışık: düz beyaz açılış kartlardan
    ayrılmıyordu. Renk krem ve yeşilin saydamı; metin kontrastı değişmez. */
-.site .lhero::before{content:"";position:absolute;inset:0 0 auto;height:min(820px,90vh);z-index:-1;pointer-events:none;
+.site :is(.lhero,.phero)::before{content:"";position:absolute;inset:0 0 auto;height:min(820px,90vh);z-index:-1;pointer-events:none;
   background:
     radial-gradient(60% 55% at 50% 0%,color-mix(in srgb,var(--gold-100) 90%,transparent),transparent 70%),
     radial-gradient(40% 40% at 85% 20%,color-mix(in srgb,var(--green) 10%,transparent),transparent 70%)}
-.site .lhero{isolation:isolate}
+.site :is(.lhero,.phero){isolation:isolate}
+/* Alt sayfa açılışları (28.10.2026): ana sayfayla aynı ışık; sola yaslı
+   açılışta ışık metnin olduğu yana kayar. */
+.site .phero:not(.center)::before{background:
+    radial-gradient(55% 60% at 15% 0%,color-mix(in srgb,var(--gold-100) 90%,transparent),transparent 70%),
+    radial-gradient(40% 40% at 90% 15%,color-mix(in srgb,var(--green) 9%,transparent),transparent 70%)}
+.site .phero .hero-badges{justify-content:flex-start}
+/* Ortalı açılışta logo da ortada: ArvoBook sayfasında (sahnesiz, ortalı)
+   logo sola yaslı kalıp başlıktan ayrı duruyordu. */
+.site .phero.center .phero-logo{display:flex;justify-content:center}
+.site .phero.center .hero-badges{justify-content:center}
+.site .phero-price{margin-top:18px;font-size:17px;font-weight:600;color:var(--ink)}
+.site .phero .phero-price+.hero-badges{margin-top:14px}
+.site [dir="rtl"] .phero:not(.center)::before{transform:scaleX(-1)}
 
 .site .hero-badges{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px;margin-top:22px}
 .site .hero-badges li{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 13px;border-radius:999px;background:color-mix(in srgb,#fff 70%,transparent);box-shadow:var(--hair);color:var(--ink-soft);font-size:13px;font-weight:500;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
@@ -28,6 +41,11 @@
 .site .suite-chips .chip{min-height:26px;font-size:12px}
 .site .suite-price{margin-top:auto;padding-top:14px;width:100%;border-top:1px solid var(--line-soft);font-size:17px;font-weight:600;color:var(--ink)}
 .site .suite-links{display:flex;flex-wrap:wrap;gap:4px 22px}
+
+/* Alt sayfalardaki özellik kartları da ana sayfadaki kartlar gibi
+   karşılık versin (yalnızca bağlantı olanlar değil). */
+.site .fcard{transition:transform .4s var(--ease),box-shadow .4s var(--ease)}
+.site .fcard:hover{transform:translateY(-3px);box-shadow:var(--hair),var(--shadow-m)}
 
 /* Her yerde çalışır şeridi */
 .site .gstrip-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:clamp(28px,3.5vw,48px)}
@@ -53,5 +71,5 @@
   .site .gstrip-grid{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){
-  .site .suite-card,.site .suite-card:hover{transition:none;transform:none}
+  .site .suite-card,.site .suite-card:hover,.site .fcard,.site .fcard:hover{transition:none;transform:none}
 }

@@ -26,10 +26,12 @@ export function Crumbs({ items, label }: { items: { name: string; href: string }
 
 /** Alt sayfaların açık açılışı. children: sahne (ör. katmanlı arayüz). */
 export function PageHero({
-  eyebrow, title, subtitle, lead, actions = [], crumbs, crumbLabel = "Breadcrumb", center = false, logo, children,
+  eyebrow, title, subtitle, lead, actions = [], crumbs, crumbLabel = "Breadcrumb", center = false, logo, extra, children,
 }: {
   eyebrow: string; title: string; subtitle?: string; lead: string; actions?: Cta[];
-  crumbs?: { name: string; href: string }[]; crumbLabel?: string; center?: boolean; logo?: ReactNode; children?: ReactNode;
+  crumbs?: { name: string; href: string }[]; crumbLabel?: string; center?: boolean; logo?: ReactNode;
+  /** Düğmelerin altı: rozetler, başlangıç fiyatı (ürün ve ücretler sayfası). */
+  extra?: ReactNode; children?: ReactNode;
 }) {
   const d = (n: number) => ({ ["--d" as string]: n });
   // Sahnesi olmayan açılışlar ortalanır; sola yaslı metin sağ yarıyı boş bırakıyordu.
@@ -43,6 +45,7 @@ export function PageHero({
         <h1 className="h1 rise" style={d(2)}>{title}{subtitle ? <span className="grey-text"> {subtitle}</span> : null}</h1>
         <p className="lead rise" style={d(3)}>{lead}</p>
         {actions.length ? <Actions items={actions} className="rise" /> : null}
+        {extra ?? null}
       </div>
       {children ?? null}
     </section>

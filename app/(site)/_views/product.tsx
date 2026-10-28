@@ -10,9 +10,15 @@ import { StoryStage } from "../_components/story-stage";
 import { ArvoosSubnav } from "../_components/subnav";
 import { Actions, CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
 import { KISA } from "../_content/kisa";
+import { HOME_ICERIGI } from "../_content/home-icerik";
+import { GlobalStrip, HeroBadges, baslangicYazisi } from "../_components/global";
+import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 
-export function ProductView({ locale, c }: { locale: Locale; c: ProductContent }) {
+export async function ProductView({ locale, c }: { locale: Locale; c: ProductContent }) {
   const path = ROUTES[c.id][locale];
+  const g = HOME_ICERIGI[locale].global;
+  // Başlangıç fiyatı ücretler sayfasıyla aynı kaynaktan (konsoldan yayımlanan TL dahil).
+  const fiyat = baslangicYazisi(c.id, locale, g, await yayimlananFiyatlar());
   const crumbs = [{ name: "Arvo", href: ROUTES.home[locale] }, { name: c.name, href: path }];
   return (
     <>
@@ -20,7 +26,8 @@ export function ProductView({ locale, c }: { locale: Locale; c: ProductContent }
         ? <ProductLogo name={c.name as ProductName} height={40} />
         /* Logo dosyası yoksa wordmark basılmaz: ürün adı zaten üst
            etikette geçiyor ve iki kez yan yana yazılıyordu. */
-        : undefined}>
+        : undefined}
+        extra={<><p className="phero-price rise">{fiyat}</p><HeroBadges items={g.badges} /></>}>
         {/* ArvoBook'un arayüz maketi henüz yok; sahnesiz kahraman
             PageHero tarafından ortalanır. Uydurma bir ekran çizmektense
             sahneyi hiç basmamak doğru. */}
@@ -85,6 +92,7 @@ export function ProductView({ locale, c }: { locale: Locale; c: ProductContent }
           </section>
         ) : null}
 
+        <GlobalStrip g={g} />
         <Faq eyebrow={c.faq.eyebrow} title={c.faq.title} items={c.faq.items} />
         <CtaBand eyebrow={c.cta.eyebrow} title={c.cta.title} lead={c.cta.lead} actions={c.cta.actions} />
       </div>

@@ -9,7 +9,7 @@ export const ABOUT_EN: SubContent = {
   meta: { title: "About", description: `Arvo is the software brand of ${COMPANY.legalName}. It builds ArvoOS, ArvoLab and ArvoBook, and delivers website and e-commerce design and custom software services.` },
   hero: {
     eyebrow: "About", title: "We make complex work", subtitle: "simple.",
-    lead: `Arvo is the software brand of ${COMPANY.legalName}, based in İstanbul. It designs powerful yet calm digital ways of working for organizations, researchers and salons.`,
+    lead: `Arvo is the software brand of ArvoCulture Group, based in Istanbul, Türkiye. It designs powerful yet calm digital ways of working for organizations, researchers and salons.`,
     actions: [{ label: "Meet us", href: R("contact"), variant: "gold" }],
   },
   cards: {
