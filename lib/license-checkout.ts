@@ -8,6 +8,7 @@ import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
 import { productName, type ProductCode } from "@/lib/products";
 import { donemTutari } from "@/lib/abonelik-tutari";
+import { PAYTR_LINK_TABANI } from "@/lib/odeme-baglantisi";
 
 // Kurum lisansının kartla (PayTR Link) ödeme bağlantısı. İki yerden çağrılır:
 // ArvoOS Ödemeler sayfası (app/panel/billing/paytr-actions.ts) ve Randevu
@@ -31,8 +32,18 @@ export class CheckoutError extends Error {
 
 const UNAVAILABLE = "Kartla ödeme şu an kullanılamıyor. Havale ile ödeyebilirsiniz.";
 
-export async function createLicenseCheckout(admin: Admin, input: { organizationId: string; product: ProductCode; actorId: string }): Promise<{ url: string }> {
-  const { organizationId, product, actorId } = input;
+/*
+  ÖDEME HAZIRLIĞI — tutar, paket ve ArvoOS mağazasının anahtarları
+  (28.10.2026'da ayrıldı). Ödeme bağlantısı da kartla ödeme sayfası da
+  (lib/paytr-kart-akisi) buradan okur: iki ayrı hesap, düğmede bir
+  rakam, karttan başka rakam çekmenin en kolay yolu olurdu.
+*/
+export type LisansOdemeHazirligi = {
+  organization: { id: string; name: string; display_name: string | null; plan_code: string };
+  fee: number; planCode: string; ekNot: string; platformId: string; credentials: PaytrCredentials;
+};
+
+export async function lisansOdemeHazirligi(admin: Admin, organizationId: string, product: ProductCode): Promise<LisansOdemeHazirligi> {
   if (!paymentCredentialsConfigured()) throw new CheckoutError("unavailable", UNAVAILABLE);
 
   const { data: organization } = await admin.from("organizations").select("id,name,display_name,plan_code").eq("id", organizationId).maybeSingle();
@@ -92,13 +103,33 @@ export async function createLicenseCheckout(admin: Admin, input: { organizationI
     throw new CheckoutError("unavailable", UNAVAILABLE);
   }
 
-  // Aynı ürün için önceki açık bağlantıyı kapat; diğer ürünlerinki açık kalır.
-  const { data: previous } = await admin.from("payment_links").select("id,provider_link_id")
+  return { organization: organization as LisansOdemeHazirligi["organization"], fee, planCode, ekNot, platformId, credentials };
+}
+
+/*
+  Aynı ürün için önceki açık ödemeyi kapatır; diğer ürünlerinki açık kalır.
+  Veritabanı kurum + ürün başına TEK açık abonelik ödemesine izin veriyor
+  (payment_links_one_active_subscription). Kartla ödeme sayfasının
+  kayıtları da aynı tabloda: PayTR'de bağlantısı olmayan bir kayıt
+  (sağlayıcı kimliği sipariş no) silinmeye çalışılmaz, yalnızca kapatılır.
+*/
+export async function oncekiBaglantiyiKapat(admin: Admin, credentials: PaytrCredentials, organizationId: string, product: ProductCode) {
+  const { data: previous, error } = await admin.from("payment_links").select("id,provider_link_id,url")
     .eq("payer_organization_id", organizationId).eq("purpose", "subscription").eq("product", product).eq("status", "active").maybeSingle();
-  if (previous) {
+  // Engelin sorgusu hata yutmaz: okunamazsa yeni kayıt tekillik kısıtına çarpar, nedeni burada yazsın.
+  if (error) throw new CheckoutError("link_failed", "Önceki ödeme okunamadı: " + error.message);
+  if (!previous) return;
+  if (String(previous.url).startsWith(PAYTR_LINK_TABANI)) {
     try { await deletePaytrLink(credentials, previous.provider_link_id); } catch { /* süresi dolmuş olabilir */ }
-    await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", previous.id);
   }
+  await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", previous.id);
+}
+
+export async function createLicenseCheckout(admin: Admin, input: { organizationId: string; product: ProductCode; actorId: string }): Promise<{ url: string }> {
+  const { organizationId, product, actorId } = input;
+  const { organization, fee, planCode, ekNot, platformId, credentials } = await lisansOdemeHazirligi(admin, organizationId, product);
+
+  await oncekiBaglantiyiKapat(admin, credentials, organizationId, product);
 
   const id = randomUUID();
   // Bağlantı ArvoOS'un mağazasıyla açıldığı için bildirim adresi de her

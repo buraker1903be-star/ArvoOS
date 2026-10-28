@@ -1,0 +1,8 @@
+/* Kartla ödeme formu (28.10.2026). */
+.panel-root .kart-formu{max-width:720px}
+.panel-root .kart-tutar{margin:0;font-size:15px;color:var(--ink-soft)}
+.panel-root .kart-tutar b{font-size:20px;color:var(--ink)}
+.panel-root .kart-tutar small{color:var(--muted);font-size:12px}
+.panel-root .kayit-formu > label.kart-onay{align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;background:var(--surface-2);font-weight:400;line-height:1.5}
+.panel-root .kart-onay input{margin-top:3px;flex:none}
+.panel-root .kart-onay b{color:var(--ink)}
