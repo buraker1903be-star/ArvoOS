@@ -9,13 +9,14 @@ import { Check, ProductLogo, urunLogosuVar, type ProductName } from "../_compone
 import { StoryStage } from "../_components/story-stage";
 import { ArvoosSubnav } from "../_components/subnav";
 import { Actions, CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
+import { KISA } from "../_content/kisa";
 
 export function ProductView({ locale, c }: { locale: Locale; c: ProductContent }) {
   const path = ROUTES[c.id][locale];
   const crumbs = [{ name: "Arvo", href: ROUTES.home[locale] }, { name: c.name, href: path }];
   return (
     <>
-      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} logo={urunLogosuVar(c.name as ProductName)
+      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} logo={urunLogosuVar(c.name as ProductName)
         ? <ProductLogo name={c.name as ProductName} height={40} />
         /* Logo dosyası yoksa wordmark basılmaz: ürün adı zaten üst
            etikette geçiyor ve iki kez yan yana yazılıyordu. */

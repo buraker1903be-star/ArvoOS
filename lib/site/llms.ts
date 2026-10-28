@@ -13,7 +13,10 @@ import { planTutari, planYillikTutari, type Fiyatlar } from "./fiyat-kaynagi";
 
 export const LLMS_UPDATED = "2026-10-28";
 
-type PageInfo = Record<Locale, { name: string; summary: string }>;
+/* llms.txt İngilizce ve Türkçe: yanıt motorları bu iki metni kaynak
+   gösteriyor; diğer diller (de, es, fr) sitenin kendisinde. */
+type LlmsLocale = Extract<Locale, "en" | "tr">;
+type PageInfo = Record<LlmsLocale, { name: string; summary: string }>;
 
 /** Her sayfa için kısa, olgusal açıklama (Record → her PageId zorunlu). */
 const PAGES: Record<PageId, PageInfo> = {
@@ -95,7 +98,7 @@ const PAGES: Record<PageId, PageInfo> = {
   },
 };
 
-const url = (id: PageId, locale: Locale) => absoluteUrl(ROUTES[id][locale]);
+const url = (id: PageId, locale: LlmsLocale) => absoluteUrl(ROUTES[id][locale]);
 
 /*
   Ücret satırları. Rakam ELLE YAZILMAZ: yapay zekâ motorlarının alıntıladığı
@@ -106,7 +109,7 @@ const url = (id: PageId, locale: Locale) => absoluteUrl(ROUTES[id][locale]);
   llms-full.txt eski rakamı söylemeye devam ediyordu. Çağıran
   yayımlanmış tabloyu veriyor; verilmezse koddaki değer.
 */
-function fiyatListesi(locale: Locale, fiyatlar?: Fiyatlar): string {
+function fiyatListesi(locale: LlmsLocale, fiyatlar?: Fiyatlar): string {
   const tr = locale === "tr";
   return SITE_PRODUCTS.map((product) => {
     const satirlar = planlar(product).map((plan) => {
@@ -185,7 +188,7 @@ export function buildLlmsTxt(): string {
 }
 
 export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
-  const u = (id: PageId, locale: Locale) => url(id, locale);
+  const u = (id: PageId, locale: LlmsLocale) => url(id, locale);
   const os = PRODUCT_APPS.arvoos;
   const lab = PRODUCT_APPS.arvolab;
   const rdv = PRODUCT_APPS.randevu;

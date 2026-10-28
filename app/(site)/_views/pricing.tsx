@@ -14,6 +14,7 @@ import type { PricingContent } from "../_content/types";
 import { Check } from "../_components/marks";
 import { PriceCycle } from "../_components/price-cycle";
 import { Actions, CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
+import { KISA } from "../_content/kisa";
 
 const planByCode = new Map(PLANS.map((p) => [p.code, p]));
 
@@ -33,7 +34,6 @@ export function PricingView({ locale, c, fiyatlar }: {
   /** Konsoldan yayımlanmış tutarlar; verilmezse koddaki değerler geçerli. */
   fiyatlar?: Fiyatlar;
 }) {
-  const tr = locale === "tr";
   const path = ROUTES.pricing[locale];
   const crumbs = [
     { name: "Arvo", href: ROUTES.home[locale] },
@@ -42,7 +42,7 @@ export function PricingView({ locale, c, fiyatlar }: {
 
   return (
     <>
-      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={tr ? "İçerik yolu" : "Breadcrumb"} />
+      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />
 
       <div className="scenes pricing-page">
         <section className="section" aria-labelledby="ucret-title">
@@ -52,8 +52,8 @@ export function PricingView({ locale, c, fiyatlar }: {
               monthly={c.cycle.monthly}
               yearly={c.cycle.yearly}
               badge={c.cycle.badge}
-              label={tr ? "Ödeme dönemi" : "Billing period"}
-              productsLabel={tr ? "Ürün" : "Product"}
+              label={KISA[locale].billingPeriod}
+              productsLabel={KISA[locale].product}
               products={c.groups.map((g) => ({ code: g.product, label: urunAdi(g.product) }))}
             >
               <p className="vat-note">{c.vatNote}</p>

@@ -7,7 +7,7 @@ type Chrome = {
   skip: string; home: string; nav: string; menu: string; close: string;
   products: string; services: string; pricing: string; about: string; contact: string; privacy: string;
   legal: string; distanceSales: string; refund: string; delivery: string;
-  signIn: string; demo: string; langName: string; langShort: string;
+  signIn: string; demo: string; language: string;
   productLinks: NavLink[]; arvoosTitle: string; arvoosLinks: NavLink[];
   serviceLinks: NavLink[]; signInLinks: NavLink[];
   footerTagline: string; footerCta: string; company: string; rights: string; addressLabel: string; group: string;
@@ -32,7 +32,7 @@ export const CHROME: Record<Locale, Chrome> = {
     skip: "İçeriğe geç", home: "ArvoOS — Arvo ana sayfa", nav: "Ana menü", menu: "Menüyü aç", close: "Menüyü kapat",
     products: "Ürünler", services: "Hizmetler", pricing: "Ücretler", about: "Hakkımızda", contact: "İletişim", privacy: "Gizlilik ve KVKK",
     legal: "Yasal", distanceSales: "Mesafeli Satış Sözleşmesi", refund: "İptal ve İade", delivery: "Teslimat",
-    signIn: "Giriş", demo: "Demo talep et", langName: "English", langShort: "EN",
+    signIn: "Giriş", demo: "Demo talep et", language: "Dil",
     productLinks: [
       { label: "ArvoOS", desc: "İşletme işletim sistemi", href: ROUTES.arvoos.tr },
       { label: "ArvoLab", desc: "Araştırma çalışma alanı", href: ROUTES.arvolab.tr },
@@ -60,7 +60,7 @@ export const CHROME: Record<Locale, Chrome> = {
     skip: "Skip to content", home: "Arvo home", nav: "Main menu", menu: "Open menu", close: "Close menu",
     products: "Products", services: "Services", pricing: "Pricing", about: "About", contact: "Contact", privacy: "Privacy",
     legal: "Legal", distanceSales: "Distance Sales Agreement", refund: "Cancellation & Refund", delivery: "Delivery",
-    signIn: "Sign in", demo: "Request a demo", langName: "Türkçe", langShort: "TR",
+    signIn: "Sign in", demo: "Request a demo", language: "Language",
     productLinks: [
       { label: "ArvoOS", desc: "Business operating system", href: ROUTES.arvoos.en },
       { label: "ArvoLab", desc: "Research workspace", href: ROUTES.arvolab.en },

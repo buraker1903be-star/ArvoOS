@@ -1,9 +1,9 @@
 // arvo-os.com sayfa metadata'sı: canonical, hreflang, Open Graph ve Twitter
 // kartı tek yardımcıdan üretilir. Her pazarlama sayfası bunu kullanır.
 import type { Metadata } from "next";
-import { ROUTES, absoluteUrl, alternatesFor, type Locale, type PageId } from "./routes";
+import { LOCALES, ROUTES, absoluteUrl, alternatesFor, type Locale, type PageId } from "./routes";
 
-const OG_LOCALE: Record<Locale, string> = { tr: "tr_TR", en: "en_US" };
+const OG_LOCALE: Record<Locale, string> = { en: "en_US", tr: "tr_TR", de: "de_DE", es: "es_ES", fr: "fr_FR" };
 
 export function siteMetadata({
   id,
@@ -30,7 +30,7 @@ export function siteMetadata({
       type: "website",
       siteName: "Arvo",
       locale: OG_LOCALE[locale],
-      alternateLocale: OG_LOCALE[locale === "tr" ? "en" : "tr"],
+      alternateLocale: LOCALES.filter((l) => l !== locale).map((l) => OG_LOCALE[l]),
       url,
       title: fullTitle,
       description,

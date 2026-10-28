@@ -12,7 +12,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { COMPANY, type Locale } from "@/lib/site/routes";
+import { COMPANY, LOCALES, type Locale } from "@/lib/site/routes";
 import {
   LEAD_EMAIL_PATTERN,
   LEAD_INTERESTS,
@@ -137,7 +137,10 @@ async function clientIpHash() {
 }
 
 export async function submitLead(formData: FormData): Promise<LeadResult> {
-  const locale: Locale = formData.get("locale") === "en" ? "en" : "tr";
+  // Bilinmeyen dil Türkçe sayılır (eski davranış); veritabanı da aynı
+  // listeyi tanıyor (20261028083410).
+  const istenen = String(formData.get("locale") ?? "");
+  const locale: Locale = (LOCALES as readonly string[]).includes(istenen) ? (istenen as Locale) : "tr";
   const t = copy[locale];
   const fail = (key: keyof Copy, field?: LeadField, token?: string): LeadResult => ({ ok: false, error: t[key], field, token });
 

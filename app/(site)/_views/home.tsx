@@ -14,6 +14,7 @@ import { LabMock } from "../_components/mock-lab";
 import { StoryStage } from "../_components/story-stage";
 import { ArvoosTrio } from "../_components/trio";
 import { Actions, CtaBand, Faq, SectionHead } from "../_components/ui";
+import { KISA } from "../_content/kisa";
 
 const d = (n: number) => ({ ["--d" as string]: n });
 
@@ -45,8 +46,8 @@ const BOOK_CARD = {
 
 export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
   const { os, lab, book } = c.products;
-  const more = locale === "tr" ? "Daha fazla bilgi" : "Learn more";
-  const signIn = locale === "tr" ? "Giriş" : "Sign in";
+  const more = KISA[locale].more;
+  const signIn = KISA[locale].signIn;
   const visuals = ["web", "seo", "software"] as const;
   return (
     <>
@@ -61,7 +62,7 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
       </section>
 
       <div className="scenes">
-        <ProductTile id={locale === "tr" ? "urunler" : "products"} name="ArvoOS" kicker={os.label} title={os.title} sub={os.text} href={os.cta.href} app={os.signIn.href} more={more} signIn={signIn}>
+        <ProductTile id={KISA[locale].productsAnchor} name="ArvoOS" kicker={os.label} title={os.title} sub={os.text} href={os.cta.href} app={os.signIn.href} more={more} signIn={signIn}>
           <ArvoosTrio locale={locale} />
         </ProductTile>
 

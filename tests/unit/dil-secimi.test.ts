@@ -15,6 +15,13 @@ describe("kök adreste dil seçimi", () => {
     assert.equal(yon({ acceptLanguage: null }), null);
   });
 
+  test("yeni diller (28.10.2026): Almanca, İspanyolca, Fransızca tarayıcı kendi ana sayfasına", () => {
+    assert.equal(yon({ acceptLanguage: "de-DE,de;q=0.9,en;q=0.8" }), "/de");
+    assert.equal(yon({ acceptLanguage: "es-MX,es;q=0.9" }), "/es");
+    assert.equal(yon({ acceptLanguage: "fr-CA,fr;q=0.9,en;q=0.5" }), "/fr");
+    assert.equal(yon({ acceptLanguage: "tr-TR", cookie: "de" }), "/de");
+  });
+
   test("ağırlık sırası başlık sırasından önce gelir", () => {
     assert.equal(tercihEdilenDil("en;q=0.5,tr;q=0.9"), "tr");
     assert.equal(tercihEdilenDil("ja,tr;q=0.8,en;q=0.7"), "tr");
