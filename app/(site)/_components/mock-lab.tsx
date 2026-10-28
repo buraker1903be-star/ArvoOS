@@ -16,6 +16,27 @@ const T = {
     check: "Guideline check", checks: [["Heading structure", "ok"], ["Reference style", "ok"], ["Table numbering", "warn"], ["Abstract length", "ok"]],
     analysis: "Analysis",
   },
+  de: {
+    label: "ArvoLab-Arbeitsbereich — Beispielansicht", cap: "Beispieloberfläche",
+    sources: "Quellen", refs: ["Demir & Kaya, 2023", "Yılmaz, 2022", "Aydın et al., 2021", "Şahin, 2020"],
+    doc: "3. Methode", cite: "(Demir & Kaya, 2023)",
+    check: "Richtlinienprüfung", checks: [["Gliederung", "ok"], ["Zitierstil", "ok"], ["Tabellennummerierung", "warn"], ["Länge des Abstracts", "ok"]],
+    analysis: "Analyse",
+  },
+  es: {
+    label: "Espacio de trabajo de ArvoLab — vista de ejemplo", cap: "Interfaz ilustrativa",
+    sources: "Fuentes", refs: ["Demir y Kaya, 2023", "Yılmaz, 2022", "Aydın et al., 2021", "Şahin, 2020"],
+    doc: "3. Método", cite: "(Demir y Kaya, 2023)",
+    check: "Revisión de la guía", checks: [["Estructura de títulos", "ok"], ["Estilo de referencias", "ok"], ["Numeración de tablas", "warn"], ["Extensión del resumen", "ok"]],
+    analysis: "Análisis",
+  },
+  fr: {
+    label: "Espace de travail ArvoLab — vue d’exemple", cap: "Interface illustrative",
+    sources: "Sources", refs: ["Demir et Kaya, 2023", "Yılmaz, 2022", "Aydın et al., 2021", "Şahin, 2020"],
+    doc: "3. Méthode", cite: "(Demir et Kaya, 2023)",
+    check: "Contrôle des consignes", checks: [["Structure des titres", "ok"], ["Style des références", "ok"], ["Numérotation des tableaux", "warn"], ["Longueur du résumé", "ok"]],
+    analysis: "Analyse",
+  },
 } as const;
 
 export function LabMock({ locale }: { locale: Locale }) {

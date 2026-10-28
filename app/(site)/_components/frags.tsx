@@ -9,6 +9,9 @@ export type VisualKey = "s0" | "s1" | "s2" | "s3" | "s4" | "s5" | "s6" | "web" |
 const T = {
   tr: { site: "ornekmarka.com", crumb: "ornekmarka.com › hizmetler", result: "Hizmetler — Örnek Marka", ai: "Yapay zekâ yanıtı", source: "Kaynak", portal: "Müşteri alanı", rows: ["Talepler", "Onaylar", "Belgeler"] },
   en: { site: "yourbrand.com", crumb: "yourbrand.com › services", result: "Services — Your Brand", ai: "AI answer", source: "Source", portal: "Customer area", rows: ["Requests", "Approvals", "Documents"] },
+  de: { site: "ihremarke.de", crumb: "ihremarke.de › leistungen", result: "Leistungen — Ihre Marke", ai: "KI-Antwort", source: "Quelle", portal: "Kundenbereich", rows: ["Anfragen", "Freigaben", "Dokumente"] },
+  es: { site: "sumarca.es", crumb: "sumarca.es › servicios", result: "Servicios — Su Marca", ai: "Respuesta de IA", source: "Fuente", portal: "Área de clientes", rows: ["Solicitudes", "Aprobaciones", "Documentos"] },
+  fr: { site: "votremarque.fr", crumb: "votremarque.fr › services", result: "Services — Votre Marque", ai: "Réponse de l’IA", source: "Source", portal: "Espace client", rows: ["Demandes", "Validations", "Documents"] },
 } as const;
 
 function Web({ t }: { t: (typeof T)[Locale] }) {

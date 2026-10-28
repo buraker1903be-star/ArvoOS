@@ -15,6 +15,24 @@ const T = {
     pay: "Payment summary", paid: "2 / 3 instalments", cta: "Pay now", locked: "Deliverables unlock after payment",
     tabs: ["Status", "Documents", "Messages"],
   },
+  de: {
+    code: "Tracking · TK-4821", title: "Website-Projekt", progress: "Fortschritt",
+    stages: [["Analyse", "done"], ["Umsetzung", "now"], ["Übergabe", "next"]] as const,
+    pay: "Zahlungsübersicht", paid: "2 / 3 Raten", cta: "Jetzt bezahlen", locked: "Lieferdateien werden nach Zahlung freigeschaltet",
+    tabs: ["Status", "Dokumente", "Nachrichten"],
+  },
+  es: {
+    code: "Seguimiento · TK-4821", title: "Proyecto web", progress: "Progreso",
+    stages: [["Descubrimiento", "done"], ["Ejecución", "now"], ["Entrega", "next"]] as const,
+    pay: "Resumen de pagos", paid: "2 / 3 cuotas", cta: "Pagar ahora", locked: "Los entregables se desbloquean tras el pago",
+    tabs: ["Estado", "Documentos", "Mensajes"],
+  },
+  fr: {
+    code: "Suivi · TK-4821", title: "Projet de site web", progress: "Avancement",
+    stages: [["Découverte", "done"], ["Réalisation", "now"], ["Livraison", "next"]] as const,
+    pay: "Récapitulatif des paiements", paid: "2 / 3 échéances", cta: "Payer maintenant", locked: "Les livrables se débloquent après paiement",
+    tabs: ["Statut", "Documents", "Messages"],
+  },
 } as const;
 
 export function PhoneFrame({ locale }: { locale: Locale }) {

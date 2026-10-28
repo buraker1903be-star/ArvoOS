@@ -5,6 +5,9 @@ import { KISA } from "../_content/kisa";
 const ITEMS: Record<Locale, [PageId, string][]> = {
   tr: [["arvoos", "Genel bakış"], ["arvoos-modules", "Modüller"], ["arvoos-industries", "Sektörler"], ["arvoos-solutions", "Çözümler"], ["arvoos-plans", "Paketler"]],
   en: [["arvoos", "Overview"], ["arvoos-modules", "Modules"], ["arvoos-industries", "Industries"], ["arvoos-solutions", "Solutions"], ["arvoos-plans", "Plans"]],
+  de: [["arvoos", "Überblick"], ["arvoos-modules", "Module"], ["arvoos-industries", "Branchen"], ["arvoos-solutions", "Lösungen"], ["arvoos-plans", "Pakete"]],
+  es: [["arvoos", "Visión general"], ["arvoos-modules", "Módulos"], ["arvoos-industries", "Sectores"], ["arvoos-solutions", "Soluciones"], ["arvoos-plans", "Planes"]],
+  fr: [["arvoos", "Vue d’ensemble"], ["arvoos-modules", "Modules"], ["arvoos-industries", "Secteurs"], ["arvoos-solutions", "Solutions"], ["arvoos-plans", "Offres"]],
 };
 
 /** ArvoOS ve alt sayfalarının yapışkan alt gezinmesi. */

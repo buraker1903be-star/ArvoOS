@@ -4,6 +4,9 @@ import type { Locale } from "@/lib/site/routes";
 const SIGN = {
   tr: { kicker: "Sözleşme · e-imza", status: "İmzalandı", title: "Hizmet sözleşmesi", party: "Kuzey Klinik · 13.09.2026 14:32", meta: ["Zaman damgası", "IP ve cihaz kaydı", "Doğrulama özeti"] },
   en: { kicker: "Contract · e-signature", status: "Signed", title: "Service agreement", party: "Northside Clinic · 13 Sep 2026, 14:32", meta: ["Timestamp", "IP & device record", "Verification hash"] },
+  de: { kicker: "Vertrag · E-Signatur", status: "Unterzeichnet", title: "Dienstleistungsvertrag", party: "Northside Clinic · 13.09.2026, 14:32", meta: ["Zeitstempel", "IP- und Geräteprotokoll", "Prüf-Hash"] },
+  es: { kicker: "Contrato · firma electrónica", status: "Firmado", title: "Contrato de servicios", party: "Northside Clinic · 13 sept. 2026, 14:32", meta: ["Sello de tiempo", "Registro de IP y dispositivo", "Hash de verificación"] },
+  fr: { kicker: "Contrat · signature électronique", status: "Signé", title: "Contrat de prestation", party: "Northside Clinic · 13 sept. 2026, 14:32", meta: ["Horodatage", "Journal IP et appareil", "Empreinte de vérification"] },
 } as const;
 
 /** E-imza kartı: çizilen imza bir kez "yazılır". */
