@@ -19,6 +19,11 @@ export type ProformaKalemi = { aciklama: string; miktar: number; birim_fiyat: nu
 export type ProformaToplami = { araToplam: number; kdv: number; toplam: number };
 
 export const AZAMI_KALEM = 20;
+
+/* Proforma kesilebilen ürünler; veritabanı kısıtıyla aynı küme
+   (20261028155350). Kurum ArvoOS ve ArvoCal proformasını ArvoOS
+   panelinde, ArvoLab proformasını ArvoLab'da görür. */
+export const PROFORMA_URUNLERI = ["arvoos", "arvolab", "randevu"] as const;
 export const VARSAYILAN_KDV_ORANI = 20;
 
 /** Satır tutarı: miktar × birim fiyat, kuruşa yuvarlanmış. */
@@ -114,3 +119,74 @@ export const PROFORMA_DURUM_ADI = {
   iptal: "İptal edildi",
   suresi_doldu: "Süresi doldu",
 } as const;
+
+/*
+  ALICI BİLGİSİ (28.10.2026). Proforma eskiden yalnızca tek satırlık
+  "müşteri adı" taşıyordu ve bireysel abonede bu çoğu zaman e-posta
+  adresiydi: belgede "Sayın ali@…" yazıyordu. Kurum sahibi belgede ad
+  soyad ve kurum unvanının da olmasını istedi. Bilgi proformaya KOPYA
+  olarak yazılıyor, kuruma ya da aboneye bağlanmıyor: kurum sonradan
+  unvanını değiştirse de düzenlenmiş belge düzenlendiği gibi kalmalı.
+*/
+export type ProformaAlici = {
+  adSoyad: string | null;
+  unvan: string | null;
+  vergiDairesi: string | null;
+  /** VKN (10 hane) ya da TCKN (11 hane). */
+  vergiNo: string | null;
+  adres: string | null;
+  eposta: string | null;
+};
+
+const ALAN_SINIRI = { adSoyad: 120, unvan: 200, vergiDairesi: 80, vergiNo: 11, adres: 400, eposta: 200 } as const;
+
+/*
+  Formdan alıcıyı okur. Kurum proformasında unvan, bireysel abonede ad
+  soyad zorunlu: belgede muhatabı olmayan bir proforma müşteriye
+  gönderilemez. Vergi numarası yazıldıysa 10 (VKN) ya da 11 (TCKN) hane
+  olmalı — yanlış haneli bir numara faturaya da yanlış geçerdi.
+*/
+export function aliciOku(ham: Record<keyof ProformaAlici, string>, tur: "kurum" | "abone"): ProformaAlici {
+  const alici = {} as ProformaAlici;
+  for (const alan of Object.keys(ALAN_SINIRI) as (keyof ProformaAlici)[]) {
+    const deger = (ham[alan] ?? "").replace(/\s+/g, " ").trim();
+    if (deger.length > ALAN_SINIRI[alan] && alan !== "vergiNo") throw new Error(`Alıcı bilgisi çok uzun (${alan}).`);
+    alici[alan] = deger || null;
+  }
+  if (alici.vergiNo) {
+    const rakam = alici.vergiNo.replace(/\D/g, "");
+    if (rakam.length !== 10 && rakam.length !== 11) throw new Error("Vergi numarası 10 haneli VKN ya da 11 haneli TCKN olmalı.");
+    alici.vergiNo = rakam;
+  }
+  if (alici.eposta && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(alici.eposta)) throw new Error("Alıcının e-posta adresi geçersiz.");
+  if (tur === "kurum" && !alici.unvan) throw new Error("Kurum proformasında ticari unvanı yazın.");
+  if (tur === "abone" && !alici.adSoyad) throw new Error("Bireysel proformada alıcının adını soyadını yazın.");
+  return alici;
+}
+
+/** Belgenin tek satırlık muhatabı: unvan, yoksa ad soyad, yoksa e-posta. */
+export const aliciAdi = (a: ProformaAlici): string => a.unvan || a.adSoyad || a.eposta || "";
+
+/** Vergi numarasının türü: 10 hane VKN, 11 hane TCKN. */
+export const vergiNoTuru = (no: string): "VKN" | "TCKN" | "Vergi No" =>
+  no.length === 10 ? "VKN" : no.length === 11 ? "TCKN" : "Vergi No";
+
+/*
+  KDV DAHİL TUTARDAN PROFORMA (28.10.2026). Liste fiyatları KDV dahile
+  geçti; form ise yalnızca KDV hariç birim fiyat kabul ediyordu ve 4.990
+  TL'lik abonelik için kurucunun 4.158,33 yazması gerekiyordu. Elle
+  bölmek bazı tutarlarda toplamı bir kuruş saptırıyor — müşteri 4.990
+  öderken proforma 4.989,99 diyor, havale eşleşmiyor.
+
+  Kural: TOPLAM yazılan brüt tutara BİREBİR eşittir. Her satırın brütü
+  KDV hariç tutara ayrıştırılır (kalemler KDV hariç saklanıyor, ArvoLab
+  kalemlerin toplamını ara toplamla karşılaştırıyor), KDV ise brüt
+  toplamdan ara toplam çıkarılarak bulunur. Yuvarlama farkı KDV satırına
+  düşer, toplama değil.
+*/
+export function kdvDahilProforma(brutKalemler: ProformaKalemi[], kdvOrani: number): { kalemler: ProformaKalemi[] } & ProformaToplami {
+  const kalemler = brutKalemler.map((k) => ({ ...k, birim_fiyat: Math.round((k.birim_fiyat * 100) / (100 + kdvOrani)) }));
+  const araToplam = kalemler.reduce((t, k) => t + kalemTutari(k), 0);
+  const toplam = brutKalemler.reduce((t, k) => t + kalemTutari(k), 0);
+  return { kalemler, araToplam, kdv: toplam - araToplam, toplam };
+}

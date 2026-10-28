@@ -17,7 +17,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
   müşteriye eksik toplam göstermek olurdu).
 */
 
-import { kalemleriCoz, type ProformaKalemi } from "@/lib/proforma";
+import { kalemleriCoz, type ProformaAlici, type ProformaKalemi } from "@/lib/proforma";
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
@@ -53,6 +53,9 @@ export type KopruProforma = {
   id: string;
   no: string;
   musteriAdi: string;
+  /* Belgedeki alıcı bloğu (28.10.2026). 20261028155350'den önceki
+     proformalarda yok; ArvoLab o zaman musteriAdi'yi yazar. */
+  alici: ProformaAlici | null;
   kalemler: ProformaKalemi[];
   araToplam: number;
   kdvOrani: number;
@@ -88,16 +91,16 @@ export type KopruFaturalama = {
 export const BOS_FATURALAMA: KopruFaturalama = { odemeler: [], toplamOdenen: 0, bekleyenTutar: 0, proformalar: [], satici: null };
 
 type ProformaSatiri = {
-  id: string; proforma_no: string; musteri_adi: string; kalemler: unknown; ara_toplam: number; kdv_orani: number;
+  id: string; proforma_no: string; musteri_adi: string; alici: ProformaAlici | null; kalemler: unknown; ara_toplam: number; kdv_orani: number;
   kdv: number; toplam: number; para_birimi: string; duzenleme_tarihi: string; gecerlilik_tarihi: string;
   notlar: string | null; durum: string; payment_request_id: string | null; subscriber_payment_id: string | null;
 };
 
 /* İptal edilenler gösterilmiyor: müşteriye "ödeme bekleniyor" gibi okunmasın, kafası karışmasın. */
-async function proformalar(admin: Admin, alan: "organization_id" | "subscriber_id", id: string, product?: string): Promise<KopruProforma[]> {
+export async function proformalar(admin: Admin, alan: "organization_id" | "subscriber_id", id: string, product?: string): Promise<KopruProforma[]> {
   let sorgu = admin
     .from("platform_proformalari")
-    .select("id,proforma_no,musteri_adi,kalemler,ara_toplam,kdv_orani,kdv,toplam,para_birimi,duzenleme_tarihi,gecerlilik_tarihi,notlar,durum,payment_request_id,subscriber_payment_id")
+    .select("id,proforma_no,musteri_adi,alici,kalemler,ara_toplam,kdv_orani,kdv,toplam,para_birimi,duzenleme_tarihi,gecerlilik_tarihi,notlar,durum,payment_request_id,subscriber_payment_id")
     .eq(alan, id)
     .neq("durum", "iptal");
   if (product) sorgu = sorgu.eq("product", product);
@@ -107,6 +110,7 @@ async function proformalar(admin: Admin, alan: "organization_id" | "subscriber_i
     id: p.id,
     no: p.proforma_no,
     musteriAdi: p.musteri_adi,
+    alici: p.alici && typeof p.alici === "object" ? p.alici : null,
     kalemler: kalemleriCoz(p.kalemler),
     araToplam: Number(p.ara_toplam),
     kdvOrani: Number(p.kdv_orani),
@@ -125,7 +129,7 @@ async function proformalar(admin: Admin, alan: "organization_id" | "subscriber_i
   Satıcı bilgisi: Arvo kurumunun (slug arvo-os) yasal bilgileri ve
   platform banka hesapları. Yalnızca proforma varsa okunuyor.
 */
-async function satici(admin: Admin): Promise<KopruSatici> {
+export async function satici(admin: Admin): Promise<KopruSatici> {
   const [{ data: kurum, error: kurumHatasi }, { data: hesaplar, error: hesapHatasi }] = await Promise.all([
     admin.from("organizations").select("name,legal_name,legal_address,legal_district,legal_city,tax_office,tax_number,mersis_no").eq("slug", "arvo-os").maybeSingle(),
     admin.from("platform_bank_accounts").select("bank_name,account_holder,iban,currency").eq("is_active", true).order("sort_order"),
@@ -279,5 +283,41 @@ export async function kurumFaturalamasi(admin: Admin, organizationId: string, pr
     bekleyenTutar: hepsi.filter((s) => s.status === "pending").reduce((t, s) => t + Number(s.amount), 0),
     proformalar: proformaListesi,
     satici: proformaListesi.length ? await satici(admin) : null,
+  };
+}
+
+/*
+  KURUMUN ArvoOS PANELİNDEKİ BELGELERİ (28.10.2026).
+
+  Proforma ve fatura bugüne kadar YALNIZCA ArvoLab'da gösteriliyordu;
+  ArvoOS ya da ArvoCal lisansı için kesilen bir belgeyi kurumun görebileceği
+  hiçbir yer yoktu ("kurumlara fatura kesilemiyor"). Kurumun Ödeme ve
+  Lisans ekranı bütün ürünlerin belgelerini burada okuyor; ArvoLab
+  belgesi ArvoLab'da da görünmeye devam ediyor.
+*/
+export type KurumProformasi = KopruProforma & { urun: string };
+export type KurumFaturasi = KopruFatura & { urun: string; tutar: number; paraBirimi: string };
+
+export async function kurumBelgeleri(admin: Admin, organizationId: string): Promise<{ proformalar: KurumProformasi[]; faturalar: KurumFaturasi[] }> {
+  const [{ data: urunler, error: urunHatasi }, { data: odemeler, error: odemeHatasi }] = await Promise.all([
+    admin.from("platform_proformalari").select("id,product").eq("organization_id", organizationId).neq("durum", "iptal")
+      .order("created_at", { ascending: false }).limit(LISTE),
+    admin.from("organization_payment_requests").select("id,product,amount,currency").eq("organization_id", organizationId)
+      .eq("status", "approved").order("reviewed_at", { ascending: false, nullsFirst: false }).limit(LISTE),
+  ]);
+  if (urunHatasi) throw new Error("Proformalar okunamadı: " + urunHatasi.message);
+  if (odemeHatasi) throw new Error("Ödemeler okunamadı: " + odemeHatasi.message);
+  const urunu = new Map(((urunler ?? []) as { id: string; product: string }[]).map((p) => [p.id, p.product]));
+  const odemeSatirlari = (odemeler ?? []) as { id: string; product: string | null; amount: number; currency: string | null }[];
+  const [liste, fatura] = await Promise.all([
+    urunu.size ? proformalar(admin, "organization_id", organizationId) : Promise.resolve([] as KopruProforma[]),
+    faturalar(admin, "payment_request_id", odemeSatirlari.map((o) => o.id)),
+  ]);
+  return {
+    proformalar: liste.map((p) => ({ ...p, urun: urunu.get(p.id) ?? "arvoos" })),
+    faturalar: odemeSatirlari.flatMap((o) => {
+      const f = fatura.get(o.id);
+      return f ? [{ ...f, urun: o.product ?? "arvoos", tutar: Number(o.amount), paraBirimi: o.currency || "TRY" }] : [];
+    }),
   };
 }

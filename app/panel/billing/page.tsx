@@ -7,6 +7,11 @@ import { arvolabKrediDurumu } from "@/lib/arvolab";
 import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
 import { istanbulDateTime } from "@/lib/istanbul-date";
 import { submitBankTransferPayment } from "./actions";
+import Link from "next/link";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { kurumBelgeleri } from "@/lib/faturalama-koprusu";
+import { proformaGorunumu, PROFORMA_DURUM_ADI } from "@/lib/proforma";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 
 /* Ödeme bildiriminin durumu kurumun dilinde (eskiden ham kod: "pending"). */
 const ODEME_DURUMU: Record<string, string> = { pending: "İnceleniyor", approved: "Onaylandı", rejected: "Reddedildi", canceled: "İptal" };
@@ -101,6 +106,16 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const arvolabAcik = ["active", "trialing", "past_due"].includes(productRows.get("arvolab")?.status ?? "inactive");
   // Bakiye ArvoLab'ın veritabanında; ulaşılamazsa null döner ve "0" yazılmaz.
   const kredi = canSubmit && arvolabAcik ? await arvolabKrediDurumu(organization.id) : null;
+
+  /*
+    PROFORMA VE FATURALAR (28.10.2026). Tablolar istemciye kapalı (RLS
+    yalnızca kurucuya açık): belge resmî ve kurumlar arası sızmamalı.
+    Okuma servis rolüyle, kurumun KENDİ kimliğiyle ve yalnızca lisans
+    yönetme yetkisi olana — dekont gönderebilen kişi, ödeyecek kişi.
+  */
+  const admin = canSubmit ? createAdminClient() : null;
+  const belgeler = admin ? await kurumBelgeleri(admin, organization.id) : null;
+  const bugun = todayInIstanbul();
 
   return <>
     <div className="panel-pagehead">
@@ -216,6 +231,25 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           </form>
         </article>)}
       </div> : <p className="panel-muted">Kredi satın alma şu an kullanılamıyor. ArvoOS ile iletişime geçin.</p>}
+    </section> : null}
+
+    {belgeler ? <section className="panel-card management-card">
+      <div className="management-heading"><div><small>BELGELER</small><h2>Proformalar ve faturalar</h2></div><span className="status-pill">{belgeler.proformalar.length + belgeler.faturalar.length} belge</span></div>
+      <div className="module-control-list">
+        {belgeler.proformalar.map((p) => {
+          const durum = proformaGorunumu(p.durum, p.gecerlilikTarihi, bugun);
+          return <div className="module-control" key={p.id}>
+            <div><b>Proforma {p.no} · {productName(p.urun)} · {formatTry(p.toplam)}</b><small>{p.kalemler.map((k) => k.aciklama).join(", ")} · geçerlilik {istanbulDateTime(`${p.gecerlilikTarihi}T12:00:00Z`, { dateStyle: "short" })}</small></div>
+            <span className="status-pill" data-tone={durum === "odendi" ? "success" : durum === "suresi_doldu" ? "neutral" : "warning"}>{PROFORMA_DURUM_ADI[durum]}</span>
+            <Link className="panel-secondary" href={`/panel/billing/proforma/${p.id}`}>Görüntüle / yazdır</Link>
+          </div>;
+        })}
+        {belgeler.faturalar.map((f) => <div className="module-control" key={`${f.no}-${f.tarih}`}>
+          <div><b>Fatura {f.no} · {productName(f.urun)} · {formatTry(f.tutar)}</b><small>{istanbulDateTime(`${f.tarih}T12:00:00Z`, { dateStyle: "short" })}</small></div>
+          {f.url ? <a className="panel-secondary" href={f.url} target="_blank" rel="noreferrer">PDF&apos;i aç</a> : <span className="panel-muted">Bağlantı şu an üretilemedi</span>}
+        </div>)}
+        {!belgeler.proformalar.length && !belgeler.faturalar.length ? <p className="panel-muted">Henüz proforma ya da fatura yok. Kesilen belgeler burada görünür.</p> : null}
+      </div>
     </section> : null}
 
     {canSubmit ? <section className="panel-card management-card">
