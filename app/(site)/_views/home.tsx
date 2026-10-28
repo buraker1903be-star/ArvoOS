@@ -7,7 +7,6 @@
 // Sahneler beyaz / gri keskin; koyu zemin yalnızca maketlerin içinde.
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { baslangicFiyati, paraYaz } from "@/lib/site/doviz";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import type { SiteProduct } from "@/lib/site/pricing";
 import { COMPANY, ROUTES, type Locale } from "@/lib/site/routes";
@@ -15,8 +14,9 @@ import { JsonLd, faqLd, organizationLd, webPageLd, websiteLd } from "@/lib/site/
 import type { HomeContent } from "../_content/home";
 import { Fragment } from "../_components/frags";
 import { HeroStage } from "../_components/hero-stage";
-import { BrandLogo, Ikon, ProductLogo, type ProductName } from "../_components/marks";
-import { FloatCard } from "../_components/float-card";
+import { BrandLogo, ProductLogo, type ProductName } from "../_components/marks";
+import { GlobalStrip, HeroBadges, baslangicYazisi } from "../_components/global";
+import { BookMock } from "../_components/mock-book";
 import { LabMock } from "../_components/mock-lab";
 import { StoryStage } from "../_components/story-stage";
 import { ArvoosTrio } from "../_components/trio";
@@ -46,17 +46,6 @@ function ProductTile({ id, name, kicker, title, sub, href, app, more, signIn, na
   );
 }
 
-const BOOK_CARD = {
-  tr: { kicker: "Yeni randevu", status: "Onaylandı", title: "Saç kesimi · Elif", sub: "Perşembe 14:30 · 45 dk", rows: [["Personel takvimi uygun", "ok"], ["Müşteriye bildirim hazır", "ok"]] as [string, "ok" | "warn"][] },
-  en: { kicker: "New booking", status: "Confirmed", title: "Haircut · Emma", sub: "Thursday 2:30 pm · 45 min", rows: [["Stylist calendar free", "ok"], ["Customer notice ready", "ok"]] as [string, "ok" | "warn"][] },
-  de: { kicker: "Neuer Termin", status: "Bestätigt", title: "Haarschnitt · Lena", sub: "Donnerstag 14:30 · 45 Min.", rows: [["Kalender der Mitarbeiterin frei", "ok"], ["Kundenbenachrichtigung bereit", "ok"]] as [string, "ok" | "warn"][] },
-  es: { kicker: "Nueva cita", status: "Confirmada", title: "Corte de pelo · Lucía", sub: "Jueves 14:30 · 45 min", rows: [["Agenda de la estilista libre", "ok"], ["Aviso al cliente listo", "ok"]] as [string, "ok" | "warn"][] },
-  fr: { kicker: "Nouveau rendez-vous", status: "Confirmé", title: "Coupe · Camille", sub: "Jeudi 14 h 30 · 45 min", rows: [["Agenda de la coiffeuse libre", "ok"], ["Notification client prête", "ok"]] as [string, "ok" | "warn"][] },
-  ar: { kicker: "حجز جديد", status: "مؤكَّد", title: "قص الشعر · ليلى", sub: "الخميس 14:30 · 45 دقيقة", rows: [["تقويم المصففة متاح", "ok"], ["إشعار العميل جاهز", "ok"]] as [string, "ok" | "warn"][] },
-} as const;
-
-const ROZET_IKONU = ["globe", "currency", "devices"] as const;
-const SERIT_IKONU = ["globe", "currency", "devices", "shield"] as const;
 
 export async function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
   const { os, lab, book } = c.products;
@@ -65,11 +54,7 @@ export async function HomeView({ locale, c }: { locale: Locale; c: HomeContent }
   const visuals = ["web", "seo", "software"] as const;
   // Ücretler sayfasıyla aynı kaynak: konsoldan yayımlanan TL tutarı burada da görünür.
   const fiyatlar = await yayimlananFiyatlar();
-  const fiyatYazisi = (urun: SiteProduct) => {
-    const f = baslangicFiyati(urun, locale, fiyatlar);
-    if (!f) return c.global.onRequest;
-    return c.global.from.replace("{price}", paraYaz(f.tutar, locale)) + (f.kisiBasi ? c.global.perUserMonth : c.global.perMonth);
-  };
+  const fiyatYazisi = (urun: SiteProduct) => baslangicYazisi(urun, locale, c.global, fiyatlar);
   const kartlar: { name: ProductName; urun: SiteProduct; p: typeof os }[] = [
     { name: "ArvoOS", urun: "arvoos", p: os },
     { name: "ArvoLab", urun: "arvolab", p: lab },
@@ -83,9 +68,7 @@ export async function HomeView({ locale, c }: { locale: Locale; c: HomeContent }
           <h1 id="hero-title" className="display rise" style={d(1)}>{c.hero.title}{c.hero.subtitle ? <span className="thin"> {c.hero.subtitle}</span> : null}</h1>
           <p className="lead rise" style={d(2)}>{c.hero.lead}</p>
           <Actions items={c.hero.actions} className="rise" />
-          <ul className="hero-badges rise" style={d(4)}>
-            {c.global.badges.map((b, i) => <li key={b}><Ikon ad={ROZET_IKONU[i]} />{b}</li>)}
-          </ul>
+          <HeroBadges items={c.global.badges} style={d(4)} />
         </div>
         <HeroStage locale={locale} />
       </section>
@@ -112,20 +95,7 @@ export async function HomeView({ locale, c }: { locale: Locale; c: HomeContent }
           </div>
         </section>
 
-        <section className="section-s gstrip" aria-labelledby="global-title">
-          <div className="wrap">
-            <SectionHead eyebrow={c.global.eyebrow} title={c.global.title} lead={c.global.lead} center id="global-title" />
-            <ul className="gstrip-grid">
-              {c.global.items.map((x, i) => (
-                <li key={x.title} className="gstrip-item" data-reveal style={{ ["--i" as string]: i }}>
-                  <span className="gstrip-icon"><Ikon ad={SERIT_IKONU[i]} /></span>
-                  <h3>{x.title}</h3>
-                  <p>{x.text}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+        <GlobalStrip g={c.global} />
 
         <ProductTile name="ArvoOS" kicker={os.label} title={os.title} sub={os.text} href={os.cta.href} app={os.signIn.href} more={more} signIn={signIn}>
           <ArvoosTrio locale={locale} />
@@ -152,10 +122,11 @@ export async function HomeView({ locale, c }: { locale: Locale; c: HomeContent }
           <LabMock locale={locale} />
         </ProductTile>
 
-        {/* ArvoARC'ın yeri 28.10.2026'dan beri ArvoBook: ARC satılmıyor. Arayüz
-            maketi henüz yok; mevcut yüzen kart örnek bir randevuyla çiziliyor. */}
+        {/* ArvoARC'ın yeri 28.10.2026'dan beri ArvoBook: ARC satılmıyor. Kutuda
+            ArvoLab'daki gibi ürünün kendi ekranı (günün takvimi) duruyor;
+            eskiden maket yoktu ve tek bir yüzen kart çiziliyordu. */}
         <ProductTile name="ArvoBook" kicker={book.label} title={book.title} sub={book.text} href={book.cta.href} app={book.signIn.href} more={more} signIn={signIn} narrow>
-          <div className="ptile-card"><FloatCard {...BOOK_CARD[locale]} /></div>
+          <BookMock locale={locale} />
         </ProductTile>
 
         <section className="section" aria-labelledby="svc-title">

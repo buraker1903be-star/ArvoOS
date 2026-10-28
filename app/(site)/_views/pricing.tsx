@@ -16,6 +16,8 @@ import { Check } from "../_components/marks";
 import { PriceCycle } from "../_components/price-cycle";
 import { Actions, CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
 import { KISA } from "../_content/kisa";
+import { HOME_ICERIGI } from "../_content/home-icerik";
+import { HeroBadges } from "../_components/global";
 
 const planByCode = new Map(PLANS.map((p) => [p.code, p]));
 
@@ -43,7 +45,7 @@ export function PricingView({ locale, c, fiyatlar }: {
 
   return (
     <>
-      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />
+      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} extra={<HeroBadges items={HOME_ICERIGI[locale].global.badges} />} />
 
       <div className="scenes pricing-page">
         <section className="section" aria-labelledby="ucret-title">

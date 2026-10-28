@@ -9,7 +9,7 @@ export const ABOUT_ES: SubContent = {
   meta: { title: "Sobre nosotros", description: `Arvo es la marca de software de ${COMPANY.legalName}. Desarrolla ArvoOS, ArvoLab y ArvoBook, y ofrece servicios de diseño web y de comercio electrónico y de software a medida.` },
   hero: {
     eyebrow: "Sobre nosotros", title: "Hacemos que el trabajo complejo", subtitle: "sea simple.",
-    lead: `Arvo es la marca de software de ${COMPANY.legalName}, con sede en Estambul. Diseña formas de trabajar digitales, potentes y a la vez serenas, para organizaciones, investigadores y salones.`,
+    lead: `Arvo es la marca de software de ArvoCulture Group, con sede en Estambul (Turquía). Diseña formas de trabajar digitales, potentes y a la vez serenas, para organizaciones, investigadores y salones.`,
     actions: [{ label: "Conózcanos", href: R("contact"), variant: "gold" }],
   },
   cards: {

@@ -55,7 +55,6 @@
 .site .ptile-visual.narrow{width:min(980px,100% - 2*var(--gutter))}
 /* Arayüz maketi olmayan ürün (ArvoBook) yüzen kartla çiziliyor; kart
    maket genişliğine yayılınca boş bir şerit gibi duruyordu. */
-.site .ptile-card{max-width:380px;margin-inline:auto}
 
 /* ---------- ArvoLab adım anlatısı (açık) ---------- */
 .site .story{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(40px,6vw,96px)}

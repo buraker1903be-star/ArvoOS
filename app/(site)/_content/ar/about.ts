@@ -9,7 +9,7 @@ export const ABOUT_AR: SubContent = {
   meta: { title: "من نحن", description: `Arvo هي العلامة البرمجية لشركة ${COMPANY.legalName}. تطوّر ArvoOS وArvoLab وArvoBook، وتقدّم خدمات تصميم المواقع الإلكترونية ومتاجر التجارة الإلكترونية والبرمجيات المخصّصة.` },
   hero: {
     eyebrow: "من نحن", title: "نجعل العمل المعقّد", subtitle: "بسيطًا.",
-    lead: `Arvo هي العلامة البرمجية لشركة ${COMPANY.legalName}، ومقرّها إسطنبول. تصمّم أساليب عمل رقمية قوية وهادئة في آنٍ واحد للمؤسسات والباحثين والصالونات.`,
+    lead: `Arvo هي العلامة البرمجية لمجموعة ArvoCulture Group، ومقرّها إسطنبول، تركيا. تصمّم أساليب عمل رقمية قوية وهادئة في آنٍ واحد للمؤسسات والباحثين والصالونات.`,
     actions: [{ label: "تعرّف إلينا", href: R("contact"), variant: "gold" }],
   },
   cards: {

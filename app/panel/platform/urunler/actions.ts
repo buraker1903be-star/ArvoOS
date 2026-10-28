@@ -91,8 +91,12 @@ function fiyatYuzeyleriniTazele() {
   revalidatePath("/panel/platform/kurulumlar");
   revalidatePath("/panel/platform/subscribers");
   for (const yol of Object.values(ROUTES.pricing)) revalidatePath(yol);
-  // Ana sayfa da ürün kartlarında başlangıç fiyatını gösteriyor (28.10.2026).
-  for (const yol of Object.values(ROUTES.home)) revalidatePath(yol);
+  // Ana sayfa ve ürün sayfaları da başlangıç fiyatını gösteriyor (28.10.2026).
+  // Listede olmayan sayfa, yeni fiyat yayımlandıktan sonra eski rakamı
+  // bir sonraki dağıtıma kadar göstermeye devam ederdi.
+  for (const id of ["home", "arvoos", "arvolab", "randevu"] as const) {
+    for (const yol of Object.values(ROUTES[id])) revalidatePath(yol);
+  }
 }
 
 /*
