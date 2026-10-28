@@ -102,3 +102,6 @@
    kapanış düz, alt bilgi logonun doygun lacivertiydi ve aradaki sınır
    iki ayrı ton gibi görünüyordu. */
 .site .ftr{background:var(--deep)}
+/* Alt bilgide ışık yok: üstündeki yeşil ışıma zemini kapanıştan farklı bir
+   tonda gösteriyordu (kurum sahibi, 28.10.2026). Düz, aynı koyu renk. */
+.site .ftr::before{content:none}
