@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { PaytrCredentials } from "@/lib/paytr";
 
 /*
@@ -145,4 +145,240 @@ export function odemeFormuAlanlari(kimlik: PaytrCredentials, g: OdemeFormuGirdis
     + alanlar.payment_type + alanlar.installment_count + alanlar.currency + alanlar.test_mode + alanlar.non_3d;
   alanlar.paytr_token = imzala(kimlik.merchantKey, mesaj + kimlik.merchantSalt);
   return alanlar;
+}
+
+/*
+  BİLDİRİM URL (Direkt API "2. Bölüm"). PayTR her işlemin sonucunu
+  mağaza panelinde tanımlı TEK adrese POST eder; yanıt yalnızca düz
+  "OK" olmalı, yoksa PayTR yeniden dener ve işlem panelde "Devam
+  Ediyor" kalır. Aynı işlem birden çok kez bildirilebilir: yalnızca ilki
+  işlenir, tekrarlar merchant_oid ile tanınır.
+
+  hash = base64(HMAC_SHA256(merchant_key, merchant_oid + merchant_salt +
+  status + total_amount)). Belge formülü örnek koda bırakıyor; bu sıra
+  Link API bildiriminin (lib/paytr.ts) callback_id'siz hâli. Test
+  ödemesi panelde "Başarılı" görünene kadar formül doğrulanmış SAYILMAZ:
+  yanlışsa bildirim reddedilir (sessiz kabul değil, sessiz ret).
+*/
+export type DirektBildirim = {
+  merchant_oid: string;
+  status: string;
+  total_amount: string;
+  hash: string;
+};
+
+export function direktBildirimDogruMu(kimlik: PaytrCredentials, b: DirektBildirim): boolean {
+  if (!b.merchant_oid || !b.hash || (b.status !== "success" && b.status !== "failed")) return false;
+  const beklenen = Buffer.from(imzala(kimlik.merchantKey, b.merchant_oid + kimlik.merchantSalt + b.status + b.total_amount));
+  const gelen = Buffer.from(b.hash);
+  return beklenen.length === gelen.length && timingSafeEqual(beklenen, gelen);
+}
+
+/*
+  Başarısızlık kodlarının müşteriye/kurucuya söylenecek karşılığı (belgedeki
+  tablo). 0'da PayTR'nin kendi mesajı (ör. "limit yetersiz") kullanılır;
+  99 entegrasyon hatası — müşteriye değil bize ait, ayrıca günlüğe düşmeli.
+*/
+export function basarisizlikAciklamasi(kod: string, mesaj: string): { metin: string; bizim: boolean } {
+  switch (kod) {
+    case "1": case "2": return { metin: "Kart doğrulaması (SMS şifresi) tamamlanmadı.", bizim: false };
+    case "3": case "11": return { metin: "Ödeme güvenlik kontrolünden geçmedi.", bizim: false };
+    case "6": return { metin: "Ödeme tamamlanmadan sayfadan çıkıldı.", bizim: false };
+    case "8": return { metin: "Bu karta taksit yapılamıyor.", bizim: false };
+    case "9": return { metin: "Bu kartla işlem yetkisi bulunmuyor.", bizim: false };
+    case "10": return { metin: "Bu işlemde 3D Secure gerekiyor.", bizim: true };
+    case "99": return { metin: "Ödeme altyapısında teknik bir hata oluştu.", bizim: true };
+    default: return { metin: mesaj.trim().slice(0, 300) || "Ödeme onaylanmadı.", bizim: false };
+  }
+}
+
+/*
+  KAYITLI KARTTAN ÖDEME (Kart Saklama API, "Kayıtlı karttan ödeme alma").
+  İmza ilk ödemeyle AYNI formül; istekte ek olarak müşterinin utoken'ı,
+  seçilen kartın ctoken'ı ve require_cvv gider. require_cvv CAPI LIST'ten
+  gelir: 1 ise müşteriden CVV istenir — o durumda form yine tarayıcıdan
+  doğrudan PayTR'ye gönderilmeli (CVV bir kart bilgisidir, sunucumuza
+  gelmez). Kart numarası bu istekte hiç yok.
+*/
+export type KayitliKartGirdisi = Omit<OdemeFormuGirdisi, "kartiSakla" | "utoken"> & {
+  utoken: string;
+  ctoken: string;
+  /** CAPI LIST'in kart için döndürdüğü değer. */
+  cvvGerekli: boolean;
+};
+
+export function kayitliKartAlanlari(kimlik: PaytrCredentials, g: KayitliKartGirdisi): Record<string, string> {
+  if (!g.utoken || !g.ctoken) throw new Error("Kayıtlı kart bilgisi eksik.");
+  // Temel alanlar kart saklamasız kurulur: kayıtlı karttan ödemede store_card gitmez.
+  const { paytr_token: _eski, ...temel } = odemeFormuAlanlari(kimlik, { ...g, kartiSakla: false, utoken: null });
+  void _eski;
+  const alanlar: Record<string, string> = { ...temel, utoken: g.utoken, ctoken: g.ctoken, require_cvv: g.cvvGerekli ? "1" : "0" };
+  const mesaj = alanlar.merchant_id + alanlar.user_ip + alanlar.merchant_oid + alanlar.email + alanlar.payment_amount
+    + alanlar.payment_type + alanlar.installment_count + alanlar.currency + alanlar.test_mode + alanlar.non_3d;
+  alanlar.paytr_token = imzala(kimlik.merchantKey, mesaj + kimlik.merchantSalt);
+  return alanlar;
+}
+
+/*
+  KAYITLI KART LİSTESİ VE SİLME (Kart Saklama API, CAPI LIST / CAPI DELETE).
+
+  İmzalar:
+   - LIST:   base64(HMAC_SHA256(merchant_key, utoken + merchant_salt))
+   - DELETE: base64(HMAC_SHA256(merchant_key, ctoken + utoken + merchant_salt))
+  Belge sırayı örnek koda bırakıyor. LIST'te tek değişken olduğu için
+  sıra belli; DELETE'teki sıra PayTR'nin örnek kodlarından bilinen sıra
+  ve test mağazasında "paytr_token geçersiz" dönmediği görülene kadar
+  doğrulanmış sayılmaz. Yanlış imza sessiz kabul üretmez: PayTR
+  status=error döndürür ve kart silinmeden kalır, kullanıcıya hata yazılır.
+
+  Sunucudan sunucuya istek: utoken ve ctoken birer sır gibi davranır
+  (karttan çekim yapmaya yarar), tarayıcıya gönderilmez.
+*/
+export const CAPI_LIST_ADRESI = "https://www.paytr.com/odeme/capi/list";
+export const CAPI_SIL_ADRESI = "https://www.paytr.com/odeme/capi/delete";
+
+export type KayitliKart = {
+  ctoken: string;
+  son4: string;
+  cvvGerekli: boolean;
+  ay: string;
+  yil: string;
+  banka: string | null;
+  adSoyad: string | null;
+  program: string | null;
+  tur: "credit" | "debit" | null;
+  sirketKarti: boolean;
+  sema: string | null;
+};
+
+export const capiListeImzasi = (kimlik: PaytrCredentials, utoken: string) => imzala(kimlik.merchantKey, utoken + kimlik.merchantSalt);
+export const capiSilImzasi = (kimlik: PaytrCredentials, utoken: string, ctoken: string) =>
+  imzala(kimlik.merchantKey, ctoken + utoken + kimlik.merchantSalt);
+
+const metin = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+
+/*
+  LIST yanıtı: kart dizisi; eşleşme yoksa BOŞ JSON; hatada status=error.
+  "Boş" ile "hata" ayrı tutuluyor: okunamayan listeyi "kayıtlı kartınız
+  yok" diye göstermek, kartı olan müşteriye yeni kart girdirmek olurdu.
+*/
+export function kartListesiniCoz(yanit: unknown): { kartlar: KayitliKart[] } | { hata: string } {
+  if (yanit && typeof yanit === "object" && !Array.isArray(yanit)) {
+    const o = yanit as Record<string, unknown>;
+    if (o.status === "error") return { hata: metin(o.err_msg) ?? "Kayıtlı kartlar okunamadı." };
+  }
+  const dizi = Array.isArray(yanit) ? yanit : yanit && typeof yanit === "object" ? Object.values(yanit as object) : [];
+  const kartlar: KayitliKart[] = [];
+  for (const k of dizi) {
+    if (!k || typeof k !== "object") continue;
+    const r = k as Record<string, unknown>;
+    const ctoken = metin(r.ctoken);
+    const son4 = metin(r.last_4);
+    if (!ctoken || !son4) continue;
+    kartlar.push({
+      ctoken,
+      son4,
+      cvvGerekli: String(r.require_cvv ?? "") === "1",
+      ay: metin(r.month) ?? "",
+      yil: metin(r.year) ?? "",
+      banka: metin(r.c_bank),
+      adSoyad: metin(r.c_name),
+      program: metin(r.c_brand),
+      tur: r.c_type === "credit" || r.c_type === "debit" ? r.c_type : null,
+      sirketKarti: r.businessCard === "y",
+      sema: metin(r.schema),
+    });
+  }
+  return { kartlar };
+}
+
+/* Kartın son kullanma ayı geçti mi (Türkiye günüyle; kart ayın son günü
+   biter). Süresi geçmiş karttan otomatik çekim denenmez. */
+export function kartSuresiGectiMi(kart: Pick<KayitliKart, "ay" | "yil">, bugun: string): boolean {
+  const ay = Number(kart.ay);
+  const yil = 2000 + Number(kart.yil.slice(-2));
+  if (!Number.isInteger(ay) || ay < 1 || ay > 12 || !Number.isInteger(yil)) return false;
+  const [by, bm] = bugun.split("-").map(Number);
+  return by > yil || (by === yil && bm > ay);
+}
+
+async function formPost(adres: string, alanlar: Record<string, string>): Promise<unknown> {
+  const yanit = await fetch(adres, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(alanlar).toString(),
+    signal: AbortSignal.timeout(15000),
+    cache: "no-store",
+  });
+  const govde = await yanit.text();
+  if (!govde.trim()) return {};
+  try {
+    return JSON.parse(govde);
+  } catch {
+    throw new Error(`PayTR beklenmeyen yanıt verdi (HTTP ${yanit.status}).`);
+  }
+}
+
+export async function kayitliKartlar(kimlik: PaytrCredentials, utoken: string) {
+  return kartListesiniCoz(await formPost(CAPI_LIST_ADRESI, {
+    merchant_id: kimlik.merchantId, utoken, paytr_token: capiListeImzasi(kimlik, utoken),
+  }));
+}
+
+export async function kayitliKartiSil(kimlik: PaytrCredentials, utoken: string, ctoken: string): Promise<void> {
+  const yanit = (await formPost(CAPI_SIL_ADRESI, {
+    merchant_id: kimlik.merchantId, utoken, ctoken, paytr_token: capiSilImzasi(kimlik, utoken, ctoken),
+  })) as Record<string, unknown>;
+  if (yanit.status !== "success") throw new Error(`Kart silinemedi: ${metin(yanit.err_msg) ?? "bilinmeyen hata"}`);
+}
+
+/*
+  KAYITLI KARTTAN TEKRARLAYAN ÖDEME (Kart Saklama API, "Recurring payment").
+
+  Sunucudan sunucuya, formsuz: non_3d=1 ve recurring_payment=1. Müşteriden
+  hiçbir şey istenmez; bu yüzden YALNIZCA müşterinin açıkça onay verdiği
+  otomatik yenilemede çağrılır (onay kaydı veritabanında). Mağazada Non3D
+  yetkisi açık olmalı.
+
+  Yanıt hemen JSON döner; kesin sonuç yine Bildirim URL'ine gelir ve
+  lisans YALNIZCA bildirimle uzar. Buradaki yanıt yalnızca "yeniden
+  denemeli mi" kararı için:
+   - success / wait_callback → bildirimi bekle
+   - failed + try_again=true → aynı kart sonra yeniden denenebilir
+     ("devam eden işleminiz var")
+   - failed + try_again=false → bu karttan bir daha DENENMEZ (belgenin
+     örneği: "Kart banka tarafından kapatılmış"); müşteriye kart
+     güncelleme bildirimi gider.
+
+  user_ip: otomatik çekimde müşteri o an bizde değil; onayın verildiği
+  andaki IP gönderilir (onay kaydında saklı).
+*/
+export type TekrarlayanGirdi = Omit<KayitliKartGirdisi, "cvvGerekli" | "taksit">;
+export type TekrarlayanSonuc =
+  | { durum: "basarili" | "bildirim-bekleniyor" }
+  | { durum: "basarisiz"; mesaj: string; yenidenDenenebilir: boolean };
+
+export function tekrarlayanOdemeAlanlari(kimlik: PaytrCredentials, g: TekrarlayanGirdi): Record<string, string> {
+  const { paytr_token: _eski, ...alanlar } = kayitliKartAlanlari(kimlik, { ...g, cvvGerekli: false });
+  void _eski;
+  delete alanlar.require_cvv;
+  alanlar.non_3d = "1";
+  alanlar.recurring_payment = "1";
+  const mesaj = alanlar.merchant_id + alanlar.user_ip + alanlar.merchant_oid + alanlar.email + alanlar.payment_amount
+    + alanlar.payment_type + alanlar.installment_count + alanlar.currency + alanlar.test_mode + alanlar.non_3d;
+  alanlar.paytr_token = imzala(kimlik.merchantKey, mesaj + kimlik.merchantSalt);
+  return alanlar;
+}
+
+export function tekrarlayanYanitiniCoz(yanit: unknown): TekrarlayanSonuc {
+  const o = (yanit && typeof yanit === "object" ? yanit : {}) as Record<string, unknown>;
+  if (o.status === "success") return { durum: "basarili" };
+  if (o.status === "wait_callback") return { durum: "bildirim-bekleniyor" };
+  // try_again yalnızca açıkça true ise: belirsiz bir hatada kapalı karttan tekrar tekrar çekim denemek bankada kötü iz bırakır.
+  const yeniden = o.try_again === true || o.try_again === "true";
+  return { durum: "basarisiz", mesaj: metin(o.msg) ?? metin(o.reason) ?? metin(o.err_msg) ?? "Ödeme alınamadı.", yenidenDenenebilir: yeniden };
+}
+
+export async function tekrarlayanOdemeAl(kimlik: PaytrCredentials, g: TekrarlayanGirdi): Promise<TekrarlayanSonuc> {
+  return tekrarlayanYanitiniCoz(await formPost(PAYTR_ODEME_ADRESI, tekrarlayanOdemeAlanlari(kimlik, g)));
 }
