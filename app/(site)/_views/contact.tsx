@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LeadForm } from "@/app/_site/lead-form";
 import { LEAD_INTERESTS, type LeadInterest } from "@/app/_site/lead-types";
-import { COMPANY, PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/routes";
+import { ARC_APP, COMPANY, PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/routes";
 import { JsonLd, breadcrumbLd, faqLd, webPageLd } from "@/lib/site/structured-data";
 import type { ContactContent } from "../_content/contact";
 import { Faq, PageHero } from "../_components/ui";
@@ -9,6 +9,8 @@ import { Faq, PageHero } from "../_components/ui";
 const ALIASES: Record<string, LeadInterest> = {
   hizmetler: "services", hizmet: "services", web: "services", seo: "services", yazilim: "services", software: "services",
   os: "arvoos", lab: "arvolab", diger: "other",
+  // ArvoARC satılmıyor; eski ?ilgi=arc bağlantıları e-ticaret sitesi talebine iner.
+  arc: "services", arvobook: "randevu", book: "randevu", eticaret: "services", ecommerce: "services",
 };
 
 /** ?ilgi= / ?interest= değerini formun ilgi alanına çevirir (bilinmeyen → arvoos). */
@@ -35,7 +37,7 @@ export function ContactView({ locale, c, interest }: { locale: Locale; c: Contac
               <div><small>{c.addressLabel}</small><p>{COMPANY.legalName}<br /><span style={{ fontWeight: 400, color: "var(--muted)" }}>{COMPANY.address.display}</span></p></div>
               <div>
                 <small>{c.appsLabel}</small>
-                {(["arvoos", "arvolab", "arc"] as const).map((k) => <a key={k} href={PRODUCT_APPS[k].url} target="_blank" rel="noopener">{PRODUCT_APPS[k].name} · {PRODUCT_APPS[k].host} ↗</a>)}
+                {[...(["arvoos", "arvolab", "randevu"] as const).map((k) => PRODUCT_APPS[k]), ARC_APP].map((u) => <a key={u.host} href={u.url} target="_blank" rel="noopener">{u.name} · {u.host} ↗</a>)}
               </div>
               <div><small>{c.privacyLabel}</small><Link href={ROUTES.privacy[locale]} style={{ fontWeight: 500, fontSize: 15 }}>{c.privacyText} →</Link></div>
             </div>

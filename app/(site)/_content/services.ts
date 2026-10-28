@@ -48,7 +48,7 @@ export const SERVICES_TR: SubContent = {
 export const WEB_DESIGN_TR: SubContent = {
   id: "web-design",
   parent: { id: "services", name: "Hizmetler" },
-  meta: { title: "Web Sitesi Tasarımı ve Yapımı", description: "Arvo web sitesi tasarımı: keşif ve strateji, içerik mimarisi, UX/UI tasarım, hızlı ve erişilebilir geliştirme, test, yayın ve bakım tek süreçte." },
+  meta: { title: "Web Sitesi Tasarımı ve Yapımı", description: "Arvo web sitesi ve e-ticaret sitesi tasarımı: keşif ve strateji, içerik mimarisi, UX/UI tasarım, hızlı ve erişilebilir geliştirme, test, yayın ve bakım tek süreçte." },
   hero: {
     eyebrow: "Hizmetler · Web sitesi tasarımı", title: "Markanızın dijitaldeki", subtitle: "en güçlü hali.",
     lead: "Arvo’nun web sitesi tasarımı hizmeti; keşif ve stratejiden içerik mimarisine, UX/UI tasarımdan geliştirme, yayın ve bakıma kadar marka web sitelerini uçtan uca üretir.",
@@ -61,6 +61,11 @@ export const WEB_DESIGN_TR: SubContent = {
       { title: "Özgün ve tutarlı marka", text: "Renk, tipografi, görsel dil ve içerik tonu tek bir premium kimlikte birleşir." },
       { title: "Sade ve ikna edici deneyim", text: "Ziyaretçiyi yormayan, güçlü mesajları doğru sırada sunan akıcı kullanıcı yolculukları." },
       { title: "Hızlı ve ölçeklenebilir teknoloji", text: "Mobil öncelikli, arama motorlarına ve yapay zekâ yanıtlarına hazır, kolayca büyüyen altyapı." },
+      /* ArvoARC 28.10.2026'da ürün olarak satıştan kalktı; e-ticaret sitesini
+         yaptıranlara paneli olarak veriliyor. Panelin yaptığı yalnızca ürün
+         (katalog) ve sipariş yönetimi: ödeme, kargo, pazaryeri ya da stok
+         senkronu iddiası YAZILMAZ (eski arc.ts kuralı). */
+      { title: "E-ticaret sitesi ve yönetim paneli", text: "E-ticaret sitenizi tasarlayıp yapıyoruz; ürünlerinizi ve siparişlerinizi yöneteceğiniz panel sitenizle birlikte teslim edilir." },
     ],
   },
   steps: {
@@ -76,12 +81,13 @@ export const WEB_DESIGN_TR: SubContent = {
   },
   band: {
     eyebrow: "Teslimatlar", title: "Projenin sonunda elinizde olanlar.",
-    items: ["Strateji ve içerik mimarisi", "Tüm ekran boyutlarına uyumlu arayüz tasarımı", "Hızlı, erişilebilir ve SEO temelli kod", "Yapılandırılmış veri ve çok dilli yapı (gerektiğinde)", "Yayın, test ve devir teslim", "Yayın sonrası bakım seçeneği"],
+    items: ["Strateji ve içerik mimarisi", "Tüm ekran boyutlarına uyumlu arayüz tasarımı", "Hızlı, erişilebilir ve SEO temelli kod", "Yapılandırılmış veri ve çok dilli yapı (gerektiğinde)", "E-ticaret sitelerinde ürün ve sipariş yönetim paneli", "Yayın, test ve devir teslim", "Yayın sonrası bakım seçeneği"],
   },
   faq: { eyebrow: "Sık sorulan sorular", title: "Web sitesi tasarımı hakkında", items: [
     { q: "Web sitesi projesi hangi adımlardan oluşur?", a: "Keşif ve strateji, içerik mimarisi, UX/UI tasarım, geliştirme, test ve yayın ile bakım ve büyüme." },
     { q: "Siteler mobil uyumlu mu?", a: "Evet. Tasarım mobil öncelikli yapılır ve tüm ekran boyutlarında test edilir." },
     { q: "Sitem arama motorları için hazır olacak mı?", a: "Evet. Teknik SEO temelleri geliştirmenin parçasıdır; daha kapsamlı çalışma için SEO ve GEO hizmetimiz vardır. Belirli bir sıralama vaat edilmez." },
+    { q: "E-ticaret sitesi de yapıyor musunuz?", a: "Evet. E-ticaret sitesini tasarlayıp yapıyoruz; ürünlerinizi (katalog) ve siparişlerinizi yöneteceğiniz panel sitenizle birlikte teslim edilir. Panel ayrıca kiralanmaz, sitenin parçasıdır." },
     { q: "Yayından sonra içerik ekleyebilir miyim?", a: "Evet. Altyapı yeni sayfalara kolayca büyüyecek şekilde kurulur; bakım ve büyüme desteği de sunuyoruz." },
   ] },
   cta: { title: "Yeni sitenizi birlikte tasarlayalım.", actions: [talk, { label: "SEO ve GEO", href: R("seo-geo"), variant: "ghost" }] },

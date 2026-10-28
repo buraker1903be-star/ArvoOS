@@ -83,7 +83,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
                 <div className="pop-products">
                   {t.productLinks.map((l) => {
                     const ic = <><ProductLogo name={l.label as ProductName} height={22} /><span><span>{l.desc}</span></span></>;
-                    // Tanıtım sayfası olmayan ürün (Arvo Randevu) panele çıkar.
+                    // Tanıtım sayfası olmayan ürün varsa panele çıkar.
                     return l.external
                       ? <a key={l.href} className="pop-product" href={l.href} target="_blank" rel="noopener" onClick={close}>{ic}</a>
                       : <Link key={l.href} className="pop-product" href={l.href} onClick={close}>{ic}</Link>;

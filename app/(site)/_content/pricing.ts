@@ -3,9 +3,9 @@
   lib/site/pricing.ts'ten gelir (bkz. types.ts → PricingContent).
 
   Paket içeriklerinde yalnızca panelde karşılığı olan özellikler yazılır.
-  ArvoARC'ta entegrasyon / ödeme / kargo / pazaryeri / stok senkronu iddiası
-  YASAK (arc.ts ile aynı kural); Arvo Randevu'da WhatsApp hatırlatması
-  yazılmaz — şablonlar henüz Meta onayında.
+  ArvoBook'ta (eski Arvo Randevu) WhatsApp hatırlatması yazılmaz —
+  şablonlar henüz Meta onayında. ArvoARC 28.10.2026'da satıştan kalktı;
+  e-ticaret sitesi yaptıranlara panel olarak veriliyor, fiyatı burada yok.
 */
 import { COMPANY, ROUTES } from "@/lib/site/routes";
 import type { PricingContent } from "./types";
@@ -18,7 +18,7 @@ export const PRICING_TR: PricingContent = {
   meta: {
     title: "Ücretler",
     description:
-      "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab abonelik ücretleri: aylık ve yıllık fiyatlar, paket içerikleri, ek kalemler ve abonelik koşulları. Fiyatlar kurum başınadır, kullanıcı başına değil.",
+      "ArvoOS, ArvoBook ve ArvoLab abonelik ücretleri: aylık ve yıllık fiyatlar, paket içerikleri, ek kalemler ve abonelik koşulları. Fiyatlar kurum başınadır, kullanıcı başına değil.",
   },
   hero: {
     eyebrow: "Ücretler",
@@ -28,7 +28,7 @@ export const PRICING_TR: PricingContent = {
        gerekçesiyle söylendi. */
     title: "İşletme ürünlerinde kullanıcı başına değil,",
     subtitle: "kurum başına.",
-    lead: "ArvoOS, ArvoARC ve Arvo Randevu kurum başına fiyatlanır: ekibiniz büyüdükçe fatura katlanmaz, dahil olan kullanıcı sayısı her kartta yazar. ArvoLab bunun dışındadır — değeri kurumun akışında değil doğrudan yazan kişide olduğu için araştırmacı başına fiyatlanır.",
+    lead: "ArvoOS ve ArvoBook kurum başına fiyatlanır: ekibiniz büyüdükçe fatura katlanmaz, dahil olan kullanıcı sayısı her kartta yazar. ArvoLab bunun dışındadır — değeri kurumun akışında değil doğrudan yazan kişide olduğu için araştırmacı başına fiyatlanır.",
     actions: [demo, { label: "Abonelik koşulları", href: "#kosullar", variant: "ghost" }],
   },
   cycle: {
@@ -70,33 +70,10 @@ export const PRICING_TR: PricingContent = {
       ],
     },
     {
-      product: "arc",
-      tag: "E-ticaret ve mağaza yönetimi",
-      lead: "Ürün (katalog) ve sipariş yönetimi tek panelde. Self servis kurulur; mağazanız kendi çalışma alanında çalışır.",
-      linkLabel: "ArvoARC'ı inceleyin",
-      cards: [
-        {
-          code: "arc-baslangic",
-          text: "Katalogunu ve siparişlerini dağınık tablolardan tek panele taşımak isteyen mağazalar için.",
-          items: ["500 ürüne kadar", "Tek mağaza", "3 kullanıcı", "Ürün (katalog) yönetimi", "Sipariş yönetimi", "E-posta destek"],
-        },
-        {
-          code: "arc-buyume",
-          text: "Katalogu ve sipariş hacmi büyüyen, kendi alan adında görünmek isteyen markalar için.",
-          items: ["5.000 ürüne kadar", "Tek mağaza", "10 kullanıcı", "Kuruma özel alan adı", "Ürün ve sipariş yönetimi", "Öncelikli destek"],
-        },
-        {
-          code: "arc-olcek",
-          text: "Birden çok mağazayı aynı düzende yönetmek isteyen işletmeler için.",
-          items: ["Sınırsız ürün", "5 mağazaya kadar", "Sınırsız kullanıcı", "Kuruma özel alan adı", "Mağaza bazlı yetkilendirme", "Öncelikli destek"],
-        },
-      ],
-    },
-    {
       product: "randevu",
       tag: "Randevu yönetimi",
       lead: "Kuaför ve güzellik salonları için çevrim içi randevu sayfası, takvim ve müşteri kaydı. Çalışma saatleri Türkiye saatiyle tanımlanır.",
-      linkLabel: "Arvo Randevu'yu açın",
+      linkLabel: "ArvoBook'u inceleyin",
       cards: [
         {
           code: "randevu-tek",
@@ -150,7 +127,7 @@ export const PRICING_TR: PricingContent = {
     quote: "Teklif",
     items: [
       { code: "ek-kullanici", name: "Ek kullanıcı", text: "ArvoOS paketlerinde dahil olan kullanıcı sayısını aşan her kullanıcı için. ArvoLab zaten araştırmacı başına fiyatlandığı için bu kalem orada işlemez." },
-      { code: "ek-sube", name: "Ek şube", text: "Arvo Randevu Çok şube paketindeki üç şubeyi aşan her şube için." },
+      { code: "ek-sube", name: "Ek şube", text: "ArvoBook Çok şube paketindeki üç şubeyi aşan her şube için." },
       { code: "veri-aktarimi", name: "Veri aktarımı ve kurulum", text: "Mevcut sisteminizden veri taşıma, kullanıcı tanımlama ve ekip eğitimi. Kapsama göre tek seferlik ücretlendirilir." },
       { code: "ozel-gelistirme", name: "Kuruma özel geliştirme", text: "Kuruma özel iş akışı, ekran veya rapor geliştirmesi. Kapsam netleştikten sonra teklif edilir." },
     ],
@@ -180,7 +157,7 @@ export const PRICING_TR: PricingContent = {
     title: "Ücretler hakkında",
     items: [
       { q: "Fiyatlara KDV dahil mi?", a: "Hayır. Sayfadaki tutarlar KDV hariçtir; faturada yürürlükteki oranda KDV eklenir." },
-      { q: "Kullanıcı başına mı ödüyoruz?", a: "ArvoOS, ArvoARC ve Arvo Randevu'da hayır: fiyat kurum başınadır ve her pakette belirli sayıda kullanıcı vardır; bu sayıyı aşarsanız yalnızca ek kullanıcı ücreti işlenir, paket fiyatı katlanmaz. ArvoLab'de evet: araştırmacı başına fiyatlanır, çünkü orada değeri üreten doğrudan kullanan kişidir." },
+      { q: "Kullanıcı başına mı ödüyoruz?", a: "ArvoOS ve ArvoBook'ta hayır: fiyat kurum başınadır ve her pakette belirli sayıda kullanıcı vardır; bu sayıyı aşarsanız yalnızca ek kullanıcı ücreti işlenir, paket fiyatı katlanmaz. ArvoLab'de evet: araştırmacı başına fiyatlanır, çünkü orada değeri üreten doğrudan kullanan kişidir." },
       { q: "ArvoLab'de Ekip ile Kurum arasındaki fark ne?", a: "Ekip koltuk başına ödenir: en az üç araştırmacı, kişi başı bedel Araştırmacı basamağından düşük ve istediğiniz zaman koltuk ekleyip çıkarırsınız. Kurum ise site lisansıdır: koltuk sayılmaz, bölüm ya da üniversite genelinde sınırsız araştırmacı kullanır, fatura kuruma kesilir." },
       { q: "Yıllık ödeme ne kazandırır?", a: "Yıllık seçenekte 12 aylık kullanım için 10 aylık bedel ödenir; iki ay bedavadır. Tutar dönem başında tek seferde faturalanır." },
       { q: "Abonelik otomatik yenileniyor mu?", a: "Hayır. Kartınızdan otomatik tahsilat yapılmaz; her dönem için ödeme bağlantısı gönderilir ve ödemeyi siz onaylarsınız." },

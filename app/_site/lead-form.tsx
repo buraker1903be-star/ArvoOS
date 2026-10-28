@@ -23,7 +23,7 @@ type Errors = Partial<Record<LeadField, string>>;
 const copy = {
   tr: {
     interestLegend: "Konu",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "ArvoARC", services: "Hizmetler", other: "Diğer" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoBook", services: "Hizmetler", other: "Diğer" } as Record<LeadInterest, string>,
     name: "Ad soyad",
     email: "E-posta",
     phone: "Telefon",
@@ -33,14 +33,14 @@ const copy = {
     messagePlaceholder: {
       arvoos: "Ekibiniz, sektörünüz ve ArvoOS'ta görmek istediğiniz modüller…",
       arvolab: "ArvoLab'ı hangi amaçla kullanmak istiyorsunuz?",
-      arc: "ArvoARC hakkında merak ettikleriniz…",
-      services: "Projenizi kısaca anlatın: web sitesi, özel yazılım, süreç tasarımı…",
+      randevu: "Salonunuz, şube ve personel sayınız…",
+      services: "Projenizi kısaca anlatın: web sitesi, e-ticaret sitesi, özel yazılım, süreç tasarımı…",
       other: "Size nasıl yardımcı olabiliriz?",
     } as Record<LeadInterest, string>,
     consentBefore: "Kişisel verilerimin talebimin yanıtlanması amacıyla işlenmesine ilişkin ",
     consentLink: "Aydınlatma Metni",
     consentAfter: "'ni okudum.",
-    submit: { arvoos: "Demo talep et", arvolab: "Talep gönder", arc: "Talep gönder", services: "Projeyi gönder", other: "Mesaj gönder" } as Record<LeadInterest, string>,
+    submit: { arvoos: "Demo talep et", arvolab: "Talep gönder", randevu: "Demo talep et", services: "Projeyi gönder", other: "Mesaj gönder" } as Record<LeadInterest, string>,
     sending: "Gönderiliyor…",
     note: "Bilgileriniz yalnızca talebinizi yanıtlamak için kullanılır.",
     successTitle: "Talebinizi aldık",
@@ -62,7 +62,7 @@ const copy = {
   },
   en: {
     interestLegend: "Topic",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "ArvoARC", services: "Services", other: "Other" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoBook", services: "Services", other: "Other" } as Record<LeadInterest, string>,
     name: "Full name",
     email: "Email",
     phone: "Phone",
@@ -72,14 +72,14 @@ const copy = {
     messagePlaceholder: {
       arvoos: "Your team, industry and the ArvoOS modules you'd like to see…",
       arvolab: "What would you like to use ArvoLab for?",
-      arc: "What would you like to know about ArvoARC?",
-      services: "Tell us about your project: website, custom software, process design…",
+      randevu: "Your salon, number of branches and staff…",
+      services: "Tell us about your project: website, e-commerce site, custom software, process design…",
       other: "How can we help?",
     } as Record<LeadInterest, string>,
     consentBefore: "I have read the ",
     consentLink: "Privacy Notice",
     consentAfter: " on the processing of my personal data to respond to my request.",
-    submit: { arvoos: "Request a demo", arvolab: "Send request", arc: "Send request", services: "Send project", other: "Send message" } as Record<LeadInterest, string>,
+    submit: { arvoos: "Request a demo", arvolab: "Send request", randevu: "Request a demo", services: "Send project", other: "Send message" } as Record<LeadInterest, string>,
     sending: "Sending…",
     note: "Your details are used only to respond to your request.",
     successTitle: "We've received your request",
@@ -101,7 +101,7 @@ const copy = {
   },
 } as const;
 
-const INTEREST_ORDER: LeadInterest[] = ["arvoos", "arvolab", "arc", "services", "other"];
+const INTEREST_ORDER: LeadInterest[] = ["arvoos", "arvolab", "randevu", "services", "other"];
 const FIELD_ORDER: LeadField[] = ["interest", "name", "email", "phone", "company", "message", "consent"];
 
 type Values = { name: string; email: string; phone: string; company: string; message: string; consent: boolean };

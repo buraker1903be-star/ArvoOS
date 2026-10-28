@@ -120,13 +120,12 @@
 /*
   Ürün görünürlüğü. `data-urun` YALNIZCA JavaScript çalışınca yazılır;
   yokken bütün gruplar açıktır. Her ürün için ayrı bir satır gerekiyor
-  (CSS iki niteliği birbiriyle karşılaştıramaz); PRICED_PRODUCTS'a yeni
+  (CSS iki niteliği birbiriyle karşılaştıramaz); SITE_PRODUCTS'a yeni
   ürün eklenip buraya eklenmezse grup hiç görünmez, bu yüzden
   tests/unit/fiyatlandirma.test.ts her ürünün kuralını arıyor.
 */
 .site .pricing[data-urun] .pgroup { display: none; }
 .site .pricing[data-urun="arvoos"] .pgroup[data-urun="arvoos"],
-.site .pricing[data-urun="arc"] .pgroup[data-urun="arc"],
 .site .pricing[data-urun="randevu"] .pgroup[data-urun="randevu"],
 .site .pricing[data-urun="arvolab"] .pgroup[data-urun="arvolab"] { display: block; }
 

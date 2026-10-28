@@ -1,6 +1,6 @@
 // Ürün / alt sayfa / hizmet sayfası içerik şekilleri (TR ve EN aynı şekli doldurur).
 import type { PageId } from "@/lib/site/routes";
-import type { PricedProduct } from "@/lib/site/pricing";
+import type { SiteProduct } from "@/lib/site/pricing";
 import type { Cta, QA } from "../_components/ui";
 
 export type Meta = { title: string; description: string };
@@ -17,7 +17,7 @@ export type Hero = { eyebrow: string; title: string; subtitle?: string; lead: st
 export type Block = { eyebrow?: string; title: string; lead?: string };
 
 export type ProductContent = {
-  id: "arvoos" | "arvolab" | "arc" | "randevu";
+  id: "arvoos" | "arvolab" | "randevu";
   name: string;
   category: string;
   appUrl: string;
@@ -56,7 +56,7 @@ export type SubContent = {
 */
 /** `name` YOKTUR: basamak adı pricing.ts'teki Plan.ad'dan gelir. */
 export type PriceCard = { code: string; text: string; items: string[] };
-export type PriceGroup = { product: PricedProduct; tag: string; lead: string; linkLabel: string; cards: PriceCard[] };
+export type PriceGroup = { product: SiteProduct; tag: string; lead: string; linkLabel: string; cards: PriceCard[] };
 export type PricingContent = {
   id: PageId;
   meta: Meta;

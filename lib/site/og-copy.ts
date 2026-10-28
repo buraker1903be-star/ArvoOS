@@ -1,11 +1,10 @@
 // /og/{locale}/{id} paylaşım görsellerinin metinleri. Her PageId × dil için
 // üst etiket, başlık ve kısa açıklama. Büyük harfler elle yazıldı (JS
-// toUpperCase Türkçe "i/İ" dönüşümünü yanlış yapar). ArvoARC: e-ticaret ve
-// mağazalar için self servis ürün + sipariş yönetimi (başka iddia yok).
+// toUpperCase Türkçe "i/İ" dönüşümünü yanlış yapar).
 import type { Locale, PageId } from "./routes";
 
 export type OgCopy = { eyebrow: string; title: string; tagline: string };
-export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC" | "Arvo Randevu";
+export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoBook";
 
 export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
   arvoos: "ArvoOS",
@@ -14,14 +13,13 @@ export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
   "arvoos-solutions": "ArvoOS",
   "arvoos-plans": "ArvoOS",
   arvolab: "ArvoLab",
-  arc: "ArvoARC",
-  randevu: "Arvo Randevu",
+  randevu: "ArvoBook",
 };
 
 export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
   home: {
-    tr: { eyebrow: "ARVO ÜRÜN EKOSİSTEMİ", title: "Daha iyi çalışmak için daha iyi sistemler.", tagline: "Kurumlar, araştırmacılar ve mağazalar için dijital ürünler: ArvoOS, ArvoLab ve ArvoARC." },
-    en: { eyebrow: "THE ARVO PRODUCT ECOSYSTEM", title: "Better systems for better work.", tagline: "Software for organizations, researchers and stores: ArvoOS, ArvoLab and ArvoARC." },
+    tr: { eyebrow: "ARVO ÜRÜN EKOSİSTEMİ", title: "Daha iyi çalışmak için daha iyi sistemler.", tagline: "Kurumlar, araştırmacılar ve salonlar için dijital ürünler: ArvoOS, ArvoLab ve ArvoBook." },
+    en: { eyebrow: "THE ARVO PRODUCT ECOSYSTEM", title: "Better systems for better work.", tagline: "Software for organizations, researchers and salons: ArvoOS, ArvoLab and ArvoBook." },
   },
   arvoos: {
     tr: { eyebrow: "ARVOOS · İŞLETME İŞLETİM SİSTEMİ", title: "İşletmenizin tamamı. Tek bir akışta.", tagline: "CRM, teklif, e-imzalı sözleşme, operasyon, finans, İK ve raporlama tek sistemde." },
@@ -44,20 +42,16 @@ export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
     en: { eyebrow: "ARVOOS · PLANS", title: "Start with what you need. Grow as you scale.", tagline: "Plans are shaped together around your modules, users and branch structure." },
   },
   randevu: {
-    tr: { eyebrow: "ARVO RANDEVU · SALON RANDEVU YÖNETİMİ", title: "Randevu defteri telefonu meşgul etmesin.", tagline: "Müşteri kendi randevusunu alır; personel bazlı takvim, çalışma saati ve izin, WhatsApp hatırlatma." },
-    en: { eyebrow: "ARVO RANDEVU · SALON APPOINTMENT MANAGEMENT", title: "Let the booking page answer the phone.", tagline: "Customers book themselves; per-staff calendar, working hours and time off, WhatsApp reminders." },
+    tr: { eyebrow: "ARVOBOOK · SALON RANDEVU YÖNETİMİ", title: "Randevu defteri telefonu meşgul etmesin.", tagline: "Müşteri kendi randevusunu alır; personel bazlı takvim, çalışma saati ve izin, WhatsApp hatırlatma." },
+    en: { eyebrow: "ARVOBOOK · SALON APPOINTMENT MANAGEMENT", title: "Let the booking page answer the phone.", tagline: "Customers book themselves; per-staff calendar, working hours and time off, WhatsApp reminders." },
   },
   pricing: {
-    tr: { eyebrow: "ÜCRETLER", title: "İşletme ürünlerinde kurum başına fiyat.", tagline: "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab için aylık ve yıllık fiyatlar; yıllık ödemede iki ay bedava." },
-    en: { eyebrow: "PRICING", title: "Business products priced per organization.", tagline: "Monthly and annual prices for ArvoOS, ArvoARC, Arvo Randevu and ArvoLab; two months free on annual billing." },
+    tr: { eyebrow: "ÜCRETLER", title: "İşletme ürünlerinde kurum başına fiyat.", tagline: "ArvoOS, ArvoBook ve ArvoLab için aylık ve yıllık fiyatlar; yıllık ödemede iki ay bedava." },
+    en: { eyebrow: "PRICING", title: "Business products priced per organization.", tagline: "Monthly and annual prices for ArvoOS, ArvoBook and ArvoLab; two months free on annual billing." },
   },
   arvolab: {
     tr: { eyebrow: "ARVOLAB · ARAŞTIRMA ÇALIŞMA ALANI", title: "Araştırma için daha güçlü bir alan.", tagline: "Literatür ve atıf, akademik yazım, kılavuz kontrolü, analiz ve özgünlük ön kontrolü." },
     en: { eyebrow: "ARVOLAB · RESEARCH WORKSPACE", title: "A stronger workspace for research.", tagline: "Literature and citations, academic writing, guideline checks, analysis and originality pre-checks." },
-  },
-  arc: {
-    tr: { eyebrow: "ARVOARC · E-TİCARET VE MAĞAZA YÖNETİMİ", title: "Self servis ürün ve sipariş yönetimi.", tagline: "Mağazanızın ürünleri ve siparişleri. Tek, sade bir panelde." },
-    en: { eyebrow: "ARVOARC · E-COMMERCE & STORE MANAGEMENT", title: "Self-service product and order management.", tagline: "Your store's products and orders. In one calm panel." },
   },
   services: {
     tr: { eyebrow: "HİZMETLER", title: "Markadan sisteme. Uçtan uca dijital.", tagline: "Web tasarımı, özel yazılım, süreç tasarımı, entegrasyon ve otomasyon." },

@@ -12,7 +12,7 @@
 .site .mo-brand .brand-logo{--h:16px}
 @media (max-width:767px){ .site .hdr-logo .brand-logo{--h:18px} }
 
-/* Logosu olmayan ürün (Arvo Randevu): ad, logoların optik boyutunda
+/* Logosu olmayan ürün (ArvoBook): ad, logoların optik boyutunda
    yazılır. Logo dosyası eklenince bu kural kendiliğinden devre dışı
    kalır — wordmark yalnızca BRAND_OF'ta karşılığı olmayan ürün için
    basılıyor. */

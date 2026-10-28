@@ -5,13 +5,13 @@ import { LOCALES, PAGE_PRIORITY, ROUTES, absoluteUrl, alternatesFor, type PageId
 // durum, giriş ve API yolları burada ASLA yer almaz.
 
 /** İçerik anlamlı biçimde değiştiğinde güncelleyin (her build'de değil). */
-const CONTENT_UPDATED = new Date("2026-09-13T00:00:00.000Z");
+const CONTENT_UPDATED = new Date("2026-10-28T00:00:00.000Z");
 
 const CHANGE_FREQUENCY: Partial<Record<PageId, MetadataRoute.Sitemap[number]["changeFrequency"]>> = {
   home: "weekly",
   arvoos: "weekly",
   arvolab: "weekly",
-  arc: "weekly",
+  randevu: "weekly",
   privacy: "yearly",
   "distance-sales": "yearly",
   refund: "yearly",

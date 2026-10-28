@@ -1,4 +1,4 @@
-// Ürün sayfası şablonu (ArvoOS, ArvoLab, ArvoARC) — açık açılış + keskin beyaz/gri sahneler.
+// Ürün sayfası şablonu (ArvoOS, ArvoLab, ArvoBook) — açık açılış + keskin beyaz/gri sahneler.
 import Link from "next/link";
 import { ROUTES, type Locale } from "@/lib/site/routes";
 import { JsonLd, breadcrumbLd, faqLd, productLd, webPageLd } from "@/lib/site/structured-data";
@@ -20,7 +20,7 @@ export function ProductView({ locale, c }: { locale: Locale; c: ProductContent }
         /* Logo dosyası yoksa wordmark basılmaz: ürün adı zaten üst
            etikette geçiyor ve iki kez yan yana yazılıyordu. */
         : undefined}>
-        {/* Arvo Randevu'nun arayüz maketi henüz yok; sahnesiz kahraman
+        {/* ArvoBook'un arayüz maketi henüz yok; sahnesiz kahraman
             PageHero tarafından ortalanır. Uydurma bir ekran çizmektense
             sahneyi hiç basmamak doğru. */}
         {c.id === "randevu" ? null : <HeroStage locale={locale} product={c.id} />}
