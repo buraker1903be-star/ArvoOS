@@ -17,6 +17,11 @@
    ============================================================ */
 .site{
   --navy:#002045; --navy-2:#0a2c55; --mid-950:#00152f; --mid-800:#002045;
+  /* Büyük koyu zeminler (şerit, kapanış, alt bilgi) için logonun laciverti
+     fazla doygun kaçtı: geniş alanda "mavi" okunuyor ve yeşille çatışıyordu
+     (kurum sahibi, 28.10.2026). Aynı tonun derin ve az doygun hâli; düğme ve
+     yazıdaki küçük lacivertler logonun kendi renginde kalır. */
+  --deep:#0a1622;
   --ink:#0d1b2a; --ink-soft:#34425a;
   --gold-600:#4a6b2e; --gold-500:#5a7f3a; --gold-400:#6f9548; --gold-300:#a9c78a; --gold-100:#eef4e6;
   --link:var(--navy);
@@ -47,7 +52,10 @@
 .site .link:hover,.site .alink:hover{text-decoration-color:var(--green);text-decoration-thickness:1.5px}
 .site .alink::after{color:var(--green)}
 
-/* ---------- üst menü ---------- */
+/* ---------- üst menü ----------
+   Daha opak cam: yarı saydam beyaz koyu bölümlerin üstünde mavimsi griye
+   dönüyordu. */
+.site .hdr{background:rgba(255,255,255,.9)}
 .site .hdr-cta{background:var(--navy)}
 .site .hdr-cta:hover{background:var(--mid-950)}
 
@@ -59,7 +67,7 @@
 .site .pillars-grid li{border-top-color:var(--accent-hair)}
 
 /* ---------- lacivert durak 1: "her yerde çalışır" şeridi ---------- */
-.site .scenes>section.gstrip{background:var(--navy);color:rgba(255,255,255,.7);position:relative;isolation:isolate;overflow:hidden}
+.site .scenes>section.gstrip{background:var(--deep);color:rgba(255,255,255,.7);position:relative;isolation:isolate;overflow:hidden}
 .site .scenes>section.gstrip::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
   background:radial-gradient(45% 80% at 12% 0%,color-mix(in srgb,var(--green) 22%,transparent),transparent 70%),
              radial-gradient(35% 70% at 95% 100%,color-mix(in srgb,var(--green) 14%,transparent),transparent 70%)}
@@ -72,7 +80,7 @@
 .site .gstrip .gstrip-icon{background:color-mix(in srgb,var(--green) 20%,transparent);color:var(--gold-300)}
 
 /* ---------- lacivert durak 2: kapanış — alt bilgiyle tek bir final ---------- */
-.site .scenes>section.cta,.site section.cta{background:var(--navy);color:rgba(255,255,255,.7);position:relative;isolation:isolate;overflow:hidden}
+.site .scenes>section.cta,.site section.cta{background:var(--deep);color:rgba(255,255,255,.7);position:relative;isolation:isolate;overflow:hidden}
 .site section.cta::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
   background:radial-gradient(50% 90% at 50% 0%,color-mix(in srgb,var(--green) 20%,transparent),transparent 70%)}
 .site .cta .eyebrow{color:var(--gold-300)}
@@ -84,3 +92,8 @@
 .site .cta .btn-ghost:hover{background:#fff;color:var(--navy)}
 .site .cta-note{color:rgba(255,255,255,.58)}
 .site .cta-note a{color:var(--gold-300)}
+
+/* Alt bilgi kapanışla aynı derin zeminde: ikisi tek bir bitiş. Eskiden
+   kapanış düz, alt bilgi logonun doygun lacivertiydi ve aradaki sınır
+   iki ayrı ton gibi görünüyordu. */
+.site .ftr{background:var(--deep)}
