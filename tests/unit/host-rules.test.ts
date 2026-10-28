@@ -39,15 +39,15 @@ test("pazarlama ve yerel host tanımı", () => {
 
 test("pazarlama sayfası kurum alan adından kanonik adrese taşınır", () => {
   assert.equal(
-    redirect("app.akademikmerkez.com", "/urunler/arvoos"),
-    "https://arvo-os.com/urunler/arvoos",
+    redirect("app.akademikmerkez.com", "/tr/urunler/arvoos"),
+    "https://arvo-os.com/tr/urunler/arvoos",
   );
   assert.equal(
-    redirect("app.arvo-os.com", "/urunler/arvoos", { search: "?a=1" }),
-    "https://arvo-os.com/urunler/arvoos?a=1",
+    redirect("app.arvo-os.com", "/tr/urunler/arvoos", { search: "?a=1" }),
+    "https://arvo-os.com/tr/urunler/arvoos?a=1",
   );
-  // İngilizce yollar da aynı kurala tabidir.
-  assert.equal(redirect("app.arvo-os.com", "/en/about"), "https://arvo-os.com/en/about");
+  // İngilizce yollar (28.10.2026'dan beri kökte) da aynı kurala tabidir.
+  assert.equal(redirect("app.arvo-os.com", "/about"), "https://arvo-os.com/about");
 });
 
 test("kök yol yönlendirilmez: panel hostunda giriş akışıdır", () => {
@@ -64,8 +64,8 @@ test("kanonik host, yerel ve önizleme dokunulmaz", () => {
 });
 
 test("server action POST'ları başka origin'e taşınmaz", () => {
-  assert.equal(redirect("app.arvo-os.com", "/hizmetler", { method: "POST" }), null);
-  assert.equal(redirect("app.arvo-os.com", "/hizmetler", { method: "head" }), "https://arvo-os.com/hizmetler");
+  assert.equal(redirect("app.arvo-os.com", "/tr/hizmetler", { method: "POST" }), null);
+  assert.equal(redirect("app.arvo-os.com", "/tr/hizmetler", { method: "head" }), "https://arvo-os.com/tr/hizmetler");
 });
 
 test("pazarlama sayfası olmayan yollar yönlendirilmez", () => {

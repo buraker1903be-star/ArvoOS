@@ -5,6 +5,7 @@ import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
+import { ROUTES } from "@/lib/site/routes";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
 import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
 
@@ -89,8 +90,8 @@ function fiyatYuzeyleriniTazele() {
   revalidatePath("/panel/platform/fiyatlar");
   revalidatePath("/panel/platform/kurulumlar");
   revalidatePath("/panel/platform/subscribers");
-  revalidatePath("/ucretler");
-  revalidatePath("/en/pricing");
+  revalidatePath(ROUTES.pricing.tr);
+  revalidatePath(ROUTES.pricing.en);
 }
 
 /*

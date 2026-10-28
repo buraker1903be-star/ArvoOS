@@ -6,7 +6,10 @@ export const SITE_ORIGIN = "https://arvo-os.com";
 
 export const LOCALES = ["tr", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
-export const DEFAULT_LOCALE: Locale = "tr";
+/* Varsayılan dil İngilizce (28.10.2026): kök adres ve hreflang x-default.
+   Türkçe ziyaretçi köke geldiğinde tarayıcı diline göre /tr'ye
+   yönlenir (lib/site/dil-secimi.ts); arama motoru botları yönlenmez. */
+export const DEFAULT_LOCALE: Locale = "en";
 export const LOCALE_TAGS: Record<Locale, string> = { tr: "tr-TR", en: "en-US" };
 
 export type PageId =
@@ -30,33 +33,39 @@ export type PageId =
   | "refund"
   | "delivery";
 
-/** Her sayfanın dil başına yolu. Türkçe kökte, İngilizce /en altında. */
+/*
+  Her sayfanın dil başına yolu. İNGİLİZCE KÖKTE, Türkçe /tr altında
+  (28.10.2026, global site). Eskiden tersiydi: Türkçe kökte, İngilizce
+  /en altındaydı. Eski adreslerin hepsi LEGACY_REDIRECTS'te kalıcı
+  yönlendirmeyle yeni yerine iner — tablo eskiTr/eskiEn ile türetiliyor,
+  elle yazılmıyor, yani yeni sayfa eklemek eski adres listesini bozmaz.
+*/
 export const ROUTES: Record<PageId, Record<Locale, string>> = {
-  home: { tr: "/", en: "/en" },
-  arvoos: { tr: "/urunler/arvoos", en: "/en/products/arvoos" },
-  "arvoos-modules": { tr: "/urunler/arvoos/moduller", en: "/en/products/arvoos/modules" },
-  "arvoos-industries": { tr: "/urunler/arvoos/sektorler", en: "/en/products/arvoos/industries" },
-  "arvoos-solutions": { tr: "/urunler/arvoos/cozumler", en: "/en/products/arvoos/solutions" },
-  "arvoos-plans": { tr: "/urunler/arvoos/paketler", en: "/en/products/arvoos/plans" },
+  home: { tr: "/tr", en: "/" },
+  arvoos: { tr: "/tr/urunler/arvoos", en: "/products/arvoos" },
+  "arvoos-modules": { tr: "/tr/urunler/arvoos/moduller", en: "/products/arvoos/modules" },
+  "arvoos-industries": { tr: "/tr/urunler/arvoos/sektorler", en: "/products/arvoos/industries" },
+  "arvoos-solutions": { tr: "/tr/urunler/arvoos/cozumler", en: "/products/arvoos/solutions" },
+  "arvoos-plans": { tr: "/tr/urunler/arvoos/paketler", en: "/products/arvoos/plans" },
   // Ücretler tek sayfada: dört ürünün fiyatı ayrı sayfalara dağılırsa
   // karşılaştırma yapılamıyor ve arama motoru hangisini göstereceğini seçemiyor.
-  pricing: { tr: "/ucretler", en: "/en/pricing" },
-  arvolab: { tr: "/urunler/arvolab", en: "/en/products/arvolab" },
+  pricing: { tr: "/tr/ucretler", en: "/pricing" },
+  arvolab: { tr: "/tr/urunler/arvolab", en: "/products/arvolab" },
   /* Kimlik "randevu" kalıyor: lisans, köprü ve fiyat kodları bu adla
      (randevu-tek …). Ürünün adı 28.10.2026'dan beri ArvoBook. */
-  randevu: { tr: "/urunler/arvobook", en: "/en/products/arvobook" },
-  services: { tr: "/hizmetler", en: "/en/services" },
-  "web-design": { tr: "/hizmetler/web-sitesi-tasarimi", en: "/en/services/web-design" },
-  "seo-geo": { tr: "/hizmetler/seo-ve-geo", en: "/en/services/seo-geo" },
-  "custom-software": { tr: "/hizmetler/ozel-yazilim", en: "/en/services/custom-software" },
-  about: { tr: "/hakkimizda", en: "/en/about" },
-  contact: { tr: "/iletisim", en: "/en/contact" },
-  privacy: { tr: "/gizlilik", en: "/en/privacy" },
+  randevu: { tr: "/tr/urunler/arvobook", en: "/products/arvobook" },
+  services: { tr: "/tr/hizmetler", en: "/services" },
+  "web-design": { tr: "/tr/hizmetler/web-sitesi-tasarimi", en: "/services/web-design" },
+  "seo-geo": { tr: "/tr/hizmetler/seo-ve-geo", en: "/services/seo-geo" },
+  "custom-software": { tr: "/tr/hizmetler/ozel-yazilim", en: "/services/custom-software" },
+  about: { tr: "/tr/hakkimizda", en: "/about" },
+  contact: { tr: "/tr/iletisim", en: "/contact" },
+  privacy: { tr: "/tr/gizlilik", en: "/privacy" },
   // Mesafeli satış mevzuatı ve ödeme kuruluşunun canlı mod incelemesi bu üç
   // metni ayrı ayrı arıyor; tek "şartlar" sayfası yeterli sayılmıyor.
-  "distance-sales": { tr: "/mesafeli-satis-sozlesmesi", en: "/en/distance-sales-agreement" },
-  refund: { tr: "/iptal-ve-iade", en: "/en/cancellation-and-refund" },
-  delivery: { tr: "/teslimat", en: "/en/delivery" },
+  "distance-sales": { tr: "/tr/mesafeli-satis-sozlesmesi", en: "/distance-sales-agreement" },
+  refund: { tr: "/tr/iptal-ve-iade", en: "/cancellation-and-refund" },
+  delivery: { tr: "/tr/teslimat", en: "/delivery" },
 };
 
 /** Sitemap önceliği / değişim sıklığı (arama motorları için ipucu). */
@@ -82,8 +91,31 @@ export const PAGE_PRIORITY: Record<PageId, number> = {
   delivery: 0.2,
 };
 
-/** Eski ArvoOS kurumsal sayfaları → yeni yerleri (kalıcı 301). */
+/*
+  28.10.2026'ya kadarki adres düzeni: Türkçe kökte, İngilizce /en altında.
+  Yeni düzenden türetiliyor (öneki çıkar/ekle); eski kök "/" hariç — o
+  adres artık İngilizce ana sayfa, Türkçe ziyaretçiyi dil seçimi taşıyor.
+*/
+const eskiTr = (yeni: string) => (yeni === "/tr" ? "/" : yeni.slice(3));
+const eskiEn = (yeni: string) => (yeni === "/" ? "/en" : `/en${yeni}`);
+
+/** Eski adresler → yeni yerleri (kalıcı 301). */
+/*
+  İki ana sayfa bu tabloda YOK:
+   - eski Türkçe kök "/" artık İngilizce ana sayfa (dil seçimi taşıyor);
+   - eski İngilizce kök "/en" ara katmanda yönlenir (lib/site/dil-secimi.ts
+     → ESKI_INGILIZCE_KOK): "/"e inerken İngilizce seçimini çereze yazar.
+     Buradan yönlenseydi Türkçe tarayıcı "/"de dil seçimine takılıp "/tr"ye
+     giderdi; eski İngilizce adres dilini korumazdı (Codex incelemesi,
+     28.10.2026).
+*/
 export const LEGACY_REDIRECTS: { from: string; to: string }[] = [
+  ...(Object.keys(ROUTES) as PageId[]).flatMap((id) =>
+    id === "home" ? [] : [
+      { from: eskiTr(ROUTES[id].tr), to: ROUTES[id].tr },
+      { from: eskiEn(ROUTES[id].en), to: ROUTES[id].en },
+    ]),
+  // ArvoOS'un eski kurumsal sayfaları (Türkçe).
   { from: "/urun", to: ROUTES.arvoos.tr },
   { from: "/moduller", to: ROUTES["arvoos-modules"].tr },
   { from: "/sektorler", to: ROUTES["arvoos-industries"].tr },
@@ -183,12 +215,11 @@ export function absoluteUrl(path: string): string {
   return path === "/" ? SITE_ORIGIN : `${SITE_ORIGIN}${path}`;
 }
 
-/** hreflang eşlemesi: { "tr-TR": url, "en-US": url, "x-default": tr url } */
+/** hreflang eşlemesi: her dil + "x-default" (varsayılan dil, İngilizce). */
 export function alternatesFor(id: PageId): Record<string, string> {
   return {
-    [LOCALE_TAGS.tr]: absoluteUrl(ROUTES[id].tr),
-    [LOCALE_TAGS.en]: absoluteUrl(ROUTES[id].en),
-    "x-default": absoluteUrl(ROUTES[id].tr),
+    ...Object.fromEntries(LOCALES.map((l) => [LOCALE_TAGS[l], absoluteUrl(ROUTES[id][l])])),
+    "x-default": absoluteUrl(ROUTES[id][DEFAULT_LOCALE]),
   };
 }
 

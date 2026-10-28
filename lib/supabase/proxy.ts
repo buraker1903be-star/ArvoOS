@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
-import { isManagementHost, isMarketingHost, konsolaTasinanYol, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
-import { resolvePath } from "@/lib/site/routes";
+import { isDevOrPreviewHost, isManagementHost, isMarketingHost, konsolaTasinanYol, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
+import { eskiIngilizceKokMu, kokDilYonlendirmesi, SITE_DIL_COOKIE } from "@/lib/site/dil-secimi";
+import { resolvePath, ROUTES } from "@/lib/site/routes";
 import { supabaseAyarlari } from "./yapilandirma";
 
 // arvo-os.com'da oturum/kurum sorgusu gerektirmeyen yollar: pazarlama
@@ -29,6 +30,37 @@ export async function updateSession(request: NextRequest) {
     method: request.method,
   });
   if (marketingTarget) return NextResponse.redirect(marketingTarget, 308);
+
+  /*
+    Kök adreste dil seçimi (28.10.2026): / İngilizce; Türkçe tarayıcı ya da
+    dil değiştiriciden seçilmiş Türkçe /tr'ye gider. Yalnızca pazarlama
+    alan adında (ve önizleme/yerel hostta, denemek için) — panel ve kurum
+    alan adlarında kök yol giriş akışıdır. Kural ve gerekçesi
+    lib/site/dil-secimi.ts'te (birim testli).
+  */
+  const siteHostu = normalizeHost(request.headers.get("host"));
+  if (isMarketingHost(siteHostu) || isDevOrPreviewHost(siteHostu)) {
+    if (eskiIngilizceKokMu(request.nextUrl.pathname)) {
+      const yanit = NextResponse.redirect(new URL(ROUTES.home.en + request.nextUrl.search, request.url), 308);
+      yanit.cookies.set(SITE_DIL_COOKIE, "en", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+      return yanit;
+    }
+    const dilHedefi = kokDilYonlendirmesi({
+      pathname: request.nextUrl.pathname,
+      method: request.method,
+      acceptLanguage: request.headers.get("accept-language"),
+      cookie: request.cookies.get(SITE_DIL_COOKIE)?.value,
+      userAgent: request.headers.get("user-agent"),
+      rsc: request.headers.has("rsc") || request.headers.has("next-router-prefetch"),
+    });
+    if (dilHedefi) {
+      const yanit = NextResponse.redirect(new URL(dilHedefi + request.nextUrl.search, request.url), 307);
+      // Karar isteği yapanın dilinden: paylaşılan önbellek bunu saklamamalı.
+      yanit.headers.set("Cache-Control", "private, no-store");
+      yanit.headers.set("Vary", "Accept-Language, Cookie");
+      return yanit;
+    }
+  }
 
   // Hız: arvo-os.com pazarlama sayfalarında oturum ve kurum alan adı
   // sorgusu hiçbir şeyi değiştirmez (bu alan adı bir kuruma ait değil,
