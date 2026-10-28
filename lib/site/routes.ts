@@ -4,13 +4,17 @@
 
 export const SITE_ORIGIN = "https://arvo-os.com";
 
-export const LOCALES = ["tr", "en"] as const;
+/* Sıra dil menüsündeki sıradır: varsayılan (İngilizce) başta. Almanca,
+   İspanyolca ve Fransızca 28.10.2026'da eklendi (global site). */
+export const LOCALES = ["en", "tr", "de", "es", "fr"] as const;
 export type Locale = (typeof LOCALES)[number];
 /* Varsayılan dil İngilizce (28.10.2026): kök adres ve hreflang x-default.
    Türkçe ziyaretçi köke geldiğinde tarayıcı diline göre /tr'ye
    yönlenir (lib/site/dil-secimi.ts); arama motoru botları yönlenmez. */
 export const DEFAULT_LOCALE: Locale = "en";
-export const LOCALE_TAGS: Record<Locale, string> = { tr: "tr-TR", en: "en-US" };
+export const LOCALE_TAGS: Record<Locale, string> = { en: "en-US", tr: "tr-TR", de: "de-DE", es: "es-ES", fr: "fr-FR" };
+/** Dil menüsünde her dilin KENDİ dilindeki adı (ziyaretçi kendi dilini arar). */
+export const LOCALE_NAMES: Record<Locale, string> = { en: "English", tr: "Türkçe", de: "Deutsch", es: "Español", fr: "Français" };
 
 export type PageId =
   | "home"
@@ -41,31 +45,31 @@ export type PageId =
   elle yazılmıyor, yani yeni sayfa eklemek eski adres listesini bozmaz.
 */
 export const ROUTES: Record<PageId, Record<Locale, string>> = {
-  home: { tr: "/tr", en: "/" },
-  arvoos: { tr: "/tr/urunler/arvoos", en: "/products/arvoos" },
-  "arvoos-modules": { tr: "/tr/urunler/arvoos/moduller", en: "/products/arvoos/modules" },
-  "arvoos-industries": { tr: "/tr/urunler/arvoos/sektorler", en: "/products/arvoos/industries" },
-  "arvoos-solutions": { tr: "/tr/urunler/arvoos/cozumler", en: "/products/arvoos/solutions" },
-  "arvoos-plans": { tr: "/tr/urunler/arvoos/paketler", en: "/products/arvoos/plans" },
+  home: { en: "/", tr: "/tr", de: "/de", es: "/es", fr: "/fr" },
+  arvoos: { en: "/products/arvoos", tr: "/tr/urunler/arvoos", de: "/de/produkte/arvoos", es: "/es/productos/arvoos", fr: "/fr/produits/arvoos" },
+  "arvoos-modules": { en: "/products/arvoos/modules", tr: "/tr/urunler/arvoos/moduller", de: "/de/produkte/arvoos/module", es: "/es/productos/arvoos/modulos", fr: "/fr/produits/arvoos/modules" },
+  "arvoos-industries": { en: "/products/arvoos/industries", tr: "/tr/urunler/arvoos/sektorler", de: "/de/produkte/arvoos/branchen", es: "/es/productos/arvoos/sectores", fr: "/fr/produits/arvoos/secteurs" },
+  "arvoos-solutions": { en: "/products/arvoos/solutions", tr: "/tr/urunler/arvoos/cozumler", de: "/de/produkte/arvoos/loesungen", es: "/es/productos/arvoos/soluciones", fr: "/fr/produits/arvoos/solutions" },
+  "arvoos-plans": { en: "/products/arvoos/plans", tr: "/tr/urunler/arvoos/paketler", de: "/de/produkte/arvoos/pakete", es: "/es/productos/arvoos/planes", fr: "/fr/produits/arvoos/offres" },
   // Ücretler tek sayfada: dört ürünün fiyatı ayrı sayfalara dağılırsa
   // karşılaştırma yapılamıyor ve arama motoru hangisini göstereceğini seçemiyor.
-  pricing: { tr: "/tr/ucretler", en: "/pricing" },
-  arvolab: { tr: "/tr/urunler/arvolab", en: "/products/arvolab" },
+  pricing: { en: "/pricing", tr: "/tr/ucretler", de: "/de/preise", es: "/es/precios", fr: "/fr/tarifs" },
+  arvolab: { en: "/products/arvolab", tr: "/tr/urunler/arvolab", de: "/de/produkte/arvolab", es: "/es/productos/arvolab", fr: "/fr/produits/arvolab" },
   /* Kimlik "randevu" kalıyor: lisans, köprü ve fiyat kodları bu adla
      (randevu-tek …). Ürünün adı 28.10.2026'dan beri ArvoBook. */
-  randevu: { tr: "/tr/urunler/arvobook", en: "/products/arvobook" },
-  services: { tr: "/tr/hizmetler", en: "/services" },
-  "web-design": { tr: "/tr/hizmetler/web-sitesi-tasarimi", en: "/services/web-design" },
-  "seo-geo": { tr: "/tr/hizmetler/seo-ve-geo", en: "/services/seo-geo" },
-  "custom-software": { tr: "/tr/hizmetler/ozel-yazilim", en: "/services/custom-software" },
-  about: { tr: "/tr/hakkimizda", en: "/about" },
-  contact: { tr: "/tr/iletisim", en: "/contact" },
-  privacy: { tr: "/tr/gizlilik", en: "/privacy" },
+  randevu: { en: "/products/arvobook", tr: "/tr/urunler/arvobook", de: "/de/produkte/arvobook", es: "/es/productos/arvobook", fr: "/fr/produits/arvobook" },
+  services: { en: "/services", tr: "/tr/hizmetler", de: "/de/leistungen", es: "/es/servicios", fr: "/fr/services" },
+  "web-design": { en: "/services/web-design", tr: "/tr/hizmetler/web-sitesi-tasarimi", de: "/de/leistungen/webdesign", es: "/es/servicios/diseno-web", fr: "/fr/services/creation-de-site-web" },
+  "seo-geo": { en: "/services/seo-geo", tr: "/tr/hizmetler/seo-ve-geo", de: "/de/leistungen/seo-geo", es: "/es/servicios/seo-geo", fr: "/fr/services/seo-geo" },
+  "custom-software": { en: "/services/custom-software", tr: "/tr/hizmetler/ozel-yazilim", de: "/de/leistungen/individualsoftware", es: "/es/servicios/software-a-medida", fr: "/fr/services/logiciel-sur-mesure" },
+  about: { en: "/about", tr: "/tr/hakkimizda", de: "/de/ueber-uns", es: "/es/sobre-nosotros", fr: "/fr/a-propos" },
+  contact: { en: "/contact", tr: "/tr/iletisim", de: "/de/kontakt", es: "/es/contacto", fr: "/fr/contact" },
+  privacy: { en: "/privacy", tr: "/tr/gizlilik", de: "/de/datenschutz", es: "/es/privacidad", fr: "/fr/confidentialite" },
   // Mesafeli satış mevzuatı ve ödeme kuruluşunun canlı mod incelemesi bu üç
   // metni ayrı ayrı arıyor; tek "şartlar" sayfası yeterli sayılmıyor.
-  "distance-sales": { tr: "/tr/mesafeli-satis-sozlesmesi", en: "/distance-sales-agreement" },
-  refund: { tr: "/tr/iptal-ve-iade", en: "/cancellation-and-refund" },
-  delivery: { tr: "/tr/teslimat", en: "/delivery" },
+  "distance-sales": { en: "/distance-sales-agreement", tr: "/tr/mesafeli-satis-sozlesmesi", de: "/de/fernabsatzvertrag", es: "/es/contrato-de-venta-a-distancia", fr: "/fr/contrat-de-vente-a-distance" },
+  refund: { en: "/cancellation-and-refund", tr: "/tr/iptal-ve-iade", de: "/de/widerruf-und-erstattung", es: "/es/cancelacion-y-reembolso", fr: "/fr/annulation-et-remboursement" },
+  delivery: { en: "/delivery", tr: "/tr/teslimat", de: "/de/lieferung", es: "/es/entrega", fr: "/fr/livraison" },
 };
 
 /** Sitemap önceliği / değişim sıklığı (arama motorları için ipucu). */
@@ -160,7 +164,8 @@ export const PRODUCT_NAMES: string[] = Object.values(PRODUCT_APPS).map((p) => p.
 export function productList(locale: Locale): string {
   const names = [...PRODUCT_NAMES];
   const last = names.pop()!;
-  return names.length ? `${names.join(", ")} ${locale === "tr" ? "ve" : "and"} ${last}` : last;
+  // Bağlaç dile göre (ve / and / und / y / et); Intl her dilin kuralını biliyor.
+  return names.length ? new Intl.ListFormat(LOCALE_TAGS[locale], { type: "conjunction" }).format([...names, last]) : last;
 }
 
 /** Pazarlama sitesinin sunulduğu alan adları; diğer hostlarda (panel, kurum

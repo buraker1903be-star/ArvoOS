@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ROUTES, type Locale } from "@/lib/site/routes";
+import { LOCALE_NAMES, ROUTES, type Locale } from "@/lib/site/routes";
 import { CHROME, type NavLink } from "../_content/chrome";
 import { BrandLogo, Chevron, ProductLogo, type ProductName } from "./marks";
-import { LangLink } from "./lang-link";
+import { DilBaglantilari } from "./lang-link";
 
-type MenuId = "products" | "services" | "signin";
+type MenuId = "products" | "services" | "signin" | "lang";
 
 function Item({ link, onNavigate }: { link: NavLink; onNavigate: () => void }) {
   const inner = <><b>{link.label}</b>{link.desc ? <span>{link.desc}</span> : null}</>;
@@ -57,10 +57,10 @@ export function SiteHeader({ locale }: { locale: Locale }) {
     hoverTimer.current = window.setTimeout(() => setOpen(id), id ? 60 : 160);
   };
   const toggle = (id: MenuId) => setOpen((cur) => (cur === id ? null : id));
-  const isActive = (href: string) => (href === ROUTES.home.tr || href === ROUTES.home.en ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+  const isActive = (href: string) => (Object.values(ROUTES.home).includes(href) ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
   const productsActive = t.productLinks.some((l) => isActive(l.href));
   const servicesActive = isActive(ROUTES.services[locale]);
-  const demoHref = `${ROUTES.contact[locale]}${locale === "tr" ? "?ilgi=arvoos" : "?interest=arvoos"}`;
+  const demoHref = `${ROUTES.contact[locale]}${locale === "tr" ? "?ilgi=arvoos" : "?interest=arvoos"}`; // ilgi: Türkçe sayfaların eski parametre adı
 
   const trigger = (id: MenuId, label: string, active = false, extra = "") => (
     <button type="button" className={`hdr-link ${extra}`} aria-expanded={open === id} aria-controls={`hdr-${id}`} data-active={active || undefined} onClick={() => toggle(id)}>
@@ -108,7 +108,14 @@ export function SiteHeader({ locale }: { locale: Locale }) {
         </nav>
 
         <div className="hdr-actions">
-          <LangLink locale={locale} className="hdr-lang" label={t.langName} short={t.langShort} />
+          <div className="hdr-item hdr-lang" onPointerEnter={hover("lang")} onPointerLeave={hover(null)}>
+            <button type="button" className="hdr-link" aria-expanded={open === "lang"} aria-controls="hdr-lang" aria-label={`${t.language}: ${LOCALE_NAMES[locale]}`} onClick={() => toggle("lang")}>
+              {locale.toUpperCase()}<Chevron className="hdr-chev" />
+            </button>
+            <div id="hdr-lang" className="hdr-pop hdr-pop-right hdr-pop-lang" hidden={open !== "lang"}>
+              <DilBaglantilari locale={locale} className="pop-item" onNavigate={close} />
+            </div>
+          </div>
           <div className="hdr-item hdr-signin" onPointerEnter={hover("signin")} onPointerLeave={hover(null)}>
             {trigger("signin", t.signIn)}
             <div id="hdr-signin" className="hdr-pop hdr-pop-right" hidden={open !== "signin"}>
@@ -146,7 +153,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
         <div className="sheet-foot">
           <div className="wrap sheet-foot-in">
             <Link className="btn btn-primary sheet-cta" href={demoHref} onClick={close}>{t.demo}</Link>
-            <LangLink locale={locale} className="btn btn-ghost sheet-lang" label={t.langName} />
+            <div className="sheet-langs" aria-label={t.language}><DilBaglantilari locale={locale} className="sheet-lang" onNavigate={close} /></div>
           </div>
         </div>
       </div>

@@ -6,9 +6,10 @@ import type { Locale } from "@/lib/site/routes";
 import type { Card } from "../_content/types";
 import { Fragment } from "./frags";
 import { Check } from "./marks";
+import { KISA } from "../_content/kisa";
 
 export function Bento({ items, locale, numbered = false }: { items: Card[]; locale: Locale; numbered?: boolean }) {
-  const more = locale === "tr" ? "Detaylar" : "Learn more";
+  const more = KISA[locale].details;
   return (
     <div className="bento-x">
       {items.map((c, i) => {

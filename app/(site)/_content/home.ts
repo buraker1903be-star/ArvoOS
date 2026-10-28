@@ -85,7 +85,7 @@ export const HOME_TR: HomeContent = {
     eyebrow: "Ekosistem",
     title: "Üç ürün. Tek ekosistem.",
     lead: "ArvoOS, ArvoLab ve ArvoBook; arvo-os.com’un kendi alt alan adlarında çalışan ayrı web uygulamalarıdır ve aynı ekip tarafından, ortak marka ve kalite standardıyla geliştirilir.",
-    roles: ["Operasyon", "Araştırma", "Mağaza"],
+    roles: ["Operasyon", "Araştırma", "Salon"],
     principles: [
       { title: "Her kuruma kendi alanı", text: "Her kurum, ekip ya da salon kendi çalışma alanında çalışır." },
       { title: "Ortak tasarım dili", text: "Aynı sade arayüz anlayışı ve aynı özen, her üründe." },

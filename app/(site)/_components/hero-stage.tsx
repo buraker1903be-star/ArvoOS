@@ -14,6 +14,15 @@ const CARDS = {
   en: {
     lab: { kicker: "Guideline check", status: "Ready", title: "Thesis draft · chapter 3", sub: "Last checked a few seconds ago", rows: [["Heading structure", "ok"], ["Reference style", "ok"], ["Table numbering", "warn"]] as [string, "ok" | "warn"][] },
   },
+  de: {
+    lab: { kicker: "Richtlinienprüfung", status: "Bereit", title: "Entwurf der Abschlussarbeit · Kapitel 3", sub: "Zuletzt vor wenigen Sekunden geprüft", rows: [["Gliederung", "ok"], ["Zitierstil", "ok"], ["Tabellennummerierung", "warn"]] as [string, "ok" | "warn"][] },
+  },
+  es: {
+    lab: { kicker: "Revisión de la guía", status: "Listo", title: "Borrador de tesis · capítulo 3", sub: "Revisado hace unos segundos", rows: [["Estructura de títulos", "ok"], ["Estilo de referencias", "ok"], ["Numeración de tablas", "warn"]] as [string, "ok" | "warn"][] },
+  },
+  fr: {
+    lab: { kicker: "Contrôle des consignes", status: "Prêt", title: "Brouillon de thèse · chapitre 3", sub: "Vérifié il y a quelques secondes", rows: [["Structure des titres", "ok"], ["Style des références", "ok"], ["Numérotation des tableaux", "warn"]] as [string, "ok" | "warn"][] },
+  },
 } as const;
 
 export function HeroStage({ locale, product = "arvoos" }: { locale: Locale; product?: "arvoos" | "arvolab" }) {

@@ -13,7 +13,10 @@ import { planTutari, planYillikTutari, type Fiyatlar } from "./fiyat-kaynagi";
 
 export const LLMS_UPDATED = "2026-10-28";
 
-type PageInfo = Record<Locale, { name: string; summary: string }>;
+/* llms.txt İngilizce ve Türkçe: yanıt motorları bu iki metni kaynak
+   gösteriyor; diğer diller (de, es, fr) sitenin kendisinde. */
+type LlmsLocale = Extract<Locale, "en" | "tr">;
+type PageInfo = Record<LlmsLocale, { name: string; summary: string }>;
 
 /** Her sayfa için kısa, olgusal açıklama (Record → her PageId zorunlu). */
 const PAGES: Record<PageId, PageInfo> = {
@@ -95,7 +98,7 @@ const PAGES: Record<PageId, PageInfo> = {
   },
 };
 
-const url = (id: PageId, locale: Locale) => absoluteUrl(ROUTES[id][locale]);
+const url = (id: PageId, locale: LlmsLocale) => absoluteUrl(ROUTES[id][locale]);
 
 /*
   Ücret satırları. Rakam ELLE YAZILMAZ: yapay zekâ motorlarının alıntıladığı
@@ -106,7 +109,7 @@ const url = (id: PageId, locale: Locale) => absoluteUrl(ROUTES[id][locale]);
   llms-full.txt eski rakamı söylemeye devam ediyordu. Çağıran
   yayımlanmış tabloyu veriyor; verilmezse koddaki değer.
 */
-function fiyatListesi(locale: Locale, fiyatlar?: Fiyatlar): string {
+function fiyatListesi(locale: LlmsLocale, fiyatlar?: Fiyatlar): string {
   const tr = locale === "tr";
   return SITE_PRODUCTS.map((product) => {
     const satirlar = planlar(product).map((plan) => {
@@ -155,14 +158,14 @@ export function buildLlmsTxt(): string {
   const lines = [
     `# ${COMPANY.brand}`,
     "",
-    `> Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo builds three products: ArvoOS, a multi-tenant business operating system that runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoBook, an appointment system for salons. Arvo also delivers services: website design (including e-commerce websites with their own management panel), SEO and GEO content optimization, and custom software. The website is bilingual: English at ${absoluteUrl(ROUTES.home.en)} and Turkish at ${absoluteUrl(ROUTES.home.tr)}.`,
+    `> Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo builds three products: ArvoOS, a multi-tenant business operating system that runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoBook, an appointment system for salons. Arvo also delivers services: website design (including e-commerce websites with their own management panel), SEO and GEO content optimization, and custom software. The website is available in five languages: English at ${absoluteUrl(ROUTES.home.en)}, Turkish at ${absoluteUrl(ROUTES.home.tr)}, German at ${absoluteUrl(ROUTES.home.de)}, Spanish at ${absoluteUrl(ROUTES.home.es)} and French at ${absoluteUrl(ROUTES.home.fr)}; this file and the knowledge base are in English and Turkish.`,
     "",
     "Key facts:",
     "",
     `- Company: ${COMPANY.legalName} (brand: ${COMPANY.brand}).`,
     `- Address: ${COMPANY.address.display}, Türkiye.`,
     `- Contact: ${COMPANY.email} (no public phone number).`,
-    "- Website languages: English (en-US, default, at the site root) and Turkish (tr-TR, under /tr).",
+    "- Website languages: English (en-US, default, at the site root), Turkish (tr-TR, under /tr), German (de-DE, under /de), Spanish (es-ES, under /es) and French (fr-FR, under /fr). This file and llms-full.txt are in English and Turkish only.",
     `- Each product is a web application on its own subdomain: ArvoOS at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host}, ArvoBook at ${PRODUCT_APPS.randevu.host}.`,
     "- ArvoOS flagship flow: request → proposal (online acceptance) → contract (e-signature) → automatic job workflow → customer tracking portal → online collection → profitability report.",
     `- Prices are not published. Contact ${COMPANY.email}.`,
@@ -185,7 +188,7 @@ export function buildLlmsTxt(): string {
 }
 
 export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
-  const u = (id: PageId, locale: Locale) => url(id, locale);
+  const u = (id: PageId, locale: LlmsLocale) => url(id, locale);
   const os = PRODUCT_APPS.arvoos;
   const lab = PRODUCT_APPS.arvolab;
   const rdv = PRODUCT_APPS.randevu;
@@ -210,7 +213,7 @@ Arvo is the software brand of ${COMPANY.legalName}, a technology company based i
 - ArvoLab — research workspace for academic work (${lab.host}).
 - ArvoBook (formerly Arvo Randevu) — appointment system for hair and beauty salons (${rdv.host}).
 - Services: website design and development (e-commerce websites are delivered with their own store management panel), SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals), ongoing development support.
-- Website: ${u("home", "en")} (English), ${u("home", "tr")} (Turkish).
+- Website: ${u("home", "en")} (English), ${u("home", "tr")} (Turkish), ${absoluteUrl(ROUTES.home.de)} (German), ${absoluteUrl(ROUTES.home.es)} (Spanish), ${absoluteUrl(ROUTES.home.fr)} (French).
 - Contact: ${mail}
 
 ## ArvoOS — business operating system
@@ -373,7 +376,7 @@ Arvo, ${COMPANY.city} merkezli teknoloji şirketi ${COMPANY.legalName} bünyesin
 - ArvoLab — akademik çalışma için araştırma çalışma alanı (${lab.host}).
 - ArvoBook (eski adıyla Arvo Randevu) — kuaför ve güzellik salonları için randevu sistemi (${rdv.host}).
 - Hizmetler: web sitesi tasarımı ve yapımı (e-ticaret siteleri kendi mağaza yönetim paneliyle teslim edilir), SEO ve GEO içerik düzenleme, özel yazılım geliştirme, süreç ve deneyim tasarımı, entegrasyon ve otomasyon, kurumsal dijital sistemler (panel, portal), sürekli geliştirme desteği.
-- Web sitesi: ${u("home", "tr")} (Türkçe), ${u("home", "en")} (İngilizce).
+- Web sitesi: ${u("home", "tr")} (Türkçe), ${u("home", "en")} (İngilizce), ${absoluteUrl(ROUTES.home.de)} (Almanca), ${absoluteUrl(ROUTES.home.es)} (İspanyolca), ${absoluteUrl(ROUTES.home.fr)} (Fransızca).
 - İletişim: ${mail}
 
 ## ArvoOS — işletme işletim sistemi

@@ -69,7 +69,7 @@ export const HOME_EN: HomeContent = {
     eyebrow: "Ecosystem",
     title: "Three products. One ecosystem.",
     lead: "ArvoOS, ArvoLab and ArvoBook are separate web applications, each on its own arvo-os.com subdomain, built by the same team to one brand and quality standard.",
-    roles: ["Operations", "Research", "Stores"],
+    roles: ["Operations", "Research", "Salons"],
     principles: [
       { title: "A space of your own", text: "Every organization, team or salon works in its own workspace." },
       { title: "One design language", text: "The same calm interface and the same care, in every product." },

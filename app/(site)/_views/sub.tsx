@@ -7,6 +7,7 @@ import { Bento, hasBento } from "../_components/bento";
 import { Check } from "../_components/marks";
 import { ArvoosSubnav } from "../_components/subnav";
 import { CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
+import { KISA } from "../_content/kisa";
 
 export function SubView({ locale, c, homeName = "Arvo" }: { locale: Locale; c: SubContent; homeName?: string }) {
   const path = ROUTES[c.id][locale];
@@ -18,7 +19,7 @@ export function SubView({ locale, c, homeName = "Arvo" }: { locale: Locale; c: S
   const cols = c.cards.cols ?? "three";
   return (
     <>
-      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} />
+      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />
       {c.parent?.id === "arvoos" ? <ArvoosSubnav locale={locale} current={c.id} /> : null}
 
       <div className="scenes">
@@ -34,7 +35,7 @@ export function SubView({ locale, c, homeName = "Arvo" }: { locale: Locale; c: S
                       <h3>{card.title}</h3>
                       <p>{card.text}</p>
                       {card.items?.length ? <ul>{card.items.map((x) => <li key={x}><Check />{x}</li>)}</ul> : null}
-                      {card.href ? <span className="link">{locale === "tr" ? "Daha fazla bilgi" : "Learn more"} ›</span> : null}
+                      {card.href ? <span className="link">{KISA[locale].more} ›</span> : null}
                     </>
                   );
                   const st = { ["--i" as string]: i % 3 };

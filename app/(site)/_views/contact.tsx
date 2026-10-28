@@ -5,6 +5,7 @@ import { ARC_APP, COMPANY, PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/
 import { JsonLd, breadcrumbLd, faqLd, webPageLd } from "@/lib/site/structured-data";
 import type { ContactContent } from "../_content/contact";
 import { Faq, PageHero } from "../_components/ui";
+import { KISA } from "../_content/kisa";
 
 const ALIASES: Record<string, LeadInterest> = {
   hizmetler: "services", hizmet: "services", web: "services", seo: "services", yazilim: "services", software: "services",
@@ -25,7 +26,7 @@ export function ContactView({ locale, c, interest }: { locale: Locale; c: Contac
   const crumbs = [{ name: "Arvo", href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
   return (
     <>
-      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} />
+      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />
       <div className="scenes">
       <section className="section" aria-labelledby="form-title">
         <div className="wrap contact">

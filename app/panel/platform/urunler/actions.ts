@@ -90,8 +90,7 @@ function fiyatYuzeyleriniTazele() {
   revalidatePath("/panel/platform/fiyatlar");
   revalidatePath("/panel/platform/kurulumlar");
   revalidatePath("/panel/platform/subscribers");
-  revalidatePath(ROUTES.pricing.tr);
-  revalidatePath(ROUTES.pricing.en);
+  for (const yol of Object.values(ROUTES.pricing)) revalidatePath(yol);
 }
 
 /*

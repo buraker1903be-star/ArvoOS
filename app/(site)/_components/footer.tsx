@@ -3,7 +3,7 @@ import Link from "next/link";
 import { COMPANY, ROUTES, type Locale } from "@/lib/site/routes";
 import { CHROME, type NavLink } from "../_content/chrome";
 import { BrandLogo, InstagramMark, ProductLogo } from "./marks";
-import { LangLink } from "./lang-link";
+import { DilBaglantilari } from "./lang-link";
 
 function Col({ title, links }: { title: string; links: NavLink[] }) {
   return (
@@ -58,7 +58,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
               <InstagramMark /><span>@{COMPANY.instagram}</span>
             </a>
             <span>© {year} ArvoCulture Group. {t.rights}</span>
-            <LangLink locale={locale} className="ftr-lang" label={t.langName} />
+            <span className="ftr-langs" aria-label={t.language}><DilBaglantilari locale={locale} className="ftr-lang" /></span>
             <Link href={ROUTES.arvoos[locale]} className="ftr-credit" aria-label="Designed by ArvoOS">
               <span>Designed by</span><BrandLogo brand="arvoos" />
             </Link>

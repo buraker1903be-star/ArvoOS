@@ -2,6 +2,7 @@ import { ROUTES, type Locale, type PageId } from "@/lib/site/routes";
 import { JsonLd, breadcrumbLd, webPageLd } from "@/lib/site/structured-data";
 import type { PrivacyContent } from "../_content/privacy";
 import { PageHero } from "../_components/ui";
+import { KISA } from "../_content/kisa";
 
 /*
   Hukuki metin şablonu (mesafeli satış, iptal-iade, teslimat). PrivacyView ile
@@ -13,7 +14,7 @@ export function LegalView({ locale, id, c }: { locale: Locale; id: PageId; c: Pr
   const crumbs = [{ name: "Arvo", href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
   return (
     <>
-      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} />
+      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />
       <div className="scenes">
         <section className="section">
           <article className="wrap-narrow prose">

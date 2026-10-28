@@ -24,6 +24,36 @@ export const FLOW_COPY = {
     s5: { title: "Payments", rows: [["Instalment 1", "Paid", "success"], ["Instalment 2", "Paid", "success"], ["Instalment 3", "Due", "gold"]] as [string, string, string][], link: "Payment link", locked: "Deliverables unlock after payment" },
     s6: { title: "Reports", funnel: [["Requests", 100], ["Proposals", 62], ["Won", 38]] as [string, number][], weakest: "Weakest step", profit: "Real profitability", months: [42, 55, 48, 66, 61, 78] },
   },
+  de: {
+    url: "app.arvo-os.com", cap: "Beispieloberfläche",
+    s0: { title: "Neue Anfrage", customer: "Northside Clinic", source: "Webformular", stages: ["Lead", "Qualifiziert", "Angebot", "Gewonnen"], history: "Kundenhistorie", historyVal: "2 Angebote · 1 Auftrag", rep: "Vertriebsmitarbeiter", repVal: "E. Aydın" },
+    s1: { title: "Angebot · TKF-0142", items: [["Website-Design", "₺32.000"], ["Inhalte & SEO", "₺12.500"]], vat: "MwSt. 20 %", vatVal: "₺8.900", total: "Gesamtbetrag", totalVal: "₺53.400", plan: "Zahlungsplan · 3 Raten", accepted: "Angenommen · 14:02" },
+    s2: { title: "Dienstleistungsvertrag", consent: ["Ich habe den Vertrag gelesen und akzeptiere ihn", "Ich habe die Datenschutzhinweise gelesen"], signed: "Unterzeichnet", meta: "Zeitstempel · IP · Gerät · Prüf-Hash" },
+    s3: { title: "Workflow", rows: [["Analyse", "E. Aydın", 0, 28], ["Design", "S. Kaya", 22, 36], ["Entwicklung", "M. Demir", 50, 32], ["Übergabe", "E. Aydın", 80, 16]] as [string, string, number, number][], started: "Vertrag unterzeichnet · Workflow gestartet" },
+    s4: { title: "Tracking-Portal", code: "TK-4821", progress: "Fortschritt", stages: [["Analyse", "done"], ["Umsetzung", "now"], ["Übergabe", "next"]] as [string, string][], msg: "Wir haben den Designentwurf geteilt.", reply: "Super, vielen Dank!" },
+    s5: { title: "Zahlungen", rows: [["Rate 1", "Bezahlt", "success"], ["Rate 2", "Bezahlt", "success"], ["Rate 3", "Fällig", "gold"]] as [string, string, string][], link: "Zahlungslink", locked: "Lieferdateien werden nach Zahlung freigeschaltet" },
+    s6: { title: "Berichte", funnel: [["Anfragen", 100], ["Angebote", 62], ["Gewonnen", 38]] as [string, number][], weakest: "Schwächster Schritt", profit: "Tatsächliche Rentabilität", months: [42, 55, 48, 66, 61, 78] },
+  },
+  es: {
+    url: "app.arvo-os.com", cap: "Interfaz ilustrativa",
+    s0: { title: "Nueva solicitud", customer: "Northside Clinic", source: "Formulario web", stages: ["Lead", "Cualificado", "Propuesta", "Ganado"], history: "Historial del cliente", historyVal: "2 propuestas · 1 trabajo", rep: "Comercial", repVal: "E. Aydın" },
+    s1: { title: "Propuesta · TKF-0142", items: [["Diseño web", "₺32.000"], ["Contenido y SEO", "₺12.500"]], vat: "IVA 20 %", vatVal: "₺8.900", total: "Total", totalVal: "₺53.400", plan: "Plan de pagos · 3 cuotas", accepted: "Aceptada · 14:02" },
+    s2: { title: "Contrato de servicios", consent: ["He leído y acepto el contrato", "He leído el aviso de privacidad"], signed: "Firmado", meta: "Sello de tiempo · IP · dispositivo · hash de verificación" },
+    s3: { title: "Flujo de trabajo", rows: [["Descubrimiento", "E. Aydın", 0, 28], ["Diseño", "S. Kaya", 22, 36], ["Desarrollo", "M. Demir", 50, 32], ["Entrega", "E. Aydın", 80, 16]] as [string, string, number, number][], started: "Contrato firmado · flujo de trabajo iniciado" },
+    s4: { title: "Portal de seguimiento", code: "TK-4821", progress: "Progreso", stages: [["Descubrimiento", "done"], ["Ejecución", "now"], ["Entrega", "next"]] as [string, string][], msg: "Hemos compartido el borrador del diseño.", reply: "¡Genial, gracias!" },
+    s5: { title: "Cobros", rows: [["Cuota 1", "Pagada", "success"], ["Cuota 2", "Pagada", "success"], ["Cuota 3", "Pendiente", "gold"]] as [string, string, string][], link: "Enlace de pago", locked: "Los entregables se desbloquean tras el pago" },
+    s6: { title: "Informes", funnel: [["Solicitudes", 100], ["Propuestas", 62], ["Ganadas", 38]] as [string, number][], weakest: "Paso más débil", profit: "Rentabilidad real", months: [42, 55, 48, 66, 61, 78] },
+  },
+  fr: {
+    url: "app.arvo-os.com", cap: "Interface illustrative",
+    s0: { title: "Nouvelle demande", customer: "Northside Clinic", source: "Formulaire web", stages: ["Prospect", "Qualifié", "Proposition", "Gagné"], history: "Historique client", historyVal: "2 propositions · 1 projet", rep: "Commercial", repVal: "E. Aydın" },
+    s1: { title: "Proposition · TKF-0142", items: [["Conception de site web", "₺32 000"], ["Contenu et SEO", "₺12 500"]], vat: "TVA 20 %", vatVal: "₺8 900", total: "Total", totalVal: "₺53 400", plan: "Échéancier · 3 versements", accepted: "Acceptée · 14:02" },
+    s2: { title: "Contrat de prestation", consent: ["J’ai lu et j’accepte le contrat", "J’ai lu la politique de confidentialité"], signed: "Signé", meta: "Horodatage · IP · appareil · empreinte de vérification" },
+    s3: { title: "Flux de travail", rows: [["Découverte", "E. Aydın", 0, 28], ["Design", "S. Kaya", 22, 36], ["Développement", "M. Demir", 50, 32], ["Livraison", "E. Aydın", 80, 16]] as [string, string, number, number][], started: "Contrat signé · flux de travail lancé" },
+    s4: { title: "Portail de suivi", code: "TK-4821", progress: "Avancement", stages: [["Découverte", "done"], ["Réalisation", "now"], ["Livraison", "next"]] as [string, string][], msg: "Nous avons partagé la maquette.", reply: "Super, merci !" },
+    s5: { title: "Paiements", rows: [["Versement 1", "Payé", "success"], ["Versement 2", "Payé", "success"], ["Versement 3", "À régler", "gold"]] as [string, string, string][], link: "Lien de paiement", locked: "Les livrables se débloquent après paiement" },
+    s6: { title: "Rapports", funnel: [["Demandes", 100], ["Propositions", 62], ["Gagnées", 38]] as [string, number][], weakest: "Étape la plus faible", profit: "Rentabilité réelle", months: [42, 55, 48, 66, 61, 78] },
+  },
 } satisfies Record<Locale, unknown>;
 
 export type FlowCopy = (typeof FLOW_COPY)["tr"];

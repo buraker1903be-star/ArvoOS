@@ -2,13 +2,14 @@ import { ROUTES, type Locale } from "@/lib/site/routes";
 import { JsonLd, breadcrumbLd, webPageLd } from "@/lib/site/structured-data";
 import type { PrivacyContent } from "../_content/privacy";
 import { PageHero } from "../_components/ui";
+import { KISA } from "../_content/kisa";
 
 export function PrivacyView({ locale, c }: { locale: Locale; c: PrivacyContent }) {
   const path = ROUTES.privacy[locale];
   const crumbs = [{ name: "Arvo", href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
   return (
     <>
-      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} />
+      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />
       <div className="scenes">
       <section className="section">
         <article className="wrap-narrow prose">

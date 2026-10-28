@@ -63,6 +63,9 @@ describe("sitedeki ürünler", () => {
     assert.equal(productList("tr"), "ArvoOS, ArvoLab ve ArvoBook");
     assert.doesNotMatch(buildLlmsTxt(), /ArvoARC/);
     assert.doesNotMatch(buildLlmsFullTxt(), /ArvoARC/);
+    // Site beş dilde; llms.txt yalnızca İngilizce + Türkçe olsa da yeni dilleri
+    // yok saymamalı (Codex incelemesi, 28.10.2026).
+    for (const dil of ["/de", "/es", "/fr"]) assert.match(buildLlmsTxt(), new RegExp(`arvo-os\\.com${dil}\\b`));
     // Paneli yaşıyor: e-ticaret sitesi teslim edilen kurum giriş adresini bulabilmeli.
     assert.equal(ARC_APP.host, "arc.arvo-os.com");
   });

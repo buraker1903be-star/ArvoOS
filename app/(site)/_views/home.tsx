@@ -14,6 +14,7 @@ import { LabMock } from "../_components/mock-lab";
 import { StoryStage } from "../_components/story-stage";
 import { ArvoosTrio } from "../_components/trio";
 import { Actions, CtaBand, Faq, SectionHead } from "../_components/ui";
+import { KISA } from "../_content/kisa";
 
 const d = (n: number) => ({ ["--d" as string]: n });
 
@@ -41,12 +42,15 @@ function ProductTile({ id, name, kicker, title, sub, href, app, more, signIn, na
 const BOOK_CARD = {
   tr: { kicker: "Yeni randevu", status: "Onaylandı", title: "Saç kesimi · Elif", sub: "Perşembe 14:30 · 45 dk", rows: [["Personel takvimi uygun", "ok"], ["Müşteriye bildirim hazır", "ok"]] as [string, "ok" | "warn"][] },
   en: { kicker: "New booking", status: "Confirmed", title: "Haircut · Elif", sub: "Thursday 2:30 pm · 45 min", rows: [["Stylist calendar free", "ok"], ["Customer notice ready", "ok"]] as [string, "ok" | "warn"][] },
+  de: { kicker: "Neuer Termin", status: "Bestätigt", title: "Haarschnitt · Elif", sub: "Donnerstag 14:30 · 45 Min.", rows: [["Kalender der Mitarbeiterin frei", "ok"], ["Kundenbenachrichtigung bereit", "ok"]] as [string, "ok" | "warn"][] },
+  es: { kicker: "Nueva cita", status: "Confirmada", title: "Corte de pelo · Elif", sub: "Jueves 14:30 · 45 min", rows: [["Agenda de la estilista libre", "ok"], ["Aviso al cliente listo", "ok"]] as [string, "ok" | "warn"][] },
+  fr: { kicker: "Nouveau rendez-vous", status: "Confirmé", title: "Coupe · Elif", sub: "Jeudi 14 h 30 · 45 min", rows: [["Agenda de la coiffeuse libre", "ok"], ["Notification client prête", "ok"]] as [string, "ok" | "warn"][] },
 } as const;
 
 export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
   const { os, lab, book } = c.products;
-  const more = locale === "tr" ? "Daha fazla bilgi" : "Learn more";
-  const signIn = locale === "tr" ? "Giriş" : "Sign in";
+  const more = KISA[locale].more;
+  const signIn = KISA[locale].signIn;
   const visuals = ["web", "seo", "software"] as const;
   return (
     <>
@@ -61,7 +65,7 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
       </section>
 
       <div className="scenes">
-        <ProductTile id={locale === "tr" ? "urunler" : "products"} name="ArvoOS" kicker={os.label} title={os.title} sub={os.text} href={os.cta.href} app={os.signIn.href} more={more} signIn={signIn}>
+        <ProductTile id={KISA[locale].productsAnchor} name="ArvoOS" kicker={os.label} title={os.title} sub={os.text} href={os.cta.href} app={os.signIn.href} more={more} signIn={signIn}>
           <ArvoosTrio locale={locale} />
         </ProductTile>
 

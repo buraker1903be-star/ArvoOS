@@ -78,9 +78,14 @@
 .site .sheet-signin{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px}
 /* Ayak: demo düğmesi ve dil her an parmağın altında, kaydırmadan. */
 .site .sheet-foot{flex:none;padding:12px 0 calc(12px + env(safe-area-inset-bottom));background:#fff;box-shadow:inset 0 1px 0 var(--line-soft),0 -8px 24px rgba(11,27,46,.06)}
-.site .sheet-foot-in{display:flex;align-items:center;gap:10px}
+.site .sheet-foot-in{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .site .sheet-cta{flex:1;min-height:48px;font-size:16px}
-.site .sheet-lang{flex:none;min-height:48px;font-size:15px}
+/* Dil listesi (28.10.2026, beş dil): yaprakta ayak satırının altında
+   sarılan bir satır, alt bilgide ayırıcılı bir dizi. */
+.site .sheet-langs{display:flex;flex-basis:100%;flex-wrap:wrap;justify-content:center;gap:0 18px}
+.site .sheet-lang{display:inline-flex;align-items:center;min-height:44px;font-size:15px;color:var(--ink-soft)}
+.site .hdr-pop-lang{min-width:180px}
+.site .ftr-langs{display:inline-flex;flex-wrap:wrap;gap:0 12px}
 @keyframes site-sheet{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @media (max-width:1023px){
   .site .hdr-nav,.site .hdr-signin,.site .hdr-lang{display:none}
