@@ -3,10 +3,11 @@
 // koyu zeminde "-on-dark" sürümü kullanılır.
 import Image from "next/image";
 
-type Brand = "arvoos" | "arvolab" | "arvoculture";
+type Brand = "arvoos" | "arvolab" | "arvobook" | "arvoculture";
 const SIZE: Record<Brand, { w: number; h: number }> = {
   arvoos: { w: 1901, h: 395 },
   arvolab: { w: 1920, h: 468 },
+  arvobook: { w: 1934, h: 560 },
   arvoculture: { w: 1920, h: 259 },
 };
 
@@ -25,6 +26,7 @@ export function BrandLogo({ brand, tone = "light", height, alt = "", className =
       sizes={`${shown}px`}
       priority={priority}
       className={`brand-logo ${className}`.trim()}
+      data-brand={brand}
       style={height ? ({ ["--h" as string]: `${height}px` } as React.CSSProperties) : undefined}
     />
   );
@@ -33,13 +35,12 @@ export function BrandLogo({ brand, tone = "light", height, alt = "", className =
 export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoBook";
 
 /*
-  Logo dosyası OLMAYAN ürün: ArvoBook'un (eski Arvo Randevu) kırpılmış wordmark'ı henüz
-  yok. Yanlış bir logo (başka ürünün dosyası) ya da otomatik üretilmiş bir
-  şekil koymaktansa ürünün adı kendi tipografisiyle yazılıyor; dosya
-  public/brand/arvobook.png olarak eklendiğinde buraya bir satır girer ve
-  bütün menüler kendiliğinden logoya döner.
+  ArvoBook'un logosu 28.10.2026'da geldi; o güne kadar adı kendi
+  tipografisiyle yazılıyordu. Logosu olmayan bir ürün eklenirse aynı yol
+  çalışır: BRAND_OF'ta satırı yoksa ProductLogo adı wordmark olarak yazar —
+  başka ürünün dosyası ya da otomatik üretilmiş bir şekil konmaz.
 */
-const BRAND_OF: Partial<Record<ProductName, Brand>> = { ArvoOS: "arvoos", ArvoLab: "arvolab" };
+const BRAND_OF: Partial<Record<ProductName, Brand>> = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoBook: "arvobook" };
 
 /** Ürünün kırpılmış logo dosyası var mı? Yoksa çağıran, adı iki kez
  *  yazdırmamak için wordmark'ı hiç basmamayı seçebilir. */
