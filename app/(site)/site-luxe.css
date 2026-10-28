@@ -16,18 +16,23 @@
    Arayüz maketlerinin iç renklerine dokunulmaz; onlar ürünün kendisi.
    ============================================================ */
 .site{
-  --navy:#002045; --navy-2:#0a2c55; --mid-950:#00152f; --mid-800:#002045;
+  /* TEK KOYU RENK (28.10.2026, bütünlük): düğme, bağlantı, sekme, koyu
+     bölüm, alt bilgi ve maketlerin koyu öğeleri aynı derin lacivertte.
+     Önce küçük alanlarda logonun laciverti (#002045), büyüklerde bunun
+     derin hâli vardı; yan yana gelince iki ayrı mavi gibi duruyordu.
+     Logonun kendisi dosyadaki renginde kalır. */
+  --navy:#0a1622; --navy-2:#13243a; --mid-950:#050d16; --mid-800:#0a1622;
   /* Büyük koyu zeminler (şerit, kapanış, alt bilgi) için logonun laciverti
      fazla doygun kaçtı: geniş alanda "mavi" okunuyor ve yeşille çatışıyordu
      (kurum sahibi, 28.10.2026). Aynı tonun derin ve az doygun hâli; düğme ve
      yazıdaki küçük lacivertler logonun kendi renginde kalır. */
-  --deep:#0a1622;
+  --deep:var(--navy);
   --ink:#0d1b2a; --ink-soft:#34425a;
   --gold-600:#4a6b2e; --gold-500:#5a7f3a; --gold-400:#6f9548; --gold-300:#a9c78a; --gold-100:#eef4e6;
   --link:var(--navy);
   --accent-hair:color-mix(in srgb,var(--green) 38%,transparent);
-  --shadow-s:0 1px 2px rgba(0,32,69,.04),0 10px 30px rgba(0,32,69,.06);
-  --shadow-m:0 2px 8px rgba(0,32,69,.05),0 28px 64px rgba(0,32,69,.12);
+  --shadow-s:0 1px 2px rgba(10,22,34,.04),0 10px 30px rgba(10,22,34,.06);
+  --shadow-m:0 2px 8px rgba(10,22,34,.05),0 28px 64px rgba(10,22,34,.12);
 }
 
 /* ---------- tipografi: Inter, daha sıkı ve iddialı ---------- */
@@ -43,8 +48,8 @@
 .site [dir="rtl"] :is(.lhero-copy .thin,.phero .grey-text){background-image:linear-gradient(270deg,var(--navy),var(--green))}
 
 /* ---------- düğmeler ve bağlantılar ---------- */
-.site .btn-primary,.site .btn-gold{background:var(--navy);box-shadow:0 8px 24px rgba(0,32,69,.18)}
-.site .btn-primary:hover,.site .btn-gold:hover{background:var(--mid-950);box-shadow:inset 0 0 0 1px var(--accent-hair),0 12px 32px rgba(0,32,69,.24)}
+.site .btn-primary,.site .btn-gold{background:var(--navy);box-shadow:0 8px 24px rgba(10,22,34,.18)}
+.site .btn-primary:hover,.site .btn-gold:hover{background:var(--mid-950);box-shadow:inset 0 0 0 1px var(--accent-hair),0 12px 32px rgba(10,22,34,.24)}
 .site .btn-ghost{color:var(--navy);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--navy) 30%,transparent)}
 .site .btn-ghost:hover{background:var(--navy);color:#fff;box-shadow:inset 0 0 0 1px var(--navy)}
 /* Bağlantılar Apple mavisi değil, logonun laciverti; üzerine gelince yeşil alt çizgi. */
