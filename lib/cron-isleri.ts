@@ -66,6 +66,10 @@ const TANIM: Record<string, { ad: string; aciklama: string }> = {
     ad: "ArvoLab eşitlemesi",
     aciklama: "Durursa ArvoLab'ın lisans kopyası sapmış kalır ve ödenen kredi yüklenmez; müşteri ödediği hâlde asistanda durdurulur.",
   },
+  "/api/cron/otomatik-yenileme": {
+    ad: "Otomatik yenileme",
+    aciklama: "Durursa kartını kaydedip otomatik yenilemeyi seçen kurumlardan çekim yapılmaz ve hatırlatma gitmez; dönemleri dolar ve ödemeleri gecikmiş görünür.",
+  },
   "/api/cron/abonelik-hatirlatma": {
     ad: "Abonelik hatırlatması",
     aciklama: "Durursa dönemi dolan kiracıya hatırlatma gitmez ve gecikenler işaretlenmez.",

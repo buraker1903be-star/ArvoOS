@@ -2,8 +2,10 @@
   KİRACIYA ABONELİK ÖDEME HATIRLATMASI (13.10.2026) — saf kurallar.
   Gönderim: app/api/cron/abonelik-hatirlatma (her sabah 09:00, Türkiye).
 
-  Otomatik karttan çekim yok; dönem sonu yaklaşan kurum ödemesini kendi
-  panelinden (Lisans ve ödeme) yapıyor. Hatırlatma eskiden yalnızca
+  Varsayılan olarak otomatik karttan çekim yok; dönem sonu yaklaşan kurum
+  ödemesini kendi panelinden (Lisans ve ödeme) yapıyor. Kartını kaydedip
+  otomatik yenilemeyi SEÇEN kurumlara bu hatırlatma gitmez; onlarınki
+  lib/otomatik-yenileme.ts'te (28.10.2026). Hatırlatma eskiden yalnızca
   kurucunun Platform → Abonelikler listesindeydi; kurucu tek tek
   WhatsApp'tan yazıyordu. Kurum sahibinin tarifi: 7 gün kala, 3 gün
   kala, "yarın son gün"; yalnızca kurumun yöneticilerine.
