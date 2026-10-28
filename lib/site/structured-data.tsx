@@ -2,8 +2,9 @@
 // Sayfalar yalnızca bu yardımcıları çağırır; SEO/GEO ajanı içeriği
 // zenginleştirebilir ama İMZALARI DEĞİŞTİRMEZ.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, LOCALE_TAGS, resolvePath, type Locale } from "./routes";
-import { KDV_HARIC, PARA_BIRIMI, SITE_PRODUCTS, YILLIK_ODENEN_AY, ldFiyat, planlar, urunAdi, urunAdresi } from "./pricing";
-import { planTutari, planYillikTutari, type Fiyatlar } from "./fiyat-kaynagi";
+import { KDV_HARIC, SITE_PRODUCTS, YILLIK_ODENEN_AY, ldFiyat, planlar, urunAdi, urunAdresi } from "./pricing";
+import type { Fiyatlar } from "./fiyat-kaynagi";
+import { SAYFA_PARA_BIRIMI, sayfaPlanTutari, sayfaPlanYillikTutari } from "./doviz";
 
 type Json = Record<string, unknown>;
 
@@ -173,10 +174,11 @@ export function pricingLd(locale: Locale, fiyatlar?: Fiyatlar): Json[] {
       /* Tutar konsoldan yayımlanmış olabilir; yoksa koddaki değer
          (lib/site/fiyat-kaynagi). JSON-LD ile ekrandaki rakam aynı
          kaynaktan gelmezse arama motoruna yanlış fiyat gider. */
-      const aylik = planTutari(plan, fiyatlar);
-      const yillik = planYillikTutari(plan, fiyatlar);
+      // Sayfada gösterilen tutar ve para birimi (lib/site/doviz); ikisi ayrışırsa arama motoruna yanlış fiyat gider.
+      const aylik = sayfaPlanTutari(plan, locale, fiyatlar);
+      const yillik = sayfaPlanYillikTutari(plan, locale, fiyatlar);
       if (aylik === null || yillik === null) return [];
-      const ortak = { priceCurrency: PARA_BIRIMI, valueAddedTaxIncluded: !KDV_HARIC };
+      const ortak = { priceCurrency: SAYFA_PARA_BIRIMI[locale], valueAddedTaxIncluded: !KDV_HARIC };
       return [{
         "@type": "Offer",
         sku: plan.code,

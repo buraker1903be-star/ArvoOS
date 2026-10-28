@@ -39,7 +39,7 @@ export const DISTANCE_SALES_ES: PrivacyContent = {
     { h: "2. Objeto", p: [`La suscripción a uno o varios de los productos ${productos}, y los derechos y obligaciones de las partes conforme a la Ley turca n.º 6502 de Protección del Consumidor y al Reglamento de Contratos a Distancia. Los servicios se prestan en la nube y se utilizan en un navegador; no se entregan bienes físicos.`] },
     { h: "3. Precio y pago", list: [
       `La cuota de suscripción es el precio de lista publicado en ${ROUTES.pricing.es}; para los niveles con alcance definido (bajo presupuesto), es el importe indicado en la oferta.`,
-      "Los importes están en liras turcas y no incluyen el IVA; el IVA se añade en la factura al tipo vigente.",
+      "Los importes están en la moneda indicada en el pedido (liras turcas, dólares estadounidenses o euros) y no incluyen el IVA; el IVA se añade en la factura al tipo vigente.",
       "Las suscripciones mensuales se facturan al inicio de cada periodo. Las suscripciones anuales se facturan una sola vez al inicio del periodo de 12 meses, por el importe de 10 meses de cuota.",
       "Cuando se superan los usuarios, sedes, tiendas o productos incluidos en un plan, solo se aplican las tarifas de complementos publicadas en la misma página; la cuota del plan no cambia.",
       "El pago se realiza con tarjeta de crédito o débito a través del proveedor de pagos del Vendedor, o mediante transferencia bancaria. El Vendedor no almacena los datos de la tarjeta.",

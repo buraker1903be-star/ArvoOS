@@ -36,7 +36,7 @@ export const PRICING_EN: PricingContent = {
     quoteAction: "Request a quote",
   },
   vatNote:
-    "All prices are in Turkish lira and exclude VAT. On the annual option you pay for 10 months and use 12; the amount is invoiced once at the start of the period.",
+    "Prices are in US dollars and exclude VAT and sales tax; customers in Turkey are billed in Turkish lira at the prices on the Turkish page. On the annual option you pay for 10 months and use 12; the amount is invoiced once at the start of the period.",
 
   groups: [
     {

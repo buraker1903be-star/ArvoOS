@@ -31,7 +31,7 @@ export const PRICING_FR: PricingContent = {
     quoteAction: "Demander un devis",
   },
   vatNote:
-    "Tous les prix sont exprimés en livres turques (TL) hors TVA. Avec l’option annuelle, vous payez 10 mois et en utilisez 12 ; le montant est facturé une seule fois en début de période.",
+    "Tous les prix sont exprimés en euros hors TVA ; les clients en Turquie paient en livres turques selon la page en turc. Avec l’option annuelle, vous payez 10 mois et en utilisez 12 ; le montant est facturé une seule fois en début de période.",
 
   groups: [
     {

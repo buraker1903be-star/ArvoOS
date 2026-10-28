@@ -17,7 +17,7 @@ export const PRIVACY_TR: PrivacyContent = {
     lead: "Bu metin, arvo-os.com web sitesini ziyaret ettiğinizde ve demo / iletişim formunu kullandığınızda kişisel verilerinizin 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca nasıl işlendiğini açıklar.",
     actions: [],
   },
-  updated: "Son güncelleme: 13 Eylül 2026",
+  updated: "Son güncelleme: 28 Ekim 2026",
   sections: [
     { h: "1. Veri sorumlusu", p: [`Veri sorumlusu ${COMPANY.legalName}’dir (“Arvo”). Adres: ${COMPANY.address.display}. E-posta: ${COMPANY.email}.`] },
     { h: "2. İşlenen kişisel veriler", p: ["Demo / iletişim formunu gönderdiğinizde:"], list: [
@@ -43,7 +43,7 @@ export const PRIVACY_TR: PrivacyContent = {
       "Veriler, web sitesinin ve panelin barındırıldığı bulut altyapı ve veritabanı hizmet sağlayıcılarının sunucularında saklanır; bu sunucular yurt dışında bulunabilir. Bu aktarım KVKK m.9’a uygun olarak gerçekleştirilir. Yetkili kamu kurum ve kuruluşlarına ise yalnızca mevzuatın gerektirdiği hallerde aktarım yapılabilir.",
     ] },
     { h: "7. Saklama süresi", p: ["Form verileri, talebinizin değerlendirilmesi ve olası iş ilişkisinin yürütülmesi için gerekli süre ile ilgili mevzuatta öngörülen süreler boyunca saklanır; süre sona erdiğinde silinir, yok edilir veya anonim hale getirilir. Güvenlik amaçlı IP özetleri kısa süre (birkaç gün) içinde otomatik olarak silinir."] },
-    { h: "8. Çerezler", p: ["Bu web sitesi reklam, analiz veya profilleme amaçlı çerez ya da izleme aracı kullanmaz. Yalnızca sitenin güvenli çalışması için gerekli olabilecek teknik çerezler kullanılabilir."] },
+    { h: "8. Çerezler", p: ["Bu web sitesi reklam, analiz veya profilleme amaçlı çerez ya da izleme aracı kullanmaz. Yalnızca sitenin güvenli çalışması için gerekli olabilecek teknik çerezler ve seçtiğiniz dili hatırlayan bir tercih çerezi (arvo_site_dil, bir yıl) kullanılır."] },
     { h: "9. KVKK m.11 kapsamındaki haklarınız", p: ["Veri sorumlusuna başvurarak:"], list: [
       "Kişisel verilerinizin işlenip işlenmediğini öğrenme ve işlenmişse buna ilişkin bilgi talep etme",
       "İşlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme",
@@ -55,6 +55,19 @@ export const PRIVACY_TR: PrivacyContent = {
       "Kanuna aykırı işleme sebebiyle zarara uğramanız halinde zararın giderilmesini talep etme",
     ] },
     { h: "10. Başvuru", p: [`Haklarınıza ilişkin taleplerinizi ${COMPANY.email} adresine e-posta ile veya ${COMPANY.address.display} adresine yazılı olarak iletebilirsiniz. Başvurular, niteliğine göre en geç otuz gün içinde ücretsiz olarak sonuçlandırılır (KVKK m.13).`] },
-    { h: "11. Değişiklikler", p: ["Bu metin gerektiğinde güncellenebilir; güncel sürüm her zaman bu sayfada yayımlanır."] },
+    { h: "11. Avrupa Ekonomik Alanı ve Birleşik Krallık'taki ziyaretçiler (GDPR)", p: [
+      "AEA'da ya da Birleşik Krallık'ta bulunuyorsanız ve size hizmet sunuyorsak, kişisel verileriniz ayrıca Genel Veri Koruma Tüzüğü (AB) 2016/679 (GDPR) ve Birleşik Krallık GDPR kapsamında işlenir. Veri sorumlusu yukarıda 1. bölümde yazılı olan Arvo'dur.",
+      "Hukuki sebepler (GDPR m.6/1): talebinize yanıt vermek ve demo ile teklif hazırlamak için sözleşme öncesi adımlar (b), form güvenliği ve talep yönetimi için meşru menfaat (f), yasal yükümlülükler için (c).",
+      "Verileriniz Türkiye'de ve barındırma sağlayıcılarının AEA dışındaki sunucularında işlenebilir. Bu aktarımlarda dayanılan güvenceler hakkında bilgi almak için bize yazabilirsiniz. Başvurularınızı 10. bölümdeki kanallardan iletebilirsiniz; GDPR kapsamındaki başvurular bir ay içinde yanıtlanır.",
+      "GDPR kapsamındaki haklarınız:",
+    ], list: [
+      "Verilerinize erişim ve bir kopyasını alma (m.15)",
+      "Yanlış verilerin düzeltilmesi (m.16) ve silinmesi (m.17)",
+      "İşlemenin kısıtlanması (m.18)",
+      "Veri taşınabilirliği (m.20)",
+      "Meşru menfaate dayanan işlemeye itiraz (m.21)",
+      "Yaşadığınız ya da çalıştığınız AEA ülkesindeki veri koruma denetim makamına, Birleşik Krallık'ta ise Information Commissioner's Office'e (ICO) şikâyet",
+    ] },
+    { h: "12. Değişiklikler", p: ["Bu metin gerektiğinde güncellenebilir; güncel sürüm her zaman bu sayfada yayımlanır."] },
   ],
 };

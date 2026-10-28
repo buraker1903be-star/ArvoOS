@@ -31,7 +31,7 @@ export const PRICING_ES: PricingContent = {
     quoteAction: "Solicitar presupuesto",
   },
   vatNote:
-    "Todos los precios están en liras turcas y no incluyen el IVA. Con la opción anual paga 10 meses y disfruta de 12; el importe se factura una sola vez al inicio del periodo.",
+    "Todos los precios están en euros y no incluyen el IVA; los clientes en Turquía pagan en liras turcas según la página en turco. Con la opción anual paga 10 meses y disfruta de 12; el importe se factura una sola vez al inicio del periodo.",
 
   groups: [
     {

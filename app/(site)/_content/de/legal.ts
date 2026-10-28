@@ -39,7 +39,7 @@ export const DISTANCE_SALES_DE: PrivacyContent = {
     { h: "2. Gegenstand", p: [`Das Abonnement eines oder mehrerer der Produkte ${urunlerDe} sowie die Rechte und Pflichten der Parteien nach dem türkischen Verbraucherschutzgesetz Nr. 6502 und der Verordnung über Fernabsatzverträge. Die Dienste sind cloudbasiert und werden im Browser genutzt; es werden keine physischen Waren geliefert.`] },
     { h: "3. Preis und Zahlung", list: [
       `Die Abonnementgebühr ist der unter ${ROUTES.pricing.de} veröffentlichte Listenpreis; bei individuell kalkulierten (angebotsbasierten) Stufen ist es der im Angebot genannte Betrag.`,
-      "Die Beträge verstehen sich in türkischen Lira zzgl. MwSt.; die MwSt. wird auf der Rechnung zum jeweils geltenden Satz hinzugefügt.",
+      "Die Beträge verstehen sich in der bei der Bestellung angegebenen Währung (türkische Lira, US-Dollar oder Euro) zzgl. MwSt.; die MwSt. wird auf der Rechnung zum jeweils geltenden Satz hinzugefügt.",
       "Monatsabonnements werden zu Beginn jedes Zeitraums in Rechnung gestellt. Jahresabonnements werden einmalig zu Beginn des 12-monatigen Zeitraums über die Gebühr für 10 Monate in Rechnung gestellt.",
       "Werden die in einem Paket enthaltenen Nutzer, Filialen, Shops oder Produkte überschritten, fallen nur die auf derselben Seite veröffentlichten Zusatzgebühren an; die Paketgebühr selbst ändert sich nicht.",
       "Die Zahlung erfolgt per Kredit-/Debitkarte über den Zahlungsdienstleister des Verkäufers oder per Banküberweisung. Kartendaten werden vom Verkäufer nicht gespeichert.",

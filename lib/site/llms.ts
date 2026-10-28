@@ -8,8 +8,9 @@
 // ArvoARC 28.10.2026'da satıştan kalktı (yalnızca e-ticaret sitesi yaptırana panel);
 // entegrasyon/ödeme/kargo iddiası YOK.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, type Locale, type PageId } from "./routes";
-import { SITE_PRODUCTS, YILLIK_BEDAVA_AY, planlar, tutarYaz, urunAdi } from "./pricing";
-import { planTutari, planYillikTutari, type Fiyatlar } from "./fiyat-kaynagi";
+import { SITE_PRODUCTS, YILLIK_BEDAVA_AY, planlar, urunAdi } from "./pricing";
+import type { Fiyatlar } from "./fiyat-kaynagi";
+import { paraYaz, sayfaPlanTutari, sayfaPlanYillikTutari } from "./doviz";
 
 export const LLMS_UPDATED = "2026-10-28";
 
@@ -113,19 +114,22 @@ function fiyatListesi(locale: LlmsLocale, fiyatlar?: Fiyatlar): string {
   const tr = locale === "tr";
   return SITE_PRODUCTS.map((product) => {
     const satirlar = planlar(product).map((plan) => {
-      const aylik = planTutari(plan, fiyatlar);
-      const yillik = planYillikTutari(plan, fiyatlar);
+      // Sayfanın para birimi: İngilizce metin USD, Türkçe metin TL (lib/site/doviz).
+      const aylik = sayfaPlanTutari(plan, locale, fiyatlar);
+      const yillik = sayfaPlanYillikTutari(plan, locale, fiyatlar);
       const birim = plan.kisiBasi ? (tr ? "kullanıcı/" : "user/") : "";
       const tutar = aylik === null || yillik === null
         ? (tr ? "teklif usulü" : "on request")
-        : `${tutarYaz(aylik, locale)} TL/${birim}${tr ? "ay" : "mo"} · ${tutarYaz(yillik, locale)} TL/${birim}${tr ? "yıl" : "yr"}`;
+        : `${paraYaz(aylik, locale)}/${birim}${tr ? "ay" : "mo"} · ${paraYaz(yillik, locale)}/${birim}${tr ? "yıl" : "yr"}`;
       const enAz = plan.enAzKullanici
         ? tr ? ` (en az ${plan.enAzKullanici} kullanıcı)` : ` (from ${plan.enAzKullanici} users)`
         : "";
       return `- ${plan.ad[locale]}: ${tutar}${enAz}`;
     });
     return `### ${urunAdi(product)}\n${satirlar.join("\n")}`;
-  }).join("\n\n");
+  }).join("\n\n") + (tr
+    ? "\n\nYukarıdaki tutarlar Türkçe sayfadaki TL fiyatlarıdır. İngilizce sayfada fiyatlar ABD doları, Almanca, İspanyolca ve Fransızca sayfalarda avro cinsindendir; döviz fiyatları sabit listedir, kurla değişmez."
+    : `\n\nThe amounts above are the US-dollar prices on the English page. The German, Spanish and French pages list prices in euros, and customers in Türkiye see prices in Turkish lira at ${absoluteUrl(ROUTES.pricing.tr)}. Foreign-currency prices are a fixed list, not converted at the exchange rate.`);
 }
 
 /** "- [ArvoOS](en-url): özet Türkçe: [ArvoOS](tr-url)" */

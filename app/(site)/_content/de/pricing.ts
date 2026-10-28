@@ -34,7 +34,7 @@ export const PRICING_DE: PricingContent = {
     quoteAction: "Angebot anfordern",
   },
   vatNote:
-    "Alle Preise in türkischen Lira, zzgl. MwSt. Bei jährlicher Zahlung zahlen Sie 10 Monate und nutzen 12; der Betrag wird einmalig zu Beginn des Zeitraums in Rechnung gestellt.",
+    "Alle Preise in Euro, zzgl. MwSt.; Kunden in der Türkei zahlen in türkischen Lira zu den Preisen der türkischen Seite. Bei jährlicher Zahlung zahlen Sie 10 Monate und nutzen 12; der Betrag wird einmalig zu Beginn des Zeitraums in Rechnung gestellt.",
 
   groups: [
     {
