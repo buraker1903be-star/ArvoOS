@@ -9,7 +9,7 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].de;
 
 export const RANDEVU_DE: ProductContent = {
   id: "randevu",
-  name: "ArvoBook",
+  name: "ArvoCal",
   category: "BusinessApplication",
   appUrl: PRODUCT_APPS.randevu.url,
   featureList: [
@@ -21,12 +21,12 @@ export const RANDEVU_DE: ProductContent = {
     "WhatsApp-Erinnerungen",
   ],
   meta: {
-    title: "ArvoBook – Terminverwaltung für Salons",
+    title: "ArvoCal – Terminverwaltung für Salons",
     description:
       "Online-Terminbuchung für Friseur- und Kosmetiksalons: Kundinnen und Kunden wählen Leistung, Mitarbeitende und Uhrzeit selbst; Kalender je Mitarbeiter, Arbeitszeiten und Abwesenheiten, WhatsApp-Erinnerungen.",
   },
   hero: {
-    eyebrow: "ArvoBook · Terminverwaltung für Salons",
+    eyebrow: "ArvoCal · Terminverwaltung für Salons",
     title: "Lassen Sie die Buchungsseite",
     subtitle: "ans Telefon gehen.",
     lead:
@@ -40,7 +40,7 @@ export const RANDEVU_DE: ProductContent = {
     eyebrow: "Funktionen",
     title: "Der Salontag auf einem Bildschirm.",
     lead:
-      "Ein telefonisch vereinbarter Termin wandert in ein Papierbuch, das Buch wird falsch gelesen, die Uhrzeit überschneidet sich. ArvoBook baut diese Kette von Grund auf neu.",
+      "Ein telefonisch vereinbarter Termin wandert in ein Papierbuch, das Buch wird falsch gelesen, die Uhrzeit überschneidet sich. ArvoCal baut diese Kette von Grund auf neu.",
     items: [
       {
         title: "Online-Buchungsseite",
@@ -89,7 +89,7 @@ export const RANDEVU_DE: ProductContent = {
   },
   faq: {
     eyebrow: "Häufige Fragen",
-    title: "Über ArvoBook",
+    title: "Über ArvoCal",
     items: [
       { q: "Müssen sich Kunden registrieren?", a: "Nein. Die Kundin oder der Kunde wählt Leistung, Mitarbeitende und Uhrzeit und gibt eine Telefonnummer ein; die Identifizierung erfolgt über diese Nummer, dazu gibt es einen Stornierungslink." },
       { q: "Können zwei Termine auf dieselbe Zeit fallen?", a: "Nein. Ein überschneidender Termin bei derselben Person – einschließlich der Pufferzeit der Leistung – wird auf Datenbankebene abgelehnt, nicht durch eine Prüfung in der Oberfläche." },

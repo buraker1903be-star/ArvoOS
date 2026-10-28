@@ -2,7 +2,7 @@
 // (lead-actions.ts) yalnızca async fonksiyon dışa aktarabildiği için
 // tipler burada durur.
 
-/* "randevu" = ArvoBook (kod adı lisans ve fiyat kodlarıyla aynı). "arc"
+/* "randevu" = ArvoCal (kod adı lisans ve fiyat kodlarıyla aynı). "arc"
    28.10.2026'da çıktı: ArvoARC satılmıyor, e-ticaret sitesi talebi
    "services" ile geliyor. Veritabanı eski sayfadan gelen 'arc'ı hâlâ
    kabul ediyor (20261028083410), form artık göndermiyor. */

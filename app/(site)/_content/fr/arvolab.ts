@@ -49,12 +49,12 @@ export const ARVOLAB_FR: ProductContent = {
   },
   audience: {
     eyebrow: "Pour qui ?",
-    title: "Des chercheurs individuels aux institutions.",
+    title: "Conçu pour le chercheur individuel.",
     lead: "ArvoLab est conçu pour s’adapter aux différentes échelles du travail académique.",
     items: [
       { title: "Chercheurs individuels", text: "Pour mener thèses, articles et projets dans un espace de travail serein." },
-      { title: "Équipes académiques", text: "Pour les équipes qui organisent sources, textes et vérifications de façon partagée." },
-      { title: "Institutions", text: "Pour les institutions qui proposent un environnement de recherche complet." },
+      { title: "Étudiants de master et doctorants", text: "Pour mener un mémoire ou une thèse du début à la fin avec un seul abonnement." },
+      { title: "Universités", text: "Les licences institutionnelles sont réservées aux universités et aux établissements d’enseignement, sur demande." },
     ],
   },
   faq: {
@@ -62,7 +62,7 @@ export const ARVOLAB_FR: ProductContent = {
     title: "À propos d’ArvoLab",
     items: [
       { q: "Qu’est-ce qu’ArvoLab ?", a: "ArvoLab est l’espace de travail de recherche de la marque ArvoOS, dédié à la gestion de la littérature et des citations, à la rédaction académique, au contrôle des consignes, à l’analyse quantitative et qualitative, à l’édition académique et au pré-contrôle d’originalité." },
-      { q: "À qui s’adresse ArvoLab ?", a: "Aux chercheurs individuels, aux équipes académiques et aux institutions." },
+      { q: "À qui s’adresse ArvoLab ?", a: "Aux chercheurs individuels. Les licences institutionnelles sont réservées aux universités et aux établissements d’enseignement, sur demande." },
       { q: "Comment obtenir un accès à ArvoLab ?", a: `Demandez un accès via le formulaire de contact ou à l’adresse info@arvo-os.com. La connexion se fait sur ${PRODUCT_APPS.arvolab.url}.` },
       { q: "Le pré-contrôle d’originalité remplace-t-il un rapport officiel ?", a: "Non. Il s’agit d’un pré-contrôle qui vous aide à repérer les risques avant le dépôt ; votre établissement peut toujours exiger son propre rapport d’originalité officiel." },
       { q: "Quelle est la différence entre ArvoLab et ArvoOS ?", a: "ArvoOS pilote les opérations d’une entreprise ; ArvoLab est un espace de travail qui accompagne la recherche et la rédaction académiques." },

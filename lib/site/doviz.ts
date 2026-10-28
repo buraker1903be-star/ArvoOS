@@ -11,6 +11,11 @@
   Rakamlar global SaaS bandına göre yuvarlak seçildi; TL listesinin
   çevirisi değiller.
 
+  ArvoLab 28.10.2026'da $59/55 €'dan $119/109 €'ya çıktı: TL fiyatı
+  4.990'a (KDV dahil, net ~2,1 kat) çıkarken dövizde eski rakamda
+  kalsaydı aynı ürün yurt dışında yarı fiyatına satılırdı. Döviz
+  tutarları KDV ve satış vergisi hariçtir.
+
   TL tarafı değişmedi: varsayılan pricing.ts'te, Kurucu Konsolu'ndan
   yayımlanan tutar üstüne yazar (fiyat-kaynagi). Döviz tutarları
   şimdilik yalnızca burada; konsoldan değiştirilemiyor.
@@ -40,8 +45,7 @@ export const DOVIZ_FIYATLARI: Record<string, { USD: number | null; EUR: number |
   "randevu-coklu": { USD: d(59), EUR: d(55) },
   "randevu-zincir": { USD: null, EUR: null },
 
-  "arvolab-arastirmaci": { USD: d(59), EUR: d(55) },
-  "arvolab-ekip": { USD: d(45), EUR: d(42) },
+  "arvolab-arastirmaci": { USD: d(119), EUR: d(109) },
   "arvolab-kurum": { USD: null, EUR: null },
 
   "ek-kullanici": { USD: d(9), EUR: d(8) },

@@ -1,4 +1,4 @@
-// arvo-os.com iletişim formu (20261028083410): ArvoBook konusu kendi
+// arvo-os.com iletişim formu (20261028083410, ad 20261028145415): ArvoCal konusu kendi
 // başlığıyla açılır, yeni diller satış notuna doğru yazılır, eski 'arc'
 // konusu reddedilmez. Fonksiyon GERÇEKTEN çağrılıyor (plpgsql sütunları
 // çalışma anında denetler, AGENTS.md).
@@ -42,14 +42,14 @@ async function gonder(ilgi, dil, eposta) {
 const firsat = (ref) => tek(`select title, notes, request_details->>'service_type' as hizmet from public.crm_opportunities where request_details->>'site_reference' = $1`, [ref]);
 
 describe("site formu konuları ve dilleri", () => {
-  test("MEŞRU: ArvoBook demosu kendi başlığıyla, Almanca talep 'Dil: Almanca' ile açılır", () =>
+  test("MEŞRU: ArvoCal demosu kendi başlığıyla, Almanca talep 'Dil: Almanca' ile açılır", () =>
     islem(db, async () => {
       await tohum();
       const sonuc = await gonder("randevu", "de", "a@example.com");
       assert.equal(sonuc.ok, true, JSON.stringify(sonuc));
       const f = await firsat(sonuc.reference);
-      assert.equal(f.title, "Web sitesi · ArvoBook demo talebi");
-      assert.equal(f.hizmet, "ArvoBook demo");
+      assert.equal(f.title, "Web sitesi · ArvoCal demo talebi");
+      assert.equal(f.hizmet, "ArvoCal demo");
       assert.match(f.notes, /Dil: Almanca/);
     }));
 

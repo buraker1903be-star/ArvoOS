@@ -22,8 +22,8 @@ type PageInfo = Record<LlmsLocale, { name: string; summary: string }>;
 /** Her sayfa için kısa, olgusal açıklama (Record → her PageId zorunlu). */
 const PAGES: Record<PageId, PageInfo> = {
   home: {
-    en: { name: "ArvoOS home", summary: "Overview of the ArvoOS product ecosystem (the ArvoOS business operating system, ArvoLab, ArvoBook) and services." },
-    tr: { name: "ArvoOS ana sayfa", summary: "ArvoOS ürün ekosistemine (ArvoOS işletme işletim sistemi, ArvoLab, ArvoBook) ve hizmetlere genel bakış." },
+    en: { name: "ArvoOS home", summary: "Overview of the ArvoOS product ecosystem (the ArvoOS business operating system, ArvoLab, ArvoCal) and services." },
+    tr: { name: "ArvoOS ana sayfa", summary: "ArvoOS ürün ekosistemine (ArvoOS işletme işletim sistemi, ArvoLab, ArvoCal) ve hizmetlere genel bakış." },
   },
   arvoos: {
     en: { name: "ArvoOS", summary: "Multi-tenant business operating system for service businesses and institutions: CRM and sales pipeline, proposals with online customer acceptance, e-signed contracts, operations (jobs, tasks, stage board, calendar), a customer tracking portal, finance with online payment links, HR, reports and team communication — one flow from request to collection." },
@@ -46,12 +46,12 @@ const PAGES: Record<PageId, PageInfo> = {
     tr: { name: "ArvoOS paketler", summary: "Üç basamak (Başlangıç, Kurumsal, Özel kurum). Başlangıç ve Kurumsal basamaklarının liste fiyatı yayımlanmıştır; Özel kurum kuruma göre belirlenir (modüller, kullanıcılar, şubeler, iş akışları)." },
   },
   randevu: {
-    en: { name: "ArvoBook", summary: "ArvoBook (formerly Arvo Randevu) is an appointment system for hair and beauty salons: an online booking page where the customer picks the service, the stylist (or 'no preference') and the time without signing up, a per-staff calendar, service and staff definitions, weekly working hours and time off in local time, customer records, and a daily reminder list sent from WhatsApp in one tap. Clashing appointments are rejected at database level." },
-    tr: { name: "ArvoBook", summary: "ArvoBook (eski adıyla Arvo Randevu): kuaför ve güzellik salonları için randevu sistemi: müşterinin üye olmadan hizmeti, personeli (ya da 'fark etmez') ve saati seçtiği çevrim içi randevu sayfası, personel bazlı takvim, hizmet ve personel tanımı, yerel saatle haftalık çalışma saatleri ve izinler, müşteri kaydı, tek tıkla WhatsApp'tan gönderilen günlük hatırlatma listesi. Çakışan randevu veritabanı düzeyinde reddedilir." },
+    en: { name: "ArvoCal", summary: "ArvoCal (formerly Arvo Randevu) is an appointment system for hair and beauty salons: an online booking page where the customer picks the service, the stylist (or 'no preference') and the time without signing up, a per-staff calendar, service and staff definitions, weekly working hours and time off in local time, customer records, and a daily reminder list sent from WhatsApp in one tap. Clashing appointments are rejected at database level." },
+    tr: { name: "ArvoCal", summary: "ArvoCal (eski adıyla Arvo Randevu): kuaför ve güzellik salonları için randevu sistemi: müşterinin üye olmadan hizmeti, personeli (ya da 'fark etmez') ve saati seçtiği çevrim içi randevu sayfası, personel bazlı takvim, hizmet ve personel tanımı, yerel saatle haftalık çalışma saatleri ve izinler, müşteri kaydı, tek tıkla WhatsApp'tan gönderilen günlük hatırlatma listesi. Çakışan randevu veritabanı düzeyinde reddedilir." },
   },
   pricing: {
-    en: { name: "Pricing", summary: "Public monthly and annual subscription prices for ArvoOS, ArvoBook and ArvoLab. ArvoOS and ArvoBook are priced per organization, not per user; ArvoLab is priced per researcher; VAT excluded; annual billing costs 10 months for 12 months of use. Add-ons, and subscription terms (no automatic card charge, cancellation at period end, 30 days' notice before a price change)." },
-    tr: { name: "Ücretler", summary: "ArvoOS, ArvoBook ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. ArvoOS ve ArvoBook kurum başına fiyatlanır, kullanıcı başına değil; ArvoLab araştırmacı başına fiyatlanır; KDV hariçtir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (otomatik kart çekimi yok, iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
+    en: { name: "Pricing", summary: "Public monthly and annual subscription prices for ArvoOS, ArvoCal and ArvoLab. ArvoOS and ArvoCal are priced per organization, not per user; ArvoLab is priced per researcher; Turkish-lira prices include VAT, US-dollar and euro prices exclude it; annual billing costs 10 months for 12 months of use. Add-ons, and subscription terms (no automatic card charge, cancellation at period end, 30 days' notice before a price change)." },
+    tr: { name: "Ücretler", summary: "ArvoOS, ArvoCal ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. ArvoOS ve ArvoCal kurum başına fiyatlanır, kullanıcı başına değil; ArvoLab araştırmacı başına fiyatlanır; TL fiyatlara KDV dahildir, dolar ve avro fiyatlarına dahil değildir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (otomatik kart çekimi yok, iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
   },
   arvolab: {
     en: { name: "ArvoLab", summary: "Research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, an academic editor and an originality pre-check." },
@@ -162,7 +162,7 @@ export function buildLlmsTxt(): string {
   const lines = [
     `# ${COMPANY.brand}`,
     "",
-    `> ArvoOS is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. It builds three products: ArvoOS, a multi-tenant business operating system that shares the brand's name and runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoBook, an appointment system for salons. The brand also delivers services: website design (including e-commerce websites with their own management panel), SEO and GEO content optimization, and custom software. The website is available in six languages: English at ${absoluteUrl(ROUTES.home.en)}, Turkish at ${absoluteUrl(ROUTES.home.tr)}, German at ${absoluteUrl(ROUTES.home.de)}, Spanish at ${absoluteUrl(ROUTES.home.es)}, French at ${absoluteUrl(ROUTES.home.fr)} and Arabic at ${absoluteUrl(ROUTES.home.ar)}; this file and the knowledge base are in English and Turkish.`,
+    `> ArvoOS is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. It builds three products: ArvoOS, a multi-tenant business operating system that shares the brand's name and runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoCal, an appointment system for salons. The brand also delivers services: website design (including e-commerce websites with their own management panel), SEO and GEO content optimization, and custom software. The website is available in six languages: English at ${absoluteUrl(ROUTES.home.en)}, Turkish at ${absoluteUrl(ROUTES.home.tr)}, German at ${absoluteUrl(ROUTES.home.de)}, Spanish at ${absoluteUrl(ROUTES.home.es)}, French at ${absoluteUrl(ROUTES.home.fr)} and Arabic at ${absoluteUrl(ROUTES.home.ar)}; this file and the knowledge base are in English and Turkish.`,
     "",
     "Key facts:",
     "",
@@ -170,7 +170,7 @@ export function buildLlmsTxt(): string {
     `- Address: ${COMPANY.address.displayIntl}.`,
     `- Contact: ${COMPANY.email} (no public phone number).`,
     "- Website languages: English (en-US, default, at the site root), Turkish (tr-TR, under /tr), German (de-DE, under /de), Spanish (es-ES, under /es) and French (fr-FR, under /fr). This file and llms-full.txt are in English and Turkish only.",
-    `- Each product is a web application on its own subdomain: ArvoOS at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host}, ArvoBook at ${PRODUCT_APPS.randevu.host}.`,
+    `- Each product is a web application on its own subdomain: ArvoOS at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host}, ArvoCal at ${PRODUCT_APPS.randevu.host}.`,
     "- ArvoOS flagship flow: request → proposal (online acceptance) → contract (e-signature) → automatic job workflow → customer tracking portal → online collection → profitability report.",
     `- Prices are not published. Contact ${COMPANY.email}.`,
     `- A longer knowledge base (English and Turkish) is available at ${SITE_ORIGIN}/llms-full.txt.`,
@@ -201,9 +201,9 @@ export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
 
   return `# ArvoOS — knowledge base / bilgi tabanı
 
-> Factual reference about the ArvoOS brand, its products (the ArvoOS business operating system, ArvoLab, ArvoBook) and services, written for AI assistants and answer engines. English first, Turkish below. Last updated: ${LLMS_UPDATED}. Canonical site: ${SITE_ORIGIN}. Short index: ${SITE_ORIGIN}/llms.txt.
+> Factual reference about the ArvoOS brand, its products (the ArvoOS business operating system, ArvoLab, ArvoCal) and services, written for AI assistants and answer engines. English first, Turkish below. Last updated: ${LLMS_UPDATED}. Canonical site: ${SITE_ORIGIN}. Short index: ${SITE_ORIGIN}/llms.txt.
 >
-> ArvoOS markası, ürünleri (ArvoOS işletme işletim sistemi, ArvoLab, ArvoBook) ve hizmetleri hakkında yapay zekâ asistanları ve yanıt motorları için hazırlanmış olgusal başvuru metni. Önce İngilizce, ardından Türkçe.
+> ArvoOS markası, ürünleri (ArvoOS işletme işletim sistemi, ArvoLab, ArvoCal) ve hizmetleri hakkında yapay zekâ asistanları ve yanıt motorları için hazırlanmış olgusal başvuru metni. Önce İngilizce, ardından Türkçe.
 
 ---
 
@@ -215,7 +215,7 @@ ArvoOS is the software brand of ${COMPANY.legalName}, a technology company based
 
 - ArvoOS — business operating system for service businesses and institutions (${os.host}).
 - ArvoLab — research workspace for academic work (${lab.host}).
-- ArvoBook (formerly Arvo Randevu) — appointment system for hair and beauty salons (${rdv.host}).
+- ArvoCal (formerly Arvo Randevu) — appointment system for hair and beauty salons (${rdv.host}).
 - Services: website design and development (e-commerce websites are delivered with their own store management panel), SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals), ongoing development support.
 - Website: ${u("home", "en")} (English), ${u("home", "tr")} (Turkish), ${absoluteUrl(ROUTES.home.de)} (German), ${absoluteUrl(ROUTES.home.es)} (Spanish), ${absoluteUrl(ROUTES.home.fr)} (French).
 - Contact: ${mail}
@@ -254,11 +254,11 @@ Page: ${u("arvoos", "en")} · Modules: ${u("arvoos-modules", "en")} · Sign in: 
 
 Page: ${u("pricing", "en")}
 
-ArvoOS and ArvoBook are priced per organization, not per user — each plan includes a set number of users. ArvoLab is the exception: it is priced per researcher (per seat); the Team tier is per-seat volume pricing from 3 users, and the Institution tier is an unlimited-user site licence. All amounts are in Turkish lira and exclude VAT. On annual billing you pay for 10 months and use 12 (${YILLIK_BEDAVA_AY} months free), invoiced once at the start of the period.
+ArvoOS and ArvoCal are priced per organization, not per user — each plan includes a set number of users. ArvoLab is the exception: it is sold to individual researchers and priced per researcher; the Institution tier is a site licence offered only to universities and educational institutions, on request. All amounts are in Turkish lira and include VAT. On annual billing you pay for 10 months and use 12 (${YILLIK_BEDAVA_AY} months free), invoiced once at the start of the period.
 
 ${fiyatListesi("en", fiyatlar)}
 
-Charged separately: additional user, additional branch (ArvoBook), data migration and setup, custom development.
+Charged separately: additional user, additional branch (ArvoCal), data migration and setup, custom development.
 
 Subscription terms: the card is never charged automatically — a payment link is sent for each period and the subscriber approves it. Cancellation takes effect at the end of the paid period. Price changes are announced at least 30 days in advance and apply from the next period only; the current period is unaffected. An upgrade takes effect the same day, charging only the remaining days; a downgrade applies at the end of the period. If an annual plan is cancelled early, the months used are recalculated at the monthly list price and the remaining balance is refunded. Full text: ${u("distance-sales", "en")} and ${u("refund", "en")}.
 
@@ -281,11 +281,11 @@ Page: ${u("arvolab", "en")} · Sign in: ${lab.url}
 
 **Access.** Request access via ${mail}; sign in at ${lab.url}.
 
-## ArvoBook — appointment management for salons
+## ArvoCal — appointment management for salons
 
 Page: ${u("randevu", "en")} · Panel: ${rdv.url} · Pricing: ${u("pricing", "en")}
 
-**What it is.** ArvoBook (formerly Arvo Randevu) is an appointment system for hair and beauty salons: an online booking page for customers, an appointment calendar, staff and service definitions, and customer records with history.
+**What it is.** ArvoCal (formerly Arvo Randevu) is an appointment system for hair and beauty salons: an online booking page for customers, an appointment calendar, staff and service definitions, and customer records with history.
 
 **Who it is for.** Hairdressers, beauty salons and care centres — both single-location salons and multi-branch businesses.
 
@@ -293,7 +293,7 @@ Page: ${u("randevu", "en")} · Panel: ${rdv.url} · Pricing: ${u("pricing", "en"
 
 ## How the products relate
 
-ArvoOS, ArvoLab and ArvoBook are separate web applications, each on its own subdomain of arvo-os.com (${os.host}, ${lab.host}, ${rdv.host}), built by the same company under one brand and quality standard. ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoLab supports academic research; ArvoBook runs a salon's appointment book.
+ArvoOS, ArvoLab and ArvoCal are separate web applications, each on its own subdomain of arvo-os.com (${os.host}, ${lab.host}, ${rdv.host}), built by the same company under one brand and quality standard. ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoLab supports academic research; ArvoCal runs a salon's appointment book.
 
 ## Services
 
@@ -333,7 +333,7 @@ The proposal is shared as a link via WhatsApp or e-mail; the customer accepts or
 Yes. The customer tracking portal shows progress, stages, documents and a payment summary, lets customers message the operations team, and offers online payment links. Deliverable files stay locked until payment.
 
 **How much does ArvoOS cost?**
-Monthly and annual prices for the Starter and Business plans are published at ${u("pricing", "en")}. Pricing is per organization, not per user, and excludes VAT. For Enterprise, the fee is scoped per organization based on modules, users and branches. Contact ${mail}.
+Monthly and annual prices for the Starter and Business plans are published at ${u("pricing", "en")}. Pricing is per organization, not per user; Turkish-lira prices include VAT. For Enterprise, the fee is scoped per organization based on modules, users and branches. Contact ${mail}.
 
 **Can ArvoOS run on our own domain with our branding?**
 Yes. Organizations can connect a custom domain (verified via DNS) and use their logo, brand colour, stamp / signature and legal and bank details on login pages, customer pages, proposals and contracts.
@@ -357,7 +357,7 @@ ArvoLab is the ArvoOS brand's research workspace for literature and citation man
 Request access at ${mail}. Sign in at ${lab.url}.
 
 **Is ArvoOS a company or a product?**
-ArvoOS is the brand of ${COMPANY.legalName} (arvo-os.com is its website) and also the name of its business operating system. ArvoLab and ArvoBook are its other products.
+ArvoOS is the brand of ${COMPANY.legalName} (arvo-os.com is its website) and also the name of its business operating system. ArvoLab and ArvoCal are its other products.
 
 **Does ArvoOS build websites or custom software?**
 Yes. ArvoOS's services include website design and development, SEO and GEO content optimization, custom software development (panels, portals, integrations and automation), process and experience design, and ongoing development support. See ${u("services", "en")}.
@@ -378,7 +378,7 @@ ArvoOS, ${COMPANY.city} merkezli teknoloji şirketi ${COMPANY.legalName} bünyes
 
 - ArvoOS — hizmet işletmeleri ve kurumlar için işletme işletim sistemi (${os.host}).
 - ArvoLab — akademik çalışma için araştırma çalışma alanı (${lab.host}).
-- ArvoBook (eski adıyla Arvo Randevu) — kuaför ve güzellik salonları için randevu sistemi (${rdv.host}).
+- ArvoCal (eski adıyla Arvo Randevu) — kuaför ve güzellik salonları için randevu sistemi (${rdv.host}).
 - Hizmetler: web sitesi tasarımı ve yapımı (e-ticaret siteleri kendi mağaza yönetim paneliyle teslim edilir), SEO ve GEO içerik düzenleme, özel yazılım geliştirme, süreç ve deneyim tasarımı, entegrasyon ve otomasyon, kurumsal dijital sistemler (panel, portal), sürekli geliştirme desteği.
 - Web sitesi: ${u("home", "tr")} (Türkçe), ${u("home", "en")} (İngilizce), ${absoluteUrl(ROUTES.home.de)} (Almanca), ${absoluteUrl(ROUTES.home.es)} (İspanyolca), ${absoluteUrl(ROUTES.home.fr)} (Fransızca).
 - İletişim: ${mail}
@@ -417,11 +417,11 @@ Sayfa: ${u("arvoos", "tr")} · Modüller: ${u("arvoos-modules", "tr")} · Giriş
 
 Sayfa: ${u("pricing", "tr")}
 
-ArvoOS ve ArvoBook kurum başına fiyatlanır, kullanıcı başına değil — her pakette belirli sayıda kullanıcı dahildir. ArvoLab istisnadır: araştırmacı (koltuk) başına fiyatlanır; Ekip basamağı en az 3 kullanıcıyla koltuk başı hacim indirimidir, Kurum basamağı ise sınırsız kullanıcılı site lisansıdır. Tutarlar Türk lirasıdır ve KDV hariçtir. Yıllık ödemede 12 aylık kullanım için 10 aylık bedel ödenir (${YILLIK_BEDAVA_AY} ay bedava) ve tutar dönem başında tek seferde faturalanır.
+ArvoOS ve ArvoCal kurum başına fiyatlanır, kullanıcı başına değil — her pakette belirli sayıda kullanıcı dahildir. ArvoLab istisnadır: bireysel araştırmacıya satılır ve araştırmacı başına fiyatlanır; Kurum basamağı yalnızca üniversite ve eğitim kurumlarına, teklif usulüyle verilen site lisansıdır. Tutarlar Türk lirasıdır ve KDV dahildir. Yıllık ödemede 12 aylık kullanım için 10 aylık bedel ödenir (${YILLIK_BEDAVA_AY} ay bedava) ve tutar dönem başında tek seferde faturalanır.
 
 ${fiyatListesi("tr", fiyatlar)}
 
-Ayrıca ücretlendirilen kalemler: ek kullanıcı, ek şube (ArvoBook), veri aktarımı ve kurulum, kuruma özel geliştirme.
+Ayrıca ücretlendirilen kalemler: ek kullanıcı, ek şube (ArvoCal), veri aktarımı ve kurulum, kuruma özel geliştirme.
 
 Abonelik koşulları: karttan otomatik tahsilat yapılmaz — her dönem için ödeme bağlantısı gönderilir ve abone onaylar. İptal, ödenmiş dönemin sonunda yürürlüğe girer. Fiyat değişikliği en az 30 gün önce bildirilir ve yalnızca sonraki dönemde uygulanır; yürürlükteki dönem etkilenmez. Yükseltme aynı gün yürürlüğe girer ve yalnızca dönemin kalan günleri için fark alınır; düşürme dönem sonunda uygulanır. Yıllık abonelik erken iptal edilirse kullanılan aylar aylık liste fiyatı üzerinden hesaplanır ve kalan bakiye iade edilir. Tam metin: ${u("distance-sales", "tr")} ve ${u("refund", "tr")}.
 
@@ -444,11 +444,11 @@ Sayfa: ${u("arvolab", "tr")} · Giriş: ${lab.url}
 
 **Erişim.** ${mail} adresinden erişim talep edin; giriş: ${lab.url}.
 
-## ArvoBook — salonlar için randevu yönetimi
+## ArvoCal — salonlar için randevu yönetimi
 
 Sayfa: ${u("randevu", "tr")} · Panel: ${rdv.url} · Ücretler: ${u("pricing", "tr")}
 
-**Nedir?** ArvoBook (eski adıyla Arvo Randevu), kuaför ve güzellik salonları için randevu sistemidir: müşteriye açık çevrim içi randevu sayfası, randevu takvimi, personel ve hizmet tanımları, geçmişiyle birlikte müşteri kaydı.
+**Nedir?** ArvoCal (eski adıyla Arvo Randevu), kuaför ve güzellik salonları için randevu sistemidir: müşteriye açık çevrim içi randevu sayfası, randevu takvimi, personel ve hizmet tanımları, geçmişiyle birlikte müşteri kaydı.
 
 **Kimler için?** Kuaförler, güzellik salonları ve bakım merkezleri; tek şubeli salonlar ve çok şubeli işletmeler.
 
@@ -456,7 +456,7 @@ Sayfa: ${u("randevu", "tr")} · Panel: ${rdv.url} · Ücretler: ${u("pricing", "
 
 ## Ürünler arasındaki ilişki
 
-ArvoOS, ArvoLab ve ArvoBook; her biri arvo-os.com'un kendi alt alan adında (${os.host}, ${lab.host}, ${rdv.host}) çalışan ayrı web uygulamalarıdır ve aynı şirket tarafından ortak marka ve kalite standardıyla geliştirilir. ArvoOS bir şirketin operasyonunu (CRM, teklif, sözleşme, iş, finans, İK) yönetir; ArvoLab akademik araştırmayı destekler; ArvoBook bir salonun randevu defterini yönetir.
+ArvoOS, ArvoLab ve ArvoCal; her biri arvo-os.com'un kendi alt alan adında (${os.host}, ${lab.host}, ${rdv.host}) çalışan ayrı web uygulamalarıdır ve aynı şirket tarafından ortak marka ve kalite standardıyla geliştirilir. ArvoOS bir şirketin operasyonunu (CRM, teklif, sözleşme, iş, finans, İK) yönetir; ArvoLab akademik araştırmayı destekler; ArvoCal bir salonun randevu defterini yönetir.
 
 ## Hizmetler
 
@@ -496,7 +496,7 @@ Teklif WhatsApp veya e-posta ile bağlantı olarak paylaşılır; müşteri tek 
 Evet. Müşteri takip portalı ilerlemeyi, aşamaları, belgeleri ve ödeme özetini gösterir, operasyon ekibiyle mesajlaşmayı ve çevrim içi ödeme bağlantılarını sunar. Teslim dosyaları ödeme yapılana kadar kilitli kalır.
 
 **ArvoOS'un fiyatı nedir?**
-Başlangıç ve Kurumsal paketlerin aylık ve yıllık fiyatları ${u("pricing", "tr")} sayfasında yayımlanmıştır. Fiyat kurum başınadır, kullanıcı başına değil; KDV hariçtir. Özel kurum basamağında bedel modül, kullanıcı ve şube yapısına göre kurumla birlikte belirlenir. İletişim: ${mail}.
+Başlangıç ve Kurumsal paketlerin aylık ve yıllık fiyatları ${u("pricing", "tr")} sayfasında yayımlanmıştır. Fiyat kurum başınadır, kullanıcı başına değil; KDV dahildir. Özel kurum basamağında bedel modül, kullanıcı ve şube yapısına göre kurumla birlikte belirlenir. İletişim: ${mail}.
 
 **ArvoOS kendi alan adımızda ve markamızla çalışabilir mi?**
 Evet. Kurum, DNS ile doğrulanan özel alan adını bağlayabilir; logo, marka rengi, kaşe / imza ile yasal ve banka bilgilerini giriş sayfalarında, müşteri sayfalarında, teklif ve sözleşmelerde kullanabilir.
@@ -520,7 +520,7 @@ ArvoLab, ArvoOS markasının literatür ve atıf yönetimi, akademik yazım, kı
 ${mail} adresinden erişim talep edin. Giriş: ${lab.url}.
 
 **ArvoOS bir şirket mi, ürün mü?**
-ArvoOS, ${COMPANY.legalName} şirketinin markasıdır (arvo-os.com da web sitesidir); aynı zamanda markanın işletme işletim sisteminin adıdır. Diğer ürünler ArvoLab ve ArvoBook'tur.
+ArvoOS, ${COMPANY.legalName} şirketinin markasıdır (arvo-os.com da web sitesidir); aynı zamanda markanın işletme işletim sisteminin adıdır. Diğer ürünler ArvoLab ve ArvoCal'dır.
 
 **ArvoOS web sitesi veya özel yazılım yapıyor mu?**
 Evet. ArvoOS'un hizmetleri arasında web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım geliştirme (panel, portal, entegrasyon ve otomasyon), süreç ve deneyim tasarımı ile sürekli geliştirme desteği bulunur. Bkz. ${u("services", "tr")}.

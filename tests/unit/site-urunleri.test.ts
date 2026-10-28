@@ -5,7 +5,7 @@ import { buildLlmsFullTxt, buildLlmsTxt } from "@/lib/site/llms";
 
 /*
   28.10.2026: ArvoARC satıştan kalktı (yalnızca e-ticaret sitesi yaptırana
-  panel olarak veriliyor), Arvo Randevu'nun adı ArvoBook oldu. Eski
+  panel olarak veriliyor), Arvo Randevu'nun adı ArvoCal oldu. Eski
   adresler dizinde ve paylaşılmış bağlantılarda yaşıyor; 404 vermemeli.
 */
 describe("sitedeki ürünler", () => {
@@ -16,12 +16,16 @@ describe("sitedeki ürünler", () => {
     assert.equal(yonlendir("/en/products/arc"), ROUTES["web-design"].en);
   });
 
-  test("Arvo Randevu → ArvoBook: yeni adres, eski adres yönlenir", () => {
-    assert.equal(PRODUCT_APPS.randevu.name, "ArvoBook");
+  test("Arvo Randevu → ArvoCal: yeni adres, eski adres yönlenir", () => {
+    assert.equal(PRODUCT_APPS.randevu.name, "ArvoCal");
     assert.deepEqual(resolvePath(ROUTES.randevu.tr), { id: "randevu", locale: "tr" });
     const yonlendir = (from: string) => LEGACY_REDIRECTS.find((r) => r.from === from)?.to;
     assert.equal(yonlendir("/urunler/randevu"), ROUTES.randevu.tr);
     assert.equal(yonlendir("/en/products/randevu"), ROUTES.randevu.en);
+    // ArvoBook adıyla birkaç saat yayında kalan adresler de yeni yerine iner.
+    assert.equal(yonlendir("/tr/urunler/arvobook"), "/tr/urunler/arvocal");
+    assert.equal(yonlendir("/products/arvobook"), "/products/arvocal");
+    assert.equal(yonlendir("/ar/products/arvobook"), "/ar/products/arvocal");
   });
 
   test("28.10.2026'ya kadarki her adres yeni yerine iner: Türkçe kökten /tr'ye, /en kökten köke", () => {
@@ -35,7 +39,7 @@ describe("sitedeki ürünler", () => {
     // tarayıcı köke inip /tr'ye atılırdı.
     assert.equal(yonlendir("/en"), undefined);
     assert.equal(yonlendir("/en/pricing"), "/pricing");
-    assert.equal(yonlendir("/en/products/arvobook"), "/products/arvobook");
+    assert.equal(yonlendir("/en/products/arvocal"), "/products/arvocal");
     // Kök yönlendirilmez: artık İngilizce ana sayfa (dil seçimi taşıyor).
     assert.equal(yonlendir("/"), undefined);
     // Her sayfanın iki eski adresi de var (ana sayfanın Türkçesi hariç).
@@ -60,7 +64,7 @@ describe("sitedeki ürünler", () => {
   });
 
   test("ürün listesi, hukuki metinler ve llms.txt ArvoARC'ı ürün olarak saymaz", () => {
-    assert.equal(productList("tr"), "ArvoOS, ArvoLab ve ArvoBook");
+    assert.equal(productList("tr"), "ArvoOS, ArvoLab ve ArvoCal");
     assert.doesNotMatch(buildLlmsTxt(), /ArvoARC/);
     assert.doesNotMatch(buildLlmsFullTxt(), /ArvoARC/);
     // Site beş dilde; llms.txt yalnızca İngilizce + Türkçe olsa da yeni dilleri

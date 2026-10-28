@@ -183,7 +183,7 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
           </KListe>
         </KKart>
 
-        <KKart baslik="Fiyat basamakları" aciklama="Yayımlanmış tutarlar, KDV hariç"
+        <KKart baslik="Fiyat basamakları" aciklama="Yayımlanmış tutarlar, KDV dahil"
           sag={<Link className="panel-secondary" href="/panel/platform/fiyatlar">Düzenle</Link>}>
           <KListe>
             {basamaklar.map((plan) => {

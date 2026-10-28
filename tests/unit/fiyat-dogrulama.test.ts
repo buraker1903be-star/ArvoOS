@@ -36,10 +36,9 @@ test("kurum başı merdiven: alt basamak üsttekinden pahalı olamaz", () => {
   assert.match(hatalar[0], /üst basamak daha pahalı olmalı/);
 });
 
-test("ArvoLab: hacim basamağı tekil koltuktan ucuz olmalı; bugünkü 'Ekip < Araştırmacı' hata değil", () => {
-  assert.deepEqual(denetle([kayit("arvolab-ekip", gecerli.get("arvolab-ekip")! - 100)]).hatalar, []);
-  const { hatalar } = denetle([kayit("arvolab-ekip", gecerli.get("arvolab-arastirmaci")!)]);
-  assert.match(hatalar[0], /indirimli basamak daha ucuz olmalı/);
+test("ArvoLab: hacim basamağı yokken Araştırmacı tutarı merdiven hatası üretmez", () => {
+  // Ekip 28.10.2026'da kalktı; tekil koltuğun karşılaştırılacağı basamak yok.
+  assert.deepEqual(denetle([kayit("arvolab-arastirmaci", gecerli.get("arvolab-arastirmaci")! + 100)]).hatalar, []);
 });
 
 test("teklif usulü basamak merdiveni bozmuyor", () => {

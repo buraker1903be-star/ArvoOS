@@ -55,8 +55,8 @@ describe("döviz fiyatları", () => {
   test("başlangıç fiyatı: en ucuz rakamlı basamak, birimiyle", () => {
     assert.deepEqual(baslangicFiyati("arvoos", "en"), { tutar: 5900, kisiBasi: false });
     assert.deepEqual(baslangicFiyati("randevu", "de"), { tutar: 2700, kisiBasi: false });
-    // ArvoLab'da en ucuzu kişi başı Ekip basamağı: birim kaybolmamalı.
-    assert.deepEqual(baslangicFiyati("arvolab", "en"), { tutar: 4500, kisiBasi: true });
+    // ArvoLab kişi başı fiyatlanıyor (Ekip 28.10.2026'da kalktı): birim kaybolmamalı.
+    assert.deepEqual(baslangicFiyati("arvolab", "en"), { tutar: 11900, kisiBasi: true });
     // Türkçe sayfa TL listesine bağlı.
     const tl = Math.min(...PLANS.filter((p) => p.product === "arvoos" && p.aylikKurus !== null).map((p) => p.aylikKurus!));
     assert.equal(baslangicFiyati("arvoos", "tr")?.tutar, tl);

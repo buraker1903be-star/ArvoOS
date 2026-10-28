@@ -1,6 +1,6 @@
 // Açılış sahnesi: eğik başlayıp kaydırdıkça düzleşen katmanlı arayüz.
 // ArvoOS: panel + e-imza kartı + PWA müşteri portalı. ArvoLab: ana pencere +
-// ürüne özgü yüzen kart. ArvoBook: günün takvimi + onaylanan randevu kartı.
+// ürüne özgü yüzen kart. ArvoCal: günün takvimi + onaylanan randevu kartı.
 // Hepsi "Örnek arayüz" olarak etiketlidir.
 import type { Locale } from "@/lib/site/routes";
 import { FloatCard, SignCard } from "./float-card";
@@ -30,7 +30,7 @@ const CARDS = {
   },
 } as const;
 
-/** Onaylanan randevu kartı: ArvoBook sahnesi ve ana sayfadaki ArvoBook kutusu. */
+/** Onaylanan randevu kartı: ArvoCal sahnesi ve ana sayfadaki ArvoCal kutusu. */
 export const BOOK_CARD = {
   tr: { kicker: "Yeni randevu", status: "Onaylandı", title: "Saç kesimi · Elif", sub: "Perşembe 14:30 · 45 dk", rows: [["Personel takvimi uygun", "ok"], ["Müşteriye bildirim hazır", "ok"]] as [string, "ok" | "warn"][] },
   en: { kicker: "New booking", status: "Confirmed", title: "Haircut · Emma", sub: "Thursday 2:30 pm · 45 min", rows: [["Stylist calendar free", "ok"], ["Customer notice ready", "ok"]] as [string, "ok" | "warn"][] },

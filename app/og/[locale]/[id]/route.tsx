@@ -10,7 +10,7 @@ import { OG_COPY, OG_PRODUCT, ogCharset, type ProductName } from "@/lib/site/og-
 type Fonts = NonNullable<NonNullable<ConstructorParameters<typeof ImageResponse>[1]>["fonts"]>;
 
 const SIZE = { width: 1200, height: 630 };
-const PRODUCTS: ProductName[] = ["ArvoOS", "ArvoLab", "ArvoBook"];
+const PRODUCTS: ProductName[] = ["ArvoOS", "ArvoLab", "ArvoCal"];
 // Vurgu logonun "OS" yeşili (28.10.2026; eskiden şampanya altını #c9a66a).
 // Lacivert zeminde okunsun diye açık tonu.
 const CHAMPAGNE = "#a9c78a";

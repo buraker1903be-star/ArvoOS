@@ -1,5 +1,5 @@
 /*
-  ArvoBook ürün sayfası — Türkçe.
+  ArvoCal ürün sayfası — Türkçe.
 
   İÇERİK YALNIZCA YAYINDA OLAN ÖZELLİKLERİ ANLATIR. Kaynak, ürünün
   kendi PLAN.md'si: randevu sayfası, salon paneli (takvim, hizmet,
@@ -19,7 +19,7 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].tr;
 
 export const RANDEVU_TR: ProductContent = {
   id: "randevu",
-  name: "ArvoBook",
+  name: "ArvoCal",
   category: "BusinessApplication",
   appUrl: PRODUCT_APPS.randevu.url,
   featureList: [
@@ -31,12 +31,12 @@ export const RANDEVU_TR: ProductContent = {
     "WhatsApp hatırlatma",
   ],
   meta: {
-    title: "ArvoBook — Salon Randevu Yönetimi",
+    title: "ArvoCal — Salon Randevu Yönetimi",
     description:
       "Kuaför ve güzellik salonları için çevrim içi randevu: müşteri hizmeti, personeli ve saati kendi seçer; personel bazlı takvim, çalışma saati ve izin tanımı, WhatsApp hatırlatma.",
   },
   hero: {
-    eyebrow: "ArvoBook · Salon randevu yönetimi",
+    eyebrow: "ArvoCal · Salon randevu yönetimi",
     title: "Randevu defteri",
     subtitle: "telefonu meşgul etmesin.",
     lead:
@@ -50,7 +50,7 @@ export const RANDEVU_TR: ProductContent = {
     eyebrow: "Yetenekler",
     title: "Salonun günü tek ekranda.",
     lead:
-      "Telefonla alınan randevu deftere yazılır, defter yanlış okunur, saat çakışır. ArvoBook bu zinciri baştan kurar.",
+      "Telefonla alınan randevu deftere yazılır, defter yanlış okunur, saat çakışır. ArvoCal bu zinciri baştan kurar.",
     items: [
       {
         title: "Çevrim içi randevu sayfası",
@@ -99,7 +99,7 @@ export const RANDEVU_TR: ProductContent = {
   },
   faq: {
     eyebrow: "Sık sorulan sorular",
-    title: "ArvoBook hakkında",
+    title: "ArvoCal hakkında",
     items: [
       { q: "Müşterinin üye olması gerekiyor mu?", a: "Hayır. Müşteri hizmeti, personeli ve saati seçer, telefon numarasını yazar; numarayla tanınır. Randevu sonrası iptal bağlantısını alır." },
       { q: "Aynı saate iki randevu girebilir mi?", a: "Hayır. Aynı personele çakışan randevu, hizmetin arası da hesaba katılarak veritabanı düzeyinde reddedilir — arayüzdeki bir kontrole bağlı değildir." },

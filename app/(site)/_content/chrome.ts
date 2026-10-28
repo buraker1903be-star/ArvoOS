@@ -36,7 +36,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "İşletme işletim sistemi", href: ROUTES.arvoos.tr },
       { label: "ArvoLab", desc: "Araştırma çalışma alanı", href: ROUTES.arvolab.tr },
-      { label: "ArvoBook", desc: "Salon randevu yönetimi", href: ROUTES.randevu.tr },
+      { label: "ArvoCal", desc: "Salon randevu yönetimi", href: ROUTES.randevu.tr },
     ],
     arvoosTitle: "ArvoOS’u keşfedin",
     arvoosLinks: [
@@ -64,7 +64,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "Business operating system", href: ROUTES.arvoos.en },
       { label: "ArvoLab", desc: "Research workspace", href: ROUTES.arvolab.en },
-      { label: "ArvoBook", desc: "Salon appointment management", href: ROUTES.randevu.en },
+      { label: "ArvoCal", desc: "Salon appointment management", href: ROUTES.randevu.en },
     ],
     arvoosTitle: "Explore ArvoOS",
     arvoosLinks: [
@@ -92,7 +92,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "Betriebssystem für Unternehmen", href: ROUTES.arvoos.de },
       { label: "ArvoLab", desc: "Arbeitsbereich für Forschung", href: ROUTES.arvolab.de },
-      { label: "ArvoBook", desc: "Terminverwaltung für Salons", href: ROUTES.randevu.de },
+      { label: "ArvoCal", desc: "Terminverwaltung für Salons", href: ROUTES.randevu.de },
     ],
     arvoosTitle: "ArvoOS entdecken",
     arvoosLinks: [
@@ -120,7 +120,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "Sistema operativo para empresas", href: ROUTES.arvoos.es },
       { label: "ArvoLab", desc: "Espacio de trabajo para investigación", href: ROUTES.arvolab.es },
-      { label: "ArvoBook", desc: "Gestión de citas para salones", href: ROUTES.randevu.es },
+      { label: "ArvoCal", desc: "Gestión de citas para salones", href: ROUTES.randevu.es },
     ],
     arvoosTitle: "Descubra ArvoOS",
     arvoosLinks: [
@@ -148,7 +148,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "Système d’exploitation d’entreprise", href: ROUTES.arvoos.fr },
       { label: "ArvoLab", desc: "Espace de travail pour la recherche", href: ROUTES.arvolab.fr },
-      { label: "ArvoBook", desc: "Gestion des rendez-vous pour salons", href: ROUTES.randevu.fr },
+      { label: "ArvoCal", desc: "Gestion des rendez-vous pour salons", href: ROUTES.randevu.fr },
     ],
     arvoosTitle: "Découvrir ArvoOS",
     arvoosLinks: [
@@ -176,7 +176,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "نظام تشغيل للأعمال", href: ROUTES.arvoos.ar },
       { label: "ArvoLab", desc: "مساحة عمل للبحث العلمي", href: ROUTES.arvolab.ar },
-      { label: "ArvoBook", desc: "إدارة مواعيد الصالونات", href: ROUTES.randevu.ar },
+      { label: "ArvoCal", desc: "إدارة مواعيد الصالونات", href: ROUTES.randevu.ar },
     ],
     arvoosTitle: "استكشف ArvoOS",
     arvoosLinks: [

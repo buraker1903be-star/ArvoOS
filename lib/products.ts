@@ -8,7 +8,7 @@ export const PRODUCTS = [
   { code: "arvoos", name: "ArvoOS", badge: "OS", description: "Yönetim paneli" },
   { code: "arvolab", name: "ArvoLab", badge: "LB", description: "Akademik yazım ve editöryal kontrol" },
   { code: "arc", name: "ArvoARC", badge: "RC", description: "E-ticaret ve mağaza yönetimi" },
-  { code: "randevu", name: "Arvo Randevu", badge: "RD", description: "Kuaför ve güzellik salonu randevu yönetimi" },
+  { code: "randevu", name: "ArvoCal", badge: "CL", description: "Kuaför ve güzellik salonu randevu yönetimi" },
 ] as const;
 
 export type ProductCode = (typeof PRODUCTS)[number]["code"];
@@ -28,6 +28,10 @@ export type ProductCode = (typeof PRODUCTS)[number]["code"];
   haritada duruyordu; aynı ürün iki ekranda iki farklı simgeyle
   görünüyordu. Kısaltma artık ürünün tanımında: adı ve kodu nerede tek
   kaynaktan okunuyorsa simgesi de oradan.
+
+  Randevu ürününün adı 28.10.2026'da ArvoCal oldu (arada birkaç saat
+  ArvoBook); simgesi de RD'den CL'ye geçti. Kod "randevu" kalıyor:
+  lisans, köprü ve fiyat kodları bu adla.
 
   Birim testi kısaltmaların BENZERSİZ olmasını sabitliyor — iki ürünün
   aynı harfleri alması, düzeltilen hatanın ta kendisi.

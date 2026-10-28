@@ -386,7 +386,7 @@ export default async function FiyatlarPage({ searchParams }: {
               </form>
             ) : null}
             <KNot>
-              Yıllıkta {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava). KDV hariç. Ücretler
+              Yıllıkta {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava). TL tutarlar KDV dahil. Ücretler
               sayfası, JSON-LD, llms-full.txt, kurulum ve ArvoLab bireysel aboneliği bu listeyi okur.
             </KNot>
           </KKart>

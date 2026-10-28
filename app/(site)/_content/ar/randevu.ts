@@ -9,7 +9,7 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].ar;
 
 export const RANDEVU_AR: ProductContent = {
   id: "randevu",
-  name: "ArvoBook",
+  name: "ArvoCal",
   category: "BusinessApplication",
   appUrl: PRODUCT_APPS.randevu.url,
   featureList: [
@@ -21,12 +21,12 @@ export const RANDEVU_AR: ProductContent = {
     "تذكيرات عبر WhatsApp",
   ],
   meta: {
-    title: "ArvoBook — إدارة مواعيد الصالونات",
+    title: "ArvoCal — إدارة مواعيد الصالونات",
     description:
       "حجز إلكتروني لصالونات الشعر والتجميل: يختار العملاء الخدمة والمختص والموعد بأنفسهم؛ تقويم لكل موظف، وساعات العمل والإجازات، وتذكيرات عبر WhatsApp.",
   },
   hero: {
-    eyebrow: "ArvoBook · إدارة مواعيد الصالونات",
+    eyebrow: "ArvoCal · إدارة مواعيد الصالونات",
     title: "دع صفحة الحجز",
     subtitle: "تردّ على الهاتف.",
     lead:
@@ -40,7 +40,7 @@ export const RANDEVU_AR: ProductContent = {
     eyebrow: "الإمكانات",
     title: "يوم الصالون على شاشة واحدة.",
     lead:
-      "موعد يُؤخذ بالهاتف يُدوَّن في دفتر ورقي، ثم يُقرأ الدفتر خطأً، فتتعارض المواعيد. يعيد ArvoBook بناء هذه السلسلة من البداية.",
+      "موعد يُؤخذ بالهاتف يُدوَّن في دفتر ورقي، ثم يُقرأ الدفتر خطأً، فتتعارض المواعيد. يعيد ArvoCal بناء هذه السلسلة من البداية.",
     items: [
       {
         title: "صفحة حجز إلكترونية",
@@ -89,7 +89,7 @@ export const RANDEVU_AR: ProductContent = {
   },
   faq: {
     eyebrow: "الأسئلة الشائعة",
-    title: "حول ArvoBook",
+    title: "حول ArvoCal",
     items: [
       { q: "هل يجب على العملاء التسجيل؟", a: "لا. يختار العميل الخدمة والمختص والموعد ويُدخل رقم هاتفه؛ يُتعرَّف عليه بهذا الرقم ويتلقى رابطًا للإلغاء." },
       { q: "هل يمكن أن يقع موعدان في الوقت نفسه؟", a: "لا. يُرفض أي موعد متعارض للمختص نفسه — مع احتساب فاصل الخدمة — على مستوى قاعدة البيانات، لا عبر فحص في الواجهة." },

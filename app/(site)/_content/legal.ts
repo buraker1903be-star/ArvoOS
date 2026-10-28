@@ -63,7 +63,7 @@ export const DISTANCE_SALES_TR: PrivacyContent = {
     ] },
     { h: "4. Bedel ve ödeme", list: [
       `Abonelik bedeli, ${ROUTES.pricing.tr} sayfasında yayımlanan liste fiyatıdır; kuruma özel kapsamlarda (teklif usulü basamaklar) teklifte belirtilen bedeldir.`,
-      "Bedel siparişte gösterilen para birimi (Türk lirası, ABD doları ya da avro) üzerindendir ve liste fiyatlarına KDV dâhil değildir; faturada yürürlükteki oranda KDV eklenir.",
+      "Bedel siparişte gösterilen para birimi (Türk lirası, ABD doları ya da avro) üzerindendir; Türk lirası liste fiyatlarına KDV dâhildir, ABD doları ve avro fiyatlarına KDV ya da satış vergisi dâhil değildir ve faturada yürürlükteki mevzuata göre uygulanır.",
       "Aylık abonelikte bedel her dönemin başında faturalanır. Yıllık abonelikte 12 (on iki) aylık kullanım için 10 (on) aylık bedel, dönemin başında tek seferde faturalanır.",
       "Pakette dahil olan kullanıcı, şube, mağaza ve ürün sayıları aşıldığında yalnızca aynı sayfada yayımlanan ek kalem ücretleri uygulanır; paket bedeli kendiliğinden değişmez.",
       "Ödeme, Satıcı'nın anlaşmalı ödeme kuruluşu üzerinden kredi/banka kartı ile veya havale/EFT ile yapılır. Kart bilgileri Satıcı tarafından saklanmaz.",
@@ -134,7 +134,7 @@ export const DISTANCE_SALES_EN: PrivacyContent = {
     { h: "2. Subject", p: [`Subscription to one or more of ${urunlerEn}, and the parties' rights and obligations under Turkish Consumer Protection Law no. 6502 and the Distance Contracts Regulation. The services are cloud-based and used in a browser; no physical goods are delivered.`] },
     { h: "3. Price and payment", list: [
       `The subscription fee is the list price published at ${ROUTES.pricing.en}; for scoped (quote-based) tiers it is the amount stated in the offer.`,
-      "Amounts are in the currency shown on the order (Turkish lira, US dollars or euros) and exclude VAT; VAT is added on the invoice at the rate in force.",
+      "Amounts are in the currency shown on the order (Turkish lira, US dollars or euros). Turkish-lira list prices include VAT; US-dollar and euro prices exclude VAT and sales tax, which are applied on the invoice according to the rules in force.",
       "Monthly subscriptions are invoiced at the start of each period. Annual subscriptions are invoiced once at the start of the 12-month period, for 10 months of fees.",
       "Where a plan's included users, branches, stores or products are exceeded, only the add-on fees published on the same page apply; the plan fee itself does not change.",
       "Payment is made by credit/debit card through the Seller's payment provider, or by bank transfer. Card details are not stored by the Seller.",

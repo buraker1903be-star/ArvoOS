@@ -49,12 +49,12 @@ export const ARVOLAB_TR: ProductContent = {
   },
   audience: {
     eyebrow: "Kimler için?",
-    title: "Bireysel araştırmacıdan kuruma.",
+    title: "Bireysel araştırmacı için.",
     lead: "ArvoLab, farklı çalışma ölçeklerine uyum sağlayacak şekilde tasarlanır.",
     items: [
       { title: "Bireysel araştırmacılar", text: "Tez, makale ve projelerini tek, sakin bir çalışma alanında yürütmek isteyenler." },
-      { title: "Akademik ekipler", text: "Kaynak, metin ve kontrol adımlarını ortak bir düzende tutmak isteyen ekipler." },
-      { title: "Kurumlar", text: "Araştırma süreçlerine bütünsel bir çalışma ortamı sunmak isteyen kurumlar." },
+      { title: "Lisansüstü öğrenciler", text: "Yüksek lisans ve doktora tezini baştan sona tek abonelikle yürütmek isteyenler." },
+      { title: "Üniversiteler", text: "Kurum lisansı yalnızca üniversitelere ve eğitim kurumlarına, teklif usulüyle verilir." },
     ],
   },
   faq: {
@@ -62,7 +62,7 @@ export const ARVOLAB_TR: ProductContent = {
     title: "ArvoLab hakkında",
     items: [
       { q: "ArvoLab nedir?", a: "ArvoLab, ArvoOS markasının literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü sunan araştırma çalışma alanıdır." },
-      { q: "ArvoLab kimler için?", a: "Bireysel araştırmacılar, akademik ekipler ve kurumlar için." },
+      { q: "ArvoLab kimler için?", a: "Bireysel araştırmacılar için. Kurum lisansı yalnızca üniversitelere ve eğitim kurumlarına, teklif usulüyle verilir." },
       { q: "ArvoLab’e nasıl erişilir?", a: `İletişim formundan ya da info@arvo-os.com adresinden erişim talep edebilirsiniz. Giriş adresi: ${PRODUCT_APPS.arvolab.url}` },
       { q: "Özgünlük ön kontrolü resmî raporun yerine geçer mi?", a: "Hayır. Teslim öncesi riskleri erken fark etmenizi sağlayan bir ön kontroldür; kurumunuz kendi resmî özgünlük raporunu ayrıca isteyebilir." },
       { q: "ArvoLab ile ArvoOS arasındaki fark nedir?", a: "ArvoOS bir işletmenin operasyonunu yönetir; ArvoLab ise akademik araştırma ve yazım sürecini destekleyen bir çalışma alanıdır." },

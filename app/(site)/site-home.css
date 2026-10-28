@@ -18,7 +18,7 @@
     radial-gradient(55% 60% at 15% 0%,color-mix(in srgb,var(--gold-100) 90%,transparent),transparent 70%),
     radial-gradient(40% 40% at 90% 15%,color-mix(in srgb,var(--green) 9%,transparent),transparent 70%)}
 .site .phero .hero-badges{justify-content:flex-start}
-/* Ortalı açılışta logo da ortada: ArvoBook sayfasında (sahnesiz, ortalı)
+/* Ortalı açılışta logo da ortada: ArvoCal sayfasında (sahnesiz, ortalı)
    logo sola yaslı kalıp başlıktan ayrı duruyordu. */
 .site .phero.center .phero-logo{display:flex;justify-content:center}
 .site .phero.center .hero-badges{justify-content:center}

@@ -112,7 +112,7 @@
 .site .mo-serie-bars i{flex:1;border-radius:3px 3px 2px 2px;background:linear-gradient(180deg,#c9d6e6,#9fb4cc)}
 .site .mo-serie-bars i[data-bugun]{background:linear-gradient(180deg,#a9c78a,#5a7f3a)}
 
-/* ArvoBook randevu takvimi (28.10.2026). Satır yüksekliği yarım saat;
+/* ArvoCal randevu takvimi (28.10.2026). Satır yüksekliği yarım saat;
    randevu --bas (başlangıç) ve --sure (süre) ile yarım saat biriminde yerleşir. */
 .site .mock-book .mock-win{background:#fbfbfd}
 .site .mb-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #ececf0;background:#fff}

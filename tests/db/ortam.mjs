@@ -64,6 +64,8 @@ export const BEKLEYEN_MIGRATIONLAR = [
   // Döküm 28.10.2026'da yenilendi; sonrası burada. Migration canlıya
   // uygulanıp döküm yenilenince listeden çıkar (iki kez uygulanmasın).
   "20261028083410_site_formu_arvobook_ve_diller.sql",
+  "20261028145027_ek_kullanici_kdv_dahil.sql",
+  "20261028145415_site_formu_arvocal.sql",
 ];
 
 /*

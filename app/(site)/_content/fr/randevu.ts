@@ -1,4 +1,4 @@
-// Fransızca: randevu-en.ts'in çevirisi (ArvoBook). Yapı ve veriler aynı; yalnızca metin çevrildi — yalnızca yayındaki özellikler.
+// Fransızca: randevu-en.ts'in çevirisi (ArvoCal). Yapı ve veriler aynı; yalnızca metin çevrildi — yalnızca yayındaki özellikler.
 import { PRODUCT_APPS, ROUTES } from "@/lib/site/routes";
 import type { ProductContent } from "../types";
 
@@ -6,7 +6,7 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].fr;
 
 export const RANDEVU_FR: ProductContent = {
   id: "randevu",
-  name: "ArvoBook",
+  name: "ArvoCal",
   category: "BusinessApplication",
   appUrl: PRODUCT_APPS.randevu.url,
   featureList: [
@@ -18,12 +18,12 @@ export const RANDEVU_FR: ProductContent = {
     "Rappels WhatsApp",
   ],
   meta: {
-    title: "ArvoBook — Gestion des rendez-vous en salon",
+    title: "ArvoCal — Gestion des rendez-vous en salon",
     description:
       "Réservation en ligne pour salons de coiffure et instituts de beauté : vos clients choisissent eux-mêmes la prestation, le coiffeur et l’horaire ; agenda par collaborateur, horaires de travail et congés, rappels WhatsApp.",
   },
   hero: {
-    eyebrow: "ArvoBook · Gestion des rendez-vous en salon",
+    eyebrow: "ArvoCal · Gestion des rendez-vous en salon",
     title: "Laissez la page de réservation",
     subtitle: "répondre au téléphone.",
     lead:
@@ -37,7 +37,7 @@ export const RANDEVU_FR: ProductContent = {
     eyebrow: "Fonctionnalités",
     title: "La journée du salon sur un seul écran.",
     lead:
-      "Un rendez-vous pris par téléphone finit dans un carnet papier, le carnet est mal lu, les horaires se chevauchent. ArvoBook reconstruit cette chaîne depuis le début.",
+      "Un rendez-vous pris par téléphone finit dans un carnet papier, le carnet est mal lu, les horaires se chevauchent. ArvoCal reconstruit cette chaîne depuis le début.",
     items: [
       {
         title: "Page de réservation en ligne",
@@ -86,7 +86,7 @@ export const RANDEVU_FR: ProductContent = {
   },
   faq: {
     eyebrow: "Questions fréquentes",
-    title: "À propos d’ArvoBook",
+    title: "À propos d’ArvoCal",
     items: [
       { q: "Les clients doivent-ils s’inscrire ?", a: "Non. Le client choisit une prestation, un coiffeur et un horaire, puis saisit son numéro de téléphone ; il est identifié par ce numéro et reçoit un lien d’annulation." },
       { q: "Deux rendez-vous peuvent-ils tomber sur le même créneau ?", a: "Non. Un rendez-vous en conflit pour le même coiffeur — temps de battement compris — est rejeté au niveau de la base de données, et non par un simple contrôle de l’interface." },

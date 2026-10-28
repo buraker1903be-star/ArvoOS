@@ -7,12 +7,12 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].fr;
 export const HOME_FR: HomeContent = {
   meta: {
     title: "ArvoOS | De meilleurs systèmes pour mieux travailler",
-    description: "ArvoOS conçoit un système d’exploitation pour les entreprises, ArvoLab pour les chercheurs et ArvoBook pour les salons — et propose la création de sites web et e-commerce, le SEO & GEO et le développement de logiciels sur mesure.",
+    description: "ArvoOS conçoit un système d’exploitation pour les entreprises, ArvoLab pour les chercheurs et ArvoCal pour les salons — et propose la création de sites web et e-commerce, le SEO & GEO et le développement de logiciels sur mesure.",
   },
   hero: {
     eyebrow: "La famille de produits ArvoOS",
     title: "De meilleurs systèmes", subtitle: "pour mieux travailler.",
-    lead: "ArvoOS est une marque de logiciels : un système d’exploitation pour les entreprises, ArvoLab pour les chercheurs et ArvoBook pour les salons. Elle transforme le travail complexe en expériences sereines, puissantes et connectées.",
+    lead: "ArvoOS est une marque de logiciels : un système d’exploitation pour les entreprises, ArvoLab pour les chercheurs et ArvoCal pour les salons. Elle transforme le travail complexe en expériences sereines, puissantes et connectées.",
     actions: [
       { label: "Demander une démo", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "Découvrir les produits", href: "#produits", variant: "ghost" },
@@ -42,7 +42,7 @@ export const HOME_FR: HomeContent = {
       label: "Gestion des rendez-vous en salon", title: "Libérez le téléphone du carnet de rendez-vous.",
       text: "Vos clients choisissent eux-mêmes la prestation, le coiffeur et l’horaire, et la réservation arrive instantanément dans votre agenda. Agendas par collaborateur, horaires de travail et congés, aucune double réservation.",
       chips: ["Page de réservation en ligne", "Agenda du personnel", "Horaires & congés", "Fiches clients"],
-      cta: { label: "Découvrir ArvoBook", href: R("randevu"), variant: "gold" },
+      cta: { label: "Découvrir ArvoCal", href: R("randevu"), variant: "gold" },
       signIn: { label: "Se connecter", href: PRODUCT_APPS.randevu.url, external: true, variant: "ghost" },
     },
   },
@@ -81,7 +81,7 @@ export const HOME_FR: HomeContent = {
   eco: {
     eyebrow: "Écosystème",
     title: "Trois produits. Un seul écosystème.",
-    lead: "ArvoOS, ArvoLab et ArvoBook sont des applications web distinctes, chacune sur son propre sous-domaine arvo-os.com, conçues par la même équipe selon un même standard de marque et de qualité.",
+    lead: "ArvoOS, ArvoLab et ArvoCal sont des applications web distinctes, chacune sur son propre sous-domaine arvo-os.com, conçues par la même équipe selon un même standard de marque et de qualité.",
     roles: ["Opérations", "Recherche", "Salons"],
     principles: [
       { title: "Un espace à vous", text: "Chaque organisation, équipe ou salon travaille dans son propre espace de travail." },
@@ -116,9 +116,9 @@ export const HOME_FR: HomeContent = {
     eyebrow: "FAQ",
     title: "Questions sur ArvoOS",
     items: [
-      { q: "Qu’est-ce qu’ArvoOS ?", a: `ArvoOS est la marque de logiciels de ${COMPANY.legalName}. Elle conçoit le système d’exploitation ArvoOS pour les entreprises, ArvoLab pour les chercheurs et ArvoBook pour les salons, et propose également la création de sites web et e-commerce ainsi que le développement de logiciels sur mesure.` },
-      { q: "Quelle est la différence entre ArvoOS, ArvoLab et ArvoBook ?", a: "ArvoOS pilote les opérations d’une entreprise, de la demande au paiement. ArvoLab accompagne la recherche et la rédaction académiques. ArvoBook gère le carnet de rendez-vous d’un salon : les clients réservent eux-mêmes et l’agenda s’organise par collaborateur." },
-      { q: "Où me connecter aux produits ArvoOS ?", a: `ArvoOS fonctionne sur ${PRODUCT_APPS.arvoos.host}, ArvoLab sur ${PRODUCT_APPS.arvolab.host} et ArvoBook sur ${PRODUCT_APPS.randevu.host}. Les trois sont des applications web qui s’exécutent dans le navigateur.` },
+      { q: "Qu’est-ce qu’ArvoOS ?", a: `ArvoOS est la marque de logiciels de ${COMPANY.legalName}. Elle conçoit le système d’exploitation ArvoOS pour les entreprises, ArvoLab pour les chercheurs et ArvoCal pour les salons, et propose également la création de sites web et e-commerce ainsi que le développement de logiciels sur mesure.` },
+      { q: "Quelle est la différence entre ArvoOS, ArvoLab et ArvoCal ?", a: "ArvoOS pilote les opérations d’une entreprise, de la demande au paiement. ArvoLab accompagne la recherche et la rédaction académiques. ArvoCal gère le carnet de rendez-vous d’un salon : les clients réservent eux-mêmes et l’agenda s’organise par collaborateur." },
+      { q: "Où me connecter aux produits ArvoOS ?", a: `ArvoOS fonctionne sur ${PRODUCT_APPS.arvoos.host}, ArvoLab sur ${PRODUCT_APPS.arvolab.host} et ArvoCal sur ${PRODUCT_APPS.randevu.host}. Les trois sont des applications web qui s’exécutent dans le navigateur.` },
       { q: "Combien coûte ArvoOS ?", a: `Les prix catalogue mensuels et annuels sont publiés sur ${ROUTES.pricing.fr} ; la tarification se fait par organisation, et non par utilisateur. Pour l’offre Sur mesure, le tarif est défini avec chaque organisation.` },
       { q: "Comment demander une démo ?", a: `Remplissez le formulaire de la page contact ou écrivez à ${COMPANY.email} ; votre demande est transmise à l’équipe produit concernée.` },
     ],
@@ -126,7 +126,7 @@ export const HOME_FR: HomeContent = {
   cta: {
     eyebrow: "Une démo pour votre organisation",
     title: "Construisons ensemble les systèmes de demain.",
-    lead: "Laissez-nous vous montrer comment ArvoOS, ArvoLab ou ArvoBook fonctionneraient pour vous.",
+    lead: "Laissez-nous vous montrer comment ArvoOS, ArvoLab ou ArvoCal fonctionneraient pour vous.",
     actions: [
       { label: "Demander une démo", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "Nous découvrir", href: R("about"), variant: "ghost" },

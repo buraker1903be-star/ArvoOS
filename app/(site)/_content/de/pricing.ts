@@ -13,13 +13,13 @@ export const PRICING_DE: PricingContent = {
   meta: {
     title: "Preise",
     description:
-      "Abonnementpreise für ArvoOS, ArvoBook und ArvoLab: monatliche und jährliche Preise, Leistungsumfang der Pakete, Zusatzleistungen und Abonnementbedingungen. Abgerechnet pro Organisation, nicht pro Nutzer.",
+      "Abonnementpreise für ArvoOS, ArvoCal und ArvoLab: monatliche und jährliche Preise, Leistungsumfang der Pakete, Zusatzleistungen und Abonnementbedingungen. Abgerechnet pro Organisation, nicht pro Nutzer.",
   },
   hero: {
     eyebrow: "Preise",
     title: "Für Business-Produkte pro Organisation –",
     subtitle: "nicht pro Nutzer.",
-    lead: "ArvoOS und ArvoBook werden pro Organisation abgerechnet: Ihre Rechnung vervielfacht sich nicht, wenn das Team wächst, und jede Karte nennt die Zahl der enthaltenen Nutzer. ArvoLab ist die Ausnahme – sein Nutzen liegt bei der Person, die schreibt, nicht im Ablauf der Organisation; deshalb wird es pro Forschendem abgerechnet.",
+    lead: "ArvoOS und ArvoCal werden pro Organisation abgerechnet: Ihre Rechnung vervielfacht sich nicht, wenn das Team wächst, und jede Karte nennt die Zahl der enthaltenen Nutzer. ArvoLab ist die Ausnahme – sein Nutzen liegt bei der Person, die schreibt, nicht im Ablauf der Organisation; deshalb wird es pro Forschendem abgerechnet.",
     actions: [demo, { label: "Abonnementbedingungen", href: "#kosullar", variant: "ghost" }],
   },
   cycle: {
@@ -34,7 +34,7 @@ export const PRICING_DE: PricingContent = {
     quoteAction: "Angebot anfordern",
   },
   vatNote:
-    "Alle Preise in Euro, zzgl. MwSt.; Kunden in der Türkei zahlen in türkischen Lira zu den Preisen der türkischen Seite. Bei jährlicher Zahlung zahlen Sie 10 Monate und nutzen 12; der Betrag wird einmalig zu Beginn des Zeitraums in Rechnung gestellt.",
+    "Alle Preise in Euro, zzgl. MwSt.; Kunden in der Türkei zahlen in türkischen Lira zu den Preisen der türkischen Seite, die die MwSt. enthalten. Bei jährlicher Zahlung zahlen Sie 10 Monate und nutzen 12; der Betrag wird einmalig zu Beginn des Zeitraums in Rechnung gestellt.",
 
   groups: [
     {
@@ -64,7 +64,7 @@ export const PRICING_DE: PricingContent = {
       product: "randevu",
       tag: "Terminverwaltung",
       lead: "Eine Online-Buchungsseite, ein Kalender und eine Kundenkartei für Friseur- und Kosmetiksalons. Arbeitszeiten werden in türkischer Ortszeit festgelegt.",
-      linkLabel: "ArvoBook entdecken",
+      linkLabel: "ArvoCal entdecken",
       cards: [
         {
           code: "randevu-tek",
@@ -86,7 +86,7 @@ export const PRICING_DE: PricingContent = {
     {
       product: "arvolab",
       tag: "Arbeitsumgebung für die Forschung",
-      lead: "Literatur und Zitate, wissenschaftliches Schreiben, Richtlinienprüfung, Analyse und Originalitäts-Vorprüfung – der gesamte Forschungsprozess in einer Arbeitsumgebung, ohne eigenes Tool und eigenes Abonnement für jeden Schritt. Abgerechnet pro Forschendem; im Team werden die Plätze günstiger.",
+      lead: "Literatur und Zitate, wissenschaftliches Schreiben, Richtlinienprüfung, Analyse und Originalitäts-Vorprüfung – der gesamte Forschungsprozess in einer Arbeitsumgebung, ohne eigenes Tool und eigenes Abonnement für jeden Schritt. Abgerechnet pro Forschendem.",
       linkLabel: "ArvoLab entdecken",
       cards: [
         {
@@ -95,13 +95,11 @@ export const PRICING_DE: PricingContent = {
           items: ["Eine forschende Person", "Literatur- und Zitatverwaltung", "Wissenschaftliches Schreiben", "Richtlinienprüfung", "Analysezentrum (quantitativ und qualitativ)", "Originalitäts-Vorprüfung"],
         },
         {
-          code: "arvolab-ekip",
-          text: "Für Forschungsteams, die eine gemeinsame Bibliothek und eine gemeinsame Schreibordnung brauchen. Sie zahlen pro Platz, und der Preis pro Person sinkt.",
-          items: ["Ab 3 Forschenden", "Alles aus „Forschende“", "Gemeinsame Quellenbibliothek", "Wissenschaftlicher Editor", "Team- und Zugriffsverwaltung", "Priorisierter Support"],
-        },
-        {
+          // Ekip paketi 28.10.2026'da satıştan kalktı (kurucu kararı): ArvoLab bireysel
+          // araştırmacıya satılıyor, kurum lisansı yalnızca üniversite ve eğitim
+          // kurumlarına teklifle veriliyor. Kart geri eklenirse lib'deki plan da gerekir.
           code: "arvolab-kurum",
-          text: "Eine Campuslizenz für Fakultäten und Universitäten, die keine Plätze zählen wollen.",
+          text: "Nur für Universitäten und Bildungseinrichtungen: eine Campuslizenz für eine Fakultät oder die gesamte Universität, Preis auf Anfrage.",
           items: ["Unbegrenzte Forschende", "Campuslizenz für Fakultät oder Universität", "Nutzerverwaltung durch die Institution", "Eigene Domain", "Implementierung und Schulung", "Rechnung an die Institution"],
         },
       ],
@@ -115,7 +113,7 @@ export const PRICING_DE: PricingContent = {
     quote: "Auf Anfrage",
     items: [
       { code: "ek-kullanici", name: "Zusätzlicher Nutzer", text: "Für jeden Nutzer über die im ArvoOS-Paket enthaltene Anzahl hinaus. Gilt nicht für ArvoLab, das bereits pro Forschendem abgerechnet wird." },
-      { code: "ek-sube", name: "Zusätzliche Filiale", text: "Für jede Filiale über die drei im ArvoBook-Paket „Mehrere Filialen“ enthaltenen hinaus." },
+      { code: "ek-sube", name: "Zusätzliche Filiale", text: "Für jede Filiale über die drei im ArvoCal-Paket „Mehrere Filialen“ enthaltenen hinaus." },
       { code: "veri-aktarimi", name: "Datenmigration und Einrichtung", text: "Übernahme der Daten aus Ihrem bisherigen System, Anlegen der Nutzer und Schulung des Teams. Einmalig, je nach Umfang berechnet." },
       { code: "ozel-gelistirme", name: "Individuelle Entwicklung", text: "Ein Workflow, eine Ansicht oder ein Bericht speziell für Ihre Organisation. Angebot, sobald der Umfang feststeht." },
     ],
@@ -131,7 +129,7 @@ export const PRICING_DE: PricingContent = {
       { title: "Preisänderungen", text: "Ihr laufender Zeitraum bleibt unberührt. Änderungen werden mindestens 30 Tage im Voraus per E-Mail angekündigt und gelten erst ab dem nächsten Zeitraum." },
       { title: "Upgrades und Downgrades", text: "Ein Upgrade gilt ab demselben Tag, berechnet werden nur die verbleibenden Tage des Zeitraums. Ein Downgrade gilt zum Ende des laufenden Zeitraums." },
       { title: "Vorzeitige Kündigung eines Jahrespakets", text: "Die genutzten Monate werden zum monatlichen Listenpreis neu berechnet, der Restbetrag wird erstattet. Der Jahresrabatt entfällt nur für die ungenutzten Monate." },
-      { title: "MwSt. und Rechnungsstellung", text: "Die angegebenen Beträge verstehen sich zzgl. MwSt. Für jeden Zeitraum wird eine Rechnung ausgestellt und an Ihre hinterlegte E-Mail-Adresse gesendet." },
+      { title: "MwSt. und Rechnungsstellung", text: "Die angegebenen Euro-Beträge verstehen sich zzgl. MwSt. und Umsatzsteuer; diese werden auf der Rechnung nach den jeweils geltenden Vorschriften berechnet. Die Lira-Preise auf der türkischen Seite enthalten die MwSt. Für jeden Zeitraum wird eine Rechnung ausgestellt und an Ihre hinterlegte E-Mail-Adresse gesendet." },
     ],
     links: [
       { label: "Fernabsatzvertrag", href: R("distance-sales"), variant: "ghost" },
@@ -144,9 +142,9 @@ export const PRICING_DE: PricingContent = {
     eyebrow: "Häufige Fragen",
     title: "Zu den Preisen",
     items: [
-      { q: "Sind die Preise inklusive MwSt.?", a: "Nein. Die Beträge auf dieser Seite verstehen sich zzgl. MwSt.; die MwSt. wird auf der Rechnung zum jeweils geltenden Satz hinzugefügt." },
-      { q: "Wird pro Nutzer abgerechnet?", a: "Bei ArvoOS und ArvoBook nicht: Die Preise gelten pro Organisation, und jedes Paket enthält eine festgelegte Zahl von Nutzern; darüber hinaus fällt nur die Gebühr für zusätzliche Nutzer an, der Paketpreis vervielfacht sich nicht. Bei ArvoLab ja: Hier wird pro Forschendem abgerechnet, weil der Nutzen direkt bei der Person entsteht, die es verwendet." },
-      { q: "Worin unterscheiden sich ArvoLab Team und Institution?", a: "Team wird pro Platz bezahlt: ab drei Forschenden, zu einem niedrigeren Preis pro Person als bei „Forschende“, und Sie können jederzeit Plätze hinzufügen oder entfernen. Institution ist eine Campuslizenz: Plätze werden nicht gezählt, die gesamte Fakultät oder Universität nutzt sie, und die Rechnung geht an die Institution." },
+      { q: "Sind die Preise inklusive MwSt.?", a: "Nein. Die Euro-Beträge auf dieser Seite verstehen sich zzgl. MwSt. und Umsatzsteuer; diese werden auf der Rechnung nach den jeweils geltenden Vorschriften berechnet. Die Lira-Preise auf der türkischen Seite enthalten die MwSt." },
+      { q: "Wird pro Nutzer abgerechnet?", a: "Bei ArvoOS und ArvoCal nicht: Die Preise gelten pro Organisation, und jedes Paket enthält eine festgelegte Zahl von Nutzern; darüber hinaus fällt nur die Gebühr für zusätzliche Nutzer an, der Paketpreis vervielfacht sich nicht. Bei ArvoLab ja: Hier wird pro Forschendem abgerechnet, weil der Nutzen direkt bei der Person entsteht, die es verwendet." },
+      { q: "Kann ein Team oder ein Unternehmen ArvoLab kaufen?", a: "ArvoLab wird an einzelne Forschende verkauft. Institutionslizenzen werden nur Universitäten und Bildungseinrichtungen angeboten, auf Anfrage." },
       { q: "Was spart die jährliche Abrechnung?", a: "Bei jährlicher Zahlung zahlen Sie 10 Monate und nutzen 12 – zwei Monate gratis. Der Betrag wird einmalig zu Beginn des Zeitraums in Rechnung gestellt." },
       { q: "Verlängert sich das Abonnement automatisch?", a: "Nein. Ihre Karte wird nicht automatisch belastet; für jeden Zeitraum erhalten Sie einen Zahlungslink und bestätigen die Zahlung selbst." },
       { q: "Können wir das Paket später wechseln?", a: "Ja. Ein Upgrade gilt ab demselben Tag, berechnet werden nur die verbleibenden Tage des Zeitraums; ein Downgrade gilt zum Ende des laufenden Zeitraums." },

@@ -11,7 +11,7 @@ const ALIASES: Record<string, LeadInterest> = {
   hizmetler: "services", hizmet: "services", web: "services", seo: "services", yazilim: "services", software: "services",
   os: "arvoos", lab: "arvolab", diger: "other",
   // ArvoARC satılmıyor; eski ?ilgi=arc bağlantıları e-ticaret sitesi talebine iner.
-  arc: "services", arvobook: "randevu", book: "randevu", eticaret: "services", ecommerce: "services",
+  arc: "services", arvocal: "randevu", book: "randevu", eticaret: "services", ecommerce: "services",
 };
 
 /** ?ilgi= / ?interest= değerini formun ilgi alanına çevirir (bilinmeyen → arvoos). */
