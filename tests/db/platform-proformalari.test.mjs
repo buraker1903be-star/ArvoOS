@@ -93,6 +93,36 @@ describe("platform proformaları", () => {
       );
     }));
 
+  test("MEŞRU: ArvoOS ürününde kurum proforması alıcı bilgisiyle yazılır (20261028155350)", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "service_role");
+      const alici = { adSoyad: "Ayşe Yılmaz", unvan: "Güzel Salon Ltd. Şti.", vergiDairesi: "Kadıköy", vergiNo: "1234567890", adres: null, eposta: "salon@example.com" };
+      const p = await tek(
+        `insert into public.platform_proformalari
+           (product, organization_id, musteri_adi, alici, kalemler, ara_toplam, kdv, toplam, gecerlilik_tarihi)
+         values ('arvoos', $1, 'Güzel Salon Ltd. Şti.', $2::jsonb, $3::jsonb, 100000, 20000, 120000, current_date + 15)
+         returning product, alici`,
+        [SALON, JSON.stringify(alici), KALEM],
+      );
+      assert.equal(p.product, "arvoos");
+      assert.equal(p.alici.unvan, "Güzel Salon Ltd. Şti.");
+    }));
+
+  test("tanınmayan ürün ve nesne olmayan alıcı reddedilir", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "service_role");
+      await reddedilir(db,
+        `insert into public.platform_proformalari (product, organization_id, musteri_adi, kalemler, ara_toplam, kdv, toplam, gecerlilik_tarihi)
+         values ('arc', $1, 'X', $2::jsonb, 100000, 20000, 120000, current_date + 15)`,
+        [SALON, KALEM], /platform_proformalari_product_check/);
+      await reddedilir(db,
+        `insert into public.platform_proformalari (organization_id, musteri_adi, alici, kalemler, ara_toplam, kdv, toplam, gecerlilik_tarihi)
+         values ($1, 'X', '"metin"'::jsonb, $2::jsonb, 100000, 20000, 120000, current_date + 15)`,
+        [SALON, KALEM], /platform_proformalari_alici_check/);
+    }));
+
   test("müşteri tam olarak bir tane: kurum ya da abone", () =>
     islem(db, async () => {
       await tohum();

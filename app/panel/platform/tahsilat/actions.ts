@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runPanelAction } from "@/lib/panel-action";
 import { kurusOku } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
-import { kalemleriOku, proformaToplami, VARSAYILAN_KDV_ORANI } from "@/lib/proforma";
+import { aliciAdi, aliciOku, kalemleriOku, kdvDahilProforma, PROFORMA_URUNLERI, proformaToplami, VARSAYILAN_KDV_ORANI } from "@/lib/proforma";
 
 /*
   PLATFORM FATURASI YÜKLEME (26.10.2026, migration 20261026191235).
@@ -85,7 +85,7 @@ async function faturaYukle__impl(formData: FormData) {
 }
 
 export async function faturaYukle(...args: Parameters<typeof faturaYukle__impl>) {
-  return runPanelAction(() => faturaYukle__impl(...args), "Fatura yüklendi; müşteri ArvoLab'da görebilir.");
+  return runPanelAction(() => faturaYukle__impl(...args), "Fatura yüklendi; müşteri kendi panelinde (ArvoOS ya da ArvoLab) görebilir.");
 }
 
 /*
@@ -117,29 +117,46 @@ async function proformaOlustur__impl(formData: FormData) {
   const [tur, musteriId] = String(formData.get("musteri") ?? "").split(":");
   if ((tur !== "kurum" && tur !== "abone") || !UUID.test(musteriId ?? "")) throw new Error("Müşteriyi seçin.");
 
-  let musteriAdi: string;
+  /*
+    ÜRÜN (28.10.2026). Eskiden sabit 'arvolab'tı: bir ArvoOS kurumuna
+    kesilen proforma ArvoLab ürününe yazılıyor ve kurumun ArvoOS
+    panelinde hiç görünmüyordu. Bireysel abone yalnızca ArvoLab'da var.
+  */
+  const urun = String(formData.get("urun") ?? "");
+  if (!PROFORMA_URUNLERI.includes(urun as (typeof PROFORMA_URUNLERI)[number])) throw new Error("Ürünü seçin.");
+  if (tur === "abone" && urun !== "arvolab") throw new Error("Bireysel aboneye yalnızca ArvoLab proforması kesilebilir.");
+
   if (tur === "kurum") {
-    const { data, error } = await admin.from("organizations").select("name,display_name,legal_name").eq("id", musteriId).maybeSingle();
+    const { data, error } = await admin.from("organizations").select("id").eq("id", musteriId).maybeSingle();
     if (error || !data) throw new Error("Kurum bulunamadı.");
-    // Resmî belge: ticari unvan varsa o, yoksa görünen ad.
-    musteriAdi = data.legal_name || data.display_name || data.name;
   } else {
-    const { data, error } = await admin.from("product_subscribers").select("full_name,email,product").eq("id", musteriId).maybeSingle();
+    const { data, error } = await admin.from("product_subscribers").select("product").eq("id", musteriId).maybeSingle();
     if (error || !data) throw new Error("Abone bulunamadı.");
     if (data.product !== "arvolab") throw new Error("Proforma şimdilik yalnızca ArvoLab aboneleri için düzenlenebilir.");
-    musteriAdi = data.full_name || data.email;
   }
+
+  const alici = aliciOku({
+    adSoyad: String(formData.get("alici_ad_soyad") ?? ""),
+    unvan: String(formData.get("alici_unvan") ?? ""),
+    vergiDairesi: String(formData.get("alici_vergi_dairesi") ?? ""),
+    vergiNo: String(formData.get("alici_vergi_no") ?? ""),
+    adres: String(formData.get("alici_adres") ?? ""),
+    eposta: String(formData.get("alici_eposta") ?? ""),
+  }, tur);
 
   const satirlar = [0, 1, 2].map((i) => ({
     aciklama: String(formData.get(`aciklama_${i}`) ?? ""),
     miktar: String(formData.get(`miktar_${i}`) ?? ""),
     birimFiyat: String(formData.get(`birim_fiyat_${i}`) ?? ""),
   }));
-  const kalemler = kalemleriOku(satirlar, (d) => kurusOku(d));
+  const okunan = kalemleriOku(satirlar, (d) => kurusOku(d));
   const kdvMetni = String(formData.get("kdv_orani") ?? "").trim();
   const kdvOrani = kdvMetni ? Number(kdvMetni.replace(",", ".")) : VARSAYILAN_KDV_ORANI;
   if (!Number.isFinite(kdvOrani) || kdvOrani < 0 || kdvOrani > 100) throw new Error("KDV oranı 0 ile 100 arasında olmalı.");
-  const { araToplam, kdv, toplam } = proformaToplami(kalemler, kdvOrani);
+  // Liste fiyatları KDV dahil (lib/site/pricing.ts): kutuya yazılan tutar toplamın kendisi olabiliyor.
+  const { kalemler, araToplam, kdv, toplam } = formData.get("kdv_dahil") === "1"
+    ? kdvDahilProforma(okunan, kdvOrani)
+    : { kalemler: okunan, ...proformaToplami(okunan, kdvOrani) };
 
   const bugun = todayInIstanbul();
   const gecerlilik = String(formData.get("gecerlilik_tarihi") ?? "").trim();
@@ -148,10 +165,11 @@ async function proformaOlustur__impl(formData: FormData) {
   const notlar = String(formData.get("notlar") ?? "").trim().slice(0, 1000) || null;
 
   const { error } = await admin.from("platform_proformalari").insert({
-    product: "arvolab",
+    product: urun,
     organization_id: tur === "kurum" ? musteriId : null,
     subscriber_id: tur === "abone" ? musteriId : null,
-    musteri_adi: musteriAdi.slice(0, 200),
+    musteri_adi: aliciAdi(alici).slice(0, 200),
+    alici,
     kalemler,
     ara_toplam: araToplam,
     kdv_orani: kdvOrani,
@@ -164,11 +182,18 @@ async function proformaOlustur__impl(formData: FormData) {
     olusturan: userId,
   });
   if (error) throw new Error(`Proforma kaydedilemedi: ${error.message}`);
+
+  /* Abonenin adı ArvoLab profilinde boşsa abone kaydı e-postayla kalıyordu
+     ve konsolun her listesinde yalnızca e-posta görünüyordu. Proformada
+     yazılan ad, boş olan yeri doldurur; dolu bir adın üstüne yazılmaz. */
+  if (tur === "abone" && alici.adSoyad) {
+    await admin.from("product_subscribers").update({ full_name: alici.adSoyad }).eq("id", musteriId).is("full_name", null);
+  }
   revalidatePath("/panel/platform/tahsilat");
 }
 
 export async function proformaOlustur(...args: Parameters<typeof proformaOlustur__impl>) {
-  return runPanelAction(() => proformaOlustur__impl(...args), "Proforma oluşturuldu; müşteri ArvoLab'da görebilir.");
+  return runPanelAction(() => proformaOlustur__impl(...args), "Proforma oluşturuldu; müşteri kendi panelinde görüp yazdırabilir.");
 }
 
 async function proformaIptal__impl(formData: FormData) {
