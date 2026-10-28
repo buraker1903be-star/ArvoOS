@@ -6,15 +6,26 @@
 // gitmemeli.
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
+import { islem, migrationYetkileri, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const ABONE = "00000000-0000-4000-8000-0000000000f1";
 const ODEME = "00000000-0000-4000-8000-0000000000f2";
 const KULLANICI = "00000000-0000-4000-8000-0000000000f3";
 
+/*
+  Döküm TABLO yetkilerini taşımıyor; düzenek de her tabloyu anon ve
+  authenticated'a açıyor. Tabloyu istemciye kapatan tek şey migration'ın
+  kendi revoke satırları: döküm 28.10.2026'da yenilenip migration
+  BEKLEYEN_MIGRATIONLAR'dan çıkınca "istemci yazamaz" senaryosu düştü.
+  DDL dökümden geliyor, yetki satırları dosyadan tekrarlanıyor.
+  govde-tamam: DDL dökümden, yetkiler dosyadan.
+*/
+const YALNIZCA_YETKI = ["20261026191235_platform_faturalari.sql"];
+
 let db;
 before(async () => {
   db = await veritabani();
+  await migrationYetkileri(db, YALNIZCA_YETKI);
 });
 
 async function tohum() {
