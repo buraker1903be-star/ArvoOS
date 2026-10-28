@@ -26,7 +26,7 @@ export const CONTACT_TR: ContactContent = {
     items: [
       { q: "Nasıl demo talep edebilirim?", a: "Bu sayfadaki formda ilgilendiğiniz ürünü seçip ihtiyacınızı yazmanız yeterli; ekibimiz sizinle iletişime geçer." },
       { q: "Form dışında nasıl ulaşabilirim?", a: `${COMPANY.email} adresine e-posta gönderebilirsiniz.` },
-      { q: "Paneli kullanan bir kurumum, nereden giriş yaparım?", a: "ArvoOS app.arvo-os.com, ArvoLab lab.arvo-os.com, ArvoBook randevu.arvo-os.com adresinde çalışır; e-ticaret sitesiyle birlikte mağaza paneli teslim edilen kurumlar arc.arvo-os.com adresinden girer; kurumunuzun özel alan adı varsa oradan da giriş yapabilirsiniz." },
+      { q: "Paneli kullanan bir kurumum, nereden giriş yaparım?", a: "ArvoOS app.arvo-os.com, ArvoLab lab.arvo-os.com, ArvoBook randevu.arvo-os.com adresinde çalışır; kurumunuzun özel alan adı varsa oradan da giriş yapabilirsiniz." },
       { q: "Form verilerim nasıl kullanılır?", a: `Yalnızca talebinizi yanıtlamak için işlenir. Ayrıntılar Gizlilik ve KVKK Aydınlatma Metni’nde (${ROUTES.privacy.tr}).` },
     ],
   },
