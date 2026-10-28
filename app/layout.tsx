@@ -21,8 +21,8 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://arvo-os.com"),
   title: "ArvoOS | Ürünler ve Dijital Hizmetler",
   description: "ArvoOS, ArvoLab ve kurumlara özel dijital ürün, web tasarımı ve yazılım hizmetleri.",
-  openGraph:{title:"ArvoOS | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",type:"website",images:[{url:"/arvoos-logo.png",alt:"ArvoOS Akademik Çalışma Ekosistemi"}]},
-  twitter:{card:"summary_large_image",title:"ArvoOS | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",images:["/arvoos-logo.png"]},
+  openGraph:{title:"ArvoOS | Ürünler ve Dijital Hizmetler",description:"ArvoOS, ArvoLab ve ArvoBook ile kurumlara özel dijital ürün ve hizmetler.",type:"website",images:[{url:"/arvoos-logo.png",alt:"ArvoOS"}]},
+  twitter:{card:"summary_large_image",title:"ArvoOS | Ürünler ve Dijital Hizmetler",description:"ArvoOS, ArvoLab ve ArvoBook ile kurumlara özel dijital ürün ve hizmetler.",images:["/arvoos-logo.png"]},
   // iOS ana ekran ikonu SVG kabul etmez: 180px opak PNG (köşeleri iOS yuvarlar)
   icons:{icon:"/favicon.svg",shortcut:"/favicon.svg",apple:{url:"/apple-touch-icon.png",sizes:"180x180",type:"image/png"}},
   manifest:"/manifest.webmanifest",
