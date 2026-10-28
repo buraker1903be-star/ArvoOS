@@ -122,21 +122,21 @@ export type Plan = {
   Entegrasyonlar geldiğinde yeniden bakılır.
 */
 export const PLANS: Plan[] = [
-  { code: "arvoos-baslangic", ad: { en: "Starter", tr: "Başlangıç", de: "Starter", es: "Starter", fr: "Essentiel" }, product: "arvoos", aylikKurus: tl(1990) },
-  { code: "arvoos-kurumsal", ad: { en: "Business", tr: "Kurumsal", de: "Business", es: "Business", fr: "Entreprise" }, product: "arvoos", aylikKurus: tl(5990), oneCikan: true },
-  { code: "arvoos-ozel", ad: { en: "Enterprise", tr: "Özel kurum", de: "Enterprise", es: "Enterprise", fr: "Sur mesure" }, product: "arvoos", aylikKurus: null },
+  { code: "arvoos-baslangic", ad: { en: "Starter", tr: "Başlangıç", de: "Starter", es: "Starter", fr: "Essentiel", ar: "الأساسية" }, product: "arvoos", aylikKurus: tl(1990) },
+  { code: "arvoos-kurumsal", ad: { en: "Business", tr: "Kurumsal", de: "Business", es: "Business", fr: "Entreprise", ar: "الأعمال" }, product: "arvoos", aylikKurus: tl(5990), oneCikan: true },
+  { code: "arvoos-ozel", ad: { en: "Enterprise", tr: "Özel kurum", de: "Enterprise", es: "Enterprise", fr: "Sur mesure", ar: "المؤسسات" }, product: "arvoos", aylikKurus: null },
 
-  { code: "arc-baslangic", ad: { en: "Starter", tr: "Başlangıç", de: "Starter", es: "Inicial", fr: "Essentiel" }, product: "arc", aylikKurus: tl(1290) },
-  { code: "arc-buyume", ad: { en: "Growth", tr: "Büyüme", de: "Wachstum", es: "Crecimiento", fr: "Croissance" }, product: "arc", aylikKurus: tl(2990), oneCikan: true },
-  { code: "arc-olcek", ad: { en: "Scale", tr: "Ölçek", de: "Scale", es: "Escala", fr: "Échelle" }, product: "arc", aylikKurus: tl(3990) },
+  { code: "arc-baslangic", ad: { en: "Starter", tr: "Başlangıç", de: "Starter", es: "Inicial", fr: "Essentiel", ar: "الأساسية" }, product: "arc", aylikKurus: tl(1290) },
+  { code: "arc-buyume", ad: { en: "Growth", tr: "Büyüme", de: "Wachstum", es: "Crecimiento", fr: "Croissance", ar: "النمو" }, product: "arc", aylikKurus: tl(2990), oneCikan: true },
+  { code: "arc-olcek", ad: { en: "Scale", tr: "Ölçek", de: "Scale", es: "Escala", fr: "Échelle", ar: "التوسع" }, product: "arc", aylikKurus: tl(3990) },
 
-  { code: "randevu-tek", ad: { en: "Single salon", tr: "Tek salon", de: "Ein Salon", es: "Un salón", fr: "Un salon" }, product: "randevu", aylikKurus: tl(749), oneCikan: true },
-  { code: "randevu-coklu", ad: { en: "Multi-branch", tr: "Çok şube", de: "Mehrere Filialen", es: "Varias sucursales", fr: "Multi-sites" }, product: "randevu", aylikKurus: tl(1490) },
-  { code: "randevu-zincir", ad: { en: "Chain", tr: "Zincir", de: "Kette", es: "Cadena", fr: "Réseau" }, product: "randevu", aylikKurus: null },
+  { code: "randevu-tek", ad: { en: "Single salon", tr: "Tek salon", de: "Ein Salon", es: "Un salón", fr: "Un salon", ar: "صالون واحد" }, product: "randevu", aylikKurus: tl(749), oneCikan: true },
+  { code: "randevu-coklu", ad: { en: "Multi-branch", tr: "Çok şube", de: "Mehrere Filialen", es: "Varias sucursales", fr: "Multi-sites", ar: "فروع متعددة" }, product: "randevu", aylikKurus: tl(1490) },
+  { code: "randevu-zincir", ad: { en: "Chain", tr: "Zincir", de: "Kette", es: "Cadena", fr: "Réseau", ar: "سلسلة" }, product: "randevu", aylikKurus: null },
 
-  { code: "arvolab-arastirmaci", ad: { en: "Researcher", tr: "Araştırmacı", de: "Forschende", es: "Investigador", fr: "Chercheur" }, product: "arvolab", aylikKurus: tl(1990), kisiBasi: true, oneCikan: true },
-  { code: "arvolab-ekip", ad: { en: "Team", tr: "Ekip", de: "Team", es: "Equipo", fr: "Équipe" }, product: "arvolab", aylikKurus: tl(1490), kisiBasi: true, enAzKullanici: 3 },
-  { code: "arvolab-kurum", ad: { en: "Institution", tr: "Kurum", de: "Institution", es: "Institución", fr: "Institution" }, product: "arvolab", aylikKurus: null },
+  { code: "arvolab-arastirmaci", ad: { en: "Researcher", tr: "Araştırmacı", de: "Forschende", es: "Investigador", fr: "Chercheur", ar: "باحث" }, product: "arvolab", aylikKurus: tl(1990), kisiBasi: true, oneCikan: true },
+  { code: "arvolab-ekip", ad: { en: "Team", tr: "Ekip", de: "Team", es: "Equipo", fr: "Équipe", ar: "فريق" }, product: "arvolab", aylikKurus: tl(1490), kisiBasi: true, enAzKullanici: 3 },
+  { code: "arvolab-kurum", ad: { en: "Institution", tr: "Kurum", de: "Institution", es: "Institución", fr: "Institution", ar: "مؤسسة" }, product: "arvolab", aylikKurus: null },
 ];
 
 /** Pakete dahil olmayan, ayrıca ücretlendirilen kalemler. */
@@ -157,7 +157,7 @@ export const yillikKurus = (plan: Plan): number | null =>
 export const yillikKazancKurus = (plan: Plan): number | null =>
   plan.aylikKurus === null ? null : plan.aylikKurus * YILLIK_BEDAVA_AY;
 
-const BICIM: Record<Locale, string> = { en: "en-US", tr: "tr-TR", de: "de-DE", es: "es-ES", fr: "fr-FR" };
+const BICIM: Record<Locale, string> = { en: "en-US", tr: "tr-TR", de: "de-DE", es: "es-ES", fr: "fr-FR", ar: "ar-u-nu-latn" };
 
 /** "2.990" / "2,990" / "2 990" — birim ayrı yazılır, kartta punto farklı. */
 export function tutarYaz(kurus: number, locale: Locale): string {

@@ -12,6 +12,7 @@ const T = {
   de: { site: "ihremarke.de", crumb: "ihremarke.de › leistungen", result: "Leistungen — Ihre Marke", ai: "KI-Antwort", source: "Quelle", portal: "Kundenbereich", rows: ["Anfragen", "Freigaben", "Dokumente"] },
   es: { site: "sumarca.es", crumb: "sumarca.es › servicios", result: "Servicios — Su Marca", ai: "Respuesta de IA", source: "Fuente", portal: "Área de clientes", rows: ["Solicitudes", "Aprobaciones", "Documentos"] },
   fr: { site: "votremarque.fr", crumb: "votremarque.fr › services", result: "Services — Votre Marque", ai: "Réponse de l’IA", source: "Source", portal: "Espace client", rows: ["Demandes", "Validations", "Documents"] },
+  ar: { site: "alamatuk.com", crumb: "alamatuk.com › الخدمات", result: "الخدمات — علامتك", ai: "إجابة الذكاء الاصطناعي", source: "المصدر", portal: "منطقة العملاء", rows: ["الطلبات", "الموافقات", "المستندات"] },
 } as const;
 
 function Web({ t }: { t: (typeof T)[Locale] }) {

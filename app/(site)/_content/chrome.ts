@@ -1,4 +1,4 @@
-// Üst menü ve alt bilgi metinleri (TR, EN, DE, ES, FR). Bağlantılar yalnızca ROUTES'tan.
+// Üst menü ve alt bilgi metinleri (TR, EN, DE, ES, FR, AR). Bağlantılar yalnızca ROUTES'tan.
 import { ARC_APP, PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/routes";
 
 export type NavLink = { label: string; href: string; desc?: string; external?: boolean };
@@ -167,5 +167,33 @@ export const CHROME: Record<Locale, Chrome> = {
     footerTagline: "De meilleurs systèmes pour un meilleur travail.",
     footerCta: "Concevons-le ensemble",
     company: "Entreprise", rights: "Tous droits réservés.", addressLabel: "Adresse", group: "une marque d’ArvoCulture Group",
+  },
+  ar: {
+    skip: "انتقل إلى المحتوى", home: "الصفحة الرئيسية لـ Arvo", nav: "القائمة الرئيسية", menu: "فتح القائمة", close: "إغلاق القائمة",
+    products: "المنتجات", services: "الخدمات", pricing: "الأسعار", about: "من نحن", contact: "اتصل بنا", privacy: "الخصوصية",
+    legal: "الشؤون القانونية", distanceSales: "اتفاقية البيع عن بُعد", refund: "الإلغاء والاسترداد", delivery: "التسليم",
+    signIn: "تسجيل الدخول", demo: "اطلب عرضًا توضيحيًا", language: "اللغة",
+    productLinks: [
+      { label: "ArvoOS", desc: "نظام تشغيل للأعمال", href: ROUTES.arvoos.ar },
+      { label: "ArvoLab", desc: "مساحة عمل للبحث العلمي", href: ROUTES.arvolab.ar },
+      { label: "ArvoBook", desc: "إدارة مواعيد الصالونات", href: ROUTES.randevu.ar },
+    ],
+    arvoosTitle: "استكشف ArvoOS",
+    arvoosLinks: [
+      { label: "الوحدات", href: ROUTES["arvoos-modules"].ar },
+      { label: "القطاعات", href: ROUTES["arvoos-industries"].ar },
+      { label: "الحلول", href: ROUTES["arvoos-solutions"].ar },
+      { label: "الباقات", href: ROUTES["arvoos-plans"].ar },
+    ],
+    serviceLinks: [
+      { label: "جميع الخدمات", desc: "من العلامة التجارية إلى النظام", href: ROUTES.services.ar },
+      { label: "تصميم المواقع", desc: "الاستراتيجية والتصميم والتطوير", href: ROUTES["web-design"].ar },
+      { label: "SEO وGEO", desc: "الظهور في البحث والذكاء الاصطناعي", href: ROUTES["seo-geo"].ar },
+      { label: "برمجيات مخصصة", desc: "لوحات وبوابات وسير عمل", href: ROUTES["custom-software"].ar },
+    ],
+    signInLinks,
+    footerTagline: "أنظمة أفضل لعمل أفضل.",
+    footerCta: "لنصمّمه معًا",
+    company: "الشركة", rights: "جميع الحقوق محفوظة.", addressLabel: "العنوان", group: "علامة تجارية تابعة لـ ArvoCulture Group",
   },
 };

@@ -40,7 +40,7 @@ export function ContactView({ locale, c, interest }: { locale: Locale; c: Contac
                 <small>{c.appsLabel}</small>
                 {[...(["arvoos", "arvolab", "randevu"] as const).map((k) => PRODUCT_APPS[k]), ARC_APP].map((u) => <a key={u.host} href={u.url} target="_blank" rel="noopener">{u.name} · {u.host} ↗</a>)}
               </div>
-              <div><small>{c.privacyLabel}</small><Link href={ROUTES.privacy[locale]} style={{ fontWeight: 500, fontSize: 15 }}>{c.privacyText} →</Link></div>
+              <div><small>{c.privacyLabel}</small><Link href={ROUTES.privacy[locale]} style={{ fontWeight: 500, fontSize: 15 }}>{c.privacyText} <span className="arrow" aria-hidden="true">→</span></Link></div>
             </div>
           </div>
           <div className="form-card" id="form">

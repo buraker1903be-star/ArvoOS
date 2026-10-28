@@ -45,6 +45,7 @@ const BOOK_CARD = {
   de: { kicker: "Neuer Termin", status: "Bestätigt", title: "Haarschnitt · Elif", sub: "Donnerstag 14:30 · 45 Min.", rows: [["Kalender der Mitarbeiterin frei", "ok"], ["Kundenbenachrichtigung bereit", "ok"]] as [string, "ok" | "warn"][] },
   es: { kicker: "Nueva cita", status: "Confirmada", title: "Corte de pelo · Elif", sub: "Jueves 14:30 · 45 min", rows: [["Agenda de la estilista libre", "ok"], ["Aviso al cliente listo", "ok"]] as [string, "ok" | "warn"][] },
   fr: { kicker: "Nouveau rendez-vous", status: "Confirmé", title: "Coupe · Elif", sub: "Jeudi 14 h 30 · 45 min", rows: [["Agenda de la coiffeuse libre", "ok"], ["Notification client prête", "ok"]] as [string, "ok" | "warn"][] },
+  ar: { kicker: "حجز جديد", status: "مؤكَّد", title: "قص الشعر · ليلى", sub: "الخميس 14:30 · 45 دقيقة", rows: [["تقويم المصففة متاح", "ok"], ["إشعار العميل جاهز", "ok"]] as [string, "ok" | "warn"][] },
 } as const;
 
 export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {

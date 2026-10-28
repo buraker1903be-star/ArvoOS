@@ -26,7 +26,7 @@ import { LOCALE_TAGS, type Locale } from "./routes";
 
 export type ParaBirimi = "TRY" | "USD" | "EUR";
 
-export const SAYFA_PARA_BIRIMI: Record<Locale, ParaBirimi> = { tr: "TRY", en: "USD", de: "EUR", es: "EUR", fr: "EUR" };
+export const SAYFA_PARA_BIRIMI: Record<Locale, ParaBirimi> = { tr: "TRY", en: "USD", de: "EUR", es: "EUR", fr: "EUR", ar: "USD" };
 
 const d = (tam: number) => tam * 100;
 
@@ -77,5 +77,5 @@ export function sayfaEkKalemTutari(kod: string, locale: Locale, fiyatlar?: Fiyat
 export function paraYaz(kucukBirim: number, locale: Locale): string {
   const kur = SAYFA_PARA_BIRIMI[locale];
   if (kur === "TRY") return `${tutarYaz(kucukBirim, locale)} TL`;
-  return new Intl.NumberFormat(LOCALE_TAGS[locale], { style: "currency", currency: kur, maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(kucukBirim / 100);
+  return new Intl.NumberFormat(locale === "ar" ? "ar-u-nu-latn" : LOCALE_TAGS[locale], { style: "currency", currency: kur, maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(kucukBirim / 100);
 }

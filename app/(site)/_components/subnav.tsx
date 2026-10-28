@@ -8,6 +8,7 @@ const ITEMS: Record<Locale, [PageId, string][]> = {
   de: [["arvoos", "Überblick"], ["arvoos-modules", "Module"], ["arvoos-industries", "Branchen"], ["arvoos-solutions", "Lösungen"], ["arvoos-plans", "Pakete"]],
   es: [["arvoos", "Visión general"], ["arvoos-modules", "Módulos"], ["arvoos-industries", "Sectores"], ["arvoos-solutions", "Soluciones"], ["arvoos-plans", "Planes"]],
   fr: [["arvoos", "Vue d’ensemble"], ["arvoos-modules", "Modules"], ["arvoos-industries", "Secteurs"], ["arvoos-solutions", "Solutions"], ["arvoos-plans", "Offres"]],
+  ar: [["arvoos", "نظرة عامة"], ["arvoos-modules", "الوحدات"], ["arvoos-industries", "القطاعات"], ["arvoos-solutions", "الحلول"], ["arvoos-plans", "الباقات"]],
 };
 
 /** ArvoOS ve alt sayfalarının yapışkan alt gezinmesi. */

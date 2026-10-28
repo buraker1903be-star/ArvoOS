@@ -23,6 +23,9 @@ const CARDS = {
   fr: {
     lab: { kicker: "Contrôle des consignes", status: "Prêt", title: "Brouillon de thèse · chapitre 3", sub: "Vérifié il y a quelques secondes", rows: [["Structure des titres", "ok"], ["Style des références", "ok"], ["Numérotation des tableaux", "warn"]] as [string, "ok" | "warn"][] },
   },
+  ar: {
+    lab: { kicker: "فحص الدليل", status: "جاهز", title: "مسودة الأطروحة · الفصل 3", sub: "آخر فحص قبل ثوانٍ", rows: [["بنية العناوين", "ok"], ["أسلوب المراجع", "ok"], ["ترقيم الجداول", "warn"]] as [string, "ok" | "warn"][] },
+  },
 } as const;
 
 export function HeroStage({ locale, product = "arvoos" }: { locale: Locale; product?: "arvoos" | "arvolab" }) {

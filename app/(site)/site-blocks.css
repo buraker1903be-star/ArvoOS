@@ -10,8 +10,8 @@
 .site .half h3{font-size:clamp(28px,2.8vw,40px);font-weight:600;letter-spacing:-.025em;line-height:1.1}
 .site .half p{max-width:40ch;color:var(--ink-soft);font-size:clamp(16px,1.3vw,19px)}
 .site .half .alink{font-size:17px}
-.site .half-visual{width:100%;max-width:520px;margin-top:auto;padding:22px;border-radius:18px 18px 0 0;background:#fff;box-shadow:0 0 0 1px var(--line-soft),0 -10px 40px rgba(0,0,0,.05);text-align:left}
-.site .half-list{display:grid;gap:10px;width:100%;max-width:440px;margin:24px 0 clamp(32px,4vw,48px);text-align:left}
+.site .half-visual{width:100%;max-width:520px;margin-top:auto;padding:22px;border-radius:18px 18px 0 0;background:#fff;box-shadow:0 0 0 1px var(--line-soft),0 -10px 40px rgba(0,0,0,.05);text-align:start}
+.site .half-list{display:grid;gap:10px;width:100%;max-width:440px;margin:24px 0 clamp(32px,4vw,48px);text-align:start}
 .site .half-list a{display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:0 18px;border-radius:14px;background:#fff;box-shadow:var(--hair);font-size:16px;transition:box-shadow .2s}
 .site .half-list a:hover{box-shadow:inset 0 0 0 1px var(--navy)}
 .site .half-list a::after{content:"›";color:var(--muted);font-size:20px}
@@ -22,7 +22,7 @@
 .site .ref:hover{box-shadow:var(--shadow-s)}
 .site .ref img:not(.brand-logo){width:min(78%,380px);height:auto;aspect-ratio:16/5;object-fit:contain;filter:grayscale(1);opacity:.7;transition:filter .4s,opacity .4s}
 .site .ref:hover img:not(.brand-logo){filter:none;opacity:1}
-.site .ref span{position:absolute;left:24px;bottom:16px;color:var(--link);font-size:14px}
+.site .ref span{position:absolute;inset-inline-start:24px;bottom:16px;color:var(--link);font-size:14px}
 
 /* ---------- SSS ---------- */
 .site .faq{border-bottom:1px solid var(--line)}
@@ -50,7 +50,7 @@
 @media (max-width:640px){
   .site .refs{grid-template-columns:1fr}
   .site .half{min-height:0;border-radius:24px}
-  .site .faq details p{padding-right:0}
+  .site .faq details p{padding-inline-end:0}
 }
 
 /* ---------- azaltılmış hareket ---------- */

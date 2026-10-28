@@ -15,4 +15,5 @@ export const KISA: Record<Locale, Kisa> = {
   de: { crumb: "Brotkrumen-Navigation", more: "Mehr erfahren", details: "Mehr erfahren", signIn: "Anmelden", billingPeriod: "Abrechnungszeitraum", product: "Produkt", arvoosPages: "ArvoOS-Seiten", productsAnchor: "produkte" },
   es: { crumb: "Ruta de navegación", more: "Más información", details: "Más información", signIn: "Iniciar sesión", billingPeriod: "Periodo de facturación", product: "Producto", arvoosPages: "Páginas de ArvoOS", productsAnchor: "productos" },
   fr: { crumb: "Fil d’Ariane", more: "En savoir plus", details: "En savoir plus", signIn: "Se connecter", billingPeriod: "Période de facturation", product: "Produit", arvoosPages: "Pages ArvoOS", productsAnchor: "produits" },
+  ar: { crumb: "مسار التنقل", more: "اعرف المزيد", details: "اعرف المزيد", signIn: "تسجيل الدخول", billingPeriod: "فترة الفوترة", product: "المنتج", arvoosPages: "صفحات ArvoOS", productsAnchor: "products" },
 };

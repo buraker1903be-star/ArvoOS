@@ -6,15 +6,15 @@ export const SITE_ORIGIN = "https://arvo-os.com";
 
 /* Sıra dil menüsündeki sıradır: varsayılan (İngilizce) başta. Almanca,
    İspanyolca ve Fransızca 28.10.2026'da eklendi (global site). */
-export const LOCALES = ["en", "tr", "de", "es", "fr"] as const;
+export const LOCALES = ["en", "tr", "de", "es", "fr", "ar"] as const;
 export type Locale = (typeof LOCALES)[number];
 /* Varsayılan dil İngilizce (28.10.2026): kök adres ve hreflang x-default.
    Türkçe ziyaretçi köke geldiğinde tarayıcı diline göre /tr'ye
    yönlenir (lib/site/dil-secimi.ts); arama motoru botları yönlenmez. */
 export const DEFAULT_LOCALE: Locale = "en";
-export const LOCALE_TAGS: Record<Locale, string> = { en: "en-US", tr: "tr-TR", de: "de-DE", es: "es-ES", fr: "fr-FR" };
+export const LOCALE_TAGS: Record<Locale, string> = { en: "en-US", tr: "tr-TR", de: "de-DE", es: "es-ES", fr: "fr-FR", ar: "ar" };
 /** Dil menüsünde her dilin KENDİ dilindeki adı (ziyaretçi kendi dilini arar). */
-export const LOCALE_NAMES: Record<Locale, string> = { en: "English", tr: "Türkçe", de: "Deutsch", es: "Español", fr: "Français" };
+export const LOCALE_NAMES: Record<Locale, string> = { en: "English", tr: "Türkçe", de: "Deutsch", es: "Español", fr: "Français", ar: "العربية" };
 
 export type PageId =
   | "home"
@@ -45,31 +45,31 @@ export type PageId =
   elle yazılmıyor, yani yeni sayfa eklemek eski adres listesini bozmaz.
 */
 export const ROUTES: Record<PageId, Record<Locale, string>> = {
-  home: { en: "/", tr: "/tr", de: "/de", es: "/es", fr: "/fr" },
-  arvoos: { en: "/products/arvoos", tr: "/tr/urunler/arvoos", de: "/de/produkte/arvoos", es: "/es/productos/arvoos", fr: "/fr/produits/arvoos" },
-  "arvoos-modules": { en: "/products/arvoos/modules", tr: "/tr/urunler/arvoos/moduller", de: "/de/produkte/arvoos/module", es: "/es/productos/arvoos/modulos", fr: "/fr/produits/arvoos/modules" },
-  "arvoos-industries": { en: "/products/arvoos/industries", tr: "/tr/urunler/arvoos/sektorler", de: "/de/produkte/arvoos/branchen", es: "/es/productos/arvoos/sectores", fr: "/fr/produits/arvoos/secteurs" },
-  "arvoos-solutions": { en: "/products/arvoos/solutions", tr: "/tr/urunler/arvoos/cozumler", de: "/de/produkte/arvoos/loesungen", es: "/es/productos/arvoos/soluciones", fr: "/fr/produits/arvoos/solutions" },
-  "arvoos-plans": { en: "/products/arvoos/plans", tr: "/tr/urunler/arvoos/paketler", de: "/de/produkte/arvoos/pakete", es: "/es/productos/arvoos/planes", fr: "/fr/produits/arvoos/offres" },
+  home: { en: "/", tr: "/tr", de: "/de", es: "/es", fr: "/fr", ar: "/ar" },
+  arvoos: { en: "/products/arvoos", tr: "/tr/urunler/arvoos", de: "/de/produkte/arvoos", es: "/es/productos/arvoos", fr: "/fr/produits/arvoos", ar: "/ar/products/arvoos" },
+  "arvoos-modules": { en: "/products/arvoos/modules", tr: "/tr/urunler/arvoos/moduller", de: "/de/produkte/arvoos/module", es: "/es/productos/arvoos/modulos", fr: "/fr/produits/arvoos/modules", ar: "/ar/products/arvoos/modules" },
+  "arvoos-industries": { en: "/products/arvoos/industries", tr: "/tr/urunler/arvoos/sektorler", de: "/de/produkte/arvoos/branchen", es: "/es/productos/arvoos/sectores", fr: "/fr/produits/arvoos/secteurs", ar: "/ar/products/arvoos/industries" },
+  "arvoos-solutions": { en: "/products/arvoos/solutions", tr: "/tr/urunler/arvoos/cozumler", de: "/de/produkte/arvoos/loesungen", es: "/es/productos/arvoos/soluciones", fr: "/fr/produits/arvoos/solutions", ar: "/ar/products/arvoos/solutions" },
+  "arvoos-plans": { en: "/products/arvoos/plans", tr: "/tr/urunler/arvoos/paketler", de: "/de/produkte/arvoos/pakete", es: "/es/productos/arvoos/planes", fr: "/fr/produits/arvoos/offres", ar: "/ar/products/arvoos/plans" },
   // Ücretler tek sayfada: dört ürünün fiyatı ayrı sayfalara dağılırsa
   // karşılaştırma yapılamıyor ve arama motoru hangisini göstereceğini seçemiyor.
-  pricing: { en: "/pricing", tr: "/tr/ucretler", de: "/de/preise", es: "/es/precios", fr: "/fr/tarifs" },
-  arvolab: { en: "/products/arvolab", tr: "/tr/urunler/arvolab", de: "/de/produkte/arvolab", es: "/es/productos/arvolab", fr: "/fr/produits/arvolab" },
+  pricing: { en: "/pricing", tr: "/tr/ucretler", de: "/de/preise", es: "/es/precios", fr: "/fr/tarifs", ar: "/ar/pricing" },
+  arvolab: { en: "/products/arvolab", tr: "/tr/urunler/arvolab", de: "/de/produkte/arvolab", es: "/es/productos/arvolab", fr: "/fr/produits/arvolab", ar: "/ar/products/arvolab" },
   /* Kimlik "randevu" kalıyor: lisans, köprü ve fiyat kodları bu adla
      (randevu-tek …). Ürünün adı 28.10.2026'dan beri ArvoBook. */
-  randevu: { en: "/products/arvobook", tr: "/tr/urunler/arvobook", de: "/de/produkte/arvobook", es: "/es/productos/arvobook", fr: "/fr/produits/arvobook" },
-  services: { en: "/services", tr: "/tr/hizmetler", de: "/de/leistungen", es: "/es/servicios", fr: "/fr/services" },
-  "web-design": { en: "/services/web-design", tr: "/tr/hizmetler/web-sitesi-tasarimi", de: "/de/leistungen/webdesign", es: "/es/servicios/diseno-web", fr: "/fr/services/creation-de-site-web" },
-  "seo-geo": { en: "/services/seo-geo", tr: "/tr/hizmetler/seo-ve-geo", de: "/de/leistungen/seo-geo", es: "/es/servicios/seo-geo", fr: "/fr/services/seo-geo" },
-  "custom-software": { en: "/services/custom-software", tr: "/tr/hizmetler/ozel-yazilim", de: "/de/leistungen/individualsoftware", es: "/es/servicios/software-a-medida", fr: "/fr/services/logiciel-sur-mesure" },
-  about: { en: "/about", tr: "/tr/hakkimizda", de: "/de/ueber-uns", es: "/es/sobre-nosotros", fr: "/fr/a-propos" },
-  contact: { en: "/contact", tr: "/tr/iletisim", de: "/de/kontakt", es: "/es/contacto", fr: "/fr/contact" },
-  privacy: { en: "/privacy", tr: "/tr/gizlilik", de: "/de/datenschutz", es: "/es/privacidad", fr: "/fr/confidentialite" },
+  randevu: { en: "/products/arvobook", tr: "/tr/urunler/arvobook", de: "/de/produkte/arvobook", es: "/es/productos/arvobook", fr: "/fr/produits/arvobook", ar: "/ar/products/arvobook" },
+  services: { en: "/services", tr: "/tr/hizmetler", de: "/de/leistungen", es: "/es/servicios", fr: "/fr/services", ar: "/ar/services" },
+  "web-design": { en: "/services/web-design", tr: "/tr/hizmetler/web-sitesi-tasarimi", de: "/de/leistungen/webdesign", es: "/es/servicios/diseno-web", fr: "/fr/services/creation-de-site-web", ar: "/ar/services/web-design" },
+  "seo-geo": { en: "/services/seo-geo", tr: "/tr/hizmetler/seo-ve-geo", de: "/de/leistungen/seo-geo", es: "/es/servicios/seo-geo", fr: "/fr/services/seo-geo", ar: "/ar/services/seo-geo" },
+  "custom-software": { en: "/services/custom-software", tr: "/tr/hizmetler/ozel-yazilim", de: "/de/leistungen/individualsoftware", es: "/es/servicios/software-a-medida", fr: "/fr/services/logiciel-sur-mesure", ar: "/ar/services/custom-software" },
+  about: { en: "/about", tr: "/tr/hakkimizda", de: "/de/ueber-uns", es: "/es/sobre-nosotros", fr: "/fr/a-propos", ar: "/ar/about" },
+  contact: { en: "/contact", tr: "/tr/iletisim", de: "/de/kontakt", es: "/es/contacto", fr: "/fr/contact", ar: "/ar/contact" },
+  privacy: { en: "/privacy", tr: "/tr/gizlilik", de: "/de/datenschutz", es: "/es/privacidad", fr: "/fr/confidentialite", ar: "/ar/privacy" },
   // Mesafeli satış mevzuatı ve ödeme kuruluşunun canlı mod incelemesi bu üç
   // metni ayrı ayrı arıyor; tek "şartlar" sayfası yeterli sayılmıyor.
-  "distance-sales": { en: "/distance-sales-agreement", tr: "/tr/mesafeli-satis-sozlesmesi", de: "/de/fernabsatzvertrag", es: "/es/contrato-de-venta-a-distancia", fr: "/fr/contrat-de-vente-a-distance" },
-  refund: { en: "/cancellation-and-refund", tr: "/tr/iptal-ve-iade", de: "/de/widerruf-und-erstattung", es: "/es/cancelacion-y-reembolso", fr: "/fr/annulation-et-remboursement" },
-  delivery: { en: "/delivery", tr: "/tr/teslimat", de: "/de/lieferung", es: "/es/entrega", fr: "/fr/livraison" },
+  "distance-sales": { en: "/distance-sales-agreement", tr: "/tr/mesafeli-satis-sozlesmesi", de: "/de/fernabsatzvertrag", es: "/es/contrato-de-venta-a-distancia", fr: "/fr/contrat-de-vente-a-distance", ar: "/ar/distance-sales-agreement" },
+  refund: { en: "/cancellation-and-refund", tr: "/tr/iptal-ve-iade", de: "/de/widerruf-und-erstattung", es: "/es/cancelacion-y-reembolso", fr: "/fr/annulation-et-remboursement", ar: "/ar/cancellation-and-refund" },
+  delivery: { en: "/delivery", tr: "/tr/teslimat", de: "/de/lieferung", es: "/es/entrega", fr: "/fr/livraison", ar: "/ar/delivery" },
 };
 
 /** Sitemap önceliği / değişim sıklığı (arama motorları için ipucu). */

@@ -54,6 +54,16 @@ export const FLOW_COPY = {
     s5: { title: "Paiements", rows: [["Versement 1", "Payé", "success"], ["Versement 2", "Payé", "success"], ["Versement 3", "À régler", "gold"]] as [string, string, string][], link: "Lien de paiement", locked: "Les livrables se débloquent après paiement" },
     s6: { title: "Rapports", funnel: [["Demandes", 100], ["Propositions", 62], ["Gagnées", 38]] as [string, number][], weakest: "Étape la plus faible", profit: "Rentabilité réelle", months: [42, 55, 48, 66, 61, 78] },
   },
+  ar: {
+    url: "app.arvo-os.com", cap: "واجهة توضيحية",
+    s0: { title: "طلب جديد", customer: "عيادة الشمال", source: "نموذج الموقع", stages: ["عميل محتمل", "مؤهَّل", "عرض سعر", "مكسوب"], history: "سجل العميل", historyVal: "عرضان · عمل واحد", rep: "مندوب المبيعات", repVal: "أ. آيدن" },
+    s1: { title: "عرض سعر · TKF-0142", items: [["تصميم الموقع الإلكتروني", "₺32,000"], ["المحتوى وSEO", "₺12,500"]], vat: "ضريبة القيمة المضافة 20%", vatVal: "₺8,900", total: "الإجمالي", totalVal: "₺53,400", plan: "خطة الدفع · 3 أقساط", accepted: "مقبول · 14:02" },
+    s2: { title: "اتفاقية خدمات", consent: ["قرأت الاتفاقية وأوافق عليها", "قرأت إشعار الخصوصية"], signed: "موقَّع", meta: "الطابع الزمني · IP · الجهاز · بصمة التحقق" },
+    s3: { title: "سير العمل", rows: [["الاستكشاف", "أ. آيدن", 0, 28], ["التصميم", "س. كايا", 22, 36], ["التطوير", "م. دمير", 50, 32], ["التسليم", "أ. آيدن", 80, 16]] as [string, string, number, number][], started: "تم توقيع العقد · بدأ سير العمل" },
+    s4: { title: "بوابة التتبع", code: "TK-4821", progress: "التقدم", stages: [["الاستكشاف", "done"], ["التنفيذ", "now"], ["التسليم", "next"]] as [string, string][], msg: "شاركنا مسودة التصميم.", reply: "رائع، شكرًا لكم!" },
+    s5: { title: "المدفوعات", rows: [["القسط 1", "مدفوع", "success"], ["القسط 2", "مدفوع", "success"], ["القسط 3", "مستحق", "gold"]] as [string, string, string][], link: "رابط الدفع", locked: "تُتاح ملفات التسليم بعد الدفع" },
+    s6: { title: "التقارير", funnel: [["الطلبات", 100], ["العروض", 62], ["المكسوبة", 38]] as [string, number][], weakest: "أضعف خطوة", profit: "الربحية الفعلية", months: [42, 55, 48, 66, 61, 78] },
+  },
 } satisfies Record<Locale, unknown>;
 
 export type FlowCopy = (typeof FLOW_COPY)["tr"];

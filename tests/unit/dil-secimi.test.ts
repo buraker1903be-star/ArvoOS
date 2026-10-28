@@ -22,6 +22,12 @@ describe("kök adreste dil seçimi", () => {
     assert.equal(yon({ acceptLanguage: "tr-TR", cookie: "de" }), "/de");
   });
 
+  test("Arapça (28.10.2026): bölge kodu ne olursa olsun /ar", () => {
+    assert.equal(yon({ acceptLanguage: "ar-SA,ar;q=0.9,en;q=0.8" }), "/ar");
+    assert.equal(yon({ acceptLanguage: "ar-AE" }), "/ar");
+    assert.equal(yon({ acceptLanguage: "ar-EG", cookie: "en" }), null);
+  });
+
   test("ağırlık sırası başlık sırasından önce gelir", () => {
     assert.equal(tercihEdilenDil("en;q=0.5,tr;q=0.9"), "tr");
     assert.equal(tercihEdilenDil("ja,tr;q=0.8,en;q=0.7"), "tr");

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { ICERIK_DE } from "@/app/(site)/_content/de";
 import { ICERIK_ES } from "@/app/(site)/_content/es";
 import { ICERIK_FR } from "@/app/(site)/_content/fr";
+import { ICERIK_AR } from "@/app/(site)/_content/ar";
 import type { SayfaIcerikleri } from "@/app/(site)/_content/sayfalar";
 import { HOME_EN } from "@/app/(site)/_content/home-en";
 import { ARVOOS_EN } from "@/app/(site)/_content/arvoos-en";
@@ -21,7 +22,7 @@ import { DELIVERY_EN, DISTANCE_SALES_EN, REFUND_EN } from "@/app/(site)/_content
 import { LOCALES, ROUTES, resolvePath, type Locale } from "@/lib/site/routes";
 
 /*
-  Almanca, İspanyolca ve Fransızca (28.10.2026) İngilizceden çevrildi.
+  Almanca, İspanyolca, Fransızca ve Arapça (28.10.2026) İngilizceden çevrildi.
   Çeviri METNİ değiştirir, YAPIYI değil: aynı alanlar, aynı kart sayısı,
   aynı kimlik/kod/görsel değerleri. Bir dilde eksik bir SSS ya da yanlış
   sıradaki bir fiyat kartı derlemede görünmez (tipler yalnızca şekle
@@ -36,7 +37,7 @@ const EN: SayfaIcerikleri = {
   "custom-software": CUSTOM_SOFTWARE_EN, about: ABOUT_EN, contact: CONTACT_EN, privacy: PRIVACY_EN,
   "distance-sales": DISTANCE_SALES_EN, refund: REFUND_EN, delivery: DELIVERY_EN,
 };
-const DILLER: [Locale, SayfaIcerikleri][] = [["de", ICERIK_DE], ["es", ICERIK_ES], ["fr", ICERIK_FR]];
+const DILLER: [Locale, SayfaIcerikleri][] = [["de", ICERIK_DE], ["es", ICERIK_ES], ["fr", ICERIK_FR], ["ar", ICERIK_AR]];
 
 /* Metin olmayan alanlar birebir aynı kalmalı (kimlik, kod, görsel, düzen). */
 const SABIT = new Set(["id", "code", "size", "visual", "variant", "product", "category", "external", "appUrl", "tone"]);

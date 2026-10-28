@@ -19,7 +19,7 @@
 .site .layers .mock-win{box-shadow:0 0 0 1px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.05),0 24px 60px rgba(0,0,0,.12),0 60px 120px rgba(0,0,0,.10)}
 
 /* ---------- yüzen kart ---------- */
-.site .fc{padding:16px 16px 14px;border-radius:20px;background:#fff;color:var(--ink);font-size:12px;text-align:left;box-shadow:inset 0 0 0 .5px rgba(11,27,46,.1),0 1px 2px rgba(5,12,26,.06),0 10px 24px rgba(5,12,26,.12),0 36px 70px rgba(5,12,26,.24)}
+.site .fc{padding:16px 16px 14px;border-radius:20px;background:#fff;color:var(--ink);font-size:12px;text-align:start;box-shadow:inset 0 0 0 .5px rgba(11,27,46,.1),0 1px 2px rgba(5,12,26,.06),0 10px 24px rgba(5,12,26,.12),0 36px 70px rgba(5,12,26,.24)}
 .site .fc-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .site .fc-kicker{color:var(--muted);font-size:11px;font-weight:600}
 .site .fc-title{margin-top:10px;font-size:15px;font-weight:700;letter-spacing:-.02em}
@@ -35,7 +35,7 @@
 
 /* ---------- mobil PWA çerçevesi ---------- */
 .site .phone{aspect-ratio:9/19;padding:6px;border-radius:32px;background:linear-gradient(160deg,#2a3344,#0b111b);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 2px 4px rgba(5,12,26,.12),0 20px 44px rgba(5,12,26,.26),0 50px 100px rgba(5,12,26,.3)}
-.site .phone-screen{position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;border-radius:26px;background:#fff;color:var(--ink);font-size:10px;text-align:left}
+.site .phone-screen{position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;border-radius:26px;background:#fff;color:var(--ink);font-size:10px;text-align:start}
 .site .ph-notch{display:block;width:34%;height:14px;margin:6px auto 0;border-radius:999px;background:#0b111b}
 .site .ph-body{flex:1;display:flex;flex-direction:column;gap:7px;padding:10px 10px 6px}
 .site .ph-code{color:var(--muted);font-size:9px;font-weight:600}
@@ -56,7 +56,7 @@
 .site .ph-tabs span:first-child{color:var(--mid-700);font-weight:700}
 
 /* ---------- ArvoOS üçlüsü (ürün kutusu) ---------- */
-.site .trio{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.5fr) minmax(0,.9fr);gap:clamp(12px,2vw,28px);align-items:end;margin:0;text-align:left}
+.site .trio{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.5fr) minmax(0,.9fr);gap:clamp(12px,2vw,28px);align-items:end;margin:0;text-align:start}
 .site .trio-body{padding:clamp(18px,2vw,28px);background:#fbfbfd;min-height:clamp(300px,30vw,420px)}
 .site .trio-sign{align-self:center}
 .site .trio .phone,.site .trio .fc{box-shadow:0 0 0 1px rgba(0,0,0,.08),0 24px 60px rgba(0,0,0,.12)}
