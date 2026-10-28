@@ -122,9 +122,9 @@ export type Plan = {
   Entegrasyonlar geldiğinde yeniden bakılır.
 */
 export const PLANS: Plan[] = [
-  { code: "arvoos-baslangic", ad: { en: "Starter", tr: "Başlangıç", de: "Starter", es: "Inicial", fr: "Essentiel" }, product: "arvoos", aylikKurus: tl(1990) },
-  { code: "arvoos-kurumsal", ad: { en: "Business", tr: "Kurumsal", de: "Business", es: "Empresa", fr: "Entreprise" }, product: "arvoos", aylikKurus: tl(5990), oneCikan: true },
-  { code: "arvoos-ozel", ad: { en: "Enterprise", tr: "Özel kurum", de: "Enterprise", es: "Corporativo", fr: "Sur mesure" }, product: "arvoos", aylikKurus: null },
+  { code: "arvoos-baslangic", ad: { en: "Starter", tr: "Başlangıç", de: "Starter", es: "Starter", fr: "Essentiel" }, product: "arvoos", aylikKurus: tl(1990) },
+  { code: "arvoos-kurumsal", ad: { en: "Business", tr: "Kurumsal", de: "Business", es: "Business", fr: "Entreprise" }, product: "arvoos", aylikKurus: tl(5990), oneCikan: true },
+  { code: "arvoos-ozel", ad: { en: "Enterprise", tr: "Özel kurum", de: "Enterprise", es: "Enterprise", fr: "Sur mesure" }, product: "arvoos", aylikKurus: null },
 
   { code: "arc-baslangic", ad: { en: "Starter", tr: "Başlangıç", de: "Starter", es: "Inicial", fr: "Essentiel" }, product: "arc", aylikKurus: tl(1290) },
   { code: "arc-buyume", ad: { en: "Growth", tr: "Büyüme", de: "Wachstum", es: "Crecimiento", fr: "Croissance" }, product: "arc", aylikKurus: tl(2990), oneCikan: true },

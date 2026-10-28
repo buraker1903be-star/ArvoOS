@@ -69,7 +69,7 @@ export const HOME_ES: HomeContent = {
     eyebrow: "Ecosistema",
     title: "Tres productos. Un ecosistema.",
     lead: "ArvoOS, ArvoLab y ArvoBook son aplicaciones web independientes, cada una en su propio subdominio de arvo-os.com, creadas por el mismo equipo con un mismo estándar de marca y de calidad.",
-    roles: ["Operaciones", "Investigación", "Comercios"],
+    roles: ["Operaciones", "Investigación", "Salones"],
     principles: [
       { title: "Un espacio propio", text: "Cada organización, equipo o salón trabaja en su propio espacio de trabajo." },
       { title: "Un mismo lenguaje de diseño", text: "La misma interfaz serena y el mismo cuidado, en cada producto." },
