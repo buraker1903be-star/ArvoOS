@@ -23,15 +23,15 @@ import "./site-home.css";
 // en/layout içinde.
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
-  title: { default: "Arvo", template: "%s | Arvo" },
-  applicationName: "Arvo",
-  appleWebApp: { capable: false, title: "Arvo" },
+  title: { default: "ArvoOS", template: "%s | ArvoOS" },
+  applicationName: "ArvoOS",
+  appleWebApp: { capable: false, title: "ArvoOS" },
   formatDetection: { telephone: false, email: false, address: false },
 };
 
 /*
   ARVO ANALİTİK (22.10.2026): arvo-os.com kendi Analitik modülümüzle
-  izleniyor (Arvo kurumu → Analitik → Kurulum). Anahtar gizli değil;
+  izleniyor (ArvoOS kurumu → Analitik → Kurulum). Anahtar gizli değil;
   yalnızca hangi siteye yazılacağını söylüyor ve olay ucu kaynağın
   arvo-os.com olduğunu ayrıca denetliyor. Kod çerezsiz.
 */

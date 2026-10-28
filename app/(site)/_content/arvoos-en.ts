@@ -77,7 +77,7 @@ export const ARVOOS_EN: ProductContent = {
     eyebrow: "FAQ",
     title: "About ArvoOS",
     items: [
-      { q: "What is ArvoOS?", a: "ArvoOS is Arvo’s web-based, multi-tenant business operating system. It connects CRM and sales, proposals, e-signed contracts, operations, a customer tracking portal, finance, HR, reports and team communication in one flow." },
+      { q: "What is ArvoOS?", a: "ArvoOS is a web-based, multi-tenant business operating system. It connects CRM and sales, proposals, e-signed contracts, operations, a customer tracking portal, finance, HR, reports and team communication in one flow." },
       { q: "How does ArvoOS take a job from request to payment?", a: "A request enters the pipeline and becomes a proposal; the customer accepts it online and signs the contract electronically. Signing starts the job workflow, the customer follows progress in the portal, and instalments are collected through online payment links." },
       { q: "Does ArvoOS support electronic signatures?", a: "Yes. Customers sign with a drawn signature and consent statements; the IP address, timestamp, device and a verification hash are recorded, and the content locks after signing." },
       { q: "Can ArvoOS run on our own domain with our branding?", a: "Yes. You can connect a custom domain verified via DNS and use your logo, brand colour, stamp and signature on sign-in pages, customer pages, proposals and contracts." },

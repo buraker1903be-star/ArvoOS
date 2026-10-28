@@ -6,13 +6,13 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].de;
 
 export const HOME_DE: HomeContent = {
   meta: {
-    title: "Arvo | ArvoOS, ArvoLab und ArvoBook – bessere Systeme für bessere Arbeit",
-    description: "Arvo entwickelt ArvoOS für Unternehmen, ArvoLab für Forschende und ArvoBook für Salons – und bietet Website- und E-Commerce-Design, SEO & GEO sowie Individualsoftware.",
+    title: "ArvoOS | Bessere Systeme für bessere Arbeit",
+    description: "ArvoOS entwickelt ein Betriebssystem für Unternehmen, ArvoLab für Forschende und ArvoBook für Salons – und bietet Website- und E-Commerce-Design, SEO & GEO sowie Individualsoftware.",
   },
   hero: {
     eyebrow: "Die Arvo-Produktfamilie",
     title: "Bessere Systeme", subtitle: "für bessere Arbeit.",
-    lead: "Arvo ist eine Softwaremarke, die ArvoOS für Unternehmen, ArvoLab für Forschende und ArvoBook für Salons entwickelt. Wir verwandeln komplexe Arbeit in ruhige, leistungsstarke und vernetzte Erlebnisse.",
+    lead: "ArvoOS ist eine Softwaremarke: ein Betriebssystem für Unternehmen, ArvoLab für Forschende und ArvoBook für Salons. Wir verwandeln komplexe Arbeit in ruhige, leistungsstarke und vernetzte Erlebnisse.",
     actions: [
       { label: "Demo anfragen", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "Produkte entdecken", href: "#produkte", variant: "ghost" },
@@ -114,9 +114,9 @@ export const HOME_DE: HomeContent = {
   refs: { eyebrow: "Referenzen", title: "Marken, mit denen wir arbeiten.", lead: "Eine Markenfamilie, die denselben Qualitätsanspruch teilt und gemeinsam Wert schafft.", culture: "Website besuchen", akademik: "Website besuchen" },
   faq: {
     eyebrow: "FAQ",
-    title: "Fragen zu Arvo",
+    title: "Fragen zu ArvoOS",
     items: [
-      { q: "Was ist Arvo?", a: `Arvo ist die Softwaremarke von ${COMPANY.legalName}. Arvo entwickelt ArvoOS für Unternehmen, ArvoLab für Forschende und ArvoBook für Salons und bietet außerdem Website- und E-Commerce-Design sowie Individualsoftware an.` },
+      { q: "Was ist ArvoOS?", a: `ArvoOS ist die Softwaremarke von ${COMPANY.legalName}. Sie entwickelt das Betriebssystem ArvoOS für Unternehmen, ArvoLab für Forschende und ArvoBook für Salons und bietet außerdem Website- und E-Commerce-Design sowie Individualsoftware an.` },
       { q: "Worin unterscheiden sich ArvoOS, ArvoLab und ArvoBook?", a: "ArvoOS steuert die Abläufe eines Unternehmens von der Anfrage bis zur Zahlung. ArvoLab unterstützt wissenschaftliche Forschung und das Schreiben. ArvoBook führt das Terminbuch eines Salons: Kundinnen und Kunden buchen selbst, der Kalender ist nach Mitarbeitenden gegliedert." },
       { q: "Wo melde ich mich bei den Arvo-Produkten an?", a: `ArvoOS läuft unter ${PRODUCT_APPS.arvoos.host}, ArvoLab unter ${PRODUCT_APPS.arvolab.host} und ArvoBook unter ${PRODUCT_APPS.randevu.host}. Alle drei sind Webanwendungen, die im Browser laufen.` },
       { q: "Was kostet ArvoOS?", a: `Die monatlichen und jährlichen Listenpreise finden Sie unter ${ROUTES.pricing.de}; abgerechnet wird pro Organisation, nicht pro Nutzer. Für Enterprise wird der Preis gemeinsam mit jeder Organisation festgelegt.` },

@@ -8,10 +8,10 @@ const talk = { label: "Cuéntenos qué necesita", href: `${R("contact")}?interes
 export const CUSTOM_SOFTWARE_ES: SubContent = {
   id: "custom-software",
   parent: { id: "services", name: "Servicios" },
-  meta: { title: "Software a medida", description: "Software a medida de Arvo: paneles y portales a medida, software de flujos de trabajo, integraciones y automatización, áreas de cliente y aplicaciones PWA adaptadas al móvil." },
+  meta: { title: "Software a medida", description: "Software a medida de ArvoOS: paneles y portales a medida, software de flujos de trabajo, integraciones y automatización, áreas de cliente y aplicaciones PWA adaptadas al móvil." },
   hero: {
     eyebrow: "Servicios · Software a medida", title: "Cuando lo estándar no basta,", subtitle: "un sistema propio.",
-    lead: "El servicio de software a medida de Arvo diseña y desarrolla paneles, portales, áreas de cliente y software de flujos de trabajo en torno a cómo trabaja realmente su organización. El equipo que creó ArvoOS pone el mismo cuidado en el suyo.",
+    lead: "Nuestro servicio de software a medida diseña y desarrolla paneles, portales, áreas de cliente y software de flujos de trabajo en torno a cómo trabaja realmente su organización. El equipo que creó el sistema operativo empresarial ArvoOS pone el mismo cuidado en el suyo.",
     actions: [talk, { label: "Ver ArvoOS", href: R("arvoos"), variant: "ghost" }],
   },
   cards: {
@@ -41,7 +41,7 @@ export const CUSTOM_SOFTWARE_ES: SubContent = {
     ],
   },
   faq: { eyebrow: "Preguntas frecuentes", title: "Sobre el software a medida", items: [
-    { q: "¿Qué tipo de software a medida desarrolla Arvo?", a: "Paneles y portales a medida, software de flujos de trabajo, integraciones y automatización, flujos de documentos y firma, y aplicaciones PWA adaptadas al móvil." },
+    { q: "¿Qué tipo de software a medida desarrolla ArvoOS?", a: "Paneles y portales a medida, software de flujos de trabajo, integraciones y automatización, flujos de documentos y firma, y aplicaciones PWA adaptadas al móvil." },
     { q: "¿Por qué software a medida en lugar de un producto estándar?", a: "Si sus procesos no encajan en los productos estándar, o quiere ofrecer a sus clientes una experiencia con su marca, el software a medida puede ser la mejor opción. Primero comprobamos juntos si ArvoOS ya cubre sus necesidades." },
     { q: "¿Cómo se presupuesta un proyecto?", a: "Según el alcance. Tras la llamada inicial le enviamos una hoja de ruta y una propuesta." },
     { q: "¿Ofrecen soporte tras el lanzamiento?", a: "Sí. Con el servicio de desarrollo continuo seguimos con el mantenimiento, la seguridad y las nuevas funciones." },

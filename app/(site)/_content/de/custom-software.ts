@@ -8,10 +8,10 @@ const talk = { label: "Schildern Sie uns Ihren Bedarf", href: `${R("contact")}?i
 export const CUSTOM_SOFTWARE_DE: SubContent = {
   id: "custom-software",
   parent: { id: "services", name: "Leistungen" },
-  meta: { title: "Individualsoftware", description: "Individualsoftware von Arvo: maßgeschneiderte Panels und Portale, Workflow-Software, Integrationen und Automatisierung, Kundenbereiche und mobilfreundliche PWA-Anwendungen." },
+  meta: { title: "Individualsoftware", description: "Individualsoftware von ArvoOS: maßgeschneiderte Panels und Portale, Workflow-Software, Integrationen und Automatisierung, Kundenbereiche und mobilfreundliche PWA-Anwendungen." },
   hero: {
     eyebrow: "Leistungen · Individualsoftware", title: "Wenn Standardlösungen nicht reichen,", subtitle: "ein System, das Ihnen gehört.",
-    lead: "Mit dem Individualsoftware-Service von Arvo entstehen Panels, Portale, Kundenbereiche und Workflow-Software, die sich nach der tatsächlichen Arbeitsweise Ihrer Organisation richten. Das Team, das ArvoOS entwickelt hat, bringt dieselbe Sorgfalt in Ihr Projekt ein.",
+    lead: "Mit unserem Individualsoftware-Service entstehen Panels, Portale, Kundenbereiche und Workflow-Software, die sich nach der tatsächlichen Arbeitsweise Ihrer Organisation richten. Das Team, das das Betriebssystem ArvoOS entwickelt hat, bringt dieselbe Sorgfalt in Ihr Projekt ein.",
     actions: [talk, { label: "ArvoOS ansehen", href: R("arvoos"), variant: "ghost" }],
   },
   cards: {
@@ -41,7 +41,7 @@ export const CUSTOM_SOFTWARE_DE: SubContent = {
     ],
   },
   faq: { eyebrow: "FAQ", title: "Über Individualsoftware", items: [
-    { q: "Welche Art von Individualsoftware entwickelt Arvo?", a: "Maßgeschneiderte Panels und Portale, Workflow-Software, Integrationen und Automatisierung, Dokument- und Signaturabläufe sowie mobilfreundliche PWA-Anwendungen." },
+    { q: "Welche Art von Individualsoftware entwickelt ArvoOS?", a: "Maßgeschneiderte Panels und Portale, Workflow-Software, Integrationen und Automatisierung, Dokument- und Signaturabläufe sowie mobilfreundliche PWA-Anwendungen." },
     { q: "Warum Individualsoftware statt eines fertigen Produkts?", a: "Wenn Ihre Prozesse nicht zu fertigen Produkten passen oder Sie Ihren Kunden ein Erlebnis in Ihrem Branding bieten wollen, kann Individualsoftware die bessere Wahl sein. Wir prüfen zunächst gemeinsam, ob ArvoOS Ihren Bedarf bereits abdeckt." },
     { q: "Wie wird ein Projekt kalkuliert?", a: "Nach Umfang. Nach dem Discovery-Gespräch erhalten Sie eine Roadmap und ein Angebot." },
     { q: "Bieten Sie nach dem Launch Support?", a: "Ja. Im Rahmen der laufenden Weiterentwicklung kümmern wir uns weiter um Wartung, Sicherheit und neue Funktionen." },

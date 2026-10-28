@@ -61,7 +61,7 @@ export const ARVOLAB_FR: ProductContent = {
     eyebrow: "FAQ",
     title: "À propos d’ArvoLab",
     items: [
-      { q: "Qu’est-ce qu’ArvoLab ?", a: "ArvoLab est l’espace de travail de recherche d’Arvo, dédié à la gestion de la littérature et des citations, à la rédaction académique, au contrôle des consignes, à l’analyse quantitative et qualitative, à l’édition académique et au pré-contrôle d’originalité." },
+      { q: "Qu’est-ce qu’ArvoLab ?", a: "ArvoLab est l’espace de travail de recherche de la marque ArvoOS, dédié à la gestion de la littérature et des citations, à la rédaction académique, au contrôle des consignes, à l’analyse quantitative et qualitative, à l’édition académique et au pré-contrôle d’originalité." },
       { q: "À qui s’adresse ArvoLab ?", a: "Aux chercheurs individuels, aux équipes académiques et aux institutions." },
       { q: "Comment obtenir un accès à ArvoLab ?", a: `Demandez un accès via le formulaire de contact ou à l’adresse info@arvo-os.com. La connexion se fait sur ${PRODUCT_APPS.arvolab.url}.` },
       { q: "Le pré-contrôle d’originalité remplace-t-il un rapport officiel ?", a: "Non. Il s’agit d’un pré-contrôle qui vous aide à repérer les risques avant le dépôt ; votre établissement peut toujours exiger son propre rapport d’originalité officiel." },

@@ -16,11 +16,11 @@ export function siteMetadata({
   locale: Locale;
   title: string;
   description: string;
-  /** true: başlık "%s | Arvo" şablonuna girmez (ana sayfa gibi). */
+  /** true: başlık "%s | ArvoOS" şablonuna girmez (ana sayfa gibi). */
   absoluteTitle?: boolean;
 }): Metadata {
   const url = absoluteUrl(ROUTES[id][locale]);
-  const fullTitle = absoluteTitle ? title : `${title} | Arvo`;
+  const fullTitle = absoluteTitle ? title : `${title} | ArvoOS`;
   const image = { url: `/og/${locale}/${id}`, width: 1200, height: 630, alt: fullTitle };
   return {
     title: absoluteTitle ? { absolute: title } : title,
@@ -28,7 +28,7 @@ export function siteMetadata({
     alternates: { canonical: url, languages: alternatesFor(id), types: { "text/markdown": "/llms.txt" } },
     openGraph: {
       type: "website",
-      siteName: "Arvo",
+      siteName: "ArvoOS",
       locale: OG_LOCALE[locale],
       alternateLocale: LOCALES.filter((l) => l !== locale).map((l) => OG_LOCALE[l]),
       url,

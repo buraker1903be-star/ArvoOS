@@ -77,7 +77,7 @@ export const ARVOOS_TR: ProductContent = {
     eyebrow: "Sık sorulan sorular",
     title: "ArvoOS hakkında",
     items: [
-      { q: "ArvoOS nedir?", a: "ArvoOS, Arvo’nun web tabanlı, çok kiracılı işletme işletim sistemidir. CRM ve satış, teklif, e-imzalı sözleşme, operasyon, müşteri takip portalı, finans, İK, raporlar ve ekip iletişimini tek akışta birleştirir." },
+      { q: "ArvoOS nedir?", a: "ArvoOS, web tabanlı, çok kiracılı bir işletme işletim sistemidir. CRM ve satış, teklif, e-imzalı sözleşme, operasyon, müşteri takip portalı, finans, İK, raporlar ve ekip iletişimini tek akışta birleştirir." },
       { q: "ArvoOS bir işi talepten tahsilata nasıl götürür?", a: "Talep satış hattına girer ve teklife dönüşür; müşteri teklifi çevrim içi onaylar, sözleşmeyi elektronik olarak imzalar. İmza iş akışını otomatik başlatır, müşteri ilerlemeyi portaldan izler ve taksitler çevrim içi ödeme bağlantılarıyla tahsil edilir." },
       { q: "ArvoOS elektronik imzayı destekliyor mu?", a: "Evet. Müşteri sözleşmeyi çizilen imza ve onay beyanlarıyla onaylar; IP adresi, zaman damgası, cihaz ve doğrulama özeti kaydedilir ve içerik imzadan sonra kilitlenir." },
       { q: "ArvoOS kendi alan adımızda ve markamızla çalışabilir mi?", a: "Evet. DNS ile doğrulanan özel alan adı bağlanabilir; logo, marka rengi, kaşe ve imza giriş sayfalarında, müşteri sayfalarında, teklif ve sözleşmelerde kullanılır." },

@@ -61,7 +61,7 @@ export const ARVOLAB_DE: ProductContent = {
     eyebrow: "FAQ",
     title: "Über ArvoLab",
     items: [
-      { q: "Was ist ArvoLab?", a: "ArvoLab ist die Arbeitsumgebung für die Forschung von Arvo – für Literatur- und Zitatverwaltung, wissenschaftliches Schreiben, Richtlinienprüfung, quantitative und qualitative Analyse, wissenschaftliche Überarbeitung und eine Originalitäts-Vorprüfung." },
+      { q: "Was ist ArvoLab?", a: "ArvoLab ist die Arbeitsumgebung für die Forschung der Marke ArvoOS – für Literatur- und Zitatverwaltung, wissenschaftliches Schreiben, Richtlinienprüfung, quantitative und qualitative Analyse, wissenschaftliche Überarbeitung und eine Originalitäts-Vorprüfung." },
       { q: "Für wen ist ArvoLab gedacht?", a: "Für einzelne Forschende, wissenschaftliche Teams und Institutionen." },
       { q: "Wie erhalte ich Zugang zu ArvoLab?", a: `Fragen Sie den Zugang über das Kontaktformular oder unter info@arvo-os.com an. Die Anmeldung erfolgt unter ${PRODUCT_APPS.arvolab.url}.` },
       { q: "Ersetzt die Originalitäts-Vorprüfung einen offiziellen Bericht?", a: "Nein. Sie ist eine Vorprüfung, die Ihnen hilft, Risiken vor der Einreichung zu erkennen; Ihre Institution kann dennoch einen eigenen offiziellen Originalitätsbericht verlangen." },

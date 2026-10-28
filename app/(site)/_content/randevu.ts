@@ -74,7 +74,7 @@ export const RANDEVU_TR: ProductContent = {
       },
       {
         title: "WhatsApp hatırlatma",
-        text: "Günün hatırlatma listesi panelde hazır; tek tıkla WhatsApp'tan gönderilir. Salon kendi numarasını bağladıysa mesaj Arvo'dan değil salondan gider.",
+        text: "Günün hatırlatma listesi panelde hazır; tek tıkla WhatsApp'tan gönderilir. Salon kendi numarasını bağladıysa mesaj ArvoOS'tan değil salondan gider.",
       },
     ],
   },
@@ -104,7 +104,7 @@ export const RANDEVU_TR: ProductContent = {
       { q: "Müşterinin üye olması gerekiyor mu?", a: "Hayır. Müşteri hizmeti, personeli ve saati seçer, telefon numarasını yazar; numarayla tanınır. Randevu sonrası iptal bağlantısını alır." },
       { q: "Aynı saate iki randevu girebilir mi?", a: "Hayır. Aynı personele çakışan randevu, hizmetin arası da hesaba katılarak veritabanı düzeyinde reddedilir — arayüzdeki bir kontrole bağlı değildir." },
       { q: "Çalışma saatleri ve izinler nasıl tanımlanıyor?", a: "Haftalık çalışma saatleri salonun kendi saatiyle girilir. İzin tek bir personele ya da salonun tamamına tanımlanabilir; o aralıkta saat açılmaz." },
-      { q: "Hatırlatma mesajı kimden gidiyor?", a: "Günün hatırlatma listesi panelde hazırlanır ve tek tıkla WhatsApp'tan gönderilir. Salon kendi WhatsApp numarasını panelden bağladıysa mesaj salondan gider; bağlamadıysa Arvo'nun ortak numarasından." },
+      { q: "Hatırlatma mesajı kimden gidiyor?", a: "Günün hatırlatma listesi panelde hazırlanır ve tek tıkla WhatsApp'tan gönderilir. Salon kendi WhatsApp numarasını panelden bağladıysa mesaj salondan gider; bağlamadıysa ArvoOS'un ortak numarasından." },
       { q: "Fiyatı nedir?", a: `Aylık ve yıllık liste fiyatları ${R("pricing")} sayfasında yayımlanmıştır.` },
     ],
   },

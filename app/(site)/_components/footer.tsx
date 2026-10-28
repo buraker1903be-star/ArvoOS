@@ -1,15 +1,15 @@
-// Alt bilgi (28.10.2026'da yeniden kuruldu). Eskiden yalnızca küçük
-// punto bağlantı sütunlarıydı ve sayfa sessizce bitiyordu; şimdi bir
-// kapanış sahnesi var: büyük slogan + rozetler, ürün kartları,
-// sütunlar ve en altta kaydırdıkça yükselen dev ARVO yazısı. Zemin açık
-// kalır (site-base.css: koyu yalnızca maketlerde). Düğme YOK: sayfaların
-// çoğu zaten demo/ücretler düğmeli kapanışla bitiyor, alt alta tekrar ederdi.
+// Alt bilgi — 28.10.2026'da ikinci kez yeniden kuruldu. İlk deneme (dev
+// slogan, rozetler, sayfa genişliğinde dev "ARVO" yazısı) kurum sahibine
+// gösterişli geldi ve markanın adı ARVO değil ArvoOS. Bu sürüm sade ve
+// seçkin: derin lacivert zemin, ince altın çizgiler, solda ArvoOS logosu
+// ve slogan, sağda sütunlar, altta ürün ailesi ve künye. Sitenin geri
+// kalanı açık zeminde kalır; koyu zemin bilerek yalnızca alt bilgide —
+// sayfanın bittiğini söyleyen tek yer burası (site-base.css'teki kural
+// arayüz maketleri ve alt bilgi için).
 import Link from "next/link";
 import { COMPANY, ROUTES, type Locale } from "@/lib/site/routes";
 import { CHROME, type NavLink } from "../_content/chrome";
-import { BrandLogo, InstagramMark, ProductLogo, type ProductName } from "./marks";
-import { HOME_ICERIGI } from "../_content/home-icerik";
-import { HeroBadges } from "./global";
+import { BrandLogo, Globe, InstagramMark, ProductLogo, type ProductName } from "./marks";
 import { DilBaglantilari } from "./lang-link";
 
 function Col({ title, links }: { title: string; links: NavLink[] }) {
@@ -33,55 +33,53 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   return (
     <footer className="ftr">
       <div className="wrap">
-        <section className="ftr-hero" aria-labelledby="ftr-hero-title">
-          <p className="ftr-hero-eyebrow">{t.footerCta}</p>
-          <h2 id="ftr-hero-title" className="ftr-hero-title">{t.footerTagline}</h2>
-          <HeroBadges items={HOME_ICERIGI[locale].global.badges} />
-        </section>
+        <div className="ftr-top">
+          <div className="ftr-brand">
+            <Link href={ROUTES.home[locale]} aria-label="ArvoOS"><BrandLogo brand="arvoos" tone="dark" alt="ArvoOS" /></Link>
+            <p className="ftr-motto">{t.footerTagline}</p>
+            <p className="ftr-group">ArvoOS — {t.group}</p>
+            <a className="ftr-mail" href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
+          </div>
+          <div className="ftr-cols">
+            <Col title={t.products} links={[...t.productLinks, ...t.arvoosLinks]} />
+            <Col title={t.services} links={t.serviceLinks} />
+            <Col title={t.company} links={[{ label: t.pricing, href: ROUTES.pricing[locale] }, { label: t.about, href: ROUTES.about[locale] }, { label: t.contact, href: ROUTES.contact[locale] }]} />
+            <Col title={t.signIn} links={t.signInLinks} />
+            {/* Mesafeli satış mevzuatı ve ödeme kuruluşu bu metinlerin her
+                sayfadan ulaşılabilir olmasını istiyor; alt bilgi tek yer. */}
+            <Col title={t.legal} links={[
+              { label: t.privacy, href: ROUTES.privacy[locale] },
+              { label: t.distanceSales, href: ROUTES["distance-sales"][locale] },
+              { label: t.refund, href: ROUTES.refund[locale] },
+              { label: t.delivery, href: ROUTES.delivery[locale] },
+            ]} />
+          </div>
+        </div>
 
         <nav className="ftr-products" aria-label={t.products}>
           {t.productLinks.map((p) => (
             <Link key={p.href} href={p.href} className="ftr-product">
-              <ProductLogo name={p.label as ProductName} height={22} withAlt />
-              <span className="ftr-product-desc">{p.desc}</span>
-              <span className="ftr-product-go" aria-hidden="true">→</span>
+              <ProductLogo name={p.label as ProductName} tone="dark" height={18} withAlt />
+              <span>{p.desc}</span>
             </Link>
           ))}
         </nav>
-        <div className="ftr-cols">
-          <Col title={t.products} links={[...t.productLinks, ...t.arvoosLinks]} />
-          <Col title={t.services} links={t.serviceLinks} />
-          <Col title={t.company} links={[{ label: t.pricing, href: ROUTES.pricing[locale] }, { label: t.about, href: ROUTES.about[locale] }, { label: t.contact, href: ROUTES.contact[locale] }]} />
-          <Col title={t.signIn} links={t.signInLinks} />
-          {/* Mesafeli satış mevzuatı ve ödeme kuruluşu bu metinlerin her
-              sayfadan ulaşılabilir olmasını istiyor; alt bilgi tek yer. */}
-          <Col title={t.legal} links={[
-            { label: t.privacy, href: ROUTES.privacy[locale] },
-            { label: t.distanceSales, href: ROUTES["distance-sales"][locale] },
-            { label: t.refund, href: ROUTES.refund[locale] },
-            { label: t.delivery, href: ROUTES.delivery[locale] },
-          ]} />
-        </div>
+
         <div className="ftr-legal">
           <address className="ftr-address">
-            <strong>{COMPANY.legalName}</strong> · {locale === "tr" ? COMPANY.address.display : COMPANY.address.displayIntl} · <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
+            <strong>{COMPANY.legalName}</strong> · {locale === "tr" ? COMPANY.address.display : COMPANY.address.displayIntl}
           </address>
           <div className="ftr-meta">
+            <span>© {year} ArvoCulture Group. {t.rights}</span>
             {/* Hesap adı COMPANY'de tek yerde; schema.org sameAs'ı da
                 aynı yerden okuyor. */}
             <a className="ftr-social" href={COMPANY.instagramUrl} target="_blank" rel="noopener" aria-label={`Instagram · @${COMPANY.instagram}`}>
               <InstagramMark /><span>@{COMPANY.instagram}</span>
             </a>
-            <span>© {year} ArvoCulture Group. {t.rights}</span>
-            <span className="ftr-langs" aria-label={t.language}><DilBaglantilari locale={locale} className="ftr-lang" /></span>
-            <Link href={ROUTES.arvoos[locale]} className="ftr-credit" aria-label="Designed by ArvoOS">
-              <span>Designed by</span><BrandLogo brand="arvoos" />
-            </Link>
+            <span className="ftr-langs" aria-label={t.language}><Globe className="ftr-globe" /><DilBaglantilari locale={locale} className="ftr-lang" /></span>
           </div>
         </div>
       </div>
-      {/* Dev yazı süs: ekran okuyucuya kapalı, marka adı zaten yukarıda geçiyor. */}
-      <div className="ftr-giant" aria-hidden="true"><span>ARVO</span></div>
     </footer>
   );
 }

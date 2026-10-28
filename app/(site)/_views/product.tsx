@@ -19,7 +19,7 @@ export async function ProductView({ locale, c }: { locale: Locale; c: ProductCon
   const g = HOME_ICERIGI[locale].global;
   // Başlangıç fiyatı ücretler sayfasıyla aynı kaynaktan (konsoldan yayımlanan TL dahil).
   const fiyat = baslangicYazisi(c.id, locale, g, await yayimlananFiyatlar());
-  const crumbs = [{ name: "Arvo", href: ROUTES.home[locale] }, { name: c.name, href: path }];
+  const crumbs = [{ name: "ArvoOS", href: ROUTES.home[locale] }, { name: c.name, href: path }];
   return (
     <>
       <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} logo={urunLogosuVar(c.name as ProductName)

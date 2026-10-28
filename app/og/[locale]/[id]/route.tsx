@@ -29,7 +29,7 @@ async function loadInter(weight: 400 | 600, text: string): Promise<ArrayBuffer> 
 let fontsPromise: Promise<Fonts | undefined> | null = null;
 function getFonts(): Promise<Fonts | undefined> {
   if (!fontsPromise) {
-    const text = ogCharset(["ARVO", "arvo-os.com/tr", ...PRODUCTS]);
+    const text = ogCharset(["ArvoOS", "arvo-os.com/tr", ...PRODUCTS]);
     fontsPromise = Promise.all([loadInter(400, text), loadInter(600, text)])
       .then(([regular, semibold]): Fonts => [
         { name: "Inter", data: regular, weight: 400, style: "normal" },
@@ -99,7 +99,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ loc
             <div style={{ width: 46, height: 46, borderRadius: 13, border: "1.5px solid rgba(201,166,106,0.75)", background: "rgba(201,166,106,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ width: 14, height: 14, background: CHAMPAGNE, transform: "rotate(45deg)", display: "flex" }} />
             </div>
-            <div style={{ marginLeft: 18, fontSize: 30, fontWeight: 600, letterSpacing: 11, color: "#f3ead8" }}>ARVO</div>
+            {/* Marka adı ArvoOS (28.10.2026); eskiden aralıklı büyük harfle "ARVO" yazılıyordu. */}
+            <div style={{ marginLeft: 18, fontSize: 30, fontWeight: 600, letterSpacing: -0.5, color: "#f3ead8" }}>ArvoOS</div>
           </div>
           <div style={{ fontSize: 22, color: "rgba(233,238,247,0.55)", letterSpacing: 0.5 }}>{`arvo-os.com${ROUTES.home[locale] === "/" ? "" : ROUTES.home[locale]}`}</div>
         </div>

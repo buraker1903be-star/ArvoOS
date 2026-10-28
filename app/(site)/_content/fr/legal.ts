@@ -25,11 +25,11 @@ const erisimSatirlari = Object.values(PRODUCT_APPS).map((u) => `${u.name} : ${u.
 export const DISTANCE_SALES_FR: PrivacyContent = {
   meta: {
     title: "Contrat de vente à distance",
-    description: `Contrat de vente à distance des services d’abonnement Arvo (${produits}) : parties, objet, prix, paiement, exécution et rétractation.`,
+    description: `Contrat de vente à distance des services d’abonnement ArvoOS (${produits}) : parties, objet, prix, paiement, exécution et rétractation.`,
   },
   hero: {
     eyebrow: "Vente à distance", title: "Contrat de", subtitle: "vente à distance",
-    lead: `Ce contrat s’applique à la vente en ligne des services logiciels par abonnement d’Arvo (${produits} et produits ajoutés ultérieurement).`,
+    lead: `Ce contrat s’applique à la vente en ligne des services logiciels par abonnement d’ArvoOS (${produits} et produits ajoutés ultérieurement).`,
     actions: [],
   },
   updated: majFr,
@@ -66,11 +66,11 @@ export const DISTANCE_SALES_FR: PrivacyContent = {
 export const REFUND_FR: PrivacyContent = {
   meta: {
     title: "Politique d’annulation et de remboursement",
-    description: "Conditions de résiliation, de rétractation et de remboursement des services d’abonnement Arvo, y compris les essais, les fins de période et les prélèvements erronés.",
+    description: "Conditions de résiliation, de rétractation et de remboursement des services d’abonnement ArvoOS, y compris les essais, les fins de période et les prélèvements erronés.",
   },
   hero: {
     eyebrow: "Annulation", title: "Politique d’annulation", subtitle: "et de remboursement",
-    lead: `Fonctionnement des résiliations et des remboursements pour les produits d’abonnement d’Arvo (${produits} et produits ajoutés ultérieurement).`,
+    lead: `Fonctionnement des résiliations et des remboursements pour les produits d’abonnement d’ArvoOS (${produits} et produits ajoutés ultérieurement).`,
     actions: [],
   },
   updated: majFr,
@@ -100,18 +100,18 @@ export const REFUND_FR: PrivacyContent = {
       "Si un produit est entièrement abandonné alors qu’il faisait l’objet d’une offre annuelle, la section 5 s’applique.",
     ] },
     { h: "7. Prélèvements erronés ou en double", p: [`Remboursés intégralement dès leur identification, sans condition. Contact : ${COMPANY.email}.`] },
-    { h: "8. Interruptions imputables à Arvo", p: ["Si le service est indisponible pendant une période prolongée du fait d’Arvo, le montant correspondant est remboursé ou crédité sur la période suivante, sur demande."] },
+    { h: "8. Interruptions imputables à ArvoOS", p: ["Si le service est indisponible pendant une période prolongée du fait d’ArvoOS, le montant correspondant est remboursé ou crédité sur la période suivante, sur demande."] },
   ],
 };
 
 export const DELIVERY_FR: PrivacyContent = {
   meta: {
     title: "Livraison et exécution",
-    description: "Quand les comptes sont ouverts, comment l’accès est fourni, et pourquoi il n’y a pas de livraison physique pour les services d’abonnement Arvo.",
+    description: "Quand les comptes sont ouverts, comment l’accès est fourni, et pourquoi il n’y a pas de livraison physique pour les services d’abonnement ArvoOS.",
   },
   hero: {
     eyebrow: "Livraison", title: "Livraison", subtitle: "et exécution",
-    lead: `Les produits Arvo (${produits} et produits ajoutés ultérieurement) sont hébergés dans le cloud : il n’y a pas de livraison physique ; le service est exécuté dès que le compte est mis à disposition.`,
+    lead: `Les produits ArvoOS (${produits} et produits ajoutés ultérieurement) sont hébergés dans le cloud : il n’y a pas de livraison physique ; le service est exécuté dès que le compte est mis à disposition.`,
     actions: [],
   },
   updated: majFr,

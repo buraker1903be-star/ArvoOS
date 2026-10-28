@@ -8,7 +8,7 @@ const talk = { label: "لنراجع موقعك", href: `${R("contact")}?interest
 export const SEO_GEO_AR: SubContent = {
   id: "seo-geo",
   parent: { id: "services", name: "الخدمات" },
-  meta: { title: "محتوى SEO وGEO", description: "خدمة SEO وGEO من Arvo: SEO التقني، وهيكلة المحتوى، والبيانات المنظّمة (JSON-LD)، وملف llms.txt، ومحتوى يمكن لمحركات الإجابة بالذكاء الاصطناعي الاستشهاد به، والإعداد متعدد اللغات، والأداء." },
+  meta: { title: "محتوى SEO وGEO", description: "خدمة SEO وGEO من ArvoOS: SEO التقني، وهيكلة المحتوى، والبيانات المنظّمة (JSON-LD)، وملف llms.txt، ومحتوى يمكن لمحركات الإجابة بالذكاء الاصطناعي الاستشهاد به، والإعداد متعدد اللغات، والأداء." },
   hero: {
     eyebrow: "الخدمات · SEO وGEO", title: "أن يُعثر عليك عند البحث.", subtitle: "وأن تُشرح بدقة عند السؤال.",
     lead: "يضمن عمل محتوى SEO وGEO أن تفهرس محركات البحث موقعك بشكل صحيح، وأن تفهمه محركات الإجابة بالذكاء الاصطناعي مثل ChatGPT وPerplexity وGoogle AI Overviews وتستطيع الاستشهاد به.",

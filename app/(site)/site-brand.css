@@ -16,7 +16,7 @@
 .site .hdr-logo .brand-logo{--h:20px}
 .site .pop-product .brand-logo{--h:20px}
 .site .phero-logo .brand-logo{--h:clamp(30px,3vw,44px)}
-.site .ftr-product .brand-logo{--h:22px}
+.site .ftr-product .brand-logo{--h:18px}
 .site .ref .brand-logo{--h:auto;width:min(70%,380px);height:auto}
 .site .mo-brand .brand-logo{--h:16px}
 @media (max-width:767px){ .site .hdr-logo .brand-logo{--h:18px} }
@@ -31,4 +31,4 @@
 }
 .site .brand-word.on-dark{color:#fff}
 .site .pop-product .brand-word{--h:20px}
-.site .ftr-product .brand-word{--h:22px}
+.site .ftr-product .brand-word{--h:18px}

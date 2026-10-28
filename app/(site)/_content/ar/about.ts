@@ -6,10 +6,10 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].ar;
 
 export const ABOUT_AR: SubContent = {
   id: "about",
-  meta: { title: "من نحن", description: `Arvo هي العلامة البرمجية لشركة ${COMPANY.legalName}. تطوّر ArvoOS وArvoLab وArvoBook، وتقدّم خدمات تصميم المواقع الإلكترونية ومتاجر التجارة الإلكترونية والبرمجيات المخصّصة.` },
+  meta: { title: "من نحن", description: `ArvoOS هي العلامة البرمجية لشركة ${COMPANY.legalName}. تطوّر نظام تشغيل الأعمال الذي يحمل اسمها، وArvoLab وArvoBook، وتقدّم خدمات تصميم المواقع الإلكترونية ومتاجر التجارة الإلكترونية والبرمجيات المخصّصة.` },
   hero: {
     eyebrow: "من نحن", title: "نجعل العمل المعقّد", subtitle: "بسيطًا.",
-    lead: `Arvo هي العلامة البرمجية لمجموعة ArvoCulture Group، ومقرّها إسطنبول، تركيا. تصمّم أساليب عمل رقمية قوية وهادئة في آنٍ واحد للمؤسسات والباحثين والصالونات.`,
+    lead: `ArvoOS هي العلامة البرمجية لمجموعة ArvoCulture Group، ومقرّها إسطنبول، تركيا. تصمّم أساليب عمل رقمية قوية وهادئة في آنٍ واحد للمؤسسات والباحثين والصالونات.`,
     actions: [{ label: "تعرّف إلينا", href: R("contact"), variant: "gold" }],
   },
   cards: {
@@ -31,14 +31,14 @@ export const ABOUT_AR: SubContent = {
     ],
   },
   band: {
-    eyebrow: "بيانات الشركة", title: "الشركة التي تقف وراء Arvo.",
+    eyebrow: "بيانات الشركة", title: "الشركة التي تقف وراء ArvoOS.",
     items: [COMPANY.legalName, COMPANY.address.displayIntl, COMPANY.email],
   },
-  faq: { eyebrow: "الأسئلة الشائعة", title: "عن Arvo", items: [
-    { q: "ما الشركة التي تقف وراء Arvo؟", a: `Arvo علامة تجارية تابعة لشركة ${COMPANY.legalName}.` },
-    { q: "أين يقع مقرّ Arvo؟", a: `${COMPANY.address.displayIntl}.` },
-    { q: "ما الفرق بين Arvo وArvoOS؟", a: "Arvo هي العلامة التجارية (وموقعها arvo-os.com)؛ أما ArvoOS فهو أحد منتجاتها. والمنتجان الآخران هما ArvoLab وArvoBook." },
-    { q: "كيف أتواصل مع Arvo؟", a: `استخدم النموذج في صفحة التواصل أو راسلنا على ${COMPANY.email}.` },
+  faq: { eyebrow: "الأسئلة الشائعة", title: "عن ArvoOS", items: [
+    { q: "ما الشركة التي تقف وراء ArvoOS؟", a: `ArvoOS علامة تجارية تابعة لشركة ${COMPANY.legalName}.` },
+    { q: "أين يقع مقرّ ArvoOS؟", a: `${COMPANY.address.displayIntl}.` },
+    { q: "هل ArvoOS شركة أم منتج؟", a: "ArvoOS هي العلامة التجارية للشركة (وموقعها arvo-os.com)، وهي أيضًا اسم نظام تشغيل الأعمال الذي تطوّره. أما ArvoLab وArvoBook فهما منتجاها الآخران." },
+    { q: "كيف أتواصل مع ArvoOS؟", a: `استخدم النموذج في صفحة التواصل أو راسلنا على ${COMPANY.email}.` },
   ] },
   cta: { title: "لنبنِ معًا نظامًا أفضل.", actions: [{ label: "تواصل معنا", href: R("contact"), variant: "gold" }, { label: "المنتجات", href: R("arvoos"), variant: "ghost" }] },
   org: true,

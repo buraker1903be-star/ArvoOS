@@ -1,6 +1,6 @@
 // Mesafeli satış sözleşmesi, iptal-iade koşulları ve teslimat (hizmetin ifası).
 //
-// Bu metinler TEK BİR ÜRÜNÜN değil, Arvo'nun bütün abonelik ürünlerinin
+// Bu metinler TEK BİR ÜRÜNÜN değil, ArvoOS'un bütün abonelik ürünlerinin
 // sözleşmesidir: ürün adları PRODUCT_APPS'ten okunur, yeni ürün eklendiğinde
 // metinlere kendiliğinden girer (lib/site/routes.ts → productList).
 //
@@ -41,11 +41,11 @@ const erisimSatirlari = Object.values(PRODUCT_APPS).map((u) => `${u.name}: ${u.h
 export const DISTANCE_SALES_TR: PrivacyContent = {
   meta: {
     title: "Mesafeli Satış Sözleşmesi",
-    description: `Arvo abonelik hizmetlerinin (${urunlerTr}) mesafeli satışına ilişkin sözleşme: taraflar, hizmetin konusu, bedel, ödeme, ifa ve cayma hakkı.`,
+    description: `ArvoOS abonelik hizmetlerinin (${urunlerTr}) mesafeli satışına ilişkin sözleşme: taraflar, hizmetin konusu, bedel, ödeme, ifa ve cayma hakkı.`,
   },
   hero: {
     eyebrow: "Mesafeli satış", title: "Mesafeli Satış", subtitle: "Sözleşmesi",
-    lead: `Bu sözleşme, Arvo'nun abonelik ile sunduğu yazılım hizmetlerinin (${urunlerTr} ve sonradan eklenecek ürünler) internet üzerinden satışına uygulanır.`,
+    lead: `Bu sözleşme, ArvoOS'un abonelik ile sunduğu yazılım hizmetlerinin (${urunlerTr} ve sonradan eklenecek ürünler) internet üzerinden satışına uygulanır.`,
     actions: [],
   },
   updated: guncelTr,
@@ -120,11 +120,11 @@ export const DISTANCE_SALES_TR: PrivacyContent = {
 export const DISTANCE_SALES_EN: PrivacyContent = {
   meta: {
     title: "Distance Sales Agreement",
-    description: `Agreement for the distance sale of Arvo subscription services (${urunlerEn}): parties, scope, price, payment, performance and withdrawal.`,
+    description: `Agreement for the distance sale of ArvoOS subscription services (${urunlerEn}): parties, scope, price, payment, performance and withdrawal.`,
   },
   hero: {
     eyebrow: "Distance sales", title: "Distance Sales", subtitle: "Agreement",
-    lead: `This agreement applies to the online sale of Arvo's subscription software services (${urunlerEn} and products added later).`,
+    lead: `This agreement applies to the online sale of ArvoOS's subscription software services (${urunlerEn} and products added later).`,
     actions: [],
   },
   updated: updatedEn,
@@ -164,11 +164,11 @@ export const DISTANCE_SALES_EN: PrivacyContent = {
 export const REFUND_TR: PrivacyContent = {
   meta: {
     title: "İptal ve İade Koşulları",
-    description: "Arvo abonelik hizmetlerinde iptal, cayma ve iade koşulları; deneme süresi, dönem sonu ve hatalı tahsilat.",
+    description: "ArvoOS abonelik hizmetlerinde iptal, cayma ve iade koşulları; deneme süresi, dönem sonu ve hatalı tahsilat.",
   },
   hero: {
     eyebrow: "İptal ve iade", title: "İptal ve İade", subtitle: "Koşulları",
-    lead: `Bu koşullar, Arvo'nun abonelik ürünlerinde (${urunlerTr} ve sonradan eklenecek ürünler) iptal ve iade süreçlerini açıklar.`,
+    lead: `Bu koşullar, ArvoOS'un abonelik ürünlerinde (${urunlerTr} ve sonradan eklenecek ürünler) iptal ve iade süreçlerini açıklar.`,
     actions: [],
   },
   updated: guncelTr,
@@ -214,7 +214,7 @@ export const REFUND_TR: PrivacyContent = {
       `Yanlışlıkla ya da iki kez yapılan tahsilatlar, tespit edilmesi hâlinde herhangi bir koşula bağlı olmaksızın iade edilir. Bildirim: ${COMPANY.email}.`,
       "Bankaya bağlı olarak iade tutarının karta yansıması birkaç iş günü sürebilir.",
     ] },
-    { h: "8. Arvo kaynaklı kesinti", p: ["Hizmetin Arvo'dan kaynaklanan bir nedenle uzun süre kullanılamaması hâlinde, kullanılamayan süreye karşılık gelen bedel abonenin talebi üzerine iade edilir ya da sonraki döneme mahsup edilir."] },
+    { h: "8. ArvoOS kaynaklı kesinti", p: ["Hizmetin ArvoOS'tan kaynaklanan bir nedenle uzun süre kullanılamaması hâlinde, kullanılamayan süreye karşılık gelen bedel abonenin talebi üzerine iade edilir ya da sonraki döneme mahsup edilir."] },
     { h: "9. Verilerin dışa aktarılması", p: ["Abonelik sona erdiğinde abone, verilerinin dışa aktarılmasını talep edebilir. Talep, mevzuatın öngördüğü saklama yükümlülükleri saklı kalmak üzere karşılanır ve ardından veriler silinir."] },
     { h: "10. İletişim", p: [`İptal ve iade talepleri: ${COMPANY.email}${COMPANY.phone ? ` · ${COMPANY.phone}` : ""} · ${COMPANY.address.display}`] },
   ],
@@ -223,11 +223,11 @@ export const REFUND_TR: PrivacyContent = {
 export const REFUND_EN: PrivacyContent = {
   meta: {
     title: "Cancellation and Refund Policy",
-    description: "Cancellation, withdrawal and refund terms for Arvo subscription services, including trials, period ends and incorrect charges.",
+    description: "Cancellation, withdrawal and refund terms for ArvoOS subscription services, including trials, period ends and incorrect charges.",
   },
   hero: {
     eyebrow: "Cancellation", title: "Cancellation and", subtitle: "Refund Policy",
-    lead: `How cancellations and refunds work across Arvo's subscription products (${urunlerEn} and products added later).`,
+    lead: `How cancellations and refunds work across ArvoOS's subscription products (${urunlerEn} and products added later).`,
     actions: [],
   },
   updated: updatedEn,
@@ -257,7 +257,7 @@ export const REFUND_EN: PrivacyContent = {
       "If a product is dropped entirely and it was on an annual plan, section 5 applies.",
     ] },
     { h: "7. Incorrect or duplicate charges", p: [`Refunded in full once identified, without conditions. Contact: ${COMPANY.email}.`] },
-    { h: "8. Outages caused by Arvo", p: ["If the service is unavailable for an extended period due to Arvo, the corresponding amount is refunded or credited to the next period on request."] },
+    { h: "8. Outages caused by ArvoOS", p: ["If the service is unavailable for an extended period due to ArvoOS, the corresponding amount is refunded or credited to the next period on request."] },
   ],
 };
 
@@ -267,11 +267,11 @@ export const REFUND_EN: PrivacyContent = {
 export const DELIVERY_TR: PrivacyContent = {
   meta: {
     title: "Teslimat ve Hizmetin İfası",
-    description: "Arvo abonelik hizmetlerinde hesabın ne zaman açıldığı, erişimin nasıl sağlandığı ve fiziksel teslimat olmadığı hakkında bilgi.",
+    description: "ArvoOS abonelik hizmetlerinde hesabın ne zaman açıldığı, erişimin nasıl sağlandığı ve fiziksel teslimat olmadığı hakkında bilgi.",
   },
   hero: {
     eyebrow: "Teslimat", title: "Teslimat ve", subtitle: "Hizmetin İfası",
-    lead: `Arvo ürünleri (${urunlerTr} ve sonradan eklenecek ürünler) bulut tabanlıdır: fiziksel teslimat yoktur, hizmet hesabın kullanıma açılmasıyla ifa edilir.`,
+    lead: `ArvoOS ürünleri (${urunlerTr} ve sonradan eklenecek ürünler) bulut tabanlıdır: fiziksel teslimat yoktur, hizmet hesabın kullanıma açılmasıyla ifa edilir.`,
     actions: [],
   },
   updated: guncelTr,
@@ -294,11 +294,11 @@ export const DELIVERY_TR: PrivacyContent = {
 export const DELIVERY_EN: PrivacyContent = {
   meta: {
     title: "Delivery and Performance",
-    description: "When accounts are opened, how access is provided, and why there is no physical delivery for Arvo subscription services.",
+    description: "When accounts are opened, how access is provided, and why there is no physical delivery for ArvoOS subscription services.",
   },
   hero: {
     eyebrow: "Delivery", title: "Delivery and", subtitle: "Performance",
-    lead: `Arvo products (${urunlerEn} and products added later) are cloud-based: there is no physical delivery; the service is performed when the account is made available.`,
+    lead: `ArvoOS products (${urunlerEn} and products added later) are cloud-based: there is no physical delivery; the service is performed when the account is made available.`,
     actions: [],
   },
   updated: updatedEn,

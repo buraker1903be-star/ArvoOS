@@ -64,7 +64,7 @@ export const RANDEVU_DE: ProductContent = {
       },
       {
         title: "WhatsApp-Erinnerungen",
-        text: "Die Erinnerungsliste des Tages liegt im Panel bereit und wird mit einem Tipp über WhatsApp versendet. Hat der Salon seine eigene Nummer verbunden, kommt die Nachricht vom Salon statt von Arvo.",
+        text: "Die Erinnerungsliste des Tages liegt im Panel bereit und wird mit einem Tipp über WhatsApp versendet. Hat der Salon seine eigene Nummer verbunden, kommt die Nachricht vom Salon statt von ArvoOS.",
       },
     ],
   },
@@ -94,7 +94,7 @@ export const RANDEVU_DE: ProductContent = {
       { q: "Müssen sich Kunden registrieren?", a: "Nein. Die Kundin oder der Kunde wählt Leistung, Mitarbeitende und Uhrzeit und gibt eine Telefonnummer ein; die Identifizierung erfolgt über diese Nummer, dazu gibt es einen Stornierungslink." },
       { q: "Können zwei Termine auf dieselbe Zeit fallen?", a: "Nein. Ein überschneidender Termin bei derselben Person – einschließlich der Pufferzeit der Leistung – wird auf Datenbankebene abgelehnt, nicht durch eine Prüfung in der Oberfläche." },
       { q: "Wie werden Arbeitszeiten und Abwesenheiten festgelegt?", a: "Wöchentliche Arbeitszeiten werden in der Ortszeit des Salons erfasst. Abwesenheiten lassen sich für eine einzelne Person oder den ganzen Salon festlegen; in diesem Zeitraum werden keine Termine angeboten." },
-      { q: "Von wem kommt die Erinnerung?", a: "Die Erinnerungsliste des Tages wird im Panel vorbereitet und mit einem Tipp über WhatsApp versendet. Hat der Salon seine eigene WhatsApp-Nummer verbunden, kommt sie vom Salon, andernfalls von der gemeinsamen Nummer von Arvo." },
+      { q: "Von wem kommt die Erinnerung?", a: "Die Erinnerungsliste des Tages wird im Panel vorbereitet und mit einem Tipp über WhatsApp versendet. Hat der Salon seine eigene WhatsApp-Nummer verbunden, kommt sie vom Salon, andernfalls von der gemeinsamen Nummer von ArvoOS." },
       { q: "Was kostet es?", a: `Die monatlichen und jährlichen Listenpreise finden Sie unter ${R("pricing")}.` },
     ],
   },

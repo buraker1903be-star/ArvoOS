@@ -11,7 +11,7 @@ export type ContactContent = {
 };
 
 export const CONTACT_TR: ContactContent = {
-  meta: { title: "İletişim ve Demo Talebi", description: `ArvoOS, ArvoLab ve ArvoBook demo talepleri, e-ticaret ve web sitesi projeleri, ürün erişimi ve proje görüşmeleri için Arvo ile iletişime geçin: ${COMPANY.email}.` },
+  meta: { title: "İletişim ve Demo Talebi", description: `ArvoOS, ArvoLab ve ArvoBook demo talepleri, e-ticaret ve web sitesi projeleri, ürün erişimi ve proje görüşmeleri için bizimle iletişime geçin: ${COMPANY.email}.` },
   hero: {
     eyebrow: "İletişim", title: "Yeni fikriniz için", subtitle: "buradayız.",
     lead: "Ürün demosu, panel erişimi veya kurumunuza özel bir dijital proje için formu doldurun ya da doğrudan yazın; talebiniz ilgili ürün veya proje ekibine iletilir.",

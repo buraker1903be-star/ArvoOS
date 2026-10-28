@@ -7,10 +7,10 @@ const talk = { label: "Sprechen wir über Ihr Projekt", href: `${R("contact")}?i
 
 export const SERVICES_DE: SubContent = {
   id: "services",
-  meta: { title: "Leistungen", description: "Leistungen von Arvo: Webdesign und -entwicklung, SEO- & GEO-Inhalte, Individualsoftware, Prozess- und Experience-Design, digitale Unternehmenssysteme und laufende Weiterentwicklung." },
+  meta: { title: "Leistungen", description: "Leistungen von ArvoOS: Webdesign und -entwicklung, SEO- & GEO-Inhalte, Individualsoftware, Prozess- und Experience-Design, digitale Unternehmenssysteme und laufende Weiterentwicklung." },
   hero: {
     eyebrow: "Leistungen", title: "Von der Marke zum System.", subtitle: "Digital aus einer Hand.",
-    lead: "Arvo gestaltet und entwickelt digitale Produkte, die richtig aussehen, richtig funktionieren und bereit zum Wachsen sind – von Webdesign und SEO & GEO bis zu Individualsoftware und laufender Weiterentwicklung, von der Strategie bis zum Launch.",
+    lead: "ArvoOS gestaltet und entwickelt digitale Produkte, die richtig aussehen, richtig funktionieren und bereit zum Wachsen sind – von Webdesign und SEO & GEO bis zu Individualsoftware und laufender Weiterentwicklung, von der Strategie bis zum Launch.",
     actions: [talk],
   },
   cards: {
@@ -36,22 +36,22 @@ export const SERVICES_DE: SubContent = {
     ],
   },
   faq: { eyebrow: "FAQ", title: "Über unsere Leistungen", items: [
-    { q: "Welche Leistungen bietet Arvo an?", a: "Webdesign und -entwicklung, SEO- & GEO-Inhalte, Individualsoftware, Prozess- und Experience-Design, digitale Unternehmenssysteme und laufende Weiterentwicklung." },
+    { q: "Welche Leistungen bietet ArvoOS an?", a: "Webdesign und -entwicklung, SEO- & GEO-Inhalte, Individualsoftware, Prozess- und Experience-Design, digitale Unternehmenssysteme und laufende Weiterentwicklung." },
     { q: "Wie beginnt ein Projekt?", a: "Sie schildern Ihren Bedarf über das Kontaktformular; in einem Discovery-Gespräch klären wir den Umfang und erstellen anschließend eine Roadmap und ein Angebot." },
     { q: "Bieten Sie nach dem Launch Support?", a: "Ja. Im Rahmen der laufenden Weiterentwicklung verbessern wir Performance, Sicherheit, Inhalte und Nutzererlebnis kontinuierlich." },
     { q: "Wie wird der Preis festgelegt?", a: "Jedes Projekt wird nach Umfang kalkuliert; nach dem Discovery-Gespräch erhalten Sie ein individuelles Angebot." },
   ] },
   cta: { eyebrow: "Neues Projekt", title: "Sprechen wir über Ihr nächstes Projekt.", actions: [talk, { label: "Schreiben Sie uns", href: "mailto:info@arvo-os.com", variant: "ghost" }] },
-  serviceName: "Digitale Leistungen von Arvo",
+  serviceName: "Digitale Leistungen von ArvoOS",
 };
 
 export const WEB_DESIGN_DE: SubContent = {
   id: "web-design",
   parent: { id: "services", name: "Leistungen" },
-  meta: { title: "Webdesign & -entwicklung", description: "Website- und E-Commerce-Design von Arvo: Discovery und Strategie, Inhaltsarchitektur, UX/UI-Design, schnelle und barrierearme Entwicklung, Tests, Launch und Wartung in einem Prozess." },
+  meta: { title: "Webdesign & -entwicklung", description: "Website- und E-Commerce-Design von ArvoOS: Discovery und Strategie, Inhaltsarchitektur, UX/UI-Design, schnelle und barrierearme Entwicklung, Tests, Launch und Wartung in einem Prozess." },
   hero: {
     eyebrow: "Leistungen · Webdesign", title: "Ihre Marke", subtitle: "digital in Bestform.",
-    lead: "Mit dem Webdesign-Service von Arvo entstehen Markenwebsites aus einer Hand – von Discovery und Strategie über Inhaltsarchitektur, UX/UI-Design und Entwicklung bis zu Launch und Wartung.",
+    lead: "Mit dem Webdesign-Service von ArvoOS entstehen Markenwebsites aus einer Hand – von Discovery und Strategie über Inhaltsarchitektur, UX/UI-Design und Entwicklung bis zu Launch und Wartung.",
     actions: [talk, { label: "Alle Leistungen", href: R("services"), variant: "ghost" }],
   },
   cards: {

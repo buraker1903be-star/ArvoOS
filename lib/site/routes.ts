@@ -127,7 +127,7 @@ export const LEGACY_REDIRECTS: { from: string; to: string }[] = [
   { from: "/paketler", to: ROUTES["arvoos-plans"].tr },
   /*
     ArvoARC 28.10.2026'da satıştan kalktı: kiralama yok, yalnızca e-ticaret
-    sitesini Arvo'ya yaptıranlara sitenin yanında panel olarak veriliyor.
+    sitesini ArvoOS'a yaptıranlara sitenin yanında panel olarak veriliyor.
     Eski adres dizinde ve paylaşılmış bağlantılarda yaşıyor; 404 yerine
     bu işin bugünkü karşılığı olan web sitesi hizmetine iner.
   */
@@ -147,7 +147,7 @@ export const PRODUCT_APPS = {
 
 /*
   ArvoARC sitede ÜRÜN OLARAK YOK (28.10.2026) ama paneli yaşıyor: e-ticaret
-  sitesini Arvo'ya yaptıran kurum mağazasını onunla yönetiyor ve giriş
+  sitesini ArvoOS'a yaptıran kurum mağazasını onunla yönetiyor ve giriş
   adresine ihtiyacı var. Bu yüzden PRODUCT_APPS'te değil — orada olsaydı
   ürün listesine, hukuki metinlere ve llms.txt'ye kendiliğinden girerdi.
 */
@@ -155,7 +155,7 @@ export const ARC_APP = { name: "ArvoARC", url: "https://arc.arvo-os.com", host: 
 
 /*
   Hukuki metinler (mesafeli satış, iptal-iade, teslimat) tek bir ürünün değil
-  Arvo'nun bütün abonelik ürünlerinin sözleşmesidir. Listeyi elle yazmıyoruz:
+  ArvoOS'un bütün abonelik ürünlerinin sözleşmesidir. Listeyi elle yazmıyoruz:
   yeni ürün PRODUCT_APPS'e eklendiğinde metinlere de kendiliğinden girsin.
 */
 export const PRODUCT_NAMES: string[] = Object.values(PRODUCT_APPS).map((p) => p.name);
@@ -176,7 +176,7 @@ export const MARKETING_HOSTS = ["arvo-os.com", "www.arvo-os.com"] as const;
  *  Adres kullanıcı tarafından doğrulandı (2026-09-13); posta kodu şirket
  *  kaşesinden. Telefon verilmedi — doğrulanmamış bilgi EKLEMEYİN. */
 export const COMPANY = {
-  brand: "Arvo",
+  brand: "ArvoOS",
   legalName: "ArvoCulture Group Teknoloji Sanayi ve Ticaret Limited Şirketi",
   email: "info@arvo-os.com",
   country: "TR",

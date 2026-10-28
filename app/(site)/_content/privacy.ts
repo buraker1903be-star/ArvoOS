@@ -19,7 +19,7 @@ export const PRIVACY_TR: PrivacyContent = {
   },
   updated: "Son güncelleme: 28 Ekim 2026",
   sections: [
-    { h: "1. Veri sorumlusu", p: [`Veri sorumlusu ${COMPANY.legalName}’dir (“Arvo”). Adres: ${COMPANY.address.display}. E-posta: ${COMPANY.email}.`] },
+    { h: "1. Veri sorumlusu", p: [`Veri sorumlusu ${COMPANY.legalName}’dir (“ArvoOS”). Adres: ${COMPANY.address.display}. E-posta: ${COMPANY.email}.`] },
     { h: "2. İşlenen kişisel veriler", p: ["Demo / iletişim formunu gönderdiğinizde:"], list: [
       "Kimlik ve iletişim: ad soyad, e-posta adresi, telefon numarası, kurum adı (kurum ve telefon isteğe bağlıdır).",
       "Talep bilgileri: ilgilendiğiniz ürün veya hizmet, mesajınız, formun gönderildiği sayfa ve dil.",
@@ -37,7 +37,7 @@ export const PRIVACY_TR: PrivacyContent = {
       "(f) İlgili kişinin temel hak ve özgürlüklerine zarar vermemek kaydıyla veri sorumlusunun meşru menfaati — form güvenliği ve talep yönetimi",
       "(ç) Veri sorumlusunun hukuki yükümlülüğünü yerine getirebilmesi",
     ] },
-    { h: "5. Toplama yöntemi", p: ["Veriler, web sitesindeki form aracılığıyla elektronik ortamda sizden ve form gönderimi sırasında tarayıcınızdan otomatik olarak toplanır. Talebiniz, Arvo’nun kendi ArvoOS panelinde müşteri talebi olarak kaydedilir."] },
+    { h: "5. Toplama yöntemi", p: ["Veriler, web sitesindeki form aracılığıyla elektronik ortamda sizden ve form gönderimi sırasında tarayıcınızdan otomatik olarak toplanır. Talebiniz, kendi ArvoOS panelimizde müşteri talebi olarak kaydedilir."] },
     { h: "6. Aktarım", p: [
       "Kişisel verileriniz satılmaz ve pazarlama amacıyla üçüncü kişilerle paylaşılmaz.",
       "Veriler, web sitesinin ve panelin barındırıldığı bulut altyapı ve veritabanı hizmet sağlayıcılarının sunucularında saklanır; bu sunucular yurt dışında bulunabilir. Bu aktarım KVKK m.9’a uygun olarak gerçekleştirilir. Yetkili kamu kurum ve kuruluşlarına ise yalnızca mevzuatın gerektirdiği hallerde aktarım yapılabilir.",
@@ -56,7 +56,7 @@ export const PRIVACY_TR: PrivacyContent = {
     ] },
     { h: "10. Başvuru", p: [`Haklarınıza ilişkin taleplerinizi ${COMPANY.email} adresine e-posta ile veya ${COMPANY.address.display} adresine yazılı olarak iletebilirsiniz. Başvurular, niteliğine göre en geç otuz gün içinde ücretsiz olarak sonuçlandırılır (KVKK m.13).`] },
     { h: "11. Avrupa Ekonomik Alanı ve Birleşik Krallık'taki ziyaretçiler (GDPR)", p: [
-      "AEA'da ya da Birleşik Krallık'ta bulunuyorsanız ve size hizmet sunuyorsak, kişisel verileriniz ayrıca Genel Veri Koruma Tüzüğü (AB) 2016/679 (GDPR) ve Birleşik Krallık GDPR kapsamında işlenir. Veri sorumlusu yukarıda 1. bölümde yazılı olan Arvo'dur.",
+      "AEA'da ya da Birleşik Krallık'ta bulunuyorsanız ve size hizmet sunuyorsak, kişisel verileriniz ayrıca Genel Veri Koruma Tüzüğü (AB) 2016/679 (GDPR) ve Birleşik Krallık GDPR kapsamında işlenir. Veri sorumlusu yukarıda 1. bölümde yazılı olan ArvoOS'tur.",
       "Hukuki sebepler (GDPR m.6/1): talebinize yanıt vermek ve demo ile teklif hazırlamak için sözleşme öncesi adımlar (b), form güvenliği ve talep yönetimi için meşru menfaat (f), yasal yükümlülükler için (c).",
       "Verileriniz Türkiye'de ve barındırma sağlayıcılarının AEA dışındaki sunucularında işlenebilir. Bu aktarımlarda dayanılan güvenceler hakkında bilgi almak için bize yazabilirsiniz. Başvurularınızı 10. bölümdeki kanallardan iletebilirsiniz; GDPR kapsamındaki başvurular bir ay içinde yanıtlanır.",
       "GDPR kapsamındaki haklarınız:",

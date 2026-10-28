@@ -76,7 +76,7 @@ export const ARVOOS_ES: ProductContent = {
     eyebrow: "Preguntas frecuentes",
     title: "Sobre ArvoOS",
     items: [
-      { q: "¿Qué es ArvoOS?", a: "ArvoOS es el sistema operativo empresarial web y multiinquilino de Arvo. Conecta en un solo flujo el CRM y las ventas, las propuestas, los contratos con firma electrónica, las operaciones, un portal de seguimiento para clientes, las finanzas, los RR. HH., los informes y la comunicación del equipo." },
+      { q: "¿Qué es ArvoOS?", a: "ArvoOS es un sistema operativo empresarial web y multiinquilino. Conecta en un solo flujo el CRM y las ventas, las propuestas, los contratos con firma electrónica, las operaciones, un portal de seguimiento para clientes, las finanzas, los RR. HH., los informes y la comunicación del equipo." },
       { q: "¿Cómo lleva ArvoOS un trabajo de la solicitud al cobro?", a: "Una solicitud entra en el embudo y se convierte en propuesta; el cliente la acepta online y firma el contrato electrónicamente. La firma inicia el flujo de trabajo, el cliente sigue el avance en el portal y los plazos se cobran mediante enlaces de pago online." },
       { q: "¿Admite ArvoOS la firma electrónica?", a: "Sí. Los clientes firman con una firma manuscrita y declaraciones de consentimiento; se registran la dirección IP, el sello de tiempo, el dispositivo y un hash de verificación, y el contenido se bloquea tras la firma." },
       { q: "¿Puede funcionar ArvoOS en nuestro propio dominio y con nuestra marca?", a: "Sí. Puede conectar un dominio propio verificado por DNS y usar su logotipo, color corporativo, sello y firma en las páginas de inicio de sesión, las páginas de cliente, las propuestas y los contratos." },

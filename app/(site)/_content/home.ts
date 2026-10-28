@@ -37,20 +37,20 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].tr;
 
 export const HOME_TR: HomeContent = {
   meta: {
-    title: "Arvo | ArvoOS, ArvoLab ve ArvoBook — daha iyi çalışma sistemleri",
-    description: "Arvo; işletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştirir. Web sitesi ve e-ticaret sitesi tasarımı, SEO ve GEO ile özel yazılım hizmetleri sunar.",
+    title: "ArvoOS | Daha iyi çalışma sistemleri",
+    description: "ArvoOS; şirketler için işletme işletim sistemini, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştirir. Web sitesi ve e-ticaret sitesi tasarımı, SEO ve GEO ile özel yazılım hizmetleri sunar.",
   },
   hero: {
-    eyebrow: "Arvo ürün ailesi",
+    eyebrow: "ArvoOS ürün ailesi",
     title: "Daha iyi çalışmak için", subtitle: "daha iyi sistemler.",
-    lead: "Arvo; işletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştiren bir yazılım markasıdır. Karmaşık süreçleri sakin, güçlü ve bağlantılı çalışma deneyimlerine dönüştürür.",
+    lead: "ArvoOS; şirketler için işletme işletim sistemini, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştiren bir yazılım markasıdır. Karmaşık süreçleri sakin, güçlü ve bağlantılı çalışma deneyimlerine dönüştürür.",
     actions: [
       { label: "Demo talep edin", href: `${R("contact")}?ilgi=arvoos`, variant: "gold" },
       { label: "Ürünleri keşfedin", href: "#urunler", variant: "ghost" },
     ],
-    familyLabel: "Arvo ürünleri",
+    familyLabel: "ArvoOS ürünleri",
   },
-  statement: ["Karmaşıklığı arka planda bırakır.", "Size yalnızca ilerlemek kalır.", "Her Arvo ürünü tek bir ilkeyle tasarlanır:", "en kapsamlı süreci bile doğal hissettirmek."],
+  statement: ["Karmaşıklığı arka planda bırakır.", "Size yalnızca ilerlemek kalır.", "Her ArvoOS ürünü tek bir ilkeyle tasarlanır:", "en kapsamlı süreci bile doğal hissettirmek."],
   products: {
     eyebrow: "Ürün ailesi",
     title: "Bugün için güçlü. Yarın için hazır.",
@@ -81,7 +81,7 @@ export const HOME_TR: HomeContent = {
     badges: ["6 dil", "TRY · USD · EUR", "Her cihazda, tarayıcıda"],
     eyebrow: "Her yerde çalışır",
     title: "Nerede çalışırsanız orada.",
-    lead: "Arvo ürünleri tarayıcıda çalışan web uygulamalarıdır: kurulum yok, sunucu yok, ekibiniz hangi ülkede olursa olsun aynı sistem.",
+    lead: "ArvoOS ürünleri tarayıcıda çalışan web uygulamalarıdır: kurulum yok, sunucu yok, ekibiniz hangi ülkede olursa olsun aynı sistem.",
     items: [
       { title: "Altı dil", text: "Türkçe, English, Deutsch, Español, Français ve العربية — sağdan sola yazım dahil." },
       { title: "TRY, USD ve EUR fiyat", text: "Her para biriminde sabit liste fiyatı; kur değiştikçe ay ay değişen tutar yok." },
@@ -145,11 +145,11 @@ export const HOME_TR: HomeContent = {
   refs: { eyebrow: "Referanslar", title: "Güvenle üreten markalar.", lead: "Aynı kalite anlayışını paylaşan, birlikte değer ürettiğimiz marka ekosistemi.", culture: "Markayı keşfedin", akademik: "Web sitesini ziyaret edin" },
   faq: {
     eyebrow: "Sık sorulan sorular",
-    title: "Arvo hakkında merak edilenler",
+    title: "ArvoOS hakkında merak edilenler",
     items: [
-      { q: "Arvo nedir?", a: `Arvo, ${COMPANY.legalName} şirketinin yazılım markasıdır. İşletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştirir; web sitesi ve e-ticaret sitesi tasarımı ile özel yazılım hizmetleri de sunar.` },
+      { q: "ArvoOS nedir?", a: `ArvoOS, ${COMPANY.legalName} şirketinin yazılım markasıdır. Şirketler için işletme işletim sistemi ArvoOS’u, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştirir; web sitesi ve e-ticaret sitesi tasarımı ile özel yazılım hizmetleri de sunar.` },
       { q: "ArvoOS, ArvoLab ve ArvoBook arasındaki fark nedir?", a: "ArvoOS bir işletmenin operasyonunu talepten tahsilata yönetir. ArvoLab akademik araştırma ve yazım sürecini destekler. ArvoBook ise salonların randevu defterini yönetir: müşteri kendi randevusunu alır, takvim personele göre açılır." },
-      { q: "Arvo ürünlerine nereden giriş yapılır?", a: `ArvoOS ${PRODUCT_APPS.arvoos.host}, ArvoLab ${PRODUCT_APPS.arvolab.host}, ArvoBook ise ${PRODUCT_APPS.randevu.host} adresinde çalışır. Üçü de tarayıcıda çalışan web uygulamalarıdır.` },
+      { q: "ArvoOS ürünlerine nereden giriş yapılır?", a: `ArvoOS ${PRODUCT_APPS.arvoos.host}, ArvoLab ${PRODUCT_APPS.arvolab.host}, ArvoBook ise ${PRODUCT_APPS.randevu.host} adresinde çalışır. Üçü de tarayıcıda çalışan web uygulamalarıdır.` },
       { q: "ArvoOS’un fiyatı nedir?", a: `Aylık ve yıllık liste fiyatları ${ROUTES.pricing.tr} sayfasında yayımlanmıştır; fiyat kurum başınadır, kullanıcı başına değil. Özel kurum basamağında bedel modül, kullanıcı ve şube yapısına göre birlikte belirlenir.` },
       { q: "Nasıl demo talep edebilirim?", a: `İletişim sayfasındaki formu doldurabilir ya da ${COMPANY.email} adresine yazabilirsiniz; talebiniz ilgili ürün ekibine iletilir.` },
     ],

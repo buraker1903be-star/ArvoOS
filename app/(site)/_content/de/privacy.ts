@@ -13,7 +13,7 @@ export const PRIVACY_DE: PrivacyContent = {
   sections: [
     { h: "1. Verantwortlicher", p: [
       "Diese Übersetzung dient der Information; bei Abweichungen ist die türkische Fassung maßgeblich.",
-      `Verantwortlicher ist ${COMPANY.legalName} („Arvo“). Adresse: ${COMPANY.address.display}, Türkei. E-Mail: ${COMPANY.email}.`,
+      `Verantwortlicher ist ${COMPANY.legalName} („ArvoOS“). Adresse: ${COMPANY.address.display}, Türkei. E-Mail: ${COMPANY.email}.`,
     ] },
     { h: "2. Welche personenbezogenen Daten wir verarbeiten", p: ["Wenn Sie das Demo- / Kontaktformular absenden:"], list: [
       "Identitäts- und Kontaktdaten: vollständiger Name, E-Mail-Adresse, Telefonnummer, Name der Organisation (Organisation und Telefon sind optional).",
@@ -32,7 +32,7 @@ export const PRIVACY_DE: PrivacyContent = {
       "(f) Berechtigtes Interesse des Verantwortlichen, sofern Ihre Grundrechte und Grundfreiheiten nicht beeinträchtigt werden – Formularsicherheit und Bearbeitung von Anfragen",
       "(ç) Erfüllung einer rechtlichen Verpflichtung des Verantwortlichen",
     ] },
-    { h: "5. Wie die Daten erhoben werden", p: ["Die Daten werden elektronisch über das Formular der Website bei Ihnen erhoben und beim Absenden des Formulars automatisch von Ihrem Browser übermittelt. Ihre Anfrage wird als Kundenanfrage im eigenen ArvoOS-Panel von Arvo erfasst."] },
+    { h: "5. Wie die Daten erhoben werden", p: ["Die Daten werden elektronisch über das Formular der Website bei Ihnen erhoben und beim Absenden des Formulars automatisch von Ihrem Browser übermittelt. Ihre Anfrage wird als Kundenanfrage in unserem eigenen ArvoOS-Panel erfasst."] },
     { h: "6. Übermittlungen", p: [
       "Ihre personenbezogenen Daten werden nicht verkauft und nicht zu Marketingzwecken an Dritte weitergegeben.",
       "Die Daten werden auf den Servern der Cloud-Infrastruktur- und Datenbankanbieter gespeichert, die die Website und das Panel hosten; diese Server können sich außerhalb der Türkei befinden. Solche Übermittlungen erfolgen im Einklang mit Artikel 9 KVKK. Daten können nur dann an befugte Behörden weitergegeben werden, wenn das Gesetz dies verlangt.",
@@ -51,7 +51,7 @@ export const PRIVACY_DE: PrivacyContent = {
     ] },
     { h: "10. So stellen Sie einen Antrag", p: [`Senden Sie Ihre Anträge per E-Mail an ${COMPANY.email} oder schriftlich an ${COMPANY.address.display}, Türkei. Anträge werden je nach ihrer Art spätestens innerhalb von dreißig Tagen kostenlos abgeschlossen (Artikel 13 KVKK).`] },
     { h: "11. Besucher im Europäischen Wirtschaftsraum und im Vereinigten Königreich (DSGVO)", p: [
-      "Wenn Sie sich im EWR oder im Vereinigten Königreich befinden und wir Ihnen unsere Dienste anbieten, werden Ihre personenbezogenen Daten zusätzlich nach der Datenschutz-Grundverordnung (EU) 2016/679 (DSGVO) und der UK GDPR verarbeitet. Verantwortlicher ist Arvo, wie in Abschnitt 1 angegeben.",
+      "Wenn Sie sich im EWR oder im Vereinigten Königreich befinden und wir Ihnen unsere Dienste anbieten, werden Ihre personenbezogenen Daten zusätzlich nach der Datenschutz-Grundverordnung (EU) 2016/679 (DSGVO) und der UK GDPR verarbeitet. Verantwortlicher ist ArvoOS, wie in Abschnitt 1 angegeben.",
       "Rechtsgrundlagen (Art. 6 Abs. 1 DSGVO): vorvertragliche Maßnahmen — Beantwortung Ihrer Anfrage, Vorbereitung von Demos und Angeboten (b); berechtigte Interessen — Formularsicherheit und Anfrageverwaltung (f); Erfüllung rechtlicher Pflichten (c).",
       "Ihre Daten können in der Türkei und auf Servern von Hosting-Anbietern außerhalb des EWR verarbeitet werden. Informationen zu den Garantien, auf die sich diese Übermittlungen stützen, erhalten Sie auf Anfrage. Anträge richten Sie über die Kanäle in Abschnitt 10 an uns; Anträge nach der DSGVO werden innerhalb eines Monats beantwortet.",
       "Nach der DSGVO stehen Ihnen folgende Rechte zu:",

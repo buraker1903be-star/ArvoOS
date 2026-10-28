@@ -1,5 +1,5 @@
 /*
-  Arvo abonelik ücretleri — TEK KAYNAK.
+  ArvoOS abonelik ücretleri — TEK KAYNAK.
 
   Rakamlar YALNIZCA burada durur. Türkçe ve İngilizce sayfalar, llms.txt,
   JSON-LD ve sözleşme metinleri bu modülden okur. Eskiden paket içerikleri
@@ -70,7 +70,7 @@ export type Plan = {
 
 /*
   Konumlandırma (30.09.2026): rakiplerin çoğu KULLANICI BAŞINA satıyor
-  (Zoho CRM €14–40/kullanıcı/ay). Arvo KURUM BAŞINA satar; 10 kişilik bir
+  (Zoho CRM €14–40/kullanıcı/ay). ArvoOS KURUM BAŞINA satar; 10 kişilik bir
   ekipte fark belirgindir ve fiyat kartındaki "kullanıcı dahil" satırı bu
   yüzden vardır. E-ticaret tarafında ikas'ın ücretli paketleri ~3.300–3.900
   TL/ay bandındadır; ArvoARC'ın Büyüme basamağı bilerek bunun altındadır.

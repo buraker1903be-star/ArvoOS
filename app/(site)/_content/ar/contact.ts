@@ -3,7 +3,7 @@ import { COMPANY, ROUTES } from "@/lib/site/routes";
 import type { ContactContent } from "../contact";
 
 export const CONTACT_AR: ContactContent = {
-  meta: { title: "التواصل وطلبات العروض التوضيحية", description: `تواصل مع Arvo لطلب عروض توضيحية لـ ArvoOS وArvoLab وArvoBook، ولمشاريع التجارة الإلكترونية والمواقع الإلكترونية، والوصول إلى المنتجات، والنقاش حول المشاريع: ${COMPANY.email}.` },
+  meta: { title: "التواصل وطلبات العروض التوضيحية", description: `تواصل معنا لطلب عروض توضيحية لـ ArvoOS وArvoLab وArvoBook، ولمشاريع التجارة الإلكترونية والمواقع الإلكترونية، والوصول إلى المنتجات، والنقاش حول المشاريع: ${COMPANY.email}.` },
   hero: {
     eyebrow: "تواصل معنا", title: "نحن هنا", subtitle: "لفكرتك القادمة.",
     lead: "لطلب عرض توضيحي لمنتج، أو الوصول إلى لوحة التحكم، أو تنفيذ مشروع رقمي مخصّص، املأ النموذج أو راسلنا مباشرة — يصل طلبك إلى فريق المنتج أو المشروع المختص.",

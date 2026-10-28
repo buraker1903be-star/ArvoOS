@@ -22,8 +22,8 @@ type PageInfo = Record<LlmsLocale, { name: string; summary: string }>;
 /** Her sayfa için kısa, olgusal açıklama (Record → her PageId zorunlu). */
 const PAGES: Record<PageId, PageInfo> = {
   home: {
-    en: { name: "Arvo home", summary: "Overview of the Arvo product ecosystem (ArvoOS, ArvoLab, ArvoBook) and services." },
-    tr: { name: "Arvo ana sayfa", summary: "Arvo ürün ekosistemine (ArvoOS, ArvoLab, ArvoBook) ve hizmetlere genel bakış." },
+    en: { name: "ArvoOS home", summary: "Overview of the ArvoOS product ecosystem (the ArvoOS business operating system, ArvoLab, ArvoBook) and services." },
+    tr: { name: "ArvoOS ana sayfa", summary: "ArvoOS ürün ekosistemine (ArvoOS işletme işletim sistemi, ArvoLab, ArvoBook) ve hizmetlere genel bakış." },
   },
   arvoos: {
     en: { name: "ArvoOS", summary: "Multi-tenant business operating system for service businesses and institutions: CRM and sales pipeline, proposals with online customer acceptance, e-signed contracts, operations (jobs, tasks, stage board, calendar), a customer tracking portal, finance with online payment links, HR, reports and team communication — one flow from request to collection." },
@@ -74,20 +74,20 @@ const PAGES: Record<PageId, PageInfo> = {
     tr: { name: "Özel yazılım", summary: "Kurumun iş akışlarına göre özel yazılım: panel ve portal geliştirme, entegrasyon ve otomasyon talepleri." },
   },
   about: {
-    en: { name: "About", summary: `About ${COMPANY.legalName}, the company behind Arvo, based in ${COMPANY.city}.` },
-    tr: { name: "Hakkımızda", summary: `Arvo'nun arkasındaki şirket ${COMPANY.legalName} (${COMPANY.city}) hakkında.` },
+    en: { name: "About", summary: `About ${COMPANY.legalName}, the company behind ArvoOS, based in ${COMPANY.city}.` },
+    tr: { name: "Hakkımızda", summary: `ArvoOS'un arkasındaki şirket ${COMPANY.legalName} (${COMPANY.city}) hakkında.` },
   },
   contact: {
     en: { name: "Contact", summary: `Demo, product access and project requests. Email: ${COMPANY.email}.` },
     tr: { name: "İletişim", summary: `Demo, ürün erişimi ve proje talepleri. E-posta: ${COMPANY.email}.` },
   },
   privacy: {
-    en: { name: "Privacy policy", summary: "How Arvo processes personal data." },
-    tr: { name: "Gizlilik politikası", summary: "Arvo'nun kişisel verileri nasıl işlediği." },
+    en: { name: "Privacy policy", summary: "How ArvoOS processes personal data." },
+    tr: { name: "Gizlilik politikası", summary: "ArvoOS'un kişisel verileri nasıl işlediği." },
   },
   "distance-sales": {
-    en: { name: "Distance sales agreement", summary: "Terms for the online sale of Arvo subscriptions." },
-    tr: { name: "Mesafeli satış sözleşmesi", summary: "Arvo aboneliklerinin internetten satışına ilişkin sözleşme." },
+    en: { name: "Distance sales agreement", summary: "Terms for the online sale of ArvoOS subscriptions." },
+    tr: { name: "Mesafeli satış sözleşmesi", summary: "ArvoOS aboneliklerinin internetten satışına ilişkin sözleşme." },
   },
   refund: {
     en: { name: "Cancellation and refund policy", summary: "How subscriptions are cancelled and refunded." },
@@ -162,7 +162,7 @@ export function buildLlmsTxt(): string {
   const lines = [
     `# ${COMPANY.brand}`,
     "",
-    `> Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo builds three products: ArvoOS, a multi-tenant business operating system that runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoBook, an appointment system for salons. Arvo also delivers services: website design (including e-commerce websites with their own management panel), SEO and GEO content optimization, and custom software. The website is available in six languages: English at ${absoluteUrl(ROUTES.home.en)}, Turkish at ${absoluteUrl(ROUTES.home.tr)}, German at ${absoluteUrl(ROUTES.home.de)}, Spanish at ${absoluteUrl(ROUTES.home.es)}, French at ${absoluteUrl(ROUTES.home.fr)} and Arabic at ${absoluteUrl(ROUTES.home.ar)}; this file and the knowledge base are in English and Turkish.`,
+    `> ArvoOS is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. It builds three products: ArvoOS, a multi-tenant business operating system that shares the brand's name and runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoBook, an appointment system for salons. The brand also delivers services: website design (including e-commerce websites with their own management panel), SEO and GEO content optimization, and custom software. The website is available in six languages: English at ${absoluteUrl(ROUTES.home.en)}, Turkish at ${absoluteUrl(ROUTES.home.tr)}, German at ${absoluteUrl(ROUTES.home.de)}, Spanish at ${absoluteUrl(ROUTES.home.es)}, French at ${absoluteUrl(ROUTES.home.fr)} and Arabic at ${absoluteUrl(ROUTES.home.ar)}; this file and the knowledge base are in English and Turkish.`,
     "",
     "Key facts:",
     "",
@@ -199,11 +199,11 @@ export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
   const mail = COMPANY.email;
   const address = `${COMPANY.address.displayIntl}`;
 
-  return `# Arvo — knowledge base / bilgi tabanı
+  return `# ArvoOS — knowledge base / bilgi tabanı
 
-> Factual reference about Arvo, its products (ArvoOS, ArvoLab, ArvoBook) and services, written for AI assistants and answer engines. English first, Turkish below. Last updated: ${LLMS_UPDATED}. Canonical site: ${SITE_ORIGIN}. Short index: ${SITE_ORIGIN}/llms.txt.
+> Factual reference about the ArvoOS brand, its products (the ArvoOS business operating system, ArvoLab, ArvoBook) and services, written for AI assistants and answer engines. English first, Turkish below. Last updated: ${LLMS_UPDATED}. Canonical site: ${SITE_ORIGIN}. Short index: ${SITE_ORIGIN}/llms.txt.
 >
-> Arvo, ürünleri (ArvoOS, ArvoLab, ArvoBook) ve hizmetleri hakkında yapay zekâ asistanları ve yanıt motorları için hazırlanmış olgusal başvuru metni. Önce İngilizce, ardından Türkçe.
+> ArvoOS markası, ürünleri (ArvoOS işletme işletim sistemi, ArvoLab, ArvoBook) ve hizmetleri hakkında yapay zekâ asistanları ve yanıt motorları için hazırlanmış olgusal başvuru metni. Önce İngilizce, ardından Türkçe.
 
 ---
 
@@ -211,7 +211,7 @@ export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
 
 ## Overview
 
-Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo designs and builds software products for organizations, researchers and appointment-based businesses, and delivers digital services such as website design, SEO and GEO content optimization, and custom software.
+ArvoOS is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. ArvoOS designs and builds software products for organizations, researchers and appointment-based businesses, and delivers digital services such as website design, SEO and GEO content optimization, and custom software.
 
 - ArvoOS — business operating system for service businesses and institutions (${os.host}).
 - ArvoLab — research workspace for academic work (${lab.host}).
@@ -300,7 +300,7 @@ ArvoOS, ArvoLab and ArvoBook are separate web applications, each on its own subd
 Page: ${u("services", "en")}
 
 - Website design and development (${u("web-design", "en")}): discovery and strategy, content architecture, UX/UI design, development (fast, accessible, SEO-ready, manageable), testing and launch, maintenance and growth.
-- SEO and GEO content optimization (${u("seo-geo", "en")}): content editing and technical optimization so that search engines (SEO) and AI answer engines such as ChatGPT, Perplexity and Google AI Overviews (GEO) can understand, index and cite a website accurately. Arvo does not promise specific rankings.
+- SEO and GEO content optimization (${u("seo-geo", "en")}): content editing and technical optimization so that search engines (SEO) and AI answer engines such as ChatGPT, Perplexity and Google AI Overviews (GEO) can understand, index and cite a website accurately. ArvoOS does not promise specific rankings.
 - Custom software development (${u("custom-software", "en")}): software designed around an organization's real workflows — custom panels and portals, integrations and automation requests.
 - Process and experience design: analysing scattered operations and turning them into simpler, measurable systems.
 - Integrations and automation: connecting existing tools and reducing repetitive work.
@@ -318,7 +318,7 @@ Page: ${u("services", "en")}
 ## FAQ
 
 **What is ArvoOS?**
-ArvoOS is a web-based, multi-tenant business operating system by Arvo. It connects CRM and sales, proposals, e-signed contracts, operations, a customer tracking portal, finance, HR, reports and team communication in one flow.
+ArvoOS is a web-based, multi-tenant business operating system; it shares its name with the brand. It connects CRM and sales, proposals, e-signed contracts, operations, a customer tracking portal, finance, HR, reports and team communication in one flow.
 
 **How does ArvoOS take a job from request to collection?**
 A request enters the CRM pipeline and is assigned to a sales rep; it becomes a proposal the customer accepts online; the proposal converts to a contract the customer signs electronically; signing automatically opens the job workflow; the customer follows progress in the tracking portal; instalments are collected online through payment links; the reports show conversion and real profitability.
@@ -351,21 +351,21 @@ Healthcare institutions, education institutions, consulting and service firms, a
 ${os.url}
 
 **What is ArvoLab?**
-ArvoLab is Arvo's research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, academic editing and an originality pre-check.
+ArvoLab is the ArvoOS brand's research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, academic editing and an originality pre-check.
 
 **How do I get access to ArvoLab?**
 Request access at ${mail}. Sign in at ${lab.url}.
 
-**What is the difference between Arvo and ArvoOS?**
-Arvo is the brand (and arvo-os.com the website) of ${COMPANY.legalName}. ArvoOS is one of its products; ArvoLab and ArvoBook are the others.
+**Is ArvoOS a company or a product?**
+ArvoOS is the brand of ${COMPANY.legalName} (arvo-os.com is its website) and also the name of its business operating system. ArvoLab and ArvoBook are its other products.
 
-**Does Arvo build websites or custom software?**
-Yes. Arvo's services include website design and development, SEO and GEO content optimization, custom software development (panels, portals, integrations and automation), process and experience design, and ongoing development support. See ${u("services", "en")}.
+**Does ArvoOS build websites or custom software?**
+Yes. ArvoOS's services include website design and development, SEO and GEO content optimization, custom software development (panels, portals, integrations and automation), process and experience design, and ongoing development support. See ${u("services", "en")}.
 
-**Does Arvo offer SEO and GEO (AI search) optimization?**
-Yes. Arvo edits content and improves the technical setup of websites so that search engines and AI answer engines such as ChatGPT, Perplexity and Google AI Overviews can understand and cite them. No specific rankings are promised. See ${u("seo-geo", "en")}.
+**Does ArvoOS offer SEO and GEO (AI search) optimization?**
+Yes. ArvoOS edits content and improves the technical setup of websites so that search engines and AI answer engines such as ChatGPT, Perplexity and Google AI Overviews can understand and cite them. No specific rankings are promised. See ${u("seo-geo", "en")}.
 
-**Where is Arvo based and how can I contact it?**
+**Where is ArvoOS based and how can I contact it?**
 ${address}. Email ${mail} or use ${u("contact", "en")}.
 
 ---
@@ -374,7 +374,7 @@ ${address}. Email ${mail} or use ${u("contact", "en")}.
 
 ## Genel bakış
 
-Arvo, ${COMPANY.city} merkezli teknoloji şirketi ${COMPANY.legalName} bünyesindeki yazılım markasıdır. Arvo; kurumlar, araştırmacılar ve randevuyla çalışan işletmeler için yazılım ürünleri geliştirir, ayrıca web sitesi tasarımı, SEO ve GEO içerik düzenleme ve özel yazılım gibi dijital hizmetler sunar.
+ArvoOS, ${COMPANY.city} merkezli teknoloji şirketi ${COMPANY.legalName} bünyesindeki yazılım markasıdır. ArvoOS; kurumlar, araştırmacılar ve randevuyla çalışan işletmeler için yazılım ürünleri geliştirir, ayrıca web sitesi tasarımı, SEO ve GEO içerik düzenleme ve özel yazılım gibi dijital hizmetler sunar.
 
 - ArvoOS — hizmet işletmeleri ve kurumlar için işletme işletim sistemi (${os.host}).
 - ArvoLab — akademik çalışma için araştırma çalışma alanı (${lab.host}).
@@ -481,7 +481,7 @@ Sayfa: ${u("services", "tr")}
 ## Sık sorulan sorular
 
 **ArvoOS nedir?**
-ArvoOS, Arvo'nun web tabanlı, çok kiracılı işletme işletim sistemidir. CRM ve satış, teklif, e-imzalı sözleşme, operasyon, müşteri takip portalı, finans, İK, raporlar ve ekip iletişimini tek akışta birleştirir.
+ArvoOS, web tabanlı, çok kiracılı bir işletme işletim sistemidir; adını markayla paylaşır. CRM ve satış, teklif, e-imzalı sözleşme, operasyon, müşteri takip portalı, finans, İK, raporlar ve ekip iletişimini tek akışta birleştirir.
 
 **ArvoOS bir işi talepten tahsilata nasıl götürür?**
 Talep CRM satış hattına girer ve bir satış temsilcisine atanır; müşterinin çevrim içi onayladığı teklife dönüşür; teklif, müşterinin elektronik olarak imzaladığı sözleşmeye dönüşür; imza iş akışını otomatik başlatır; müşteri ilerlemeyi takip portalından izler; taksitler çevrim içi ödeme bağlantılarıyla tahsil edilir; raporlar dönüşümü ve gerçek kârlılığı gösterir.
@@ -514,21 +514,21 @@ Sağlık kurumları, eğitim kurumları, danışmanlık ve hizmet firmaları ile
 ${os.url}
 
 **ArvoLab nedir?**
-ArvoLab, Arvo'nun literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü sunan araştırma çalışma alanıdır.
+ArvoLab, ArvoOS markasının literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü sunan araştırma çalışma alanıdır.
 
 **ArvoLab'e nasıl erişilir?**
 ${mail} adresinden erişim talep edin. Giriş: ${lab.url}.
 
-**Arvo ile ArvoOS arasındaki fark nedir?**
-Arvo, ${COMPANY.legalName} şirketinin markası (arvo-os.com da web sitesi); ArvoOS ise bu markanın ürünlerinden biridir. Diğer ürünler ArvoLab ve ArvoBook'tur.
+**ArvoOS bir şirket mi, ürün mü?**
+ArvoOS, ${COMPANY.legalName} şirketinin markasıdır (arvo-os.com da web sitesidir); aynı zamanda markanın işletme işletim sisteminin adıdır. Diğer ürünler ArvoLab ve ArvoBook'tur.
 
-**Arvo web sitesi veya özel yazılım yapıyor mu?**
-Evet. Arvo'nun hizmetleri arasında web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım geliştirme (panel, portal, entegrasyon ve otomasyon), süreç ve deneyim tasarımı ile sürekli geliştirme desteği bulunur. Bkz. ${u("services", "tr")}.
+**ArvoOS web sitesi veya özel yazılım yapıyor mu?**
+Evet. ArvoOS'un hizmetleri arasında web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım geliştirme (panel, portal, entegrasyon ve otomasyon), süreç ve deneyim tasarımı ile sürekli geliştirme desteği bulunur. Bkz. ${u("services", "tr")}.
 
-**Arvo SEO ve GEO (yapay zekâ araması) optimizasyonu yapıyor mu?**
-Evet. Arvo, web sitelerinin arama motorları ve ChatGPT, Perplexity, Google AI Overviews gibi yapay zekâ yanıt motorları tarafından anlaşılması ve alıntılanması için içerik düzenler ve teknik altyapıyı iyileştirir. Belirli bir sıralama vaat edilmez. Bkz. ${u("seo-geo", "tr")}.
+**ArvoOS SEO ve GEO (yapay zekâ araması) optimizasyonu yapıyor mu?**
+Evet. ArvoOS, web sitelerinin arama motorları ve ChatGPT, Perplexity, Google AI Overviews gibi yapay zekâ yanıt motorları tarafından anlaşılması ve alıntılanması için içerik düzenler ve teknik altyapıyı iyileştirir. Belirli bir sıralama vaat edilmez. Bkz. ${u("seo-geo", "tr")}.
 
-**Arvo nerede, nasıl iletişime geçilir?**
+**ArvoOS nerede, nasıl iletişime geçilir?**
 ${address}. E-posta: ${mail} veya ${u("contact", "tr")}.
 `;
 }

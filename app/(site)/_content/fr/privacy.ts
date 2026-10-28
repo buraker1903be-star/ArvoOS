@@ -13,7 +13,7 @@ export const PRIVACY_FR: PrivacyContent = {
   sections: [
     { h: "1. Responsable du traitement", p: [
       "Cette traduction est fournie à titre informatif ; en cas de divergence, la version turque fait foi.",
-      `Le responsable du traitement est ${COMPANY.legalName} (« Arvo »). Adresse : ${COMPANY.address.display}, Türkiye. E-mail : ${COMPANY.email}.`,
+      `Le responsable du traitement est ${COMPANY.legalName} (« ArvoOS »). Adresse : ${COMPANY.address.display}, Türkiye. E-mail : ${COMPANY.email}.`,
     ] },
     { h: "2. Données personnelles traitées", p: ["Lorsque vous envoyez le formulaire de démo / contact :"], list: [
       "Identité et coordonnées : nom et prénom, adresse e-mail, numéro de téléphone, nom de l’organisation (l’organisation et le téléphone sont facultatifs).",
@@ -32,7 +32,7 @@ export const PRIVACY_FR: PrivacyContent = {
       "(f) L’intérêt légitime du responsable du traitement, à condition de ne pas porter atteinte à vos droits et libertés fondamentaux — sécurité du formulaire et gestion des demandes",
       "(ç) Le respect d’une obligation légale du responsable du traitement",
     ] },
-    { h: "5. Mode de collecte", p: ["Les données sont collectées par voie électronique, auprès de vous via le formulaire du site, et automatiquement depuis votre navigateur lors de l’envoi du formulaire. Votre demande est enregistrée comme demande client dans le panneau ArvoOS propre à Arvo."] },
+    { h: "5. Mode de collecte", p: ["Les données sont collectées par voie électronique, auprès de vous via le formulaire du site, et automatiquement depuis votre navigateur lors de l’envoi du formulaire. Votre demande est enregistrée comme demande client dans notre propre panneau ArvoOS."] },
     { h: "6. Transferts", p: [
       "Vos données personnelles ne sont pas vendues et ne sont pas partagées avec des tiers à des fins de marketing.",
       "Les données sont stockées sur les serveurs des fournisseurs d’infrastructure cloud et de bases de données qui hébergent le site et le panneau ; ces serveurs peuvent être situés hors de Türkiye. Ces transferts sont effectués conformément à l’article 9 de la KVKK. Les données ne peuvent être communiquées aux autorités publiques habilitées que lorsque la loi l’exige.",
@@ -51,7 +51,7 @@ export const PRIVACY_FR: PrivacyContent = {
     ] },
     { h: "10. Comment exercer vos droits", p: [`Adressez vos demandes par e-mail à ${COMPANY.email} ou par écrit à ${COMPANY.address.display}, Türkiye. Les demandes sont traitées gratuitement dans un délai maximal de trente jours, selon leur nature (article 13 de la KVKK).`] },
     { h: "11. Visiteurs de l’Espace économique européen et du Royaume-Uni (RGPD)", p: [
-      "Si vous vous trouvez dans l’EEE ou au Royaume-Uni et que nous vous proposons nos services, vos données personnelles sont également traitées conformément au Règlement général sur la protection des données (UE) 2016/679 (RGPD) et au UK GDPR. Le responsable du traitement est Arvo, comme indiqué à la section 1.",
+      "Si vous vous trouvez dans l’EEE ou au Royaume-Uni et que nous vous proposons nos services, vos données personnelles sont également traitées conformément au Règlement général sur la protection des données (UE) 2016/679 (RGPD) et au UK GDPR. Le responsable du traitement est ArvoOS, comme indiqué à la section 1.",
       "Bases juridiques (art. 6, paragraphe 1, RGPD) : mesures précontractuelles — répondre à votre demande, préparer démonstrations et propositions (b) ; intérêt légitime — sécurité du formulaire et gestion des demandes (f) ; respect d’obligations légales (c).",
       "Vos données peuvent être traitées en Türkiye et sur des serveurs d’hébergeurs situés hors de l’EEE. Vous pouvez nous écrire pour obtenir des informations sur les garanties sur lesquelles reposent ces transferts. Adressez vos demandes par les canaux de la section 10 ; les demandes fondées sur le RGPD reçoivent une réponse dans un délai d’un mois.",
       "En vertu du RGPD, vous pouvez :",

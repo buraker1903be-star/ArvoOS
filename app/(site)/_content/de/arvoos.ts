@@ -76,7 +76,7 @@ export const ARVOOS_DE: ProductContent = {
     eyebrow: "FAQ",
     title: "Über ArvoOS",
     items: [
-      { q: "Was ist ArvoOS?", a: "ArvoOS ist das webbasierte, mandantenfähige Betriebssystem für Unternehmen von Arvo. Es verbindet CRM und Vertrieb, Angebote, elektronisch signierte Verträge, Operations, ein Kunden-Tracking-Portal, Finanzen, Personal, Berichte und Teamkommunikation in einem Ablauf." },
+      { q: "Was ist ArvoOS?", a: "ArvoOS ist ein webbasiertes, mandantenfähiges Betriebssystem für Unternehmen. Es verbindet CRM und Vertrieb, Angebote, elektronisch signierte Verträge, Operations, ein Kunden-Tracking-Portal, Finanzen, Personal, Berichte und Teamkommunikation in einem Ablauf." },
       { q: "Wie führt ArvoOS einen Auftrag von der Anfrage bis zur Zahlung?", a: "Eine Anfrage gelangt in die Pipeline und wird zum Angebot; der Kunde nimmt es online an und unterschreibt den Vertrag elektronisch. Die Unterschrift startet den Auftragsablauf, der Kunde verfolgt den Fortschritt im Portal, und Raten werden über Online-Zahlungslinks eingezogen." },
       { q: "Unterstützt ArvoOS elektronische Signaturen?", a: "Ja. Kunden unterschreiben handschriftlich am Bildschirm und mit Einwilligungserklärungen; IP-Adresse, Zeitstempel, Gerät und ein Prüfhash werden gespeichert, und der Inhalt wird nach der Unterschrift gesperrt." },
       { q: "Kann ArvoOS unter unserer eigenen Domain und mit unserem Branding laufen?", a: "Ja. Sie können eine per DNS verifizierte eigene Domain verbinden und Ihr Logo, Ihre Markenfarbe, Ihren Stempel und Ihre Unterschrift auf Anmeldeseiten, Kundenseiten, Angeboten und Verträgen verwenden." },

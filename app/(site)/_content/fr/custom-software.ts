@@ -8,10 +8,10 @@ const talk = { label: "Décrivez-nous votre besoin", href: `${R("contact")}?inte
 export const CUSTOM_SOFTWARE_FR: SubContent = {
   id: "custom-software",
   parent: { id: "services", name: "Services" },
-  meta: { title: "Logiciel sur mesure", description: "Logiciels sur mesure par Arvo : panneaux d’administration et portails personnalisés, logiciels de workflow, intégrations et automatisation, espaces clients et applications PWA adaptées au mobile." },
+  meta: { title: "Logiciel sur mesure", description: "Logiciels sur mesure par ArvoOS : panneaux d’administration et portails personnalisés, logiciels de workflow, intégrations et automatisation, espaces clients et applications PWA adaptées au mobile." },
   hero: {
     eyebrow: "Services · Logiciel sur mesure", title: "Quand le prêt-à-l’emploi ne suffit pas,", subtitle: "un système bien à vous.",
-    lead: "Le service de logiciel sur mesure d’Arvo conçoit et développe panneaux d’administration, portails, espaces clients et logiciels de workflow selon le fonctionnement réel de votre organisation. L’équipe qui a construit ArvoOS apporte le même soin à votre projet.",
+    lead: "Notre service de logiciel sur mesure conçoit et développe panneaux d’administration, portails, espaces clients et logiciels de workflow selon le fonctionnement réel de votre organisation. L’équipe qui a construit le système d’exploitation d’entreprise ArvoOS apporte le même soin à votre projet.",
     actions: [talk, { label: "Voir ArvoOS", href: R("arvoos"), variant: "ghost" }],
   },
   cards: {
@@ -41,7 +41,7 @@ export const CUSTOM_SOFTWARE_FR: SubContent = {
     ],
   },
   faq: { eyebrow: "FAQ", title: "À propos du logiciel sur mesure", items: [
-    { q: "Quels types de logiciels sur mesure Arvo développe-t-il ?", a: "Panneaux d’administration et portails sur mesure, logiciels de workflow, intégrations et automatisation, flux de documents et de signature, et applications PWA adaptées au mobile." },
+    { q: "Quels types de logiciels sur mesure ArvoOS développe-t-il ?", a: "Panneaux d’administration et portails sur mesure, logiciels de workflow, intégrations et automatisation, flux de documents et de signature, et applications PWA adaptées au mobile." },
     { q: "Pourquoi un logiciel sur mesure plutôt qu’un produit prêt à l’emploi ?", a: "Si vos processus ne correspondent pas aux produits existants, ou si vous souhaitez offrir à vos clients une expérience à votre marque, le sur-mesure peut être plus adapté. Nous vérifions d’abord ensemble si ArvoOS couvre déjà vos besoins." },
     { q: "Comment un projet est-il chiffré ?", a: "Selon son périmètre. Une feuille de route et une proposition suivent l’échange de découverte." },
     { q: "Assurez-vous un suivi après la mise en ligne ?", a: "Oui. Avec l’accompagnement en développement continu, nous assurons la maintenance, la sécurité et les nouvelles fonctionnalités." },

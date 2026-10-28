@@ -8,7 +8,7 @@ const talk = { label: "Lassen Sie uns Ihre Website prüfen", href: `${R("contact
 export const SEO_GEO_DE: SubContent = {
   id: "seo-geo",
   parent: { id: "services", name: "Leistungen" },
-  meta: { title: "SEO- & GEO-Inhalte", description: "SEO & GEO von Arvo: technisches SEO, Inhaltsarchitektur, strukturierte Daten (JSON-LD), llms.txt, Inhalte, die KI-Antwortmaschinen zitieren können, mehrsprachige Einrichtung und Performance." },
+  meta: { title: "SEO- & GEO-Inhalte", description: "SEO & GEO von ArvoOS: technisches SEO, Inhaltsarchitektur, strukturierte Daten (JSON-LD), llms.txt, Inhalte, die KI-Antwortmaschinen zitieren können, mehrsprachige Einrichtung und Performance." },
   hero: {
     eyebrow: "Leistungen · SEO & GEO", title: "Gefunden werden, wenn gesucht wird.", subtitle: "Erklärt werden, wenn gefragt wird.",
     lead: "Mit SEO- & GEO-Inhalten sorgen wir dafür, dass Ihre Website von Suchmaschinen korrekt indexiert und von KI-Antwortmaschinen wie ChatGPT, Perplexity und Google AI Overviews verstanden und zitiert werden kann.",

@@ -25,11 +25,11 @@ const erisimSatirlari = Object.values(PRODUCT_APPS).map((u) => `${u.name}: ${u.h
 export const DISTANCE_SALES_ES: PrivacyContent = {
   meta: {
     title: "Contrato de venta a distancia",
-    description: `Contrato para la venta a distancia de los servicios de suscripción de Arvo (${productos}): partes, objeto, precio, pago, prestación y desistimiento.`,
+    description: `Contrato para la venta a distancia de los servicios de suscripción de ArvoOS (${productos}): partes, objeto, precio, pago, prestación y desistimiento.`,
   },
   hero: {
     eyebrow: "Venta a distancia", title: "Contrato de", subtitle: "venta a distancia",
-    lead: `Este contrato se aplica a la venta online de los servicios de software por suscripción de Arvo (${productos} y los productos que se añadan en el futuro).`,
+    lead: `Este contrato se aplica a la venta online de los servicios de software por suscripción de ArvoOS (${productos} y los productos que se añadan en el futuro).`,
     actions: [],
   },
   updated: actualizado,
@@ -66,11 +66,11 @@ export const DISTANCE_SALES_ES: PrivacyContent = {
 export const REFUND_ES: PrivacyContent = {
   meta: {
     title: "Política de cancelación y reembolso",
-    description: "Condiciones de cancelación, desistimiento y reembolso de los servicios de suscripción de Arvo, incluidos los periodos de prueba, los finales de periodo y los cargos incorrectos.",
+    description: "Condiciones de cancelación, desistimiento y reembolso de los servicios de suscripción de ArvoOS, incluidos los periodos de prueba, los finales de periodo y los cargos incorrectos.",
   },
   hero: {
     eyebrow: "Cancelación", title: "Política de cancelación", subtitle: "y reembolso",
-    lead: `Cómo funcionan las cancelaciones y los reembolsos en los productos de suscripción de Arvo (${productos} y los productos que se añadan en el futuro).`,
+    lead: `Cómo funcionan las cancelaciones y los reembolsos en los productos de suscripción de ArvoOS (${productos} y los productos que se añadan en el futuro).`,
     actions: [],
   },
   updated: actualizado,
@@ -100,18 +100,18 @@ export const REFUND_ES: PrivacyContent = {
       "Si se prescinde por completo de un producto que estaba en un plan anual, se aplica la sección 5.",
     ] },
     { h: "7. Cargos incorrectos o duplicados", p: [`Se reembolsan íntegramente una vez detectados, sin condiciones. Contacto: ${COMPANY.email}.`] },
-    { h: "8. Interrupciones imputables a Arvo", p: ["Si el servicio no está disponible durante un periodo prolongado por causas imputables a Arvo, el importe correspondiente se reembolsa o, previa solicitud, se abona en el periodo siguiente."] },
+    { h: "8. Interrupciones imputables a ArvoOS", p: ["Si el servicio no está disponible durante un periodo prolongado por causas imputables a ArvoOS, el importe correspondiente se reembolsa o, previa solicitud, se abona en el periodo siguiente."] },
   ],
 };
 
 export const DELIVERY_ES: PrivacyContent = {
   meta: {
     title: "Entrega y prestación",
-    description: "Cuándo se abren las cuentas, cómo se proporciona el acceso y por qué no hay entrega física en los servicios de suscripción de Arvo.",
+    description: "Cuándo se abren las cuentas, cómo se proporciona el acceso y por qué no hay entrega física en los servicios de suscripción de ArvoOS.",
   },
   hero: {
     eyebrow: "Entrega", title: "Entrega y", subtitle: "prestación",
-    lead: `Los productos de Arvo (${productos} y los productos que se añadan en el futuro) funcionan en la nube: no hay entrega física; el servicio se presta cuando la cuenta se pone a disposición.`,
+    lead: `Los productos de ArvoOS (${productos} y los productos que se añadan en el futuro) funcionan en la nube: no hay entrega física; el servicio se presta cuando la cuenta se pone a disposición.`,
     actions: [],
   },
   updated: actualizado,

@@ -66,7 +66,7 @@ export const RANDEVU_EN: ProductContent = {
       },
       {
         title: "WhatsApp reminders",
-        text: "The day's reminder list is ready in the panel and sent from WhatsApp in one tap. If the salon has connected its own number, the message comes from the salon rather than from Arvo.",
+        text: "The day's reminder list is ready in the panel and sent from WhatsApp in one tap. If the salon has connected its own number, the message comes from the salon rather than from ArvoOS.",
       },
     ],
   },
@@ -96,7 +96,7 @@ export const RANDEVU_EN: ProductContent = {
       { q: "Do customers have to register?", a: "No. The customer picks a service, a stylist and a time and enters a phone number; they are identified by that number and receive a cancellation link." },
       { q: "Can two appointments land on the same slot?", a: "No. A clashing appointment for the same stylist — counting the service's gap — is rejected at database level, not by an interface check." },
       { q: "How are working hours and time off defined?", a: "Weekly hours are entered in the salon's own local time. Time off can be set for a single staff member or the whole salon; no slots open in that window." },
-      { q: "Who does the reminder come from?", a: "The day's reminder list is prepared in the panel and sent from WhatsApp in one tap. If the salon has connected its own WhatsApp number it comes from the salon; otherwise from Arvo's shared number." },
+      { q: "Who does the reminder come from?", a: "The day's reminder list is prepared in the panel and sent from WhatsApp in one tap. If the salon has connected its own WhatsApp number it comes from the salon; otherwise from ArvoOS's shared number." },
       { q: "How much does it cost?", a: `Monthly and annual list prices are published at ${R("pricing")}.` },
     ],
   },

@@ -6,10 +6,10 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].fr;
 
 export const ABOUT_FR: SubContent = {
   id: "about",
-  meta: { title: "À propos", description: `Arvo est la marque de logiciels de ${COMPANY.legalName}. Elle conçoit ArvoOS, ArvoLab et ArvoBook, et propose la création de sites web et e-commerce ainsi que le développement de logiciels sur mesure.` },
+  meta: { title: "À propos", description: `ArvoOS est la marque de logiciels de ${COMPANY.legalName}. Elle conçoit le système d’exploitation d’entreprise du même nom, ArvoLab et ArvoBook, et propose la création de sites web et e-commerce ainsi que le développement de logiciels sur mesure.` },
   hero: {
     eyebrow: "À propos", title: "Nous rendons le travail complexe", subtitle: "simple.",
-    lead: `Arvo est la marque de logiciels d’ArvoCulture Group, basée à Istanbul (Türkiye). Elle conçoit des façons de travailler numériques, puissantes et sereines, pour les organisations, les chercheurs et les salons.`,
+    lead: `ArvoOS est la marque de logiciels d’ArvoCulture Group, basée à Istanbul (Türkiye). Elle conçoit des façons de travailler numériques, puissantes et sereines, pour les organisations, les chercheurs et les salons.`,
     actions: [{ label: "Nous rencontrer", href: R("contact"), variant: "gold" }],
   },
   cards: {
@@ -31,14 +31,14 @@ export const ABOUT_FR: SubContent = {
     ],
   },
   band: {
-    eyebrow: "Informations sur la société", title: "La société derrière Arvo.",
+    eyebrow: "Informations sur la société", title: "La société derrière ArvoOS.",
     items: [COMPANY.legalName, COMPANY.address.displayIntl, COMPANY.email],
   },
-  faq: { eyebrow: "FAQ", title: "À propos d’Arvo", items: [
-    { q: "Quelle société se trouve derrière Arvo ?", a: `Arvo est une marque de ${COMPANY.legalName}.` },
-    { q: "Où Arvo est-elle basée ?", a: `${COMPANY.address.displayIntl}.` },
-    { q: "Quelle est la différence entre Arvo et ArvoOS ?", a: "Arvo est la marque (et arvo-os.com son site web) ; ArvoOS est l’un de ses produits. Les autres sont ArvoLab et ArvoBook." },
-    { q: "Comment contacter Arvo ?", a: `Utilisez le formulaire de la page contact ou écrivez à ${COMPANY.email}.` },
+  faq: { eyebrow: "FAQ", title: "À propos d’ArvoOS", items: [
+    { q: "Quelle société se trouve derrière ArvoOS ?", a: `ArvoOS est une marque de ${COMPANY.legalName}.` },
+    { q: "Où ArvoOS est-elle basée ?", a: `${COMPANY.address.displayIntl}.` },
+    { q: "ArvoOS, une entreprise ou un produit ?", a: "ArvoOS est la marque de l’entreprise (arvo-os.com est son site web) et aussi le nom de son système d’exploitation d’entreprise. ArvoLab et ArvoBook sont ses autres produits." },
+    { q: "Comment contacter ArvoOS ?", a: `Utilisez le formulaire de la page contact ou écrivez à ${COMPANY.email}.` },
   ] },
   cta: { title: "Construisons ensemble un meilleur système.", actions: [{ label: "Nous contacter", href: R("contact"), variant: "gold" }, { label: "Produits", href: R("arvoos"), variant: "ghost" }] },
   org: true,

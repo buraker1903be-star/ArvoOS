@@ -8,7 +8,7 @@ const talk = { label: "Analysons votre site", href: `${R("contact")}?interest=se
 export const SEO_GEO_FR: SubContent = {
   id: "seo-geo",
   parent: { id: "services", name: "Services" },
-  meta: { title: "Contenus SEO & GEO", description: "SEO & GEO par Arvo : SEO technique, architecture de contenu, données structurées (JSON-LD), llms.txt, contenus que les moteurs de réponse IA peuvent citer, configuration multilingue et performance." },
+  meta: { title: "Contenus SEO & GEO", description: "SEO & GEO par ArvoOS : SEO technique, architecture de contenu, données structurées (JSON-LD), llms.txt, contenus que les moteurs de réponse IA peuvent citer, configuration multilingue et performance." },
   hero: {
     eyebrow: "Services · SEO & GEO", title: "Soyez trouvé quand on vous cherche.", subtitle: "Soyez expliqué quand on pose la question.",
     lead: "Le travail de contenu SEO & GEO garantit que votre site est correctement indexé par les moteurs de recherche, et compris et citable par les moteurs de réponse IA tels que ChatGPT, Perplexity et Google AI Overviews.",

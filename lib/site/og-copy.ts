@@ -146,12 +146,12 @@ export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
     ar: { eyebrow: "الخصوصية", title: "سياسة الخصوصية", tagline: "كيف تُعالَج البيانات الشخصية." },
   },
   "distance-sales": {
-    tr: { eyebrow: "MESAFELİ SATIŞ", title: "Mesafeli Satış Sözleşmesi", tagline: "Arvo aboneliklerinin internetten satış koşulları." },
-    en: { eyebrow: "DISTANCE SALES", title: "Distance Sales Agreement", tagline: "Terms for the online sale of Arvo subscriptions." },
+    tr: { eyebrow: "MESAFELİ SATIŞ", title: "Mesafeli Satış Sözleşmesi", tagline: "ArvoOS aboneliklerinin internetten satış koşulları." },
+    en: { eyebrow: "DISTANCE SALES", title: "Distance Sales Agreement", tagline: "Terms for the online sale of ArvoOS subscriptions." },
     de: { eyebrow: "FERNABSATZ", title: "Fernabsatzvertrag", tagline: "Bedingungen für den Online-Verkauf von Arvo-Abonnements." },
-    es: { eyebrow: "VENTA A DISTANCIA", title: "Contrato de venta a distancia", tagline: "Condiciones de la venta online de suscripciones de Arvo." },
-    fr: { eyebrow: "VENTE À DISTANCE", title: "Contrat de vente à distance", tagline: "Conditions de la vente en ligne des abonnements Arvo." },
-    ar: { eyebrow: "البيع عن بُعد", title: "اتفاقية البيع عن بُعد", tagline: "شروط بيع اشتراكات Arvo عبر الإنترنت." },
+    es: { eyebrow: "VENTA A DISTANCIA", title: "Contrato de venta a distancia", tagline: "Condiciones de la venta online de suscripciones de ArvoOS." },
+    fr: { eyebrow: "VENTE À DISTANCE", title: "Contrat de vente à distance", tagline: "Conditions de la vente en ligne des abonnements ArvoOS." },
+    ar: { eyebrow: "البيع عن بُعد", title: "اتفاقية البيع عن بُعد", tagline: "شروط بيع اشتراكات ArvoOS عبر الإنترنت." },
   },
   refund: {
     tr: { eyebrow: "İPTAL VE İADE", title: "İptal ve İade Koşulları", tagline: "Aboneliğin iptali, cayma hakkı ve iade." },

@@ -3,7 +3,7 @@ import { COMPANY, ROUTES } from "@/lib/site/routes";
 import type { ContactContent } from "../contact";
 
 export const CONTACT_FR: ContactContent = {
-  meta: { title: "Contact & demandes de démo", description: `Contactez Arvo pour une démo d’ArvoOS, ArvoLab ou ArvoBook, un projet de site web ou e-commerce, un accès produit ou un échange sur votre projet : ${COMPANY.email}.` },
+  meta: { title: "Contact & demandes de démo", description: `Contactez-nous pour une démo d’ArvoOS, ArvoLab ou ArvoBook, un projet de site web ou e-commerce, un accès produit ou un échange sur votre projet : ${COMPANY.email}.` },
   hero: {
     eyebrow: "Contact", title: "À votre écoute", subtitle: "pour votre prochaine idée.",
     lead: "Pour une démo produit, un accès au panneau ou un projet numérique sur mesure, remplissez le formulaire ou écrivez-nous directement — votre demande est transmise à l’équipe produit ou projet concernée.",
