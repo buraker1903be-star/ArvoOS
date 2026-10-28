@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getPaymentIncidents } from "@/lib/payment-incidents";
 import { musteriMi } from "@/lib/kurum-turu";
-import { KBos, KListe, KNot, KOge } from "../konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PanelModal } from "../../components/panel-modal";
@@ -55,7 +55,16 @@ const KANALLAR = [
   { kod: "bireysel", ad: "Bireysel" },
   { kod: "fatura", ad: "Faturalar" },
   { kod: "proforma", ad: "Proformalar" },
+  { kod: "otomatik", ad: "Kartla ve otomatik" },
 ] as const;
+
+/* Kartla ödeme denemeleri (PayTR Direkt API, 28.10.2026). */
+const KART_TURU: Record<string, string> = { ilk: "Kartla ödeme", kayitli: "Kayıtlı kart", otomatik: "Otomatik yenileme" };
+const KART_DURUMU: Record<string, { etiket: string; ton: string }> = {
+  bekliyor: { etiket: "Bildirim bekleniyor", ton: "info" },
+  basarili: { etiket: "Ödendi", ton: "success" },
+  basarisiz: { etiket: "Başarısız", ton: "danger" },
+};
 
 type Proforma = {
   id: string; proforma_no: string; product: string; organization_id: string | null; subscriber_id: string | null; musteri_adi: string;
@@ -259,6 +268,34 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
       adaylar.set(p.id, eslesmeSirasi(Number(p.toplam), liste));
     }
   }
+  /*
+    KARTLA ÖDEME VE OTOMATİK YENİLEME (28.10.2026): yalnızca kendi
+    sekmesinde, son elli deneme ve açık otomatik yenilemeler. Tablolar
+    istemciye kapalı; kurucu servis rolüyle okur. Başarısız denemeler
+    başta değil zaman sırasında: kurucu bir kurumun üç denemesini art
+    arda görsün.
+  */
+  type KartIslemi = { merchant_oid: string; tur: string; durum: string; tutar: number; hata_mesaji: string | null; created_at: string; payment_links: { payer_organization_id: string | null; product: string } | null };
+  type AcikYenileme = { organization_id: string; product: string; deneme_sayisi: number; son_hata: string | null; onay_at: string; paytr_kayitli_kartlar: { son4: string } | null };
+  let kartIslemleri: KartIslemi[] = [];
+  let acikYenilemeler: AcikYenileme[] = [];
+  if (admin && secili === "otomatik") {
+    const [iYaniti, yYaniti] = await Promise.all([
+      admin.from("paytr_kart_islemleri").select("merchant_oid,tur,durum,tutar,hata_mesaji,created_at,payment_links(payer_organization_id,product)")
+        .order("created_at", { ascending: false }).limit(LISTE),
+      admin.from("paytr_otomatik_yenileme").select("organization_id,product,deneme_sayisi,son_hata,onay_at,paytr_kayitli_kartlar(son4)")
+        .eq("aktif", true).not("organization_id", "is", null).order("onay_at", { ascending: false }),
+    ]);
+    if (iYaniti.error) throw new Error("Kartla ödemeler okunamadı: " + iYaniti.error.message);
+    if (yYaniti.error) throw new Error("Otomatik yenilemeler okunamadı: " + yYaniti.error.message);
+    kartIslemleri = (iYaniti.data ?? []) as unknown as KartIslemi[];
+    acikYenilemeler = (yYaniti.data ?? []) as unknown as AcikYenileme[];
+  }
+  const kurumAdi = (id: string | null | undefined) => {
+    const k = id ? kurumBilgisi.get(id) : null;
+    return k ? (k.display_name || k.name) : "Kurum";
+  };
+
   const bugun = todayInIstanbul();
 
   const bekleyenSatirlar = (bekleyenler ?? []) as { amount: number; currency: string }[];
@@ -374,6 +411,34 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
           ) : (
             <KBos baslik="Henüz proforma yok" aciklama="Ödeme almadan önce müşteriye proforma düzenleyin; müşteri ödedikten sonra burada ödemeyle eşleştirin, faturayı da tahsilatın yanından yükleyin." />
           )}
+        </>
+      ) : secili === "otomatik" ? (
+        <>
+          <KKart baslik={`Açık otomatik yenilemeler (${sayi(acikYenilemeler.length)})`} aciklama="Kurumun onayıyla kayıtlı karttan her dönem sonunda çekilir; 3 gün önce hatırlatma gider.">
+          {acikYenilemeler.length ? (
+            <KListe>
+              {acikYenilemeler.map((y) => (
+                <KOge key={`${y.organization_id}-${y.product}`} simge={kurumAdi(y.organization_id)}
+                  baslik={`${kurumAdi(y.organization_id)} · ${productName(y.product)}`}
+                  alt={`•••• ${y.paytr_kayitli_kartlar?.son4 ?? "????"} · onay ${tarih(y.onay_at)}${y.son_hata ? ` · son deneme: ${y.son_hata}` : ""}`}
+                  durum={y.deneme_sayisi > 0 ? { etiket: `${y.deneme_sayisi}. deneme başarısız`, ton: "warning" } : { etiket: "Açık", ton: "success" }} />
+              ))}
+            </KListe>
+          ) : <KBos baslik="Açık otomatik yenileme yok" aciklama="Kurum kartla öderken “Kartımı kaydet, aboneliğim otomatik yenilensin” seçeneğini işaretlerse burada görünür." />}
+          </KKart>
+          <KKart baslik="Son kartla ödeme denemeleri" aciklama="Kartla ödeme, kayıtlı kart ve otomatik yenileme; son elli deneme.">
+          {kartIslemleri.length ? (
+            <KListe>
+              {kartIslemleri.map((i) => (
+                <KOge key={i.merchant_oid} simge={kurumAdi(i.payment_links?.payer_organization_id)}
+                  baslik={`${kurumAdi(i.payment_links?.payer_organization_id)} · ${productName(i.payment_links?.product ?? "arvoos")}`}
+                  alt={`${KART_TURU[i.tur] ?? i.tur} · ${tarih(i.created_at)} · ${i.merchant_oid}${i.hata_mesaji ? ` · ${i.hata_mesaji}` : ""}`}
+                  durum={KART_DURUMU[i.durum] ?? { etiket: i.durum, ton: "neutral" }}
+                  deger={para(Number(i.tutar), "TRY")} />
+              ))}
+            </KListe>
+          ) : <KBos baslik="Henüz kartla ödeme denemesi yok" aciklama="PayTR kart saklama açıldığında kurumların kartla ödemeleri ve otomatik çekimler burada listelenir." />}
+          </KKart>
         </>
       ) : secili === "fatura" ? (
         /* Yüklenen platform faturaları (son elli). Fatura elle kesilip her
