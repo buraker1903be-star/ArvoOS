@@ -167,7 +167,7 @@ export function buildLlmsTxt(): string {
     "Key facts:",
     "",
     `- Company: ${COMPANY.legalName} (brand: ${COMPANY.brand}).`,
-    `- Address: ${COMPANY.address.display}, Türkiye.`,
+    `- Address: ${COMPANY.address.displayIntl}.`,
     `- Contact: ${COMPANY.email} (no public phone number).`,
     "- Website languages: English (en-US, default, at the site root), Turkish (tr-TR, under /tr), German (de-DE, under /de), Spanish (es-ES, under /es) and French (fr-FR, under /fr). This file and llms-full.txt are in English and Turkish only.",
     `- Each product is a web application on its own subdomain: ArvoOS at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host}, ArvoBook at ${PRODUCT_APPS.randevu.host}.`,
@@ -180,7 +180,7 @@ export function buildLlmsTxt(): string {
     lines.push(`## ${section.title}`, "");
     for (const id of section.ids) lines.push(item(id, SIGN_IN[id] ?? ""));
     if (section.title === "Company") {
-      lines.push(`- Legal name and address: ${COMPANY.legalName}, ${COMPANY.address.display}, Türkiye. Email: ${COMPANY.email}.`);
+      lines.push(`- Legal name and address: ${COMPANY.legalName}, ${COMPANY.address.displayIntl}. Email: ${COMPANY.email}.`);
     }
     if (section.title === "Optional") {
       lines.push(`- [Full knowledge base](${SITE_ORIGIN}/llms-full.txt): Detailed product descriptions and FAQ in English and Turkish.`);
@@ -197,7 +197,7 @@ export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
   const lab = PRODUCT_APPS.arvolab;
   const rdv = PRODUCT_APPS.randevu;
   const mail = COMPANY.email;
-  const address = `${COMPANY.address.display}, Türkiye`;
+  const address = `${COMPANY.address.displayIntl}`;
 
   return `# Arvo — knowledge base / bilgi tabanı
 

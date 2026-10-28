@@ -1,0 +1,57 @@
+/* ============================================================
+   Ana sayfa — global düzen (28.10.2026)
+   Açılış rozetleri, ürün kartları (başlangıç fiyatıyla), "her yerde
+   çalışır" şeridi ve tasarım ilkeleri. Zemin açık kalır (site-base.css
+   başlığındaki kural); renkler yalnızca değişkenlerden.
+   ============================================================ */
+
+/* Açılışın arkasında çok hafif bir ışık: düz beyaz açılış kartlardan
+   ayrılmıyordu. Renk krem ve yeşilin saydamı; metin kontrastı değişmez. */
+.site .lhero::before{content:"";position:absolute;inset:0 0 auto;height:min(820px,90vh);z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(60% 55% at 50% 0%,color-mix(in srgb,var(--gold-100) 90%,transparent),transparent 70%),
+    radial-gradient(40% 40% at 85% 20%,color-mix(in srgb,var(--green) 10%,transparent),transparent 70%)}
+.site .lhero{isolation:isolate}
+
+.site .hero-badges{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px;margin-top:22px}
+.site .hero-badges li{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 13px;border-radius:999px;background:color-mix(in srgb,#fff 70%,transparent);box-shadow:var(--hair);color:var(--ink-soft);font-size:13px;font-weight:500;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.site .hero-badges svg{width:16px;height:16px;color:var(--gold-600)}
+
+/* Ürün kartları: üç ürün ve fiyat düzeyi tek bakışta. */
+.site .suite-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:clamp(32px,4vw,56px)}
+.site .suite-card{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:clamp(24px,2.6vw,36px);border-radius:var(--radius-l);background:var(--card);box-shadow:var(--hair);transition:transform .4s var(--ease),box-shadow .4s var(--ease)}
+.site .suite-card:hover{transform:translateY(-4px);box-shadow:var(--hair),var(--shadow-m)}
+.site .suite-card .brand-logo{--h:30px;margin-bottom:6px}
+.site .suite-kicker{color:var(--gold-600);font-size:14px;font-weight:600}
+.site .suite-text{color:var(--ink-soft);font-size:16px;line-height:1.5}
+.site .suite-chips{margin-top:2px}
+.site .suite-chips .chip{min-height:26px;font-size:12px}
+.site .suite-price{margin-top:auto;padding-top:14px;width:100%;border-top:1px solid var(--line-soft);font-size:17px;font-weight:600;color:var(--ink)}
+.site .suite-links{display:flex;flex-wrap:wrap;gap:4px 22px}
+
+/* Her yerde çalışır şeridi */
+.site .gstrip-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:clamp(28px,3.5vw,48px)}
+.site .gstrip-item{display:flex;flex-direction:column;gap:8px;padding:24px;border-radius:var(--radius-m);background:var(--card);box-shadow:var(--hair)}
+.site .gstrip-icon{display:inline-grid;place-items:center;width:44px;height:44px;margin-bottom:6px;border-radius:12px;background:var(--gold-100);color:var(--gold-600)}
+.site .gstrip-item h3{font-size:17px;font-weight:600;line-height:1.3}
+.site .gstrip-item p{color:var(--muted);font-size:15px;line-height:1.5}
+
+/* Tasarım ilkeleri: büyük sıra numarası, üç sütun. */
+.site .pillars-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(20px,3vw,48px);margin-top:clamp(32px,4vw,56px);counter-reset:none}
+.site .pillars-grid li{display:flex;flex-direction:column;gap:10px;padding-top:22px;border-top:1px solid var(--line)}
+.site .pillars-num{color:var(--gold-500);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.site .pillars-grid h3{font-size:clamp(26px,2.6vw,36px);font-weight:600;line-height:1.1;letter-spacing:-.02em}
+.site .pillars-grid p{color:var(--ink-soft);font-size:17px;line-height:1.5}
+
+@media (max-width:1080px){
+  .site .gstrip-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .site .suite-grid,.site .pillars-grid{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .site .gstrip-grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  .site .suite-card,.site .suite-card:hover{transition:none;transform:none}
+}

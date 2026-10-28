@@ -17,10 +17,18 @@ import { LOCALES, LOCALE_NAMES, LOCALE_TAGS, ROUTES, resolvePath, type Locale } 
   Her dil KENDİ adıyla yazılır (Deutsch, Español): ziyaretçi kendi dilini
   arıyor, bulunduğu sayfanın dilinde yazılmış adını değil.
 */
-export function DilBaglantilari({ locale, className, onNavigate }: { locale: Locale; className?: string; onNavigate?: () => void }) {
+/*
+  hepsi: bulunulan dil de listede, işaretli (aria-current) ve tıklanamaz.
+  Başlıktaki menü böyle (28.10.2026): altı dilin tamamını görmek, "bu site
+  hangi dillerde var" sorusuna tek bakışta cevap veriyor.
+*/
+export function DilBaglantilari({ locale, className, onNavigate, hepsi = false }: { locale: Locale; className?: string; onNavigate?: () => void; hepsi?: boolean }) {
   const pathname = usePathname() ?? "/";
   const match = resolvePath(pathname);
-  return LOCALES.filter((l) => l !== locale).map((l) => {
+  return LOCALES.filter((l) => hepsi || l !== locale).map((l) => {
+    if (l === locale) {
+      return <span key={l} className={`${className ?? ""} on`.trim()} lang={l} aria-current="true">{LOCALE_NAMES[l]}</span>;
+    }
     const href = match ? ROUTES[match.id][l] : ROUTES.home[l];
     const sec = () => {
       document.cookie = `${SITE_DIL_COOKIE}=${l}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;

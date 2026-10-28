@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { ADD_ONS, PLANS, SITE_PRODUCTS, YILLIK_ODENEN_AY } from "@/lib/site/pricing";
-import { DOVIZ_FIYATLARI, SAYFA_PARA_BIRIMI, paraYaz, sayfaEkKalemTutari, sayfaPlanTutari, sayfaPlanYillikTutari } from "@/lib/site/doviz";
+import { DOVIZ_FIYATLARI, baslangicFiyati, SAYFA_PARA_BIRIMI, paraYaz, sayfaEkKalemTutari, sayfaPlanTutari, sayfaPlanYillikTutari } from "@/lib/site/doviz";
 import { LOCALES } from "@/lib/site/routes";
 
 const sitePlanlari = PLANS.filter((p) => (SITE_PRODUCTS as readonly string[]).includes(p.product));
@@ -51,4 +51,15 @@ describe("döviz fiyatları", () => {
     assert.match(paraYaz(5500, "de"), /^55\s€$/);
     assert.match(paraYaz(199000, "tr"), /TL$/);
   });
+
+  test("başlangıç fiyatı: en ucuz rakamlı basamak, birimiyle", () => {
+    assert.deepEqual(baslangicFiyati("arvoos", "en"), { tutar: 5900, kisiBasi: false });
+    assert.deepEqual(baslangicFiyati("randevu", "de"), { tutar: 2700, kisiBasi: false });
+    // ArvoLab'da en ucuzu kişi başı Ekip basamağı: birim kaybolmamalı.
+    assert.deepEqual(baslangicFiyati("arvolab", "en"), { tutar: 4500, kisiBasi: true });
+    // Türkçe sayfa TL listesine bağlı.
+    const tl = Math.min(...PLANS.filter((p) => p.product === "arvoos" && p.aylikKurus !== null).map((p) => p.aylikKurus!));
+    assert.equal(baslangicFiyati("arvoos", "tr")?.tutar, tl);
+  });
 });
+

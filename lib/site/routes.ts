@@ -189,6 +189,14 @@ export const COMPANY = {
     country: "TR",
     /** Tek satır gösterim (alt bilgi, iletişim, gizlilik metni) */
     display: "Yakuplu Mah. Hürriyet Bulvarı Skyport Residence No:1 D:113, 34524 Beylikdüzü / İstanbul",
+    /*
+      Türkçe dışındaki sayfalarda uluslararası sıra (28.10.2026): sokak →
+      posta kodu ve ilçe → şehir → ülke. "… / İstanbul" Türkiye içi
+      yazımdı ve ülkeyi hiç söylemiyordu; yurt dışındaki okur adresin
+      nerede olduğunu çıkaramıyordu. Yer adları özgün kalır (posta Türkçe
+      adla ulaşır), yalnızca sıra ve ülke değişir.
+    */
+    displayIntl: "Yakuplu Mah., Hürriyet Bulvarı, Skyport Residence No:1 D:113, 34524 Beylikdüzü, Istanbul, Türkiye",
   },
   foundingYear: null as number | null,
   /* Sosyal hesap tek yerde: alt bilgideki bağlantı da, schema.org

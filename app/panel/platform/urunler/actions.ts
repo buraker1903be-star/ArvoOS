@@ -91,6 +91,8 @@ function fiyatYuzeyleriniTazele() {
   revalidatePath("/panel/platform/kurulumlar");
   revalidatePath("/panel/platform/subscribers");
   for (const yol of Object.values(ROUTES.pricing)) revalidatePath(yol);
+  // Ana sayfa da ürün kartlarında başlangıç fiyatını gösteriyor (28.10.2026).
+  for (const yol of Object.values(ROUTES.home)) revalidatePath(yol);
 }
 
 /*

@@ -46,6 +46,19 @@ export const HOME_EN: HomeContent = {
       signIn: { label: "Sign in", href: PRODUCT_APPS.randevu.url, external: true, variant: "ghost" },
     },
   },
+  global: {
+    badges: ["6 languages", "USD · EUR · TRY", "Any browser, any device"],
+    eyebrow: "Works everywhere",
+    title: "Wherever you work.",
+    lead: "Arvo products are web applications that run in the browser: nothing to install, no servers to run, the same system wherever your team is.",
+    items: [
+      { title: "Six languages", text: "English, Türkçe, Deutsch, Español, Français and العربية — including right-to-left." },
+      { title: "Prices in USD, EUR and TRY", text: "A fixed list price in each currency; no amounts that drift with the exchange rate." },
+      { title: "Any browser, any device", text: "The same experience on desktop, tablet and phone. Nothing to install on your servers." },
+      { title: "Your data, your space", text: "Every organization works in its own separate space; roles decide who sees what." },
+    ],
+    from: "From {price}", perMonth: "/mo", perUserMonth: "/user/mo", onRequest: "On request",
+  },
   band: {
     words: ["CRM", "Proposals", "E-signature", "Operations", "Customer portal", "Finance", "People", "Reports"],
     caption: "One core. Thirteen connected capability areas.",
