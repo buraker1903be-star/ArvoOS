@@ -11,7 +11,7 @@ export const PRIVACY_EN: PrivacyContent = {
   },
   updated: "Last updated: 28 October 2026",
   sections: [
-    { h: "1. Data controller", p: [`The data controller is ${COMPANY.legalName} (“Arvo”). Address: ${COMPANY.address.display}, Türkiye. Email: ${COMPANY.email}.`] },
+    { h: "1. Data controller", p: [`The data controller is ${COMPANY.legalName} (“ArvoOS”). Address: ${COMPANY.address.display}, Türkiye. Email: ${COMPANY.email}.`] },
     { h: "2. Personal data we process", p: ["When you submit the demo / contact form:"], list: [
       "Identity and contact: full name, email address, phone number, organization name (organization and phone are optional).",
       "Request details: the product or service you are interested in, your message, and the page and language the form was sent from.",
@@ -29,7 +29,7 @@ export const PRIVACY_EN: PrivacyContent = {
       "(f) Legitimate interest of the data controller, provided it does not harm your fundamental rights and freedoms — form security and request management",
       "(ç) Compliance with a legal obligation of the data controller",
     ] },
-    { h: "5. How data is collected", p: ["Data is collected electronically from you through the website form and automatically from your browser when the form is submitted. Your request is recorded as a customer request in Arvo’s own ArvoOS panel."] },
+    { h: "5. How data is collected", p: ["Data is collected electronically from you through the website form and automatically from your browser when the form is submitted. Your request is recorded as a customer request in our own ArvoOS panel."] },
     { h: "6. Transfers", p: [
       "Your personal data is not sold and is not shared with third parties for marketing.",
       "Data is stored on the servers of the cloud infrastructure and database providers that host the website and panel; these servers may be located outside Türkiye. Such transfers are carried out in line with Article 9 of the KVKK. Data may be disclosed to authorized public bodies only where the law requires it.",
@@ -48,7 +48,7 @@ export const PRIVACY_EN: PrivacyContent = {
     ] },
     { h: "10. How to apply", p: [`Send your requests by email to ${COMPANY.email} or in writing to ${COMPANY.address.display}, Türkiye. Requests are concluded free of charge within thirty days at the latest, depending on their nature (Article 13 of the KVKK).`] },
     { h: "11. Visitors in the European Economic Area and the United Kingdom (GDPR)", p: [
-      "If you are in the EEA or the UK and we offer our services to you, your personal data is also processed under the General Data Protection Regulation (EU) 2016/679 (GDPR) and the UK GDPR. The controller is Arvo, as set out in section 1.",
+      "If you are in the EEA or the UK and we offer our services to you, your personal data is also processed under the General Data Protection Regulation (EU) 2016/679 (GDPR) and the UK GDPR. The controller is ArvoOS, as set out in section 1.",
       "Legal bases (Art. 6(1) GDPR): steps prior to entering into a contract — answering your request and preparing demos and proposals (b); legitimate interests — form security and request management (f); compliance with legal obligations (c).",
       "Your data may be processed in Türkiye and on hosting providers’ servers outside the EEA. You can write to us for information about the safeguards relied on for these transfers. Send requests through the channels in section 10; requests under the GDPR are answered within one month.",
       "Under the GDPR you can:",

@@ -6,10 +6,10 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].de;
 
 export const ABOUT_DE: SubContent = {
   id: "about",
-  meta: { title: "Über uns", description: `Arvo ist die Softwaremarke von ${COMPANY.legalName}. Arvo entwickelt ArvoOS, ArvoLab und ArvoBook und bietet Website- und E-Commerce-Design sowie Individualsoftware an.` },
+  meta: { title: "Über uns", description: `ArvoOS ist die Softwaremarke von ${COMPANY.legalName}. Sie entwickelt das gleichnamige Betriebssystem für Unternehmen, ArvoLab und ArvoBook und bietet Website- und E-Commerce-Design sowie Individualsoftware an.` },
   hero: {
     eyebrow: "Über uns", title: "Wir machen komplexe Arbeit", subtitle: "einfach.",
-    lead: `Arvo ist die Softwaremarke der ArvoCulture Group mit Sitz in Istanbul, Türkei. Wir gestalten leistungsstarke und zugleich ruhige digitale Arbeitsweisen für Organisationen, Forschende und Salons.`,
+    lead: `ArvoOS ist die Softwaremarke der ArvoCulture Group mit Sitz in Istanbul, Türkei. Wir gestalten leistungsstarke und zugleich ruhige digitale Arbeitsweisen für Organisationen, Forschende und Salons.`,
     actions: [{ label: "Lernen Sie uns kennen", href: R("contact"), variant: "gold" }],
   },
   cards: {
@@ -31,14 +31,14 @@ export const ABOUT_DE: SubContent = {
     ],
   },
   band: {
-    eyebrow: "Unternehmensangaben", title: "Das Unternehmen hinter Arvo.",
+    eyebrow: "Unternehmensangaben", title: "Das Unternehmen hinter ArvoOS.",
     items: [COMPANY.legalName, COMPANY.address.displayIntl, COMPANY.email],
   },
-  faq: { eyebrow: "FAQ", title: "Über Arvo", items: [
-    { q: "Welches Unternehmen steht hinter Arvo?", a: `Arvo ist eine Marke von ${COMPANY.legalName}.` },
-    { q: "Wo hat Arvo seinen Sitz?", a: `${COMPANY.address.displayIntl}.` },
-    { q: "Worin unterscheiden sich Arvo und ArvoOS?", a: "Arvo ist die Marke (und arvo-os.com ihre Website); ArvoOS ist eines ihrer Produkte. Die anderen sind ArvoLab und ArvoBook." },
-    { q: "Wie erreiche ich Arvo?", a: `Nutzen Sie das Formular auf der Kontaktseite oder schreiben Sie an ${COMPANY.email}.` },
+  faq: { eyebrow: "FAQ", title: "Über ArvoOS", items: [
+    { q: "Welches Unternehmen steht hinter ArvoOS?", a: `ArvoOS ist eine Marke von ${COMPANY.legalName}.` },
+    { q: "Wo hat ArvoOS seinen Sitz?", a: `${COMPANY.address.displayIntl}.` },
+    { q: "Ist ArvoOS ein Unternehmen oder ein Produkt?", a: "ArvoOS ist die Marke des Unternehmens (arvo-os.com ist ihre Website) und zugleich der Name ihres Betriebssystems für Unternehmen. ArvoLab und ArvoBook sind ihre weiteren Produkte." },
+    { q: "Wie erreiche ich ArvoOS?", a: `Nutzen Sie das Formular auf der Kontaktseite oder schreiben Sie an ${COMPANY.email}.` },
   ] },
   cta: { title: "Bauen wir gemeinsam ein besseres System.", actions: [{ label: "Kontakt aufnehmen", href: R("contact"), variant: "gold" }, { label: "Produkte", href: R("arvoos"), variant: "ghost" }] },
   org: true,

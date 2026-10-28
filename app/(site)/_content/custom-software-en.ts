@@ -8,10 +8,10 @@ const talk = { label: "Tell us what you need", href: `${R("contact")}?interest=s
 export const CUSTOM_SOFTWARE_EN: SubContent = {
   id: "custom-software",
   parent: { id: "services", name: "Services" },
-  meta: { title: "Custom Software", description: "Arvo custom software: tailored panels and portals, workflow software, integrations and automation, customer areas and mobile-friendly PWA applications." },
+  meta: { title: "Custom Software", description: "ArvoOS custom software: tailored panels and portals, workflow software, integrations and automation, customer areas and mobile-friendly PWA applications." },
   hero: {
     eyebrow: "Services · Custom software", title: "When off-the-shelf isn’t enough,", subtitle: "a system of your own.",
-    lead: "Arvo’s custom software service designs and builds panels, portals, customer areas and workflow software around how your organization really works. The team that built ArvoOS brings the same care to yours.",
+    lead: "Our custom software service designs and builds panels, portals, customer areas and workflow software around how your organization really works. The team that built the ArvoOS business operating system brings the same care to yours.",
     actions: [talk, { label: "See ArvoOS", href: R("arvoos"), variant: "ghost" }],
   },
   cards: {
@@ -41,7 +41,7 @@ export const CUSTOM_SOFTWARE_EN: SubContent = {
     ],
   },
   faq: { eyebrow: "FAQ", title: "About custom software", items: [
-    { q: "What kind of custom software does Arvo build?", a: "Tailored panels and portals, workflow software, integrations and automation, document and signature flows, and mobile-friendly PWA applications." },
+    { q: "What kind of custom software does ArvoOS build?", a: "Tailored panels and portals, workflow software, integrations and automation, document and signature flows, and mobile-friendly PWA applications." },
     { q: "Why custom software instead of a ready-made product?", a: "If your processes don’t fit ready-made products, or you want a branded experience for your customers, custom software may be the better fit. We first check together whether ArvoOS already covers your needs." },
     { q: "How is a project priced?", a: "By scope. A roadmap and proposal follow the discovery call." },
     { q: "Do you provide support after launch?", a: "Yes. With ongoing development support we continue maintenance, security and new features." },

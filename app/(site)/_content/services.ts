@@ -7,10 +7,10 @@ const talk = { label: "Projenizi konuşalım", href: `${R("contact")}?ilgi=servi
 
 export const SERVICES_TR: SubContent = {
   id: "services",
-  meta: { title: "Hizmetler", description: "Arvo hizmetleri: web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım, süreç ve deneyim tasarımı, kurumsal dijital sistemler ve sürekli geliştirme desteği." },
+  meta: { title: "Hizmetler", description: "ArvoOS hizmetleri: web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım, süreç ve deneyim tasarımı, kurumsal dijital sistemler ve sürekli geliştirme desteği." },
   hero: {
     eyebrow: "Hizmetler", title: "Markadan sisteme.", subtitle: "Uçtan uca dijital.",
-    lead: "Arvo; web sitesi tasarımından SEO ve GEO’ya, kuruma özel yazılımdan sürekli geliştirmeye kadar iyi görünen, doğru çalışan ve büyümeye hazır dijital ürünleri stratejiden yayına tek bir bütün olarak üretir.",
+    lead: "ArvoOS; web sitesi tasarımından SEO ve GEO’ya, kuruma özel yazılımdan sürekli geliştirmeye kadar iyi görünen, doğru çalışan ve büyümeye hazır dijital ürünleri stratejiden yayına tek bir bütün olarak üretir.",
     actions: [talk],
   },
   cards: {
@@ -36,22 +36,22 @@ export const SERVICES_TR: SubContent = {
     ],
   },
   faq: { eyebrow: "Sık sorulan sorular", title: "Hizmetler hakkında", items: [
-    { q: "Arvo hangi hizmetleri sunuyor?", a: "Web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım, süreç ve deneyim tasarımı, kurumsal dijital sistemler ve sürekli geliştirme desteği." },
+    { q: "ArvoOS hangi hizmetleri sunuyor?", a: "Web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım, süreç ve deneyim tasarımı, kurumsal dijital sistemler ve sürekli geliştirme desteği." },
     { q: "Bir projeye nasıl başlıyoruz?", a: "İletişim formundan ihtiyacınızı paylaşırsınız; keşif görüşmesiyle kapsamı netleştirir, ardından yol haritası ve teklif hazırlarız." },
     { q: "Yayından sonra destek veriyor musunuz?", a: "Evet. Sürekli geliştirme desteğiyle performans, güvenlik, içerik ve deneyim iyileştirmelerini düzenli olarak sürdürürüz." },
     { q: "Fiyatlar nasıl belirleniyor?", a: "Her proje kapsamına göre fiyatlandırılır; keşif görüşmesinin ardından size özel teklif hazırlanır." },
   ] },
   cta: { eyebrow: "Yeni proje", title: "Yeni projenizi konuşalım.", actions: [talk, { label: "Bize yazın", href: "mailto:info@arvo-os.com", variant: "ghost" }] },
-  serviceName: "Arvo dijital hizmetleri",
+  serviceName: "ArvoOS dijital hizmetleri",
 };
 
 export const WEB_DESIGN_TR: SubContent = {
   id: "web-design",
   parent: { id: "services", name: "Hizmetler" },
-  meta: { title: "Web Sitesi Tasarımı ve Yapımı", description: "Arvo web sitesi ve e-ticaret sitesi tasarımı: keşif ve strateji, içerik mimarisi, UX/UI tasarım, hızlı ve erişilebilir geliştirme, test, yayın ve bakım tek süreçte." },
+  meta: { title: "Web Sitesi Tasarımı ve Yapımı", description: "ArvoOS web sitesi ve e-ticaret sitesi tasarımı: keşif ve strateji, içerik mimarisi, UX/UI tasarım, hızlı ve erişilebilir geliştirme, test, yayın ve bakım tek süreçte." },
   hero: {
     eyebrow: "Hizmetler · Web sitesi tasarımı", title: "Markanızın dijitaldeki", subtitle: "en güçlü hali.",
-    lead: "Arvo’nun web sitesi tasarımı hizmeti; keşif ve stratejiden içerik mimarisine, UX/UI tasarımdan geliştirme, yayın ve bakıma kadar marka web sitelerini uçtan uca üretir.",
+    lead: "ArvoOS’un web sitesi tasarımı hizmeti; keşif ve stratejiden içerik mimarisine, UX/UI tasarımdan geliştirme, yayın ve bakıma kadar marka web sitelerini uçtan uca üretir.",
     actions: [talk, { label: "Tüm hizmetler", href: R("services"), variant: "ghost" }],
   },
   cards: {

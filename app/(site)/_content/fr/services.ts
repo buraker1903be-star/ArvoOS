@@ -7,10 +7,10 @@ const talk = { label: "Parlons de votre projet", href: `${R("contact")}?interest
 
 export const SERVICES_FR: SubContent = {
   id: "services",
-  meta: { title: "Services", description: "Services Arvo : création et développement de sites web, contenus SEO & GEO, logiciels sur mesure, design de processus et d’expérience, systèmes numériques d’entreprise et développement continu." },
+  meta: { title: "Services", description: "Services ArvoOS : création et développement de sites web, contenus SEO & GEO, logiciels sur mesure, design de processus et d’expérience, systèmes numériques d’entreprise et développement continu." },
   hero: {
     eyebrow: "Services", title: "De la marque au système.", subtitle: "Le numérique de bout en bout.",
-    lead: "Arvo conçoit et développe des produits numériques qui ont la bonne apparence, fonctionnent comme il faut et sont prêts à grandir — de la création de site web et du SEO & GEO au logiciel sur mesure et au développement continu, de la stratégie à la mise en ligne.",
+    lead: "ArvoOS conçoit et développe des produits numériques qui ont la bonne apparence, fonctionnent comme il faut et sont prêts à grandir — de la création de site web et du SEO & GEO au logiciel sur mesure et au développement continu, de la stratégie à la mise en ligne.",
     actions: [talk],
   },
   cards: {
@@ -36,22 +36,22 @@ export const SERVICES_FR: SubContent = {
     ],
   },
   faq: { eyebrow: "FAQ", title: "À propos de nos services", items: [
-    { q: "Quels services Arvo propose-t-il ?", a: "Création et développement de sites web, contenus SEO & GEO, logiciels sur mesure, design de processus et d’expérience, systèmes numériques d’entreprise et accompagnement en développement continu." },
+    { q: "Quels services ArvoOS propose-t-il ?", a: "Création et développement de sites web, contenus SEO & GEO, logiciels sur mesure, design de processus et d’expérience, systèmes numériques d’entreprise et accompagnement en développement continu." },
     { q: "Comment démarre un projet ?", a: "Vous nous faites part de vos besoins via le formulaire de contact ; nous précisons le périmètre lors d’un échange de découverte, puis préparons une feuille de route et une proposition." },
     { q: "Assurez-vous un suivi après la mise en ligne ?", a: "Oui. Avec l’accompagnement en développement continu, nous continuons d’améliorer performance, sécurité, contenu et expérience." },
     { q: "Comment le prix est-il fixé ?", a: "Chaque projet est chiffré selon son périmètre ; une proposition personnalisée suit l’échange de découverte." },
   ] },
   cta: { eyebrow: "Nouveau projet", title: "Parlons de votre prochain projet.", actions: [talk, { label: "Nous écrire", href: "mailto:info@arvo-os.com", variant: "ghost" }] },
-  serviceName: "Services numériques Arvo",
+  serviceName: "Services numériques ArvoOS",
 };
 
 export const WEB_DESIGN_FR: SubContent = {
   id: "web-design",
   parent: { id: "services", name: "Services" },
-  meta: { title: "Création & développement de sites web", description: "Création de sites web et e-commerce par Arvo : découverte et stratégie, architecture de contenu, design UX/UI, développement rapide et accessible, tests, mise en ligne et maintenance dans un seul processus." },
+  meta: { title: "Création & développement de sites web", description: "Création de sites web et e-commerce par ArvoOS : découverte et stratégie, architecture de contenu, design UX/UI, développement rapide et accessible, tests, mise en ligne et maintenance dans un seul processus." },
   hero: {
     eyebrow: "Services · Création de site web", title: "Votre marque", subtitle: "sous son meilleur jour numérique.",
-    lead: "Le service de création de sites web d’Arvo livre des sites de marque de bout en bout — de la découverte et de la stratégie à l’architecture de contenu, au design UX/UI, au développement, à la mise en ligne et à la maintenance.",
+    lead: "Le service de création de sites web d’ArvoOS livre des sites de marque de bout en bout — de la découverte et de la stratégie à l’architecture de contenu, au design UX/UI, au développement, à la mise en ligne et à la maintenance.",
     actions: [talk, { label: "Tous les services", href: R("services"), variant: "ghost" }],
   },
   cards: {

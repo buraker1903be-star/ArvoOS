@@ -61,7 +61,7 @@ export const ARVOLAB_EN: ProductContent = {
     eyebrow: "FAQ",
     title: "About ArvoLab",
     items: [
-      { q: "What is ArvoLab?", a: "ArvoLab is Arvo’s research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, academic editing and an originality pre-check." },
+      { q: "What is ArvoLab?", a: "ArvoLab is the ArvoOS brand’s research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, academic editing and an originality pre-check." },
       { q: "Who is ArvoLab for?", a: "Individual researchers, academic teams and institutions." },
       { q: "How do I get access to ArvoLab?", a: `Request access through the contact form or at info@arvo-os.com. Sign in at ${PRODUCT_APPS.arvolab.url}.` },
       { q: "Does the originality pre-check replace an official report?", a: "No. It is a pre-check that helps you spot risks before submission; your institution may still require its own official originality report." },

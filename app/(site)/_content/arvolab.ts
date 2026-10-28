@@ -61,7 +61,7 @@ export const ARVOLAB_TR: ProductContent = {
     eyebrow: "Sık sorulan sorular",
     title: "ArvoLab hakkında",
     items: [
-      { q: "ArvoLab nedir?", a: "ArvoLab, Arvo’nun literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü sunan araştırma çalışma alanıdır." },
+      { q: "ArvoLab nedir?", a: "ArvoLab, ArvoOS markasının literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü sunan araştırma çalışma alanıdır." },
       { q: "ArvoLab kimler için?", a: "Bireysel araştırmacılar, akademik ekipler ve kurumlar için." },
       { q: "ArvoLab’e nasıl erişilir?", a: `İletişim formundan ya da info@arvo-os.com adresinden erişim talep edebilirsiniz. Giriş adresi: ${PRODUCT_APPS.arvolab.url}` },
       { q: "Özgünlük ön kontrolü resmî raporun yerine geçer mi?", a: "Hayır. Teslim öncesi riskleri erken fark etmenizi sağlayan bir ön kontroldür; kurumunuz kendi resmî özgünlük raporunu ayrıca isteyebilir." },

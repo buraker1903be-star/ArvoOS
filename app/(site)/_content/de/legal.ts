@@ -25,11 +25,11 @@ const erisimSatirlari = Object.values(PRODUCT_APPS).map((u) => `${u.name}: ${u.h
 export const DISTANCE_SALES_DE: PrivacyContent = {
   meta: {
     title: "Fernabsatzvertrag",
-    description: `Vertrag über den Fernabsatz der Abonnementdienste von Arvo (${urunlerDe}): Vertragsparteien, Gegenstand, Preis, Zahlung, Leistungserbringung und Widerruf.`,
+    description: `Vertrag über den Fernabsatz der Abonnementdienste von ArvoOS (${urunlerDe}): Vertragsparteien, Gegenstand, Preis, Zahlung, Leistungserbringung und Widerruf.`,
   },
   hero: {
     eyebrow: "Fernabsatz", title: "Vertrag im", subtitle: "Fernabsatz",
-    lead: `Dieser Vertrag gilt für den Online-Verkauf der Abonnement-Softwaredienste von Arvo (${urunlerDe} sowie später hinzukommende Produkte).`,
+    lead: `Dieser Vertrag gilt für den Online-Verkauf der Abonnement-Softwaredienste von ArvoOS (${urunlerDe} sowie später hinzukommende Produkte).`,
     actions: [],
   },
   updated: updatedDe,
@@ -66,11 +66,11 @@ export const DISTANCE_SALES_DE: PrivacyContent = {
 export const REFUND_DE: PrivacyContent = {
   meta: {
     title: "Widerrufs- und Erstattungsrichtlinie",
-    description: "Kündigungs-, Widerrufs- und Erstattungsbedingungen für die Abonnementdienste von Arvo, einschließlich Testphasen, Periodenende und fehlerhafter Abbuchungen.",
+    description: "Kündigungs-, Widerrufs- und Erstattungsbedingungen für die Abonnementdienste von ArvoOS, einschließlich Testphasen, Periodenende und fehlerhafter Abbuchungen.",
   },
   hero: {
     eyebrow: "Kündigung", title: "Widerrufs- und", subtitle: "Erstattungsrichtlinie",
-    lead: `So funktionieren Kündigungen und Erstattungen bei den Abonnementprodukten von Arvo (${urunlerDe} sowie später hinzukommende Produkte).`,
+    lead: `So funktionieren Kündigungen und Erstattungen bei den Abonnementprodukten von ArvoOS (${urunlerDe} sowie später hinzukommende Produkte).`,
     actions: [],
   },
   updated: updatedDe,
@@ -100,18 +100,18 @@ export const REFUND_DE: PrivacyContent = {
       "Wird ein Produkt vollständig gekündigt, das in einem Jahrespaket gebucht war, gilt Abschnitt 5.",
     ] },
     { h: "7. Fehlerhafte oder doppelte Abbuchungen", p: [`Werden nach Feststellung vollständig und ohne Bedingungen erstattet. Kontakt: ${COMPANY.email}.`] },
-    { h: "8. Von Arvo verursachte Ausfälle", p: ["Ist der Dienst aufgrund eines von Arvo zu vertretenden Umstands über einen längeren Zeitraum nicht verfügbar, wird der entsprechende Betrag auf Antrag erstattet oder dem nächsten Zeitraum gutgeschrieben."] },
+    { h: "8. Von ArvoOS verursachte Ausfälle", p: ["Ist der Dienst aufgrund eines von ArvoOS zu vertretenden Umstands über einen längeren Zeitraum nicht verfügbar, wird der entsprechende Betrag auf Antrag erstattet oder dem nächsten Zeitraum gutgeschrieben."] },
   ],
 };
 
 export const DELIVERY_DE: PrivacyContent = {
   meta: {
     title: "Lieferung und Leistungserbringung",
-    description: "Wann Konten eröffnet werden, wie der Zugang bereitgestellt wird und warum es bei den Abonnementdiensten von Arvo keine physische Lieferung gibt.",
+    description: "Wann Konten eröffnet werden, wie der Zugang bereitgestellt wird und warum es bei den Abonnementdiensten von ArvoOS keine physische Lieferung gibt.",
   },
   hero: {
     eyebrow: "Lieferung", title: "Lieferung und", subtitle: "Leistungserbringung",
-    lead: `Die Produkte von Arvo (${urunlerDe} sowie später hinzukommende Produkte) sind cloudbasiert: Es gibt keine physische Lieferung; die Leistung ist erbracht, sobald das Konto bereitgestellt wird.`,
+    lead: `Die Produkte von ArvoOS (${urunlerDe} sowie später hinzukommende Produkte) sind cloudbasiert: Es gibt keine physische Lieferung; die Leistung ist erbracht, sobald das Konto bereitgestellt wird.`,
     actions: [],
   },
   updated: updatedDe,

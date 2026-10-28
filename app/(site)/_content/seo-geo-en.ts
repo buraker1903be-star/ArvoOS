@@ -8,7 +8,7 @@ const talk = { label: "Let’s review your site", href: `${R("contact")}?interes
 export const SEO_GEO_EN: SubContent = {
   id: "seo-geo",
   parent: { id: "services", name: "Services" },
-  meta: { title: "SEO & GEO Content", description: "Arvo SEO & GEO: technical SEO, content architecture, structured data (JSON-LD), llms.txt, content AI answer engines can cite, multilingual setup and performance." },
+  meta: { title: "SEO & GEO Content", description: "ArvoOS SEO & GEO: technical SEO, content architecture, structured data (JSON-LD), llms.txt, content AI answer engines can cite, multilingual setup and performance." },
   hero: {
     eyebrow: "Services · SEO & GEO", title: "Be found when searched.", subtitle: "Be explained when asked.",
     lead: "SEO & GEO content work makes sure your site is indexed correctly by search engines, and understood and citable by AI answer engines such as ChatGPT, Perplexity and Google AI Overviews.",

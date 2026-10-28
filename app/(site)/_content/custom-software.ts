@@ -8,10 +8,10 @@ const talk = { label: "İhtiyacınızı anlatın", href: `${R("contact")}?ilgi=s
 export const CUSTOM_SOFTWARE_TR: SubContent = {
   id: "custom-software",
   parent: { id: "services", name: "Hizmetler" },
-  meta: { title: "Özel Yazılım", description: "Arvo özel yazılım hizmeti: kuruma özel panel ve portallar, iş akışı yazılımları, entegrasyon ve otomasyon, müşteri alanları ve mobil uyumlu PWA uygulamalar." },
+  meta: { title: "Özel Yazılım", description: "ArvoOS özel yazılım hizmeti: kuruma özel panel ve portallar, iş akışı yazılımları, entegrasyon ve otomasyon, müşteri alanları ve mobil uyumlu PWA uygulamalar." },
   hero: {
     eyebrow: "Hizmetler · Özel yazılım", title: "Hazır yazılım yetmediğinde,", subtitle: "size ait bir sistem.",
-    lead: "Arvo’nun özel yazılım hizmeti; kurumunuzun gerçek iş akışlarına göre panel, portal, müşteri alanı ve iş akışı yazılımları tasarlayıp geliştirir. ArvoOS’u kuran ekip, aynı özeni sizin sisteminize taşır.",
+    lead: "Özel yazılım hizmetimiz; kurumunuzun gerçek iş akışlarına göre panel, portal, müşteri alanı ve iş akışı yazılımları tasarlayıp geliştirir. ArvoOS işletme işletim sistemini kuran ekip, aynı özeni sizin sisteminize taşır.",
     actions: [talk, { label: "ArvoOS’u inceleyin", href: R("arvoos"), variant: "ghost" }],
   },
   cards: {
@@ -41,7 +41,7 @@ export const CUSTOM_SOFTWARE_TR: SubContent = {
     ],
   },
   faq: { eyebrow: "Sık sorulan sorular", title: "Özel yazılım hakkında", items: [
-    { q: "Arvo ne tür özel yazılımlar geliştiriyor?", a: "Kuruma özel panel ve portallar, iş akışı yazılımları, entegrasyon ve otomasyonlar, belge ve imza akışları ile mobil uyumlu PWA uygulamalar." },
+    { q: "ArvoOS ne tür özel yazılımlar geliştiriyor?", a: "Kuruma özel panel ve portallar, iş akışı yazılımları, entegrasyon ve otomasyonlar, belge ve imza akışları ile mobil uyumlu PWA uygulamalar." },
     { q: "Hazır ürün yerine neden özel yazılım?", a: "Süreçleriniz hazır ürünlere sığmıyorsa ya da kendi markanızla müşterilerinize özel bir deneyim sunmak istiyorsanız özel yazılım daha doğru olabilir. Önce ArvoOS’un ihtiyacınızı karşılayıp karşılamadığına birlikte bakarız." },
     { q: "Proje nasıl fiyatlandırılır?", a: "Kapsama göre. Keşif görüşmesinden sonra yol haritası ve teklif hazırlanır." },
     { q: "Yayından sonra destek veriyor musunuz?", a: "Evet. Sürekli geliştirme desteğiyle bakım, güvenlik ve yeni özellik geliştirmesini sürdürürüz." },

@@ -61,7 +61,7 @@ export const RANDEVU_FR: ProductContent = {
       },
       {
         title: "Rappels WhatsApp",
-        text: "La liste des rappels du jour est prête dans le panneau et s’envoie depuis WhatsApp en un geste. Si le salon a connecté son propre numéro, le message vient du salon et non d’Arvo.",
+        text: "La liste des rappels du jour est prête dans le panneau et s’envoie depuis WhatsApp en un geste. Si le salon a connecté son propre numéro, le message vient du salon et non d’ArvoOS.",
       },
     ],
   },
@@ -91,7 +91,7 @@ export const RANDEVU_FR: ProductContent = {
       { q: "Les clients doivent-ils s’inscrire ?", a: "Non. Le client choisit une prestation, un coiffeur et un horaire, puis saisit son numéro de téléphone ; il est identifié par ce numéro et reçoit un lien d’annulation." },
       { q: "Deux rendez-vous peuvent-ils tomber sur le même créneau ?", a: "Non. Un rendez-vous en conflit pour le même coiffeur — temps de battement compris — est rejeté au niveau de la base de données, et non par un simple contrôle de l’interface." },
       { q: "Comment définir les horaires de travail et les congés ?", a: "Les horaires hebdomadaires se saisissent à l’heure locale du salon. Les congés peuvent concerner un seul collaborateur ou tout le salon ; aucun créneau ne s’ouvre sur cette période." },
-      { q: "De qui vient le rappel ?", a: "La liste des rappels du jour est préparée dans le panneau et s’envoie depuis WhatsApp en un geste. Si le salon a connecté son propre numéro WhatsApp, le rappel vient du salon ; sinon, du numéro partagé d’Arvo." },
+      { q: "De qui vient le rappel ?", a: "La liste des rappels du jour est préparée dans le panneau et s’envoie depuis WhatsApp en un geste. Si le salon a connecté son propre numéro WhatsApp, le rappel vient du salon ; sinon, du numéro partagé d’ArvoOS." },
       { q: "Combien cela coûte-t-il ?", a: `Les prix catalogue mensuels et annuels sont publiés sur ${R("pricing")}.` },
     ],
   },

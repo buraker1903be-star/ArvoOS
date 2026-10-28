@@ -6,20 +6,20 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].en;
 
 export const HOME_EN: HomeContent = {
   meta: {
-    title: "Arvo | ArvoOS, ArvoLab and ArvoBook — better systems for better work",
-    description: "Arvo builds ArvoOS for businesses, ArvoLab for researchers and ArvoBook for salons — and delivers website and e-commerce design, SEO & GEO and custom software services.",
+    title: "ArvoOS | Better systems for better work",
+    description: "ArvoOS builds a business operating system for companies, ArvoLab for researchers and ArvoBook for salons — and delivers website and e-commerce design, SEO & GEO and custom software services.",
   },
   hero: {
-    eyebrow: "The Arvo product family",
+    eyebrow: "The ArvoOS product family",
     title: "Better systems", subtitle: "for better work.",
-    lead: "Arvo is a software brand that builds ArvoOS for businesses, ArvoLab for researchers and ArvoBook for salons. It turns complex work into calm, powerful and connected experiences.",
+    lead: "ArvoOS is a software brand: a business operating system for companies, ArvoLab for researchers and ArvoBook for salons. It turns complex work into calm, powerful and connected experiences.",
     actions: [
       { label: "Request a demo", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "Explore the products", href: "#products", variant: "ghost" },
     ],
-    familyLabel: "Arvo products",
+    familyLabel: "ArvoOS products",
   },
-  statement: ["Complexity stays in the background.", "All that’s left is progress.", "Every Arvo product follows one principle:", "even the most demanding process should feel natural."],
+  statement: ["Complexity stays in the background.", "All that’s left is progress.", "Every ArvoOS product follows one principle:", "even the most demanding process should feel natural."],
   products: {
     eyebrow: "The product family",
     title: "Powerful today. Ready for tomorrow.",
@@ -50,7 +50,7 @@ export const HOME_EN: HomeContent = {
     badges: ["6 languages", "USD · EUR · TRY", "Any browser, any device"],
     eyebrow: "Works everywhere",
     title: "Wherever you work.",
-    lead: "Arvo products are web applications that run in the browser: nothing to install, no servers to run, the same system wherever your team is.",
+    lead: "ArvoOS products are web applications that run in the browser: nothing to install, no servers to run, the same system wherever your team is.",
     items: [
       { title: "Six languages", text: "English, Türkçe, Deutsch, Español, Français and العربية — including right-to-left." },
       { title: "Prices in USD, EUR and TRY", text: "A fixed list price in each currency; no amounts that drift with the exchange rate." },
@@ -114,11 +114,11 @@ export const HOME_EN: HomeContent = {
   refs: { eyebrow: "References", title: "Brands we build with.", lead: "A family of brands that share the same standard of quality, and create value together.", culture: "Visit the website", akademik: "Visit the website" },
   faq: {
     eyebrow: "FAQ",
-    title: "Questions about Arvo",
+    title: "Questions about ArvoOS",
     items: [
-      { q: "What is Arvo?", a: `Arvo is the software brand of ${COMPANY.legalName}. It builds ArvoOS for businesses, ArvoLab for researchers and ArvoBook for salons, and also offers website and e-commerce design and custom software services.` },
+      { q: "What is ArvoOS?", a: `ArvoOS is the software brand of ${COMPANY.legalName}. It builds the ArvoOS business operating system for companies, ArvoLab for researchers and ArvoBook for salons, and also offers website and e-commerce design and custom software services.` },
       { q: "What is the difference between ArvoOS, ArvoLab and ArvoBook?", a: "ArvoOS runs a business’s operations from request to payment. ArvoLab supports academic research and writing. ArvoBook runs a salon’s appointment book: customers book themselves and the calendar opens by staff member." },
-      { q: "Where do I sign in to Arvo products?", a: `ArvoOS runs at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host} and ArvoBook at ${PRODUCT_APPS.randevu.host}. All three are web applications that run in the browser.` },
+      { q: "Where do I sign in to ArvoOS products?", a: `ArvoOS runs at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host} and ArvoBook at ${PRODUCT_APPS.randevu.host}. All three are web applications that run in the browser.` },
       { q: "How much does ArvoOS cost?", a: `Monthly and annual list prices are published at ${ROUTES.pricing.en}; pricing is per organization, not per user. For Enterprise, the fee is scoped together with each organization.` },
       { q: "How do I request a demo?", a: `Fill in the form on the contact page or write to ${COMPANY.email}; your request goes to the relevant product team.` },
     ],

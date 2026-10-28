@@ -6,10 +6,10 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].tr;
 
 export const ABOUT_TR: SubContent = {
   id: "about",
-  meta: { title: "Hakkımızda", description: `Arvo, ${COMPANY.legalName} şirketinin yazılım markasıdır. ArvoOS, ArvoLab ve ArvoBook’u geliştirir; web ve e-ticaret sitesi tasarımı ile özel yazılım hizmetleri sunar.` },
+  meta: { title: "Hakkımızda", description: `ArvoOS, ${COMPANY.legalName} şirketinin yazılım markasıdır. Markayla aynı adı taşıyan işletme işletim sistemini, ArvoLab’i ve ArvoBook’u geliştirir; web ve e-ticaret sitesi tasarımı ile özel yazılım hizmetleri sunar.` },
   hero: {
     eyebrow: "Hakkımızda", title: "Karmaşık işleri", subtitle: "sadeleştiriyoruz.",
-    lead: `Arvo, İstanbul merkezli ${COMPANY.legalName} şirketinin yazılım markasıdır; kurumlar, araştırmacılar ve salonlar için güçlü ama sakin dijital çalışma deneyimleri tasarlar.`,
+    lead: `ArvoOS, İstanbul merkezli ${COMPANY.legalName} şirketinin yazılım markasıdır; kurumlar, araştırmacılar ve salonlar için güçlü ama sakin dijital çalışma deneyimleri tasarlar.`,
     actions: [{ label: "Bizimle tanışın", href: R("contact"), variant: "gold" }],
   },
   cards: {
@@ -31,14 +31,14 @@ export const ABOUT_TR: SubContent = {
     ],
   },
   band: {
-    eyebrow: "Şirket bilgileri", title: "Arvo’nun arkasındaki şirket.",
+    eyebrow: "Şirket bilgileri", title: "ArvoOS’un arkasındaki şirket.",
     items: [COMPANY.legalName, COMPANY.address.display, COMPANY.email],
   },
-  faq: { eyebrow: "Sık sorulan sorular", title: "Arvo hakkında", items: [
-    { q: "Arvo hangi şirkete ait?", a: `Arvo, ${COMPANY.legalName} şirketinin markasıdır.` },
-    { q: "Arvo nerede?", a: `${COMPANY.address.display}.` },
-    { q: "Arvo ile ArvoOS arasındaki fark nedir?", a: "Arvo markanın ve arvo-os.com sitesinin adıdır; ArvoOS bu markanın ürünlerinden biridir. Diğer ürünler ArvoLab ve ArvoBook’tur." },
-    { q: "Arvo ile nasıl iletişime geçerim?", a: `İletişim sayfasındaki formu kullanabilir veya ${COMPANY.email} adresine yazabilirsiniz.` },
+  faq: { eyebrow: "Sık sorulan sorular", title: "ArvoOS hakkında", items: [
+    { q: "ArvoOS hangi şirkete ait?", a: `ArvoOS, ${COMPANY.legalName} şirketinin markasıdır.` },
+    { q: "ArvoOS nerede?", a: `${COMPANY.address.display}.` },
+    { q: "ArvoOS bir şirket mi, ürün mü?", a: "ArvoOS şirketin markasıdır (arvo-os.com da web sitesidir); aynı zamanda markanın işletme işletim sisteminin adıdır. Diğer ürünler ArvoLab ve ArvoBook’tur." },
+    { q: "ArvoOS ile nasıl iletişime geçerim?", a: `İletişim sayfasındaki formu kullanabilir veya ${COMPANY.email} adresine yazabilirsiniz.` },
   ] },
   cta: { title: "Birlikte daha iyi bir sistem kuralım.", actions: [{ label: "İletişime geçin", href: R("contact"), variant: "gold" }, { label: "Ürünler", href: R("arvoos"), variant: "ghost" }] },
   org: true,

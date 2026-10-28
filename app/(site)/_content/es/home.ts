@@ -6,20 +6,20 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].es;
 
 export const HOME_ES: HomeContent = {
   meta: {
-    title: "Arvo | ArvoOS, ArvoLab y ArvoBook — mejores sistemas para un mejor trabajo",
-    description: "Arvo desarrolla ArvoOS para empresas, ArvoLab para investigadores y ArvoBook para salones, y ofrece servicios de diseño web y de comercio electrónico, SEO y GEO, y software a medida.",
+    title: "ArvoOS | Mejores sistemas para un mejor trabajo",
+    description: "ArvoOS desarrolla un sistema operativo para empresas, ArvoLab para investigadores y ArvoBook para salones, y ofrece servicios de diseño web y de comercio electrónico, SEO y GEO, y software a medida.",
   },
   hero: {
-    eyebrow: "La familia de productos Arvo",
+    eyebrow: "La familia de productos ArvoOS",
     title: "Mejores sistemas", subtitle: "para un mejor trabajo.",
-    lead: "Arvo es una marca de software que desarrolla ArvoOS para empresas, ArvoLab para investigadores y ArvoBook para salones. Convierte el trabajo complejo en experiencias serenas, potentes y conectadas.",
+    lead: "ArvoOS es una marca de software: un sistema operativo para empresas, ArvoLab para investigadores y ArvoBook para salones. Convierte el trabajo complejo en experiencias serenas, potentes y conectadas.",
     actions: [
       { label: "Solicitar una demo", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "Descubrir los productos", href: "#productos", variant: "ghost" },
     ],
-    familyLabel: "Productos Arvo",
+    familyLabel: "Productos ArvoOS",
   },
-  statement: ["La complejidad se queda en segundo plano.", "Lo que queda es el avance.", "Todos los productos Arvo siguen un mismo principio:", "incluso el proceso más exigente debe sentirse natural."],
+  statement: ["La complejidad se queda en segundo plano.", "Lo que queda es el avance.", "Todos los productos ArvoOS siguen un mismo principio:", "incluso el proceso más exigente debe sentirse natural."],
   products: {
     eyebrow: "La familia de productos",
     title: "Potentes hoy. Preparados para mañana.",
@@ -50,7 +50,7 @@ export const HOME_ES: HomeContent = {
     badges: ["6 idiomas", "EUR · USD · TRY", "Cualquier navegador y dispositivo"],
     eyebrow: "Funciona en todas partes",
     title: "Allí donde trabaje.",
-    lead: "Los productos Arvo son aplicaciones web que funcionan en el navegador: nada que instalar, ningún servidor que mantener, el mismo sistema esté donde esté su equipo.",
+    lead: "Los productos ArvoOS son aplicaciones web que funcionan en el navegador: nada que instalar, ningún servidor que mantener, el mismo sistema esté donde esté su equipo.",
     items: [
       { title: "Seis idiomas", text: "Español, English, Türkçe, Deutsch, Français y العربية — incluida la escritura de derecha a izquierda." },
       { title: "Precios en EUR, USD y TRY", text: "Un precio de lista fijo en cada moneda; sin importes que varíen con el tipo de cambio." },
@@ -114,11 +114,11 @@ export const HOME_ES: HomeContent = {
   refs: { eyebrow: "Referencias", title: "Marcas con las que construimos.", lead: "Una familia de marcas que comparten el mismo estándar de calidad y crean valor juntas.", culture: "Visitar el sitio web", akademik: "Visitar el sitio web" },
   faq: {
     eyebrow: "Preguntas frecuentes",
-    title: "Preguntas sobre Arvo",
+    title: "Preguntas sobre ArvoOS",
     items: [
-      { q: "¿Qué es Arvo?", a: `Arvo es la marca de software de ${COMPANY.legalName}. Desarrolla ArvoOS para empresas, ArvoLab para investigadores y ArvoBook para salones, y ofrece además servicios de diseño web y de comercio electrónico y de software a medida.` },
+      { q: "¿Qué es ArvoOS?", a: `ArvoOS es la marca de software de ${COMPANY.legalName}. Desarrolla el sistema operativo ArvoOS para empresas, ArvoLab para investigadores y ArvoBook para salones, y ofrece además servicios de diseño web y de comercio electrónico y de software a medida.` },
       { q: "¿Qué diferencia hay entre ArvoOS, ArvoLab y ArvoBook?", a: "ArvoOS gestiona las operaciones de una empresa, de la solicitud al cobro. ArvoLab apoya la investigación y la redacción académicas. ArvoBook gestiona la agenda de citas de un salón: los clientes reservan por sí mismos y el calendario se organiza por profesional." },
-      { q: "¿Dónde inicio sesión en los productos Arvo?", a: `ArvoOS funciona en ${PRODUCT_APPS.arvoos.host}, ArvoLab en ${PRODUCT_APPS.arvolab.host} y ArvoBook en ${PRODUCT_APPS.randevu.host}. Las tres son aplicaciones web que se usan en el navegador.` },
+      { q: "¿Dónde inicio sesión en los productos ArvoOS?", a: `ArvoOS funciona en ${PRODUCT_APPS.arvoos.host}, ArvoLab en ${PRODUCT_APPS.arvolab.host} y ArvoBook en ${PRODUCT_APPS.randevu.host}. Las tres son aplicaciones web que se usan en el navegador.` },
       { q: "¿Cuánto cuesta ArvoOS?", a: `Los precios de lista mensuales y anuales están publicados en ${ROUTES.pricing.es}; el precio es por organización, no por usuario. Para Enterprise, la tarifa se define junto con cada organización.` },
       { q: "¿Cómo solicito una demo?", a: `Rellene el formulario de la página de contacto o escriba a ${COMPANY.email}; su solicitud llegará al equipo del producto correspondiente.` },
     ],

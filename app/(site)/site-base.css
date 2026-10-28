@@ -1,7 +1,8 @@
 /* ============================================================
    arvo-os.com — temel katman (apple.com gibi tamamen açık)
    Yalnızca app/(site)/layout.tsx içe aktarır; her kural .site altında.
-   Koyu renk YALNIZCA arayüz maketlerinin içinde kullanılır.
+   Koyu renk YALNIZCA arayüz maketlerinin içinde ve alt bilgide kullanılır
+   (alt bilgi 28.10.2026'dan beri lacivert; gerekçe footer.tsx).
    ============================================================ */
 .site{
   --ink:#1d1d1f; --ink-soft:#424245; --muted:#6e6e73; --grey:#f5f5f7; --line:#d2d2d7; --line-soft:rgba(0,0,0,.08);

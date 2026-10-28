@@ -76,7 +76,7 @@ export const ARVOOS_FR: ProductContent = {
     eyebrow: "FAQ",
     title: "À propos d’ArvoOS",
     items: [
-      { q: "Qu’est-ce qu’ArvoOS ?", a: "ArvoOS est le système d’exploitation d’entreprise web et multi-tenant d’Arvo. Il relie CRM et ventes, devis, contrats signés électroniquement, opérations, portail de suivi client, finance, RH, rapports et communication d’équipe dans un seul flux." },
+      { q: "Qu’est-ce qu’ArvoOS ?", a: "ArvoOS est un système d’exploitation d’entreprise web et multi-tenant. Il relie CRM et ventes, devis, contrats signés électroniquement, opérations, portail de suivi client, finance, RH, rapports et communication d’équipe dans un seul flux." },
       { q: "Comment ArvoOS mène-t-il un projet de la demande au paiement ?", a: "La demande entre dans le pipeline et devient un devis ; le client l’accepte en ligne et signe le contrat électroniquement. La signature lance le workflow du projet, le client suit l’avancement dans le portail, et les échéances sont encaissées via des liens de paiement en ligne." },
       { q: "ArvoOS prend-il en charge la signature électronique ?", a: "Oui. Le client signe à l’écran avec des mentions de consentement ; l’adresse IP, l’horodatage, l’appareil et une empreinte de vérification sont enregistrés, et le contenu est verrouillé après signature." },
       { q: "ArvoOS peut-il fonctionner sur notre propre domaine, à nos couleurs ?", a: "Oui. Vous pouvez connecter un domaine personnalisé vérifié par DNS et utiliser votre logo, votre couleur de marque, votre cachet et votre signature sur les pages de connexion, les pages clients, les devis et les contrats." },

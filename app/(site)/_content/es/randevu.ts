@@ -61,7 +61,7 @@ export const RANDEVU_ES: ProductContent = {
       },
       {
         title: "Recordatorios por WhatsApp",
-        text: "La lista de recordatorios del día está lista en el panel y se envía desde WhatsApp con un toque. Si el salón ha conectado su propio número, el mensaje sale del salón y no de Arvo.",
+        text: "La lista de recordatorios del día está lista en el panel y se envía desde WhatsApp con un toque. Si el salón ha conectado su propio número, el mensaje sale del salón y no de ArvoOS.",
       },
     ],
   },
@@ -91,7 +91,7 @@ export const RANDEVU_ES: ProductContent = {
       { q: "¿Tienen que registrarse los clientes?", a: "No. El cliente elige un servicio, un profesional y una hora e introduce un número de teléfono; se le identifica por ese número y recibe un enlace de cancelación." },
       { q: "¿Pueden caer dos citas en el mismo hueco?", a: "No. Una cita que se solapa para el mismo profesional —contando el margen del servicio— se rechaza a nivel de base de datos, no mediante una comprobación de la interfaz." },
       { q: "¿Cómo se definen los horarios de trabajo y las ausencias?", a: "El horario semanal se introduce en la hora local del propio salón. Las ausencias pueden fijarse para un solo profesional o para todo el salón; en ese intervalo no se abren huecos." },
-      { q: "¿Quién envía el recordatorio?", a: "La lista de recordatorios del día se prepara en el panel y se envía desde WhatsApp con un toque. Si el salón ha conectado su propio número de WhatsApp, sale del salón; si no, del número compartido de Arvo." },
+      { q: "¿Quién envía el recordatorio?", a: "La lista de recordatorios del día se prepara en el panel y se envía desde WhatsApp con un toque. Si el salón ha conectado su propio número de WhatsApp, sale del salón; si no, del número compartido de ArvoOS." },
       { q: "¿Cuánto cuesta?", a: `Los precios de lista mensuales y anuales están publicados en ${R("pricing")}.` },
     ],
   },

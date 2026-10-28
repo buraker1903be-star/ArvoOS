@@ -7,10 +7,10 @@ const talk = { label: "Let’s talk about your project", href: `${R("contact")}?
 
 export const SERVICES_EN: SubContent = {
   id: "services",
-  meta: { title: "Services", description: "Arvo services: web design and development, SEO & GEO content, custom software, process and experience design, corporate digital systems and ongoing development support." },
+  meta: { title: "Services", description: "ArvoOS services: web design and development, SEO & GEO content, custom software, process and experience design, corporate digital systems and ongoing development support." },
   hero: {
     eyebrow: "Services", title: "From brand to system.", subtitle: "End-to-end digital.",
-    lead: "Arvo designs and builds digital products that look right, work right and are ready to grow — from web design and SEO & GEO to custom software and ongoing development, strategy to launch.",
+    lead: "ArvoOS designs and builds digital products that look right, work right and are ready to grow — from web design and SEO & GEO to custom software and ongoing development, strategy to launch.",
     actions: [talk],
   },
   cards: {
@@ -36,22 +36,22 @@ export const SERVICES_EN: SubContent = {
     ],
   },
   faq: { eyebrow: "FAQ", title: "About our services", items: [
-    { q: "What services does Arvo offer?", a: "Web design and development, SEO & GEO content, custom software, process and experience design, corporate digital systems and ongoing development support." },
+    { q: "What services does ArvoOS offer?", a: "Web design and development, SEO & GEO content, custom software, process and experience design, corporate digital systems and ongoing development support." },
     { q: "How does a project start?", a: "You share your needs through the contact form; we clarify the scope in a discovery call, then prepare a roadmap and a proposal." },
     { q: "Do you provide support after launch?", a: "Yes. With ongoing development support we keep improving performance, security, content and experience." },
     { q: "How is pricing set?", a: "Each project is priced by scope; a tailored proposal follows the discovery call." },
   ] },
   cta: { eyebrow: "New project", title: "Let’s talk about your next project.", actions: [talk, { label: "Write to us", href: "mailto:info@arvo-os.com", variant: "ghost" }] },
-  serviceName: "Arvo digital services",
+  serviceName: "ArvoOS digital services",
 };
 
 export const WEB_DESIGN_EN: SubContent = {
   id: "web-design",
   parent: { id: "services", name: "Services" },
-  meta: { title: "Web Design & Development", description: "Arvo website and e-commerce design: discovery and strategy, content architecture, UX/UI design, fast and accessible development, testing, launch and maintenance in one process." },
+  meta: { title: "Web Design & Development", description: "ArvoOS website and e-commerce design: discovery and strategy, content architecture, UX/UI design, fast and accessible development, testing, launch and maintenance in one process." },
   hero: {
     eyebrow: "Services · Web design", title: "Your brand", subtitle: "at its digital best.",
-    lead: "Arvo’s web design service delivers brand websites end to end — from discovery and strategy to content architecture, UX/UI design, development, launch and maintenance.",
+    lead: "ArvoOS’s web design service delivers brand websites end to end — from discovery and strategy to content architecture, UX/UI design, development, launch and maintenance.",
     actions: [talk, { label: "All services", href: R("services"), variant: "ghost" }],
   },
   cards: {

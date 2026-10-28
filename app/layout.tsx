@@ -19,10 +19,10 @@ export const metadata: Metadata = {
   // Göreli paylaşım görseli yolları arvo-os.com'a göre çözülür (panel ve
   // belge sayfaları zaten dizine kapalı; site sayfaları kendi görselini verir).
   metadataBase: new URL("https://arvo-os.com"),
-  title: "Arvo | Ürünler ve Dijital Hizmetler",
+  title: "ArvoOS | Ürünler ve Dijital Hizmetler",
   description: "ArvoOS, ArvoLab ve kurumlara özel dijital ürün, web tasarımı ve yazılım hizmetleri.",
-  openGraph:{title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",type:"website",images:[{url:"/arvoos-logo.png",alt:"Arvo Akademik Çalışma Ekosistemi"}]},
-  twitter:{card:"summary_large_image",title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",images:["/arvoos-logo.png"]},
+  openGraph:{title:"ArvoOS | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",type:"website",images:[{url:"/arvoos-logo.png",alt:"ArvoOS Akademik Çalışma Ekosistemi"}]},
+  twitter:{card:"summary_large_image",title:"ArvoOS | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",images:["/arvoos-logo.png"]},
   // iOS ana ekran ikonu SVG kabul etmez: 180px opak PNG (köşeleri iOS yuvarlar)
   icons:{icon:"/favicon.svg",shortcut:"/favicon.svg",apple:{url:"/apple-touch-icon.png",sizes:"180x180",type:"image/png"}},
   manifest:"/manifest.webmanifest",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     "modern adı Next zaten basıyor" diye; doğru değilmiş. Next onu
     appleWebApp.capable'dan basıyor ama `(site)` düzeni pazarlama
     sayfalarında appleWebApp'i kendi değerleriyle EZİYOR (sekme adı
-    orada "Arvo"), dolayısıyla modern adı o sayfalarda yalnızca bu
+    orada "ArvoOS"), dolayısıyla modern adı o sayfalarda yalnızca bu
     satır sağlıyordu ve bir süre hiç yazılmadı. Panel yollarında meta
     iki kez çıkabilir; yinelenen meta zararsız, eksik olan değil.
   */

@@ -15,7 +15,7 @@ type Chrome = {
 
 /* Ürünlerin giriş adresi menüde: liste PRODUCT_APPS'ten geliyor, yeni
    ürün eklenince menüye elle eklenmesi gerekmesin. ArvoARC ürün olarak
-   satılmıyor (28.10.2026) ama e-ticaret sitesini Arvo'ya yaptıranlar
+   satılmıyor (28.10.2026) ama e-ticaret sitesini ArvoOS'a yaptıranlar
    paneline buradan giriyor; listenin sonunda, ayrı. */
 const signInLinks: NavLink[] = [
   ...(["arvoos", "arvolab", "randevu"] as const).map((key) => ({
@@ -29,7 +29,7 @@ const signInLinks: NavLink[] = [
 
 export const CHROME: Record<Locale, Chrome> = {
   tr: {
-    skip: "İçeriğe geç", home: "ArvoOS — Arvo ana sayfa", nav: "Ana menü", menu: "Menüyü aç", close: "Menüyü kapat",
+    skip: "İçeriğe geç", home: "ArvoOS ana sayfa", nav: "Ana menü", menu: "Menüyü aç", close: "Menüyü kapat",
     products: "Ürünler", services: "Hizmetler", pricing: "Ücretler", about: "Hakkımızda", contact: "İletişim", privacy: "Gizlilik ve KVKK",
     legal: "Yasal", distanceSales: "Mesafeli Satış Sözleşmesi", refund: "İptal ve İade", delivery: "Teslimat",
     signIn: "Giriş", demo: "Demo talep et", language: "Dil",
@@ -57,7 +57,7 @@ export const CHROME: Record<Locale, Chrome> = {
     company: "Kurumsal", rights: "Tüm hakları saklıdır.", addressLabel: "Adres", group: "bir ArvoCulture Group markasıdır",
   },
   en: {
-    skip: "Skip to content", home: "Arvo home", nav: "Main menu", menu: "Open menu", close: "Close menu",
+    skip: "Skip to content", home: "ArvoOS home", nav: "Main menu", menu: "Open menu", close: "Close menu",
     products: "Products", services: "Services", pricing: "Pricing", about: "About", contact: "Contact", privacy: "Privacy",
     legal: "Legal", distanceSales: "Distance Sales Agreement", refund: "Cancellation & Refund", delivery: "Delivery",
     signIn: "Sign in", demo: "Request a demo", language: "Language",
@@ -85,7 +85,7 @@ export const CHROME: Record<Locale, Chrome> = {
     company: "Company", rights: "All rights reserved.", addressLabel: "Address", group: "an ArvoCulture Group brand",
   },
   de: {
-    skip: "Zum Inhalt springen", home: "Arvo Startseite", nav: "Hauptmenü", menu: "Menü öffnen", close: "Menü schließen",
+    skip: "Zum Inhalt springen", home: "ArvoOS Startseite", nav: "Hauptmenü", menu: "Menü öffnen", close: "Menü schließen",
     products: "Produkte", services: "Leistungen", pricing: "Preise", about: "Über uns", contact: "Kontakt", privacy: "Datenschutz",
     legal: "Rechtliches", distanceSales: "Fernabsatzvertrag", refund: "Kündigung & Erstattung", delivery: "Lieferung",
     signIn: "Anmelden", demo: "Demo anfragen", language: "Sprache",
@@ -113,7 +113,7 @@ export const CHROME: Record<Locale, Chrome> = {
     company: "Unternehmen", rights: "Alle Rechte vorbehalten.", addressLabel: "Adresse", group: "eine Marke der ArvoCulture Group",
   },
   es: {
-    skip: "Saltar al contenido", home: "Inicio de Arvo", nav: "Menú principal", menu: "Abrir menú", close: "Cerrar menú",
+    skip: "Saltar al contenido", home: "Inicio de ArvoOS", nav: "Menú principal", menu: "Abrir menú", close: "Cerrar menú",
     products: "Productos", services: "Servicios", pricing: "Precios", about: "Nosotros", contact: "Contacto", privacy: "Privacidad",
     legal: "Legal", distanceSales: "Contrato de venta a distancia", refund: "Cancelación y reembolso", delivery: "Entrega",
     signIn: "Iniciar sesión", demo: "Solicitar una demo", language: "Idioma",
@@ -141,7 +141,7 @@ export const CHROME: Record<Locale, Chrome> = {
     company: "Empresa", rights: "Todos los derechos reservados.", addressLabel: "Dirección", group: "una marca de ArvoCulture Group",
   },
   fr: {
-    skip: "Aller au contenu", home: "Accueil Arvo", nav: "Menu principal", menu: "Ouvrir le menu", close: "Fermer le menu",
+    skip: "Aller au contenu", home: "Accueil ArvoOS", nav: "Menu principal", menu: "Ouvrir le menu", close: "Fermer le menu",
     products: "Produits", services: "Services", pricing: "Tarifs", about: "À propos", contact: "Contact", privacy: "Confidentialité",
     legal: "Informations juridiques", distanceSales: "Contrat de vente à distance", refund: "Annulation et remboursement", delivery: "Livraison",
     signIn: "Se connecter", demo: "Demander une démo", language: "Langue",
@@ -169,7 +169,7 @@ export const CHROME: Record<Locale, Chrome> = {
     company: "Entreprise", rights: "Tous droits réservés.", addressLabel: "Adresse", group: "une marque d’ArvoCulture Group",
   },
   ar: {
-    skip: "انتقل إلى المحتوى", home: "الصفحة الرئيسية لـ Arvo", nav: "القائمة الرئيسية", menu: "فتح القائمة", close: "إغلاق القائمة",
+    skip: "انتقل إلى المحتوى", home: "الصفحة الرئيسية لـ ArvoOS", nav: "القائمة الرئيسية", menu: "فتح القائمة", close: "إغلاق القائمة",
     products: "المنتجات", services: "الخدمات", pricing: "الأسعار", about: "من نحن", contact: "اتصل بنا", privacy: "الخصوصية",
     legal: "الشؤون القانونية", distanceSales: "اتفاقية البيع عن بُعد", refund: "الإلغاء والاسترداد", delivery: "التسليم",
     signIn: "تسجيل الدخول", demo: "اطلب عرضًا توضيحيًا", language: "اللغة",

@@ -8,7 +8,7 @@ const talk = { label: "Sitenizi değerlendirelim", href: `${R("contact")}?ilgi=s
 export const SEO_GEO_TR: SubContent = {
   id: "seo-geo",
   parent: { id: "services", name: "Hizmetler" },
-  meta: { title: "SEO ve GEO İçerik Düzenleme", description: "Arvo SEO ve GEO hizmeti: teknik SEO, içerik mimarisi, yapılandırılmış veri (JSON-LD), llms.txt, yapay zekâ yanıtlarında alıntılanabilir içerik, çok dilli yapı ve performans." },
+  meta: { title: "SEO ve GEO İçerik Düzenleme", description: "ArvoOS SEO ve GEO hizmeti: teknik SEO, içerik mimarisi, yapılandırılmış veri (JSON-LD), llms.txt, yapay zekâ yanıtlarında alıntılanabilir içerik, çok dilli yapı ve performans." },
   hero: {
     eyebrow: "Hizmetler · SEO ve GEO", title: "Aranınca bulunun.", subtitle: "Sorulunca anlatılın.",
     lead: "SEO ve GEO içerik düzenleme; sitenizin arama motorlarında doğru dizine alınmasını ve ChatGPT, Perplexity ya da Google AI Overviews gibi yapay zekâ yanıt motorlarında doğru anlaşılıp alıntılanabilmesini sağlayan teknik ve içerik çalışmasıdır.",

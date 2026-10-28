@@ -9,7 +9,7 @@ import { ArvoosSubnav } from "../_components/subnav";
 import { CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
 import { KISA } from "../_content/kisa";
 
-export function SubView({ locale, c, homeName = "Arvo" }: { locale: Locale; c: SubContent; homeName?: string }) {
+export function SubView({ locale, c, homeName = "ArvoOS" }: { locale: Locale; c: SubContent; homeName?: string }) {
   const path = ROUTES[c.id][locale];
   const crumbs = [
     { name: homeName, href: ROUTES.home[locale] },

@@ -7,10 +7,10 @@ const talk = { label: "Hablemos de su proyecto", href: `${R("contact")}?interest
 
 export const SERVICES_ES: SubContent = {
   id: "services",
-  meta: { title: "Servicios", description: "Servicios de Arvo: diseño y desarrollo web, contenido SEO y GEO, software a medida, diseño de procesos y experiencias, sistemas digitales corporativos y desarrollo continuo." },
+  meta: { title: "Servicios", description: "Servicios de ArvoOS: diseño y desarrollo web, contenido SEO y GEO, software a medida, diseño de procesos y experiencias, sistemas digitales corporativos y desarrollo continuo." },
   hero: {
     eyebrow: "Servicios", title: "De la marca al sistema.", subtitle: "Digital de principio a fin.",
-    lead: "Arvo diseña y desarrolla productos digitales que se ven bien, funcionan bien y están preparados para crecer: del diseño web y el SEO y GEO al software a medida y el desarrollo continuo, de la estrategia al lanzamiento.",
+    lead: "ArvoOS diseña y desarrolla productos digitales que se ven bien, funcionan bien y están preparados para crecer: del diseño web y el SEO y GEO al software a medida y el desarrollo continuo, de la estrategia al lanzamiento.",
     actions: [talk],
   },
   cards: {
@@ -36,22 +36,22 @@ export const SERVICES_ES: SubContent = {
     ],
   },
   faq: { eyebrow: "Preguntas frecuentes", title: "Sobre nuestros servicios", items: [
-    { q: "¿Qué servicios ofrece Arvo?", a: "Diseño y desarrollo web, contenido SEO y GEO, software a medida, diseño de procesos y experiencias, sistemas digitales corporativos y desarrollo continuo." },
+    { q: "¿Qué servicios ofrece ArvoOS?", a: "Diseño y desarrollo web, contenido SEO y GEO, software a medida, diseño de procesos y experiencias, sistemas digitales corporativos y desarrollo continuo." },
     { q: "¿Cómo empieza un proyecto?", a: "Nos cuenta sus necesidades mediante el formulario de contacto; aclaramos el alcance en una llamada inicial y, después, preparamos una hoja de ruta y una propuesta." },
     { q: "¿Ofrecen soporte tras el lanzamiento?", a: "Sí. Con el servicio de desarrollo continuo seguimos mejorando el rendimiento, la seguridad, el contenido y la experiencia." },
     { q: "¿Cómo se fija el precio?", a: "Cada proyecto se presupuesta según su alcance; tras la llamada inicial le enviamos una propuesta a medida." },
   ] },
   cta: { eyebrow: "Nuevo proyecto", title: "Hablemos de su próximo proyecto.", actions: [talk, { label: "Escríbanos", href: "mailto:info@arvo-os.com", variant: "ghost" }] },
-  serviceName: "Servicios digitales de Arvo",
+  serviceName: "Servicios digitales de ArvoOS",
 };
 
 export const WEB_DESIGN_ES: SubContent = {
   id: "web-design",
   parent: { id: "services", name: "Servicios" },
-  meta: { title: "Diseño y desarrollo web", description: "Diseño de sitios web y de comercio electrónico de Arvo: descubrimiento y estrategia, arquitectura de contenidos, diseño UX/UI, desarrollo rápido y accesible, pruebas, lanzamiento y mantenimiento en un solo proceso." },
+  meta: { title: "Diseño y desarrollo web", description: "Diseño de sitios web y de comercio electrónico de ArvoOS: descubrimiento y estrategia, arquitectura de contenidos, diseño UX/UI, desarrollo rápido y accesible, pruebas, lanzamiento y mantenimiento en un solo proceso." },
   hero: {
     eyebrow: "Servicios · Diseño web", title: "Su marca", subtitle: "en su mejor versión digital.",
-    lead: "El servicio de diseño web de Arvo entrega sitios web de marca de principio a fin: del descubrimiento y la estrategia a la arquitectura de contenidos, el diseño UX/UI, el desarrollo, el lanzamiento y el mantenimiento.",
+    lead: "El servicio de diseño web de ArvoOS entrega sitios web de marca de principio a fin: del descubrimiento y la estrategia a la arquitectura de contenidos, el diseño UX/UI, el desarrollo, el lanzamiento y el mantenimiento.",
     actions: [talk, { label: "Todos los servicios", href: R("services"), variant: "ghost" }],
   },
   cards: {
