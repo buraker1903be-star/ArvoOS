@@ -4,16 +4,16 @@ import "./globals.css";
 // Pazarlama sitesinin stilleri ve hareketleri app/(site)/layout.tsx'te;
 // kök yerleşim yalnızca uygulama geneli temeli yükler.
 
-// Tek yazı tipi: Apple cihazlarında sistemin kendi SF Pro'su (-apple-system),
-// diğerlerinde ona en yakın açık yazı tipi Inter. SF Pro'nun lisansı web
-// fontu olarak dağıtılmasına izin vermiyor. preload kapalı: Apple
-// cihazları SF'yi bulduğu için Inter dosyasını hiç indirmez.
-// Yığın globals.css'te (body --font-system).
+// Tek yazı tipi: her sistemde Inter (28.10.2026). Eskiden Apple
+// cihazlarında SF Pro çiziliyordu ve site Mac ile Windows'ta farklı
+// görünüyordu (gerekçe globals.css). preload açık: artık her cihaz bu
+// dosyayı indiriyor; eskiden kapalıydı çünkü Mac SF'yi bulup Inter'i hiç
+// istemiyordu. Yığın globals.css'te (body --font-system).
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
   variable: "--font-inter",
   display: "swap",
-  preload: false,
+  preload: true,
 });
 export const metadata: Metadata = {
   // Göreli paylaşım görseli yolları arvo-os.com'a göre çözülür (panel ve

@@ -17,13 +17,18 @@ body{margin:0;background:#fff;color:var(--ink);-webkit-font-smoothing:antialiase
 button,input,textarea,select{font:inherit}
 a{color:inherit;text-decoration:none}
 
-/* Tek yazı tipi (2026-09): Apple cihazlarında SF Pro, diğerlerinde Inter
-   (app/layout.tsx). Eski --font-manrope / --font-cormorant adları hâlâ
+/* Tek yazı tipi: HER SİSTEMDE Inter (28.10.2026, app/layout.tsx).
+   Eskiden Apple cihazlarında sistemin SF Pro'su, diğerlerinde Inter
+   çiziliyordu: iki yazı tipinin harf genişliği ve kalınlığı farklı
+   olduğu için başlıklar Mac ile Windows'ta farklı yerden kırılıyor,
+   düğmeler farklı genişlikte çıkıyor, harf aralığı (SF'ye göre
+   ayarlanmış -0.022em) Inter'de sıkışık duruyordu. SF Pro'nun lisansı
+   web'de dağıtılmasına izin vermediği için ortak yazı tipi Inter. Eski --font-manrope / --font-cormorant adları hâlâ
    login, durum sorgulama, belge ve mesaj stillerinde kullanılıyor; ikisi
    de aynı yığına bağlanır, böylece her yerde tek yazı tipi görünür.
    body üzerinde tanımlı: --font-inter next/font tarafından body'ye verilir. */
 body{
-  --font-system:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",var(--font-inter),"Inter","Helvetica Neue",system-ui,"Segoe UI",Roboto,Arial,sans-serif;
+  --font-system:var(--font-inter),"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --font-manrope:var(--font-system);
   --font-cormorant:var(--font-system);
   font-family:var(--font-system);

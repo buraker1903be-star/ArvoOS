@@ -26,7 +26,8 @@
   --ease:cubic-bezier(.22,1,.36,1);
   --page:1600px; --page-wide:1600px; --gutter:clamp(20px,5vw,48px);
   --header-h:52px;
-  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",var(--font-inter),"Inter","Helvetica Neue",system-ui,sans-serif;
+  /* Her sistemde Inter (28.10.2026); gerekçe app/globals.css. */
+  --font:var(--font-inter),"Inter",system-ui,-apple-system,"Segoe UI","Helvetica Neue",sans-serif;
 
   /* Demo formu (app/_site/lead-form) bu değişkenlerle temalanır */
   --site-ink:var(--ink); --site-muted:var(--muted); --site-line:var(--line); --site-surface:#fff;

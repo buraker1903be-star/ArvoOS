@@ -145,7 +145,7 @@
      ÖNEMLİ: --font-body ve --font-heading hiçbir yerde tanımlı değildi.
      Tanımsız var() yüzünden `font:` kısayolu geçersiz sayılıyor ve tüm
      panel varsayılan tarayıcı fontuna düşüyordu.
-     Tek yazı tipi (2026-09): Apple cihazlarında SF Pro, diğerlerinde Inter.
+     Tek yazı tipi: her sistemde Inter (28.10.2026, app/globals.css).
      Yığın app/globals.css'te (body --font-system). --font-display artık
      ayrı bir serif değil; başlık ağırlık ve aralıkları panel-premium.css'te. */
   --font-body:var(--font-system,-apple-system,BlinkMacSystemFont,"Inter",system-ui,"Segoe UI",Roboto,sans-serif);
