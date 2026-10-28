@@ -43,7 +43,11 @@ export const DISTANCE_SALES_FR: PrivacyContent = {
       "Les abonnements mensuels sont facturés au début de chaque période. Les abonnements annuels sont facturés une seule fois au début de la période de 12 mois, pour 10 mois de redevance.",
       "En cas de dépassement des utilisateurs, agences, boutiques ou produits inclus dans une offre, seuls les frais d’options publiés sur la même page s’appliquent ; le prix de l’offre lui-même ne change pas.",
       "Le paiement s’effectue par carte de crédit/débit via le prestataire de paiement du Vendeur, ou par virement bancaire. Les données de carte ne sont pas conservées par le Vendeur.",
-      "Il n’y a aucun prélèvement récurrent automatique ; chaque période est réglée via un lien que l’abonné valide.",
+      "Par défaut, aucun prélèvement automatique n’est effectué sur la carte ; un lien de paiement est envoyé pour chaque période et le paiement est effectué avec l’accord de l’abonné.",
+      "Si l’abonné choisit expressément, lors du paiement, d’enregistrer sa carte et d’activer le renouvellement automatique, le prix de la période est prélevé à la fin de chaque période sur la carte enregistrée, via le prestataire de paiement. Les données de carte sont conservées par le prestataire de paiement (PayTR), et non par le Vendeur (ArvoCulture Group).",
+      "En cas de renouvellement automatique, l’abonné est prévenu au moins 3 jours avant chaque prélèvement. L’abonné peut à tout moment désactiver le renouvellement automatique ou supprimer la carte enregistrée depuis le panneau ; la désactivation prend effet à partir de la période suivante.",
+      "Si un prélèvement automatique échoue, il est retenté au maximum deux fois de plus et l’abonné en est informé.",
+      "Le consentement de l’abonné au renouvellement automatique est enregistré avec la date, l’heure et l’adresse IP.",
     ] },
     { h: "4. Modification des prix et des offres", list: [
       "Le Vendeur peut mettre à jour ses prix catalogue. Une modification de prix n’affecte pas la période en cours (déjà payée) de l’abonné.",

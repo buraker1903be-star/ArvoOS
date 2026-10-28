@@ -56,7 +56,7 @@ export async function kartOnayi(merchantOid: string, otomatikYenileme: boolean):
     const { organization, userId, admin } = await yetkili();
     const ip = await istekIp();
     if (!ip) return { hata: "Bağlantı bilgisi okunamadı; sayfayı yenileyip tekrar deneyin." };
-    await kartOnayiniKaydet(admin, { merchantOid: String(merchantOid), organizationId: organization.id, actorId: userId, ip, otomatikYenileme: Boolean(otomatikYenileme) });
+    await kartOnayiniKaydet(admin, { merchantOid: String(merchantOid), odeyen: { organizationId: organization.id }, actorId: userId, ip, otomatikYenileme: Boolean(otomatikYenileme) });
     return { ok: true };
   } catch (hata) {
     return { hata: hata instanceof Error ? hata.message : "Onay kaydedilemedi." };
