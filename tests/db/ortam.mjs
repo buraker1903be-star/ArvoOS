@@ -67,6 +67,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261028145027_ek_kullanici_kdv_dahil.sql",
   "20261028145415_site_formu_arvocal.sql",
   "20261028155350_proforma_alici.sql",
+  "20261028165823_paytr_kart_saklama.sql",
 ];
 
 /*

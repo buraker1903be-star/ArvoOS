@@ -10,6 +10,8 @@ import { submitBankTransferPayment } from "./actions";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kurumBelgeleri } from "@/lib/faturalama-koprusu";
+import { kartSaklamaAcik } from "@/lib/paytr-kart-akisi";
+import { kartlaOdemeyeBasla, kayitliKartiKaldir, otomatikYenilemeyiKapat } from "./kart-actions";
 import { proformaGorunumu, PROFORMA_DURUM_ADI } from "@/lib/proforma";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 
@@ -31,7 +33,7 @@ function formatIban(iban: string) {
   return iban.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
 }
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ submitted?: string }> }) {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ submitted?: string; kart?: string }> }) {
   const { supabase, organization, membership, izin } = await getPanelContext();
   const params = await searchParams;
 
@@ -115,6 +117,33 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   */
   const admin = canSubmit ? createAdminClient() : null;
   const belgeler = admin ? await kurumBelgeleri(admin, organization.id) : null;
+
+  /*
+    KAYITLI KART VE OTOMATİK YENİLEME (28.10.2026). Özellik bayrağı açık
+    değilse hiç okunmuyor (lib/paytr-kart-akisi). Son kartla ödeme
+    denemesi de okunuyor: müşteri PayTR'den döndüğünde sonucu ve
+    başarısızlığın nedenini görsün — neden adrese yazılmıyor, kayıttan.
+  */
+  const kartAcik = kartSaklamaAcik() && Boolean(admin) && platformId !== organization.id;
+  type KayitliKart = { id: string; son4: string; banka: string | null; sema: string | null; son_kullanma_ay: string | null; son_kullanma_yil: string | null };
+  type Yenileme = { product: string; aktif: boolean; kart_id: string; son_hata: string | null; onay_at: string };
+  let kartlar: KayitliKart[] = [];
+  let yenilemeler: Yenileme[] = [];
+  let sonDeneme: { durum: string; hata_mesaji: string | null } | null = null;
+  if (kartAcik && admin) {
+    const [k, y, d] = await Promise.all([
+      admin.from("paytr_kayitli_kartlar").select("id,son4,banka,sema,son_kullanma_ay,son_kullanma_yil").eq("organization_id", organization.id).order("created_at", { ascending: false }),
+      admin.from("paytr_otomatik_yenileme").select("product,aktif,kart_id,son_hata,onay_at").eq("organization_id", organization.id),
+      params.kart
+        ? admin.from("paytr_kart_islemleri").select("durum,hata_mesaji,payment_links!inner(payer_organization_id)").eq("payment_links.payer_organization_id", organization.id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+    const kartHatasi = k.error ?? y.error ?? d.error;
+    if (kartHatasi) throw new Error("Kayıtlı kart bilgileri okunamadı: " + kartHatasi.message);
+    kartlar = (k.data ?? []) as KayitliKart[];
+    yenilemeler = (y.data ?? []) as Yenileme[];
+    sonDeneme = d.data as { durum: string; hata_mesaji: string | null } | null;
+  }
   const bugun = todayInIstanbul();
 
   return <>
@@ -123,6 +152,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       <span className="status-pill">{license?.license_status ?? "trialing"}</span>
     </div>
 
+    {params.kart === "tamam" ? <div className="team-notice">{sonDeneme?.durum === "basarili" ? "Ödemeniz alındı; lisansınız uzatıldı." : "Ödemeniz işleniyor. Banka onayı geldiğinde lisansınız otomatik olarak uzar; bu sayfayı birkaç saniye sonra yenileyebilirsiniz."}</div> : null}
+    {params.kart === "hata" ? <div className="team-notice" data-tone="danger">Ödeme tamamlanamadı{sonDeneme?.hata_mesaji ? `: ${sonDeneme.hata_mesaji}` : ". Kart bilgilerinizi kontrol edip yeniden deneyin ya da havale/EFT ile ödeyin."}</div> : null}
     {params.submitted === "1" ? <div className="team-notice">Dekontunuz alındı. Kurucu onayından sonra lisansınız otomatik etkinleştirilecek.</div> : null}
 
     <section className="management-grid">
@@ -163,7 +194,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           <div><dt>Durum</dt><dd>{productLicenseLabels[product.status] ?? product.status}</dd></div>
           <div><dt>Dönem sonu</dt><dd>{product.periodEnd ? istanbulDateTime(product.periodEnd, { dateStyle: "short" }) : "—"}</dd></div>
         </dl>
-        {storeReady && product.fee > 0 ? (
+        {kartAcik && storeReady && product.fee > 0 && product.code !== "arc" ? (
+          <form action={kartlaOdemeyeBasla} className="management-submit">
+            <input type="hidden" name="product" value={product.code} />
+            <small>Kart bilgilerinizi bu sayfada girersiniz; dilerseniz kartınızı kaydedip aboneliğinizin her dönem otomatik yenilenmesini seçebilirsiniz.</small>
+            <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>
+          </form>
+        ) : storeReady && product.fee > 0 ? (
           <form action={payLicenseWithCard} className="management-submit">
             <input type="hidden" name="product" value={product.code} />
             <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz. Ödeme onaylanınca {product.name} lisansınız 1 ay uzar; süresi dolmadıysa mevcut dönem sonuna eklenir. Dekont gerekmez.</small>
@@ -231,6 +268,25 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           </form>
         </article>)}
       </div> : <p className="panel-muted">Kredi satın alma şu an kullanılamıyor. ArvoOS ile iletişime geçin.</p>}
+    </section> : null}
+
+    {kartAcik && canSubmit ? <section className="panel-card management-card">
+      <div className="management-heading"><div><small>KAYITLI KART</small><h2>Otomatik yenileme</h2></div><span className="status-pill">{yenilemeler.filter((y) => y.aktif).length ? "Açık" : "Kapalı"}</span></div>
+      <div className="module-control-list">
+        {yenilemeler.filter((y) => y.aktif).map((y) => {
+          const kart = kartlar.find((k) => k.id === y.kart_id);
+          return <div className="module-control" key={y.product}>
+            <div><b>{productName(y.product)} · {kart ? `•••• ${kart.son4}` : "kart"} kartından otomatik yenileniyor</b>
+              <small>Onay {istanbulDateTime(y.onay_at, { dateStyle: "short", timeStyle: "short" })}{y.son_hata ? ` · Son deneme başarısız: ${y.son_hata}` : ""} · Her çekimden 3 gün önce e-posta gönderilir.</small></div>
+            <form action={otomatikYenilemeyiKapat}><input type="hidden" name="product" value={y.product} /><button className="panel-secondary" type="submit">Kapat</button></form>
+          </div>;
+        })}
+        {kartlar.map((k) => <div className="module-control" key={k.id}>
+          <div><b>{k.sema ?? "Kart"} •••• {k.son4}</b><small>{[k.banka, k.son_kullanma_ay && k.son_kullanma_yil ? `son kullanma ${k.son_kullanma_ay.padStart(2, "0")}/${k.son_kullanma_yil}` : null].filter(Boolean).join(" · ")}</small></div>
+          <form action={kayitliKartiKaldir}><input type="hidden" name="kart_id" value={k.id} /><button className="panel-secondary" type="submit">Kartı sil</button></form>
+        </div>)}
+        {!kartlar.length ? <p className="panel-muted">Kayıtlı kartınız yok. Kartla öderken &quot;Kartımı kaydet&quot; seçeneğini işaretlerseniz aboneliğiniz her dönem otomatik yenilenir; istediğiniz zaman buradan kapatabilirsiniz.</p> : null}
+      </div>
     </section> : null}
 
     {belgeler ? <section className="panel-card management-card">
