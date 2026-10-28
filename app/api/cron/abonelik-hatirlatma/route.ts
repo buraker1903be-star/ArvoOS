@@ -9,6 +9,7 @@ import { musteriMi } from "@/lib/kurum-turu";
 import { getArvolabBridgeHealth, syncArvolabLicense } from "@/lib/arvolab";
 import { kurucuyaBildir } from "@/lib/kurucu-bildirimi";
 import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
+import { kartSaklamaAcik } from "@/lib/paytr-kart-akisi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -177,10 +178,26 @@ async function kosu(): Promise<CronKosusu> {
      hatırlatma yalnızca gerçek müşteriye. */
   const ic = new Set((kurumlar ?? []).filter((k) => !musteriMi(k)).map((k) => k.id as string));
 
+  /*
+    Otomatik yenilemesi açık lisansa bu hatırlatma GİTMEZ (28.10.2026):
+    "ödemenizi kartla yapabilirsiniz" demek, kartından zaten çekim
+    yapılacak kuruma çelişkili bir talimat. Onun hatırlatmasını ve
+    başarısızlık bildirimini otomatik yenileme işi gönderiyor.
+    Okunamazsa hatırlatma herkese gider: fazla hatırlatma, eksikten iyi.
+  */
+  const otomatik = new Set<string>();
+  if (kartSaklamaAcik()) {
+    const { data: acik, error: acikHatasi } = await admin.from("paytr_otomatik_yenileme").select("organization_id,product").eq("aktif", true).not("organization_id", "is", null);
+    // hata-tamam: okunamazsa hatırlatma herkese gider (yukarıdaki gerekçe); günlüğe yazılıyor.
+    if (acikHatasi) console.error("[abonelik] otomatik yenilemeler okunamadı", acikHatasi.message);
+    for (const r of (acik ?? []) as { organization_id: string; product: string }[]) otomatik.add(`${r.organization_id}:${r.product}`);
+  }
+
   let yazilan = 0;
   const hatalar: string[] = [];
   for (const a of adaylar) {
     if (ic.has(a.organization_id)) continue;
+    if (otomatik.has(`${a.organization_id}:${a.product}`)) continue;
     const anahtar = abonelikAnahtari(a.organization_id, a.product, a.bitis, a.kademe);
     const { data: onceki, error: oncekiHatasi } = await admin.from("notifications").select("id")
       .eq("organization_id", a.organization_id).eq("category", "subscription_reminder").eq("metadata->>anahtar", anahtar).limit(1);

@@ -38,7 +38,7 @@ export const kartSaklamaAcik = () => process.env.PAYTR_KART_SAKLAMA === "acik";
    onayın neye verildiği yine okunabilsin. Sürüm öneki o yüzden var. */
 export const OTOMATIK_YENILEME_ONAY_METNI =
   "v1 · Kartımın kaydedilmesini ve aboneliğimin her dönem sonunda bu karttan otomatik yenilenmesini kabul ediyorum. " +
-  "Her çekimden en az 3 gün önce e-postayla bilgilendirileceğimi, otomatik yenilemeyi ve kayıtlı kartı Ödeme ve Lisans " +
+  "Her çekimden en az 3 gün önce panel ve telefon bildirimiyle bilgilendirileceğimi, otomatik yenilemeyi ve kayıtlı kartı Ödeme ve Lisans " +
   "ekranından istediğim zaman kapatabileceğimi biliyorum.";
 
 const DONUS = `https://${PLATFORM_HOST}/api/paytr/kart-donus`;
@@ -202,6 +202,10 @@ export async function direktBildirimiIsle(admin: Admin, alan: (ad: string) => st
     await admin.from("paytr_kart_islemleri").update({ durum: "basarisiz", hata_kodu: alan("failed_reason_code") || null, hata_mesaji: metin, sonuc_at: new Date().toISOString() })
       .eq("merchant_oid", b.merchant_oid).eq("durum", "bekliyor");
     await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", islem.payment_link_id).eq("status", "active");
+    if (islem.tur === "otomatik" && link.payer_organization_id) {
+      await admin.from("paytr_otomatik_yenileme").update({ son_hata: metin, updated_at: new Date().toISOString() })
+        .eq("organization_id", link.payer_organization_id).eq("product", link.product);
+    }
     return "ok";
   }
 
@@ -224,6 +228,11 @@ export async function direktBildirimiIsle(admin: Admin, alan: (ad: string) => st
   }
   await admin.from("paytr_kart_islemleri").update({ durum: "basarili", sonuc_at: new Date().toISOString() })
     .eq("merchant_oid", b.merchant_oid).eq("durum", "bekliyor");
+  // Başarılı otomatik çekim deneme sayacını sıfırlar: bir sonraki dönem üç hakla başlar.
+  if (islem.tur === "otomatik" && link.payer_organization_id) {
+    await admin.from("paytr_otomatik_yenileme").update({ deneme_sayisi: 0, son_hata: null, updated_at: new Date().toISOString() })
+      .eq("organization_id", link.payer_organization_id).eq("product", link.product);
+  }
   if (sonuc !== "recorded" && sonuc !== "duplicate" && sonuc !== "test") {
     console.error("[paytr-direkt] ödeme işlenmedi", b.merchant_oid, sonuc);
   }
