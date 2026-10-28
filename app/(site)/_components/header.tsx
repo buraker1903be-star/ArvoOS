@@ -57,7 +57,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
     hoverTimer.current = window.setTimeout(() => setOpen(id), id ? 60 : 160);
   };
   const toggle = (id: MenuId) => setOpen((cur) => (cur === id ? null : id));
-  const isActive = (href: string) => (href === "/" || href === "/en" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+  const isActive = (href: string) => (href === ROUTES.home.tr || href === ROUTES.home.en ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
   const productsActive = t.productLinks.some((l) => isActive(l.href));
   const servicesActive = isActive(ROUTES.services[locale]);
   const demoHref = `${ROUTES.contact[locale]}${locale === "tr" ? "?ilgi=arvoos" : "?interest=arvoos"}`;

@@ -105,11 +105,12 @@ describe("fiyat kaynağı", () => {
     for (const product of SITE_PRODUCTS) {
       const adres = urunAdresi(product, "tr");
       assert.equal(adres.external, false, `${product}: dış adrese gidiyor`);
-      assert.match(adres.href, /^\/[a-z]/, `${product}: ${adres.href}`);
+      assert.match(adres.href, /^\/tr\/[a-z]/, `${product}: ${adres.href}`);
     }
-    assert.equal(urunAdresi("arvoos", "tr").href, "/urunler/arvoos");
+    assert.equal(urunAdresi("arvoos", "tr").href, "/tr/urunler/arvoos");
+    assert.equal(urunAdresi("arvoos", "en").href, "/products/arvoos");
     // Arvo Randevu → ArvoBook (28.10.2026); kod adı "randevu" kaldı.
-    assert.equal(urunAdresi("randevu", "tr").href, "/urunler/arvobook");
+    assert.equal(urunAdresi("randevu", "tr").href, "/tr/urunler/arvobook");
     assert.equal(urunAdi("randevu"), "ArvoBook");
     // ArvoARC satıştan kalktı ama fiyat kaydı konsol için duruyor.
     assert.equal(urunAdi("arc"), "ArvoARC");
