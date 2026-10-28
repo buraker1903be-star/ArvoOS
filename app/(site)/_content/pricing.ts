@@ -3,7 +3,7 @@
   lib/site/pricing.ts'ten gelir (bkz. types.ts → PricingContent).
 
   Paket içeriklerinde yalnızca panelde karşılığı olan özellikler yazılır.
-  ArvoBook'ta (eski Arvo Randevu) WhatsApp hatırlatması yazılmaz —
+  ArvoCal'da (eski Arvo Randevu) WhatsApp hatırlatması yazılmaz —
   şablonlar henüz Meta onayında. ArvoARC 28.10.2026'da satıştan kalktı;
   e-ticaret sitesi yaptıranlara panel olarak veriliyor, fiyatı burada yok.
 */
@@ -18,7 +18,7 @@ export const PRICING_TR: PricingContent = {
   meta: {
     title: "Ücretler",
     description:
-      "ArvoOS, ArvoBook ve ArvoLab abonelik ücretleri: aylık ve yıllık fiyatlar, paket içerikleri, ek kalemler ve abonelik koşulları. Fiyatlar kurum başınadır, kullanıcı başına değil.",
+      "ArvoOS, ArvoCal ve ArvoLab abonelik ücretleri: aylık ve yıllık fiyatlar, paket içerikleri, ek kalemler ve abonelik koşulları. Fiyatlar kurum başınadır, kullanıcı başına değil.",
   },
   hero: {
     eyebrow: "Ücretler",
@@ -28,7 +28,7 @@ export const PRICING_TR: PricingContent = {
        gerekçesiyle söylendi. */
     title: "İşletme ürünlerinde kullanıcı başına değil,",
     subtitle: "kurum başına.",
-    lead: "ArvoOS ve ArvoBook kurum başına fiyatlanır: ekibiniz büyüdükçe fatura katlanmaz, dahil olan kullanıcı sayısı her kartta yazar. ArvoLab bunun dışındadır — değeri kurumun akışında değil doğrudan yazan kişide olduğu için araştırmacı başına fiyatlanır.",
+    lead: "ArvoOS ve ArvoCal kurum başına fiyatlanır: ekibiniz büyüdükçe fatura katlanmaz, dahil olan kullanıcı sayısı her kartta yazar. ArvoLab bunun dışındadır — değeri kurumun akışında değil doğrudan yazan kişide olduğu için araştırmacı başına fiyatlanır.",
     actions: [demo, { label: "Abonelik koşulları", href: "#kosullar", variant: "ghost" }],
   },
   cycle: {
@@ -43,7 +43,7 @@ export const PRICING_TR: PricingContent = {
     quoteAction: "Teklif isteyin",
   },
   vatNote:
-    "Tüm fiyatlar KDV hariçtir ve Türk lirası üzerindendir. Yıllık seçenekte 12 aylık kullanım için 10 aylık bedel ödenir; tutar dönem başında tek seferde faturalanır.",
+    "Tüm fiyatlar Türk lirası üzerindendir ve KDV dahildir. Yıllık seçenekte 12 aylık kullanım için 10 aylık bedel ödenir; tutar dönem başında tek seferde faturalanır.",
 
   groups: [
     {
@@ -73,7 +73,7 @@ export const PRICING_TR: PricingContent = {
       product: "randevu",
       tag: "Randevu yönetimi",
       lead: "Kuaför ve güzellik salonları için çevrim içi randevu sayfası, takvim ve müşteri kaydı. Çalışma saatleri Türkiye saatiyle tanımlanır.",
-      linkLabel: "ArvoBook'u inceleyin",
+      linkLabel: "ArvoCal'ı inceleyin",
       cards: [
         {
           code: "randevu-tek",
@@ -98,7 +98,7 @@ export const PRICING_TR: PricingContent = {
       /* Fiyat yükseldi (bkz. pricing.ts); değeri de yazmak gerekiyor.
          "Türkiye'de tek" gibi kanıtlanamaz bir üstünlük iddiası YAZILMAZ —
          yerine ölçülebilir olan söylenir: ayrı araçlar, ayrı abonelikler. */
-      lead: "Literatür ve atıftan akademik yazıma, kılavuz kontrolünden analize ve özgünlük ön kontrolüne kadar araştırma sürecinin tamamı tek çalışma alanında — her adım için ayrı bir araca ve ayrı bir aboneliğe gerek kalmadan. Fiyat araştırmacı başınadır; ekipçe kullanımda koltuk ucuzlar.",
+      lead: "Literatür ve atıftan akademik yazıma, kılavuz kontrolünden analize ve özgünlük ön kontrolüne kadar araştırma sürecinin tamamı tek çalışma alanında — her adım için ayrı bir araca ve ayrı bir aboneliğe gerek kalmadan. Bireysel araştırmacıya satılır; fiyat araştırmacı başınadır.",
       linkLabel: "ArvoLab'i inceleyin",
       cards: [
         {
@@ -107,13 +107,8 @@ export const PRICING_TR: PricingContent = {
           items: ["Tek araştırmacı", "Literatür ve atıf yönetimi", "Akademik yazım", "Kılavuz kontrolü", "Analiz merkezi (nicel ve nitel)", "Özgünlük ön kontrolü"],
         },
         {
-          code: "arvolab-ekip",
-          text: "Ortak kaynak ve ortak yazım düzeni isteyen araştırma ekipleri için. Koltuk başına ödersiniz, kişi başı bedel düşer.",
-          items: ["En az 3 araştırmacı", "Araştırmacı basamağındaki her şey", "Ortak kaynak kütüphanesi", "Akademik editör", "Ekip ve erişim yönetimi", "Öncelikli destek"],
-        },
-        {
           code: "arvolab-kurum",
-          text: "Koltuk saymak istemeyen bölüm ve üniversiteler için site lisansı.",
+          text: "Yalnızca üniversiteler ve eğitim kurumları için: bölüm ya da üniversite geneli site lisansı, teklif usulüyle.",
           items: ["Sınırsız araştırmacı", "Bölüm veya üniversite geneli site lisansı", "Kurum içi kullanıcı yönetimi", "Kuruma özel alan adı", "Kurulum ve eğitim", "Faturalandırma kuruma"],
         },
       ],
@@ -127,7 +122,7 @@ export const PRICING_TR: PricingContent = {
     quote: "Teklif",
     items: [
       { code: "ek-kullanici", name: "Ek kullanıcı", text: "ArvoOS paketlerinde dahil olan kullanıcı sayısını aşan her kullanıcı için. ArvoLab zaten araştırmacı başına fiyatlandığı için bu kalem orada işlemez." },
-      { code: "ek-sube", name: "Ek şube", text: "ArvoBook Çok şube paketindeki üç şubeyi aşan her şube için." },
+      { code: "ek-sube", name: "Ek şube", text: "ArvoCal Çok şube paketindeki üç şubeyi aşan her şube için." },
       { code: "veri-aktarimi", name: "Veri aktarımı ve kurulum", text: "Mevcut sisteminizden veri taşıma, kullanıcı tanımlama ve ekip eğitimi. Kapsama göre tek seferlik ücretlendirilir." },
       { code: "ozel-gelistirme", name: "Kuruma özel geliştirme", text: "Kuruma özel iş akışı, ekran veya rapor geliştirmesi. Kapsam netleştikten sonra teklif edilir." },
     ],
@@ -143,7 +138,7 @@ export const PRICING_TR: PricingContent = {
       { title: "Fiyat değişikliği", text: "Yürürlükteki döneminiz etkilenmez. Değişiklik en az 30 gün önce e-posta ile bildirilir ve yalnızca sonraki dönemde uygulanır." },
       { title: "Paket yükseltme ve düşürme", text: "Yükseltme aynı gün yürürlüğe girer; yalnızca dönemin kalan günleri için fark alınır. Düşürme, mevcut dönemin sonunda uygulanır." },
       { title: "Yıllık abonelikte erken iptal", text: "Kullandığınız aylar aylık liste fiyatı üzerinden hesaplanır, kalan bakiye iade edilir. Yıllık indirim yalnızca kullanılmayan aylar için geri alınır." },
-      { title: "KDV ve fatura", text: "Listelenen tutarlar KDV hariçtir. Her dönem için fatura düzenlenir ve kayıtlı e-posta adresinize gönderilir." },
+      { title: "KDV ve fatura", text: "Listelenen tutarlara KDV dahildir; faturada KDV ayrıca gösterilir. Her dönem için fatura düzenlenir ve kayıtlı e-posta adresinize gönderilir." },
     ],
     links: [
       { label: "Mesafeli Satış Sözleşmesi", href: R("distance-sales"), variant: "ghost" },
@@ -156,9 +151,9 @@ export const PRICING_TR: PricingContent = {
     eyebrow: "Sık sorulan sorular",
     title: "Ücretler hakkında",
     items: [
-      { q: "Fiyatlara KDV dahil mi?", a: "Hayır. Sayfadaki tutarlar KDV hariçtir; faturada yürürlükteki oranda KDV eklenir." },
-      { q: "Kullanıcı başına mı ödüyoruz?", a: "ArvoOS ve ArvoBook'ta hayır: fiyat kurum başınadır ve her pakette belirli sayıda kullanıcı vardır; bu sayıyı aşarsanız yalnızca ek kullanıcı ücreti işlenir, paket fiyatı katlanmaz. ArvoLab'de evet: araştırmacı başına fiyatlanır, çünkü orada değeri üreten doğrudan kullanan kişidir." },
-      { q: "ArvoLab'de Ekip ile Kurum arasındaki fark ne?", a: "Ekip koltuk başına ödenir: en az üç araştırmacı, kişi başı bedel Araştırmacı basamağından düşük ve istediğiniz zaman koltuk ekleyip çıkarırsınız. Kurum ise site lisansıdır: koltuk sayılmaz, bölüm ya da üniversite genelinde sınırsız araştırmacı kullanır, fatura kuruma kesilir." },
+      { q: "Fiyatlara KDV dahil mi?", a: "Evet. Sayfadaki tutarlara KDV dahildir; ödediğiniz tutar ekrandaki tutardır, faturada KDV ayrıca gösterilir." },
+      { q: "Kullanıcı başına mı ödüyoruz?", a: "ArvoOS ve ArvoCal'da hayır: fiyat kurum başınadır ve her pakette belirli sayıda kullanıcı vardır; bu sayıyı aşarsanız yalnızca ek kullanıcı ücreti işlenir, paket fiyatı katlanmaz. ArvoLab'de evet: araştırmacı başına fiyatlanır, çünkü orada değeri üreten doğrudan kullanan kişidir." },
+      { q: "ArvoLab'i bir ekip ya da şirket olarak alabilir miyiz?", a: "ArvoLab bireysel araştırmacılara satılır. Kurum lisansı yalnızca üniversitelere ve eğitim kurumlarına, teklif usulüyle verilir." },
       { q: "Yıllık ödeme ne kazandırır?", a: "Yıllık seçenekte 12 aylık kullanım için 10 aylık bedel ödenir; iki ay bedavadır. Tutar dönem başında tek seferde faturalanır." },
       { q: "Abonelik otomatik yenileniyor mu?", a: "Hayır. Kartınızdan otomatik tahsilat yapılmaz; her dönem için ödeme bağlantısı gönderilir ve ödemeyi siz onaylarsınız." },
       { q: "Paketimi sonradan değiştirebilir miyim?", a: "Evet. Yükseltme aynı gün yürürlüğe girer ve yalnızca dönemin kalan günleri için fark alınır; düşürme mevcut dönemin sonunda uygulanır." },

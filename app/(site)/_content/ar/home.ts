@@ -7,12 +7,12 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].ar;
 export const HOME_AR: HomeContent = {
   meta: {
     title: "ArvoOS | أنظمة أفضل لعمل أفضل",
-    description: "تطوّر ArvoOS نظام تشغيل الأعمال للشركات وArvoLab للباحثين وArvoBook للصالونات، وتقدّم خدمات تصميم المواقع والمتاجر الإلكترونية وSEO وGEO والبرمجيات المخصّصة.",
+    description: "تطوّر ArvoOS نظام تشغيل الأعمال للشركات وArvoLab للباحثين وArvoCal للصالونات، وتقدّم خدمات تصميم المواقع والمتاجر الإلكترونية وSEO وGEO والبرمجيات المخصّصة.",
   },
   hero: {
     eyebrow: "عائلة منتجات ArvoOS",
     title: "أنظمة أفضل", subtitle: "لعمل أفضل.",
-    lead: "ArvoOS علامة برمجيات تطوّر نظام تشغيل الأعمال للشركات وArvoLab للباحثين وArvoBook للصالونات، وتحوّل العمل المعقّد إلى تجارب هادئة وقوية ومترابطة.",
+    lead: "ArvoOS علامة برمجيات تطوّر نظام تشغيل الأعمال للشركات وArvoLab للباحثين وArvoCal للصالونات، وتحوّل العمل المعقّد إلى تجارب هادئة وقوية ومترابطة.",
     actions: [
       { label: "اطلب عرضًا توضيحيًا", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "استكشف المنتجات", href: "#products", variant: "ghost" },
@@ -42,7 +42,7 @@ export const HOME_AR: HomeContent = {
       label: "إدارة مواعيد الصالونات", title: "حرّر هاتفك من دفتر المواعيد.",
       text: "يختار العملاء الخدمة والموظف والوقت بأنفسهم، ويصل الحجز إلى تقويمك فورًا. تقويم لكل موظف، وساعات عمل وإجازات، ولا حجوزات مزدوجة.",
       chips: ["صفحة حجز إلكترونية", "تقويم الموظفين", "ساعات العمل والإجازات", "سجلات العملاء"],
-      cta: { label: "استكشف ArvoBook", href: R("randevu"), variant: "gold" },
+      cta: { label: "استكشف ArvoCal", href: R("randevu"), variant: "gold" },
       signIn: { label: "تسجيل الدخول", href: PRODUCT_APPS.randevu.url, external: true, variant: "ghost" },
     },
   },
@@ -81,7 +81,7 @@ export const HOME_AR: HomeContent = {
   eco: {
     eyebrow: "المنظومة",
     title: "ثلاثة منتجات. منظومة واحدة.",
-    lead: "ArvoOS وArvoLab وArvoBook تطبيقات ويب مستقلة، لكلٍّ منها نطاق فرعي خاص على arvo-os.com، يبنيها الفريق نفسه وفق معيار واحد للعلامة والجودة.",
+    lead: "ArvoOS وArvoLab وArvoCal تطبيقات ويب مستقلة، لكلٍّ منها نطاق فرعي خاص على arvo-os.com، يبنيها الفريق نفسه وفق معيار واحد للعلامة والجودة.",
     roles: ["العمليات", "البحث العلمي", "الصالونات"],
     principles: [
       { title: "مساحة خاصة بك", text: "كل مؤسسة أو فريق أو صالون يعمل في مساحة عمل خاصة به." },
@@ -116,9 +116,9 @@ export const HOME_AR: HomeContent = {
     eyebrow: "الأسئلة الشائعة",
     title: "أسئلة حول ArvoOS",
     items: [
-      { q: "ما هي ArvoOS؟", a: `ArvoOS هي علامة البرمجيات التابعة لشركة ${COMPANY.legalName}. تطوّر نظام تشغيل الأعمال ArvoOS للشركات وArvoLab للباحثين وArvoBook للصالونات، كما تقدّم خدمات تصميم المواقع والمتاجر الإلكترونية والبرمجيات المخصّصة.` },
-      { q: "ما الفرق بين ArvoOS وArvoLab وArvoBook؟", a: "يدير ArvoOS عمليات الشركة من الطلب إلى الدفع. ويدعم ArvoLab البحث العلمي والكتابة الأكاديمية. أما ArvoBook فيدير دفتر مواعيد الصالون: يحجز العملاء بأنفسهم ويُعرض التقويم حسب كل موظف." },
-      { q: "أين أسجّل الدخول إلى منتجات ArvoOS؟", a: `يعمل ArvoOS على ${PRODUCT_APPS.arvoos.host}، وArvoLab على ${PRODUCT_APPS.arvolab.host}، وArvoBook على ${PRODUCT_APPS.randevu.host}. والثلاثة تطبيقات ويب تعمل في المتصفح.` },
+      { q: "ما هي ArvoOS؟", a: `ArvoOS هي علامة البرمجيات التابعة لشركة ${COMPANY.legalName}. تطوّر نظام تشغيل الأعمال ArvoOS للشركات وArvoLab للباحثين وArvoCal للصالونات، كما تقدّم خدمات تصميم المواقع والمتاجر الإلكترونية والبرمجيات المخصّصة.` },
+      { q: "ما الفرق بين ArvoOS وArvoLab وArvoCal؟", a: "يدير ArvoOS عمليات الشركة من الطلب إلى الدفع. ويدعم ArvoLab البحث العلمي والكتابة الأكاديمية. أما ArvoCal فيدير دفتر مواعيد الصالون: يحجز العملاء بأنفسهم ويُعرض التقويم حسب كل موظف." },
+      { q: "أين أسجّل الدخول إلى منتجات ArvoOS؟", a: `يعمل ArvoOS على ${PRODUCT_APPS.arvoos.host}، وArvoLab على ${PRODUCT_APPS.arvolab.host}، وArvoCal على ${PRODUCT_APPS.randevu.host}. والثلاثة تطبيقات ويب تعمل في المتصفح.` },
       { q: "كم تبلغ تكلفة ArvoOS؟", a: `الأسعار الشهرية والسنوية منشورة على ${ROUTES.pricing.ar}؛ والتسعير لكل مؤسسة، لا لكل مستخدم. أما باقة Enterprise فتُحدَّد رسومها بالاتفاق مع كل مؤسسة.` },
       { q: "كيف أطلب عرضًا توضيحيًا؟", a: `املأ النموذج في صفحة التواصل أو راسلنا على ${COMPANY.email}؛ وسيصل طلبك إلى فريق المنتج المعني.` },
     ],
@@ -126,7 +126,7 @@ export const HOME_AR: HomeContent = {
   cta: {
     eyebrow: "عرض توضيحي لمؤسستك",
     title: "لنبنِ معًا أنظمة الغد.",
-    lead: "دعنا نُريك كيف سيعمل ArvoOS أو ArvoLab أو ArvoBook من أجلك.",
+    lead: "دعنا نُريك كيف سيعمل ArvoOS أو ArvoLab أو ArvoCal من أجلك.",
     actions: [
       { label: "اطلب عرضًا توضيحيًا", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "تعرّف علينا", href: R("about"), variant: "ghost" },

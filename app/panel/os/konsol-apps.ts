@@ -63,7 +63,7 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
         { key: "arvoos", href: "/panel/platform/urunler/arvoos", label: "ArvoOS" },
         { key: "arc", href: "/panel/platform/urunler/arc", label: "ArvoARC" },
         { key: "arvolab", href: "/panel/platform/urunler/arvolab", label: "ArvoLab" },
-        { key: "randevu", href: "/panel/platform/urunler/randevu", label: "Arvo Randevu" },
+        { key: "randevu", href: "/panel/platform/urunler/randevu", label: "ArvoCal" },
       ],
     },
     {

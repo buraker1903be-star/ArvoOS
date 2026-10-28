@@ -233,7 +233,7 @@ export function LisansFormu({
           {/*
             EK KULLANICI (13.10.2026). Dahil limiti aşan koltuk artık daveti
             durdurmuyor, ücretlendiriliyor; iki alan da bu yüzden burada.
-            Varsayılan liste fiyatı (249 TL) ve 10 koltuk migration'dan
+            Varsayılan liste fiyatı (299 TL, KDV dahil) ve 10 koltuk migration'dan
             geliyor, burada yalnızca kuruma özel anlaşma için değiştirilir.
           */}
           <label>

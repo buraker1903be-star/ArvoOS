@@ -6,7 +6,7 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].es;
 
 export const RANDEVU_ES: ProductContent = {
   id: "randevu",
-  name: "ArvoBook",
+  name: "ArvoCal",
   category: "BusinessApplication",
   appUrl: PRODUCT_APPS.randevu.url,
   featureList: [
@@ -18,12 +18,12 @@ export const RANDEVU_ES: ProductContent = {
     "Recordatorios por WhatsApp",
   ],
   meta: {
-    title: "ArvoBook — Gestión de citas para salones",
+    title: "ArvoCal — Gestión de citas para salones",
     description:
       "Reservas online para peluquerías y salones de belleza: los clientes eligen ellos mismos el servicio, el profesional y la hora; calendario por profesional, horarios de trabajo y ausencias, recordatorios por WhatsApp.",
   },
   hero: {
-    eyebrow: "ArvoBook · Gestión de citas para salones",
+    eyebrow: "ArvoCal · Gestión de citas para salones",
     title: "Deje que la página de reservas",
     subtitle: "atienda el teléfono.",
     lead:
@@ -37,7 +37,7 @@ export const RANDEVU_ES: ProductContent = {
     eyebrow: "Funciones",
     title: "La jornada del salón en una sola pantalla.",
     lead:
-      "Una cita tomada por teléfono va a una agenda de papel, la agenda se lee mal y la hora se solapa. ArvoBook reconstruye esa cadena desde el principio.",
+      "Una cita tomada por teléfono va a una agenda de papel, la agenda se lee mal y la hora se solapa. ArvoCal reconstruye esa cadena desde el principio.",
     items: [
       {
         title: "Página de reservas online",
@@ -86,7 +86,7 @@ export const RANDEVU_ES: ProductContent = {
   },
   faq: {
     eyebrow: "Preguntas frecuentes",
-    title: "Sobre ArvoBook",
+    title: "Sobre ArvoCal",
     items: [
       { q: "¿Tienen que registrarse los clientes?", a: "No. El cliente elige un servicio, un profesional y una hora e introduce un número de teléfono; se le identifica por ese número y recibe un enlace de cancelación." },
       { q: "¿Pueden caer dos citas en el mismo hueco?", a: "No. Una cita que se solapa para el mismo profesional —contando el margen del servicio— se rechaza a nivel de base de datos, no mediante una comprobación de la interfaz." },

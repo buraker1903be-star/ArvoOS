@@ -1,8 +1,8 @@
-// ArvoBook randevu takvimi maketi (28.10.2026): günün personel personel
+// ArvoCal randevu takvimi maketi (28.10.2026): günün personel personel
 // takvimi, randevular ve bir izin bloğu. Yalnızca ürünün GERÇEKTEN yaptığı
 // şeyler çiziliyor (personel bazlı takvim, hizmet süresi, izin); "Örnek
 // arayüz" olarak etiketli. Personel adları yüzen karttaki müşteri adıyla
-// (BOOK_CARD) çakışmasın diye ayrı seçildi. Eskiden ArvoBook sayfasında sahne yoktu ve açılış
+// (BOOK_CARD) çakışmasın diye ayrı seçildi. Eskiden ArvoCal sayfasında sahne yoktu ve açılış
 // öteki ürün sayfalarından farklı (ortalı, görselsiz) duruyordu.
 import type { Locale } from "@/lib/site/routes";
 
@@ -19,17 +19,17 @@ const YER: Omit<Randevu, "ad" | "hizmet">[] = [
 const yerlestir = (adlar: [string, string][]): Randevu[] => YER.map((y, i) => ({ ...y, ad: adlar[i][0], hizmet: adlar[i][1] }));
 
 const T: Record<Locale, Metin> = {
-  tr: { label: "ArvoBook randevu takvimi — örnek görünüm", cap: "Örnek arayüz", gun: "Perşembe", bugun: "Bugün", personel: ["Merve", "Mert", "Selin"], izin: "İzin", saatler: SAATLER,
+  tr: { label: "ArvoCal randevu takvimi — örnek görünüm", cap: "Örnek arayüz", gun: "Perşembe", bugun: "Bugün", personel: ["Merve", "Mert", "Selin"], izin: "İzin", saatler: SAATLER,
     randevular: yerlestir([["Ayşe K.", "Kesim"], ["Zeynep A.", "Boya"], ["Deniz Y.", "Fön"], ["Can T.", "Sakal ve kesim"], ["Ece S.", "Kesim"], ["Ali V.", "Sakal"], ["Buse O.", "Manikür"], ["Gizem E.", "Bakım"]]) },
-  en: { label: "ArvoBook appointment calendar — sample view", cap: "Illustrative interface", gun: "Thursday", bugun: "Today", personel: ["Isla", "Noah", "Olivia"], izin: "Time off", saatler: ["10 am", "11 am", "12 pm", "1 pm", "2 pm", "3 pm", "4 pm"],
+  en: { label: "ArvoCal appointment calendar — sample view", cap: "Illustrative interface", gun: "Thursday", bugun: "Today", personel: ["Isla", "Noah", "Olivia"], izin: "Time off", saatler: ["10 am", "11 am", "12 pm", "1 pm", "2 pm", "3 pm", "4 pm"],
     randevular: yerlestir([["Sophie L.", "Haircut"], ["Grace M.", "Colour"], ["Ava R.", "Blow-dry"], ["James T.", "Beard & cut"], ["Mia S.", "Haircut"], ["Leo W.", "Beard trim"], ["Chloe P.", "Manicure"], ["Ella K.", "Treatment"]]) },
-  de: { label: "ArvoBook-Terminkalender — Beispielansicht", cap: "Beispieloberfläche", gun: "Donnerstag", bugun: "Heute", personel: ["Julia", "Jonas", "Mia"], izin: "Frei", saatler: SAATLER,
+  de: { label: "ArvoCal-Terminkalender — Beispielansicht", cap: "Beispieloberfläche", gun: "Donnerstag", bugun: "Heute", personel: ["Julia", "Jonas", "Mia"], izin: "Frei", saatler: SAATLER,
     randevular: yerlestir([["Anna K.", "Schnitt"], ["Laura M.", "Färben"], ["Sophie R.", "Föhnen"], ["Paul T.", "Bart & Schnitt"], ["Lea S.", "Schnitt"], ["Max W.", "Bart"], ["Emma P.", "Maniküre"], ["Marie B.", "Pflege"]]) },
-  es: { label: "Agenda de citas de ArvoBook — vista de ejemplo", cap: "Interfaz ilustrativa", gun: "Jueves", bugun: "Hoy", personel: ["Valeria", "Pablo", "Sofía"], izin: "Libre", saatler: SAATLER,
+  es: { label: "Agenda de citas de ArvoCal — vista de ejemplo", cap: "Interfaz ilustrativa", gun: "Jueves", bugun: "Hoy", personel: ["Valeria", "Pablo", "Sofía"], izin: "Libre", saatler: SAATLER,
     randevular: yerlestir([["Carmen L.", "Corte"], ["Elena M.", "Color"], ["Marta R.", "Secado"], ["Javier T.", "Barba y corte"], ["Paula S.", "Corte"], ["Diego V.", "Barba"], ["Sara P.", "Manicura"], ["Irene G.", "Tratamiento"]]) },
-  fr: { label: "Agenda de rendez-vous ArvoBook — vue d’exemple", cap: "Interface illustrative", gun: "Jeudi", bugun: "Aujourd’hui", personel: ["Clara", "Hugo", "Léa"], izin: "Absence", saatler: ["10 h", "11 h", "12 h", "13 h", "14 h", "15 h", "16 h"],
+  fr: { label: "Agenda de rendez-vous ArvoCal — vue d’exemple", cap: "Interface illustrative", gun: "Jeudi", bugun: "Aujourd’hui", personel: ["Clara", "Hugo", "Léa"], izin: "Absence", saatler: ["10 h", "11 h", "12 h", "13 h", "14 h", "15 h", "16 h"],
     randevular: yerlestir([["Julie L.", "Coupe"], ["Manon M.", "Couleur"], ["Inès R.", "Brushing"], ["Lucas T.", "Barbe et coupe"], ["Chloé S.", "Coupe"], ["Louis V.", "Barbe"], ["Emma P.", "Manucure"], ["Zoé B.", "Soin"]]) },
-  ar: { label: "تقويم مواعيد ArvoBook — عرض توضيحي", cap: "واجهة توضيحية", gun: "الخميس", bugun: "اليوم", personel: ["فاطمة", "عمر", "سارة"], izin: "إجازة", saatler: SAATLER,
+  ar: { label: "تقويم مواعيد ArvoCal — عرض توضيحي", cap: "واجهة توضيحية", gun: "الخميس", bugun: "اليوم", personel: ["فاطمة", "عمر", "سارة"], izin: "إجازة", saatler: SAATLER,
     randevular: yerlestir([["نور ح.", "قص"], ["ريم م.", "صبغة"], ["هدى ر.", "تجفيف"], ["خالد ت.", "لحية وقص"], ["مريم س.", "قص"], ["يوسف و.", "لحية"], ["دانة ب.", "مانيكير"], ["لينا ك.", "عناية"]]) },
 };
 

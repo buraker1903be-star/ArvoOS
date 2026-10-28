@@ -15,13 +15,13 @@ export const PRICING_EN: PricingContent = {
   meta: {
     title: "Pricing",
     description:
-      "Subscription pricing for ArvoOS, ArvoBook and ArvoLab: monthly and annual prices, what each plan includes, add-ons and subscription terms. Priced per organization, not per user.",
+      "Subscription pricing for ArvoOS, ArvoCal and ArvoLab: monthly and annual prices, what each plan includes, add-ons and subscription terms. Priced per organization, not per user.",
   },
   hero: {
     eyebrow: "Pricing",
     title: "For business products, per organization —",
     subtitle: "not per seat.",
-    lead: "ArvoOS and ArvoBook are priced per organization: your bill does not multiply as the team grows, and every card states how many users are included. ArvoLab is the exception — its value sits with the person doing the writing, not in the organization's flow, so it is priced per researcher.",
+    lead: "ArvoOS and ArvoCal are priced per organization: your bill does not multiply as the team grows, and every card states how many users are included. ArvoLab is the exception — its value sits with the person doing the writing, not in the organization's flow, so it is priced per researcher.",
     actions: [demo, { label: "Subscription terms", href: "#kosullar", variant: "ghost" }],
   },
   cycle: {
@@ -36,7 +36,7 @@ export const PRICING_EN: PricingContent = {
     quoteAction: "Request a quote",
   },
   vatNote:
-    "Prices are in US dollars and exclude VAT and sales tax; customers in Turkey are billed in Turkish lira at the prices on the Turkish page. On the annual option you pay for 10 months and use 12; the amount is invoiced once at the start of the period.",
+    "Prices are in US dollars and exclude VAT and sales tax; customers in Turkey are billed in Turkish lira at the prices on the Turkish page, which include VAT. On the annual option you pay for 10 months and use 12; the amount is invoiced once at the start of the period.",
 
   groups: [
     {
@@ -66,7 +66,7 @@ export const PRICING_EN: PricingContent = {
       product: "randevu",
       tag: "Appointment management",
       lead: "An online booking page, calendar and customer records for hair and beauty salons. Working hours are defined in Türkiye local time.",
-      linkLabel: "Explore ArvoBook",
+      linkLabel: "Explore ArvoCal",
       cards: [
         {
           code: "randevu-tek",
@@ -88,7 +88,7 @@ export const PRICING_EN: PricingContent = {
     {
       product: "arvolab",
       tag: "Research workspace",
-      lead: "Literature and citations, academic writing, guideline checks, analysis and originality pre-checks — the whole research process in one workspace, without a separate tool and a separate subscription for every step. Priced per researcher; seats get cheaper when a team uses it.",
+      lead: "Literature and citations, academic writing, guideline checks, analysis and originality pre-checks — the whole research process in one workspace, without a separate tool and a separate subscription for every step. Priced per researcher.",
       linkLabel: "Explore ArvoLab",
       cards: [
         {
@@ -97,13 +97,11 @@ export const PRICING_EN: PricingContent = {
           items: ["A single researcher", "Literature and citation management", "Academic writing", "Guideline checks", "Analysis centre (quantitative and qualitative)", "Originality pre-check"],
         },
         {
-          code: "arvolab-ekip",
-          text: "For research teams that need a shared library and a shared writing order. You pay per seat, and the per-person rate drops.",
-          items: ["From 3 researchers", "Everything in Researcher", "Shared source library", "Academic editor", "Team and access management", "Priority support"],
-        },
-        {
+          // Ekip paketi 28.10.2026'da satıştan kalktı (kurucu kararı): ArvoLab bireysel
+          // araştırmacıya satılıyor, kurum lisansı yalnızca üniversite ve eğitim
+          // kurumlarına teklifle veriliyor. Kart geri eklenirse lib'deki plan da gerekir.
           code: "arvolab-kurum",
-          text: "A site licence for departments and universities that do not want to count seats.",
+          text: "Only for universities and educational institutions: a site licence for a department or the whole university, priced on request.",
           items: ["Unlimited researchers", "Department or university-wide site licence", "In-house user management", "Custom domain", "Implementation and training", "Invoiced to the institution"],
         },
       ],
@@ -117,7 +115,7 @@ export const PRICING_EN: PricingContent = {
     quote: "On request",
     items: [
       { code: "ek-kullanici", name: "Additional user", text: "For each user beyond the number included in an ArvoOS plan. It does not apply to ArvoLab, which is already priced per researcher." },
-      { code: "ek-sube", name: "Additional branch", text: "For each branch beyond the three included in the ArvoBook Multi-branch plan." },
+      { code: "ek-sube", name: "Additional branch", text: "For each branch beyond the three included in the ArvoCal Multi-branch plan." },
       { code: "veri-aktarimi", name: "Data migration and setup", text: "Moving data from your current system, defining users and training the team. Charged once, based on scope." },
       { code: "ozel-gelistirme", name: "Custom development", text: "A workflow, screen or report specific to your organization. Quoted once the scope is clear." },
     ],
@@ -133,7 +131,7 @@ export const PRICING_EN: PricingContent = {
       { title: "Price changes", text: "Your current period is unaffected. Changes are announced by email at least 30 days in advance and apply from the next period only." },
       { title: "Upgrades and downgrades", text: "An upgrade takes effect the same day and only the remaining days of the period are charged. A downgrade applies at the end of the current period." },
       { title: "Cancelling an annual plan early", text: "The months you used are recalculated at the monthly list price and the remaining balance is refunded. The annual discount is only withdrawn for the unused months." },
-      { title: "VAT and invoicing", text: "Listed amounts exclude VAT. An invoice is issued for each period and sent to your registered email address." },
+      { title: "VAT and invoicing", text: "Listed US-dollar amounts exclude VAT and sales tax, which are applied on the invoice according to the rules in force; Turkish-lira prices on the Turkish page include VAT. An invoice is issued for each period and sent to your registered email address." },
     ],
     links: [
       { label: "Distance Sales Agreement", href: R("distance-sales"), variant: "ghost" },
@@ -146,9 +144,9 @@ export const PRICING_EN: PricingContent = {
     eyebrow: "Frequently asked questions",
     title: "About pricing",
     items: [
-      { q: "Do the prices include VAT?", a: "No. Amounts on this page exclude VAT; VAT is added on the invoice at the rate in force." },
-      { q: "Are we charged per user?", a: "For ArvoOS and ArvoBook, no: prices are per organization and each plan includes a set number of users; beyond that number only the additional-user fee applies and the plan price does not multiply. For ArvoLab, yes: it is priced per researcher, because there the value is produced directly by the person using it." },
-      { q: "What is the difference between ArvoLab Team and Institution?", a: "Team is paid per seat: from three researchers, at a lower per-person rate than Researcher, and you add or remove seats as you go. Institution is a site licence: seats are not counted, the whole department or university uses it, and it is invoiced to the institution." },
+      { q: "Do the prices include VAT?", a: "No. US-dollar amounts on this page exclude VAT and sales tax; these are applied on the invoice according to the rules in force. Turkish-lira prices on the Turkish page include VAT." },
+      { q: "Are we charged per user?", a: "For ArvoOS and ArvoCal, no: prices are per organization and each plan includes a set number of users; beyond that number only the additional-user fee applies and the plan price does not multiply. For ArvoLab, yes: it is priced per researcher, because there the value is produced directly by the person using it." },
+      { q: "Can a team or a company buy ArvoLab?", a: "ArvoLab is sold to individual researchers. Institutional licences are offered only to universities and educational institutions, on request." },
       { q: "What does annual billing save?", a: "On the annual option you pay for 10 months and use 12 — two months free. The amount is invoiced once at the start of the period." },
       { q: "Does the subscription renew automatically?", a: "No. Your card is not charged automatically; a payment link is sent for each period and you approve the payment." },
       { q: "Can we change plan later?", a: "Yes. An upgrade takes effect the same day and only the remaining days of the period are charged; a downgrade applies at the end of the current period." },

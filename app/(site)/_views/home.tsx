@@ -1,6 +1,6 @@
 // Ana sayfa — global düzen (28.10.2026): açılış + üç rozet, üç ürünün
 // yan yana kartları (başlangıç fiyatıyla), "her yerde çalışır" şeridi,
-// ArvoOS kutusu ve akış sahnesi, tasarım ilkeleri, ArvoLab ve ArvoBook
+// ArvoOS kutusu ve akış sahnesi, tasarım ilkeleri, ArvoLab ve ArvoCal
 // kutuları, hizmetler, referanslar, SSS ve açık kapanış.
 // Eskiden ürünler yalnızca art arda tam genişlik kutulardı: ziyaretçi
 // üç ürünü ve fiyat düzeyini ancak sayfanın sonuna inince görüyordu.
@@ -58,7 +58,7 @@ export async function HomeView({ locale, c }: { locale: Locale; c: HomeContent }
   const kartlar: { name: ProductName; urun: SiteProduct; p: typeof os }[] = [
     { name: "ArvoOS", urun: "arvoos", p: os },
     { name: "ArvoLab", urun: "arvolab", p: lab },
-    { name: "ArvoBook", urun: "randevu", p: book },
+    { name: "ArvoCal", urun: "randevu", p: book },
   ];
   return (
     <>
@@ -122,10 +122,10 @@ export async function HomeView({ locale, c }: { locale: Locale; c: HomeContent }
           <LabMock locale={locale} />
         </ProductTile>
 
-        {/* ArvoARC'ın yeri 28.10.2026'dan beri ArvoBook: ARC satılmıyor. Kutuda
+        {/* ArvoARC'ın yeri 28.10.2026'dan beri ArvoCal: ARC satılmıyor. Kutuda
             ArvoLab'daki gibi ürünün kendi ekranı (günün takvimi) duruyor;
             eskiden maket yoktu ve tek bir yüzen kart çiziliyordu. */}
-        <ProductTile name="ArvoBook" kicker={book.label} title={book.title} sub={book.text} href={book.cta.href} app={book.signIn.href} more={more} signIn={signIn} narrow>
+        <ProductTile name="ArvoCal" kicker={book.label} title={book.title} sub={book.text} href={book.cta.href} app={book.signIn.href} more={more} signIn={signIn} narrow>
           <BookMock locale={locale} />
         </ProductTile>
 

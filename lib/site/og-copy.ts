@@ -4,7 +4,7 @@
 import type { Locale, PageId } from "./routes";
 
 export type OgCopy = { eyebrow: string; title: string; tagline: string };
-export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoBook";
+export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoCal";
 
 export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
   arvoos: "ArvoOS",
@@ -13,17 +13,17 @@ export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
   "arvoos-solutions": "ArvoOS",
   "arvoos-plans": "ArvoOS",
   arvolab: "ArvoLab",
-  randevu: "ArvoBook",
+  randevu: "ArvoCal",
 };
 
 export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
   home: {
-    tr: { eyebrow: "ARVOOS ÜRÜN EKOSİSTEMİ", title: "Daha iyi çalışmak için daha iyi sistemler.", tagline: "Kurumlar, araştırmacılar ve salonlar için dijital ürünler: ArvoOS, ArvoLab ve ArvoBook." },
-    en: { eyebrow: "THE ARVOOS PRODUCT ECOSYSTEM", title: "Better systems for better work.", tagline: "Software for organizations, researchers and salons: ArvoOS, ArvoLab and ArvoBook." },
-    de: { eyebrow: "DAS ARVOOS-PRODUKTÖKOSYSTEM", title: "Bessere Systeme für bessere Arbeit.", tagline: "Software für Organisationen, Forschende und Salons: ArvoOS, ArvoLab und ArvoBook." },
-    es: { eyebrow: "EL ECOSISTEMA DE PRODUCTOS ARVOOS", title: "Mejores sistemas para un mejor trabajo.", tagline: "Software para organizaciones, investigadores y salones: ArvoOS, ArvoLab y ArvoBook." },
-    fr: { eyebrow: "L’ÉCOSYSTÈME DE PRODUITS ARVOOS", title: "De meilleurs systèmes pour un meilleur travail.", tagline: "Des logiciels pour les organisations, les chercheurs et les salons : ArvoOS, ArvoLab et ArvoBook." },
-    ar: { eyebrow: "منظومة منتجات ARVOOS", title: "أنظمة أفضل لعمل أفضل.", tagline: "برمجيات للمؤسسات والباحثين والصالونات: ArvoOS وArvoLab وArvoBook." },
+    tr: { eyebrow: "ARVOOS ÜRÜN EKOSİSTEMİ", title: "Daha iyi çalışmak için daha iyi sistemler.", tagline: "Kurumlar, araştırmacılar ve salonlar için dijital ürünler: ArvoOS, ArvoLab ve ArvoCal." },
+    en: { eyebrow: "THE ARVOOS PRODUCT ECOSYSTEM", title: "Better systems for better work.", tagline: "Software for organizations, researchers and salons: ArvoOS, ArvoLab and ArvoCal." },
+    de: { eyebrow: "DAS ARVOOS-PRODUKTÖKOSYSTEM", title: "Bessere Systeme für bessere Arbeit.", tagline: "Software für Organisationen, Forschende und Salons: ArvoOS, ArvoLab und ArvoCal." },
+    es: { eyebrow: "EL ECOSISTEMA DE PRODUCTOS ARVOOS", title: "Mejores sistemas para un mejor trabajo.", tagline: "Software para organizaciones, investigadores y salones: ArvoOS, ArvoLab y ArvoCal." },
+    fr: { eyebrow: "L’ÉCOSYSTÈME DE PRODUITS ARVOOS", title: "De meilleurs systèmes pour un meilleur travail.", tagline: "Des logiciels pour les organisations, les chercheurs et les salons : ArvoOS, ArvoLab et ArvoCal." },
+    ar: { eyebrow: "منظومة منتجات ARVOOS", title: "أنظمة أفضل لعمل أفضل.", tagline: "برمجيات للمؤسسات والباحثين والصالونات: ArvoOS وArvoLab وArvoCal." },
   },
   arvoos: {
     tr: { eyebrow: "ARVOOS · İŞLETME İŞLETİM SİSTEMİ", title: "İşletmenizin tamamı. Tek bir akışta.", tagline: "CRM, teklif, e-imzalı sözleşme, operasyon, finans, İK ve raporlama tek sistemde." },
@@ -74,12 +74,12 @@ export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
     ar: { eyebrow: "ARVOBOOK · إدارة مواعيد الصالونات", title: "دع صفحة الحجز تتولى الرد على الهاتف.", tagline: "العملاء يحجزون بأنفسهم؛ تقويم لكل موظف، وساعات العمل والإجازات، وتذكيرات عبر WhatsApp." },
   },
   pricing: {
-    tr: { eyebrow: "ÜCRETLER", title: "İşletme ürünlerinde kurum başına fiyat.", tagline: "ArvoOS, ArvoBook ve ArvoLab için aylık ve yıllık fiyatlar; yıllık ödemede iki ay bedava." },
-    en: { eyebrow: "PRICING", title: "Business products priced per organization.", tagline: "Monthly and annual prices for ArvoOS, ArvoBook and ArvoLab; two months free on annual billing." },
-    de: { eyebrow: "PREISE", title: "Unternehmensprodukte mit Preisen pro Organisation.", tagline: "Monats- und Jahrespreise für ArvoOS, ArvoBook und ArvoLab; zwei Monate gratis bei jährlicher Zahlung." },
-    es: { eyebrow: "PRECIOS", title: "Productos para empresas con precio por organización.", tagline: "Precios mensuales y anuales de ArvoOS, ArvoBook y ArvoLab; dos meses gratis con pago anual." },
-    fr: { eyebrow: "TARIFS", title: "Des produits professionnels tarifés par organisation.", tagline: "Tarifs mensuels et annuels pour ArvoOS, ArvoBook et ArvoLab ; deux mois offerts en facturation annuelle." },
-    ar: { eyebrow: "الأسعار", title: "منتجات أعمال بسعر لكل مؤسسة.", tagline: "أسعار شهرية وسنوية لـ ArvoOS وArvoBook وArvoLab؛ شهران مجانًا عند الدفع السنوي." },
+    tr: { eyebrow: "ÜCRETLER", title: "İşletme ürünlerinde kurum başına fiyat.", tagline: "ArvoOS, ArvoCal ve ArvoLab için aylık ve yıllık fiyatlar; yıllık ödemede iki ay bedava." },
+    en: { eyebrow: "PRICING", title: "Business products priced per organization.", tagline: "Monthly and annual prices for ArvoOS, ArvoCal and ArvoLab; two months free on annual billing." },
+    de: { eyebrow: "PREISE", title: "Unternehmensprodukte mit Preisen pro Organisation.", tagline: "Monats- und Jahrespreise für ArvoOS, ArvoCal und ArvoLab; zwei Monate gratis bei jährlicher Zahlung." },
+    es: { eyebrow: "PRECIOS", title: "Productos para empresas con precio por organización.", tagline: "Precios mensuales y anuales de ArvoOS, ArvoCal y ArvoLab; dos meses gratis con pago anual." },
+    fr: { eyebrow: "TARIFS", title: "Des produits professionnels tarifés par organisation.", tagline: "Tarifs mensuels et annuels pour ArvoOS, ArvoCal et ArvoLab ; deux mois offerts en facturation annuelle." },
+    ar: { eyebrow: "الأسعار", title: "منتجات أعمال بسعر لكل مؤسسة.", tagline: "أسعار شهرية وسنوية لـ ArvoOS وArvoCal وArvoLab؛ شهران مجانًا عند الدفع السنوي." },
   },
   arvolab: {
     tr: { eyebrow: "ARVOLAB · ARAŞTIRMA ÇALIŞMA ALANI", title: "Araştırma için daha güçlü bir alan.", tagline: "Literatür ve atıf, akademik yazım, kılavuz kontrolü, analiz ve özgünlük ön kontrolü." },

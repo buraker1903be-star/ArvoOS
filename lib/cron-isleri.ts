@@ -55,7 +55,7 @@ const TANIM: Record<string, { ad: string; aciklama: string }> = {
     aciklama: "Durursa ARC'taki kurum, lisans ve personel kopyası eskir.",
   },
   "/api/cron/randevu-sync": {
-    ad: "Arvo Randevu köprüsü",
+    ad: "ArvoCal köprüsü",
     aciklama: "Durursa Randevu'daki salon ve lisans kopyası eskir.",
   },
   "/api/cron/adim-terminleri": {

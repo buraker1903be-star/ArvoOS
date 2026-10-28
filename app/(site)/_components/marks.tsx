@@ -3,11 +3,11 @@
 // koyu zeminde "-on-dark" sürümü kullanılır.
 import Image from "next/image";
 
-type Brand = "arvoos" | "arvolab" | "arvobook" | "arvoculture";
+type Brand = "arvoos" | "arvolab" | "arvocal" | "arvoculture";
 const SIZE: Record<Brand, { w: number; h: number }> = {
   arvoos: { w: 1901, h: 395 },
   arvolab: { w: 1920, h: 468 },
-  arvobook: { w: 1934, h: 560 },
+  arvocal: { w: 1942, h: 488 },
   arvoculture: { w: 1920, h: 259 },
 };
 
@@ -32,15 +32,15 @@ export function BrandLogo({ brand, tone = "light", height, alt = "", className =
   );
 }
 
-export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoBook";
+export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoCal";
 
 /*
-  ArvoBook'un logosu 28.10.2026'da geldi; o güne kadar adı kendi
+  ArvoCal'ın (eski adıyla ArvoBook) logosu 28.10.2026'da geldi; o güne kadar adı kendi
   tipografisiyle yazılıyordu. Logosu olmayan bir ürün eklenirse aynı yol
   çalışır: BRAND_OF'ta satırı yoksa ProductLogo adı wordmark olarak yazar —
   başka ürünün dosyası ya da otomatik üretilmiş bir şekil konmaz.
 */
-const BRAND_OF: Partial<Record<ProductName, Brand>> = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoBook: "arvobook" };
+const BRAND_OF: Partial<Record<ProductName, Brand>> = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoCal: "arvocal" };
 
 /** Ürünün kırpılmış logo dosyası var mı? Yoksa çağıran, adı iki kez
  *  yazdırmamak için wordmark'ı hiç basmamayı seçebilir. */

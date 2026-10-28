@@ -38,12 +38,12 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].tr;
 export const HOME_TR: HomeContent = {
   meta: {
     title: "ArvoOS | Daha iyi çalışma sistemleri",
-    description: "ArvoOS; şirketler için işletme işletim sistemini, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştirir. Web sitesi ve e-ticaret sitesi tasarımı, SEO ve GEO ile özel yazılım hizmetleri sunar.",
+    description: "ArvoOS; şirketler için işletme işletim sistemini, araştırmacılar için ArvoLab’i ve salonlar için ArvoCal’ı geliştirir. Web sitesi ve e-ticaret sitesi tasarımı, SEO ve GEO ile özel yazılım hizmetleri sunar.",
   },
   hero: {
     eyebrow: "ArvoOS ürün ailesi",
     title: "Daha iyi çalışmak için", subtitle: "daha iyi sistemler.",
-    lead: "ArvoOS; şirketler için işletme işletim sistemini, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştiren bir yazılım markasıdır. Karmaşık süreçleri sakin, güçlü ve bağlantılı çalışma deneyimlerine dönüştürür.",
+    lead: "ArvoOS; şirketler için işletme işletim sistemini, araştırmacılar için ArvoLab’i ve salonlar için ArvoCal’ı geliştiren bir yazılım markasıdır. Karmaşık süreçleri sakin, güçlü ve bağlantılı çalışma deneyimlerine dönüştürür.",
     actions: [
       { label: "Demo talep edin", href: `${R("contact")}?ilgi=arvoos`, variant: "gold" },
       { label: "Ürünleri keşfedin", href: "#urunler", variant: "ghost" },
@@ -73,7 +73,7 @@ export const HOME_TR: HomeContent = {
       label: "Salon randevu yönetimi", title: "Randevu defteri telefonu meşgul etmesin.",
       text: "Müşteri hizmeti, personeli ve saati kendi seçer; randevu takviminize anında düşer. Personel bazlı takvim, çalışma saati ve izin, çakışmayan randevular.",
       chips: ["Çevrim içi randevu sayfası", "Personel takvimi", "Çalışma saati ve izin", "Müşteri kaydı"],
-      cta: { label: "ArvoBook’u keşfedin", href: R("randevu"), variant: "gold" },
+      cta: { label: "ArvoCal’ı keşfedin", href: R("randevu"), variant: "gold" },
       signIn: { label: "Giriş", href: PRODUCT_APPS.randevu.url, external: true, variant: "ghost" },
     },
   },
@@ -112,7 +112,7 @@ export const HOME_TR: HomeContent = {
   eco: {
     eyebrow: "Ekosistem",
     title: "Üç ürün. Tek ekosistem.",
-    lead: "ArvoOS, ArvoLab ve ArvoBook; arvo-os.com’un kendi alt alan adlarında çalışan ayrı web uygulamalarıdır ve aynı ekip tarafından, ortak marka ve kalite standardıyla geliştirilir.",
+    lead: "ArvoOS, ArvoLab ve ArvoCal; arvo-os.com’un kendi alt alan adlarında çalışan ayrı web uygulamalarıdır ve aynı ekip tarafından, ortak marka ve kalite standardıyla geliştirilir.",
     roles: ["Operasyon", "Araştırma", "Salon"],
     principles: [
       { title: "Her kuruma kendi alanı", text: "Her kurum, ekip ya da salon kendi çalışma alanında çalışır." },
@@ -147,9 +147,9 @@ export const HOME_TR: HomeContent = {
     eyebrow: "Sık sorulan sorular",
     title: "ArvoOS hakkında merak edilenler",
     items: [
-      { q: "ArvoOS nedir?", a: `ArvoOS, ${COMPANY.legalName} şirketinin yazılım markasıdır. Şirketler için işletme işletim sistemi ArvoOS’u, araştırmacılar için ArvoLab’i ve salonlar için ArvoBook’u geliştirir; web sitesi ve e-ticaret sitesi tasarımı ile özel yazılım hizmetleri de sunar.` },
-      { q: "ArvoOS, ArvoLab ve ArvoBook arasındaki fark nedir?", a: "ArvoOS bir işletmenin operasyonunu talepten tahsilata yönetir. ArvoLab akademik araştırma ve yazım sürecini destekler. ArvoBook ise salonların randevu defterini yönetir: müşteri kendi randevusunu alır, takvim personele göre açılır." },
-      { q: "ArvoOS ürünlerine nereden giriş yapılır?", a: `ArvoOS ${PRODUCT_APPS.arvoos.host}, ArvoLab ${PRODUCT_APPS.arvolab.host}, ArvoBook ise ${PRODUCT_APPS.randevu.host} adresinde çalışır. Üçü de tarayıcıda çalışan web uygulamalarıdır.` },
+      { q: "ArvoOS nedir?", a: `ArvoOS, ${COMPANY.legalName} şirketinin yazılım markasıdır. Şirketler için işletme işletim sistemi ArvoOS’u, araştırmacılar için ArvoLab’i ve salonlar için ArvoCal’ı geliştirir; web sitesi ve e-ticaret sitesi tasarımı ile özel yazılım hizmetleri de sunar.` },
+      { q: "ArvoOS, ArvoLab ve ArvoCal arasındaki fark nedir?", a: "ArvoOS bir işletmenin operasyonunu talepten tahsilata yönetir. ArvoLab akademik araştırma ve yazım sürecini destekler. ArvoCal ise salonların randevu defterini yönetir: müşteri kendi randevusunu alır, takvim personele göre açılır." },
+      { q: "ArvoOS ürünlerine nereden giriş yapılır?", a: `ArvoOS ${PRODUCT_APPS.arvoos.host}, ArvoLab ${PRODUCT_APPS.arvolab.host}, ArvoCal ise ${PRODUCT_APPS.randevu.host} adresinde çalışır. Üçü de tarayıcıda çalışan web uygulamalarıdır.` },
       { q: "ArvoOS’un fiyatı nedir?", a: `Aylık ve yıllık liste fiyatları ${ROUTES.pricing.tr} sayfasında yayımlanmıştır; fiyat kurum başınadır, kullanıcı başına değil. Özel kurum basamağında bedel modül, kullanıcı ve şube yapısına göre birlikte belirlenir.` },
       { q: "Nasıl demo talep edebilirim?", a: `İletişim sayfasındaki formu doldurabilir ya da ${COMPANY.email} adresine yazabilirsiniz; talebiniz ilgili ürün ekibine iletilir.` },
     ],
@@ -157,7 +157,7 @@ export const HOME_TR: HomeContent = {
   cta: {
     eyebrow: "Kurumunuza özel demo",
     title: "Geleceğin çalışma sistemlerini birlikte kuralım.",
-    lead: "ArvoOS, ArvoLab veya ArvoBook’un sizin için nasıl çalışacağını birlikte gösterelim.",
+    lead: "ArvoOS, ArvoLab veya ArvoCal’ın sizin için nasıl çalışacağını birlikte gösterelim.",
     actions: [
       { label: "Demo talep edin", href: `${R("contact")}?ilgi=arvoos`, variant: "gold" },
       { label: "Bizimle tanışın", href: R("about"), variant: "ghost" },

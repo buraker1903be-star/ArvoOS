@@ -56,8 +56,8 @@ export const ROUTES: Record<PageId, Record<Locale, string>> = {
   pricing: { en: "/pricing", tr: "/tr/ucretler", de: "/de/preise", es: "/es/precios", fr: "/fr/tarifs", ar: "/ar/pricing" },
   arvolab: { en: "/products/arvolab", tr: "/tr/urunler/arvolab", de: "/de/produkte/arvolab", es: "/es/productos/arvolab", fr: "/fr/produits/arvolab", ar: "/ar/products/arvolab" },
   /* Kimlik "randevu" kalıyor: lisans, köprü ve fiyat kodları bu adla
-     (randevu-tek …). Ürünün adı 28.10.2026'dan beri ArvoBook. */
-  randevu: { en: "/products/arvobook", tr: "/tr/urunler/arvobook", de: "/de/produkte/arvobook", es: "/es/productos/arvobook", fr: "/fr/produits/arvobook", ar: "/ar/products/arvobook" },
+     (randevu-tek …). Ürünün adı 28.10.2026'da önce ArvoBook, aynı gün ArvoCal oldu. */
+  randevu: { en: "/products/arvocal", tr: "/tr/urunler/arvocal", de: "/de/produkte/arvocal", es: "/es/productos/arvocal", fr: "/fr/produits/arvocal", ar: "/ar/products/arvocal" },
   services: { en: "/services", tr: "/tr/hizmetler", de: "/de/leistungen", es: "/es/servicios", fr: "/fr/services", ar: "/ar/services" },
   "web-design": { en: "/services/web-design", tr: "/tr/hizmetler/web-sitesi-tasarimi", de: "/de/leistungen/webdesign", es: "/es/servicios/diseno-web", fr: "/fr/services/creation-de-site-web", ar: "/ar/services/web-design" },
   "seo-geo": { en: "/services/seo-geo", tr: "/tr/hizmetler/seo-ve-geo", de: "/de/leistungen/seo-geo", es: "/es/servicios/seo-geo", fr: "/fr/services/seo-geo", ar: "/ar/services/seo-geo" },
@@ -133,16 +133,19 @@ export const LEGACY_REDIRECTS: { from: string; to: string }[] = [
   */
   { from: "/urunler/arc", to: ROUTES["web-design"].tr },
   { from: "/en/products/arc", to: ROUTES["web-design"].en },
-  // Arvo Randevu → ArvoBook (28.10.2026).
+  // Arvo Randevu → ArvoBook → ArvoCal (28.10.2026).
   { from: "/urunler/randevu", to: ROUTES.randevu.tr },
   { from: "/en/products/randevu", to: ROUTES.randevu.en },
+  /* ArvoBook → ArvoCal (aynı gün, 28.10.2026): /arvobook adresleri birkaç
+     saat yayında kaldı, paylaşılmış olabilir; 404 vermesin. */
+  ...LOCALES.map((loc) => ({ from: ROUTES.randevu[loc].replace(/arvocal$/, "arvobook"), to: ROUTES.randevu[loc] })),
 ];
 
 /** Ürünlerin kiracılı panelleri (giriş adresleri). */
 export const PRODUCT_APPS = {
   arvoos: { name: "ArvoOS", url: "https://app.arvo-os.com/login", host: "app.arvo-os.com" },
   arvolab: { name: "ArvoLab", url: "https://lab.arvo-os.com", host: "lab.arvo-os.com" },
-  randevu: { name: "ArvoBook", url: "https://randevu.arvo-os.com", host: "randevu.arvo-os.com" },
+  randevu: { name: "ArvoCal", url: "https://randevu.arvo-os.com", host: "randevu.arvo-os.com" },
 } as const;
 
 /*
@@ -160,7 +163,7 @@ export const ARC_APP = { name: "ArvoARC", url: "https://arc.arvo-os.com", host: 
 */
 export const PRODUCT_NAMES: string[] = Object.values(PRODUCT_APPS).map((p) => p.name);
 
-/** "ArvoOS, ArvoLab ve ArvoBook" — cümle içinde ürün listesi. */
+/** "ArvoOS, ArvoLab ve ArvoCal" — cümle içinde ürün listesi. */
 export function productList(locale: Locale): string {
   const names = [...PRODUCT_NAMES];
   const last = names.pop()!;

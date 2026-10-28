@@ -23,7 +23,7 @@ type Errors = Partial<Record<LeadField, string>>;
 const copy = {
   tr: {
     interestLegend: "Konu",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoBook", services: "Hizmetler", other: "Diğer" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoCal", services: "Hizmetler", other: "Diğer" } as Record<LeadInterest, string>,
     name: "Ad soyad",
     email: "E-posta",
     phone: "Telefon",
@@ -62,7 +62,7 @@ const copy = {
   },
   en: {
     interestLegend: "Topic",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoBook", services: "Services", other: "Other" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoCal", services: "Services", other: "Other" } as Record<LeadInterest, string>,
     name: "Full name",
     email: "Email",
     phone: "Phone",
@@ -101,7 +101,7 @@ const copy = {
   },
   de: {
     interestLegend: "Thema",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoBook", services: "Leistungen", other: "Sonstiges" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoCal", services: "Leistungen", other: "Sonstiges" } as Record<LeadInterest, string>,
     name: "Vollständiger Name",
     email: "E-Mail",
     phone: "Telefon",
@@ -140,7 +140,7 @@ const copy = {
   },
   es: {
     interestLegend: "Tema",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoBook", services: "Servicios", other: "Otro" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoCal", services: "Servicios", other: "Otro" } as Record<LeadInterest, string>,
     name: "Nombre completo",
     email: "Correo electrónico",
     phone: "Teléfono",
@@ -179,7 +179,7 @@ const copy = {
   },
   fr: {
     interestLegend: "Sujet",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoBook", services: "Services", other: "Autre" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoCal", services: "Services", other: "Autre" } as Record<LeadInterest, string>,
     name: "Nom complet",
     email: "E-mail",
     phone: "Téléphone",
@@ -218,7 +218,7 @@ const copy = {
   },
   ar: {
     interestLegend: "الموضوع",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoBook", services: "الخدمات", other: "أخرى" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoCal", services: "الخدمات", other: "أخرى" } as Record<LeadInterest, string>,
     name: "الاسم الكامل",
     email: "البريد الإلكتروني",
     phone: "الهاتف",

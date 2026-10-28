@@ -3,11 +3,12 @@
    yalnızca yükseklikle; süzgeç / yeniden renklendirme YOK.
    ============================================================ */
 .site .brand-logo{display:block;height:var(--h,28px);width:auto;max-width:none}
-/* ArvoBook'ta "Book"un uzun harfleri dosyanın yüksekliğini büyütüyor: ARVO
-   harfleri yüksekliğin %54'ü, ArvoLab'da %73. Aynı --h ile yan yana
-   konunca ArvoBook bir boy küçük görünüyordu; ARVO'lar eşit olsun diye
-   1,34 kat. Taşan pay dikeyde geri alınıyor, satır yüksekliği değişmesin. */
-.site .brand-logo[data-brand="arvobook"]{height:calc(var(--h,28px) * 1.34);margin-block:calc(var(--h,28px) * -.17)}
+/* ArvoCal'da "Cal"ın uzun C ve l harfleri dosyanın yüksekliğini
+   büyütüyor: ARVO harfleri yüksekliğin %67'si, ArvoLab'da %73. Aynı --h
+   ile yan yana konunca ArvoCal bir boy küçük görünürdü; ARVO'lar eşit
+   olsun diye 1,09 kat. Taşan pay dikeyde geri alınıyor, satır yüksekliği
+   değişmesin. (ArvoBook logosunda bu oran %54'tü ve kat 1,34'tü.) */
+.site .brand-logo[data-brand="arvocal"]{height:calc(var(--h,28px) * 1.09);margin-block:calc(var(--h,28px) * -.045)}
 /* ArvoOS'ta ARVO harfleri yüksekliğin %87'si (ArvoLab %73): ürünler yan
    yana durduğunda (kartlar, ürün menüsü, alt bilgi, ürün kutuları ve
    sayfa açılışları) ArvoOS bir boy büyük görünüyordu. Yalnızca bu
@@ -21,7 +22,7 @@
 .site .mo-brand .brand-logo{--h:16px}
 @media (max-width:767px){ .site .hdr-logo .brand-logo{--h:18px} }
 
-/* Logosu olmayan ürün (ArvoBook): ad, logoların optik boyutunda
+/* Logosu olmayan ürün (ArvoCal): ad, logoların optik boyutunda
    yazılır. Logo dosyası eklenince bu kural kendiliğinden devre dışı
    kalır — wordmark yalnızca BRAND_OF'ta karşılığı olmayan ürün için
    basılıyor. */

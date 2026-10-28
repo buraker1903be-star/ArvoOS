@@ -318,7 +318,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
        zinciri pencere engelleyicisine takılmıyor. */
     { kod: "arvolab", ad: "ArvoLab", href: "/panel/uygulama/arvolab", ayniSekme: false, marka: "arvolab" as const },
     { kod: "arc", ad: "ArvoARC", href: "https://arc.arvo-os.com", ayniSekme: false, marka: "arc" as const },
-    { kod: "randevu", ad: "Arvo Randevu", href: "https://randevu.arvo-os.com", ayniSekme: false },
+    { kod: "randevu", ad: "ArvoCal", href: "https://randevu.arvo-os.com", ayniSekme: false },
   ].filter((uygulama) => acikUrunler.has(uygulama.kod));
 
   /*

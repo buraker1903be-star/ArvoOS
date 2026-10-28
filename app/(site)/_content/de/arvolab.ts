@@ -49,12 +49,12 @@ export const ARVOLAB_DE: ProductContent = {
   },
   audience: {
     eyebrow: "Für wen ist es gedacht?",
-    title: "Von einzelnen Forschenden bis zu Institutionen.",
+    title: "Für einzelne Forschende gemacht.",
     lead: "ArvoLab ist für wissenschaftliche Arbeit in unterschiedlichem Umfang ausgelegt.",
     items: [
       { title: "Einzelne Forschende", text: "Für Abschlussarbeiten, Artikel und Projekte in einer ruhigen Arbeitsumgebung." },
-      { title: "Wissenschaftliche Teams", text: "Für Teams, die Quellen, Texte und Prüfungen in einer gemeinsamen Ordnung halten." },
-      { title: "Institutionen", text: "Für Institutionen, die eine vollständige Forschungsumgebung anbieten." },
+      { title: "Promovierende und Masterstudierende", text: "Für eine Master- oder Doktorarbeit von Anfang bis Ende mit einem Abonnement." },
+      { title: "Universitäten", text: "Institutionslizenzen gibt es nur für Universitäten und Bildungseinrichtungen, auf Anfrage." },
     ],
   },
   faq: {
@@ -62,7 +62,7 @@ export const ARVOLAB_DE: ProductContent = {
     title: "Über ArvoLab",
     items: [
       { q: "Was ist ArvoLab?", a: "ArvoLab ist die Arbeitsumgebung für die Forschung der Marke ArvoOS – für Literatur- und Zitatverwaltung, wissenschaftliches Schreiben, Richtlinienprüfung, quantitative und qualitative Analyse, wissenschaftliche Überarbeitung und eine Originalitäts-Vorprüfung." },
-      { q: "Für wen ist ArvoLab gedacht?", a: "Für einzelne Forschende, wissenschaftliche Teams und Institutionen." },
+      { q: "Für wen ist ArvoLab gedacht?", a: "Für einzelne Forschende. Institutionslizenzen gibt es nur für Universitäten und Bildungseinrichtungen, auf Anfrage." },
       { q: "Wie erhalte ich Zugang zu ArvoLab?", a: `Fragen Sie den Zugang über das Kontaktformular oder unter info@arvo-os.com an. Die Anmeldung erfolgt unter ${PRODUCT_APPS.arvolab.url}.` },
       { q: "Ersetzt die Originalitäts-Vorprüfung einen offiziellen Bericht?", a: "Nein. Sie ist eine Vorprüfung, die Ihnen hilft, Risiken vor der Einreichung zu erkennen; Ihre Institution kann dennoch einen eigenen offiziellen Originalitätsbericht verlangen." },
       { q: "Worin unterscheiden sich ArvoLab und ArvoOS?", a: "ArvoOS steuert die Abläufe eines Unternehmens; ArvoLab ist eine Arbeitsumgebung, die wissenschaftliche Forschung und das Schreiben unterstützt." },

@@ -49,12 +49,12 @@ export const ARVOLAB_EN: ProductContent = {
   },
   audience: {
     eyebrow: "Who is it for?",
-    title: "From individual researchers to institutions.",
+    title: "Built for the individual researcher.",
     lead: "ArvoLab is designed to fit different scales of academic work.",
     items: [
       { title: "Individual researchers", text: "For theses, papers and projects run in one calm workspace." },
-      { title: "Academic teams", text: "For teams keeping sources, texts and checks in a shared order." },
-      { title: "Institutions", text: "For institutions offering a complete research environment." },
+      { title: "Graduate students", text: "For a master’s or doctoral thesis carried from start to finish on one subscription." },
+      { title: "Universities", text: "Institutional licences are offered only to universities and educational institutions, on request." },
     ],
   },
   faq: {
@@ -62,7 +62,7 @@ export const ARVOLAB_EN: ProductContent = {
     title: "About ArvoLab",
     items: [
       { q: "What is ArvoLab?", a: "ArvoLab is the ArvoOS brand’s research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, academic editing and an originality pre-check." },
-      { q: "Who is ArvoLab for?", a: "Individual researchers, academic teams and institutions." },
+      { q: "Who is ArvoLab for?", a: "Individual researchers. Institutional licences are offered only to universities and educational institutions, on request." },
       { q: "How do I get access to ArvoLab?", a: `Request access through the contact form or at info@arvo-os.com. Sign in at ${PRODUCT_APPS.arvolab.url}.` },
       { q: "Does the originality pre-check replace an official report?", a: "No. It is a pre-check that helps you spot risks before submission; your institution may still require its own official originality report." },
       { q: "What is the difference between ArvoLab and ArvoOS?", a: "ArvoOS runs a business’s operations; ArvoLab is a workspace that supports academic research and writing." },

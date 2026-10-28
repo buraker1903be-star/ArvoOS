@@ -87,7 +87,7 @@ export function websiteLd(locale: Locale): Json {
   };
 }
 
-/** Yazılım ürünü (ArvoOS, ArvoLab, ArvoBook). Fiyat bilgisi uydurulmaz. */
+/** Yazılım ürünü (ArvoOS, ArvoLab, ArvoCal). Fiyat bilgisi uydurulmaz. */
 export function productLd(p: {
   name: string;
   description: string;
@@ -178,7 +178,8 @@ export function pricingLd(locale: Locale, fiyatlar?: Fiyatlar): Json[] {
       const aylik = sayfaPlanTutari(plan, locale, fiyatlar);
       const yillik = sayfaPlanYillikTutari(plan, locale, fiyatlar);
       if (aylik === null || yillik === null) return [];
-      const ortak = { priceCurrency: SAYFA_PARA_BIRIMI[locale], valueAddedTaxIncluded: !KDV_HARIC };
+      /* KDV yalnızca TL listesinde dahil; döviz fiyatları vergi hariç (doviz.ts). */
+      const ortak = { priceCurrency: SAYFA_PARA_BIRIMI[locale], valueAddedTaxIncluded: SAYFA_PARA_BIRIMI[locale] === "TRY" ? !KDV_HARIC : false };
       return [{
         "@type": "Offer",
         sku: plan.code,

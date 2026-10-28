@@ -76,10 +76,11 @@ describe("fiyat kaynağı", () => {
       assert.equal(plan.product, "arvolab", `${plan.code}: koltuk başı yalnızca ArvoLab'de olmalı`);
     }
     const tek = PLANS.find((p) => p.code === "arvolab-arastirmaci")!;
-    const ekip = PLANS.find((p) => p.code === "arvolab-ekip")!;
-    assert.ok(ekip.aylikKurus! < tek.aylikKurus!, "Ekip koltuğu tek kullanıcıdan ucuz olmalı");
-    assert.ok((ekip.enAzKullanici ?? 0) >= 2, "hacim indiriminin en az kullanıcı şartı yok");
     assert.equal(tek.enAzKullanici, undefined, "tek kullanıcılı basamakta en az şartı olmamalı");
+    /* Ekip basamağı 28.10.2026'da kalktı: ArvoLab ekiplere ve şirketlere
+       satılmıyor (kurucu kararı). Hacim indirimli koltuk geri gelirse bu
+       test onun tek kullanıcıdan ucuz olup olmadığına yeniden bakmalı. */
+    assert.equal(PLANS.find((p) => p.code === "arvolab-ekip"), undefined, "Ekip basamağı satıştan kalktı");
   });
 
   test("en az kullanıcı yalnızca koltuk başı basamaklarda anlamlı", () => {
@@ -109,9 +110,9 @@ describe("fiyat kaynağı", () => {
     }
     assert.equal(urunAdresi("arvoos", "tr").href, "/tr/urunler/arvoos");
     assert.equal(urunAdresi("arvoos", "en").href, "/products/arvoos");
-    // Arvo Randevu → ArvoBook (28.10.2026); kod adı "randevu" kaldı.
-    assert.equal(urunAdresi("randevu", "tr").href, "/tr/urunler/arvobook");
-    assert.equal(urunAdi("randevu"), "ArvoBook");
+    // Arvo Randevu → ArvoCal (28.10.2026); kod adı "randevu" kaldı.
+    assert.equal(urunAdresi("randevu", "tr").href, "/tr/urunler/arvocal");
+    assert.equal(urunAdi("randevu"), "ArvoCal");
     // ArvoARC satıştan kalktı ama fiyat kaydı konsol için duruyor.
     assert.equal(urunAdi("arc"), "ArvoARC");
   });

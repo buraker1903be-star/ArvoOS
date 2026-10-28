@@ -53,7 +53,7 @@
 .site .ptile-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 28px;margin-top:4px}
 .site .ptile-visual{width:min(1240px,100% - 2*var(--gutter));margin:clamp(36px,4.5vw,64px) auto 0}
 .site .ptile-visual.narrow{width:min(980px,100% - 2*var(--gutter))}
-/* Arayüz maketi olmayan ürün (ArvoBook) yüzen kartla çiziliyor; kart
+/* Arayüz maketi olmayan ürün (ArvoCal) yüzen kartla çiziliyor; kart
    maket genişliğine yayılınca boş bir şerit gibi duruyordu. */
 
 /* ---------- ArvoLab adım anlatısı (açık) ---------- */
