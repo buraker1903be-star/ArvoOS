@@ -23,7 +23,7 @@ export function toInterest(raw: string | string[] | undefined): LeadInterest {
 
 export function ContactView({ locale, c, interest }: { locale: Locale; c: ContactContent; interest: LeadInterest }) {
   const path = ROUTES.contact[locale];
-  const crumbs = [{ name: "ArvoOS", href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
+  const crumbs = [{ name: KISA[locale].homeCrumb, href: ROUTES.home[locale] }, { name: c.hero.eyebrow, href: path }];
   return (
     <>
       <PageHero {...c.hero} crumbs={crumbs} crumbLabel={KISA[locale].crumb} />

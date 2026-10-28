@@ -16,6 +16,7 @@ import "./site-bento.css";
 import "./site-pricing.css";
 import "./site-polish.css";
 import "./site-home.css";
+import "./site-luxe.css";
 
 // arvo-os.com pazarlama sitesi kabuğu. Stil dosyaları yalnızca bu grupta
 // yüklenir ve tüm kurallar .site altındadır: panel, giriş ve belge

@@ -1,0 +1,86 @@
+/* ============================================================
+   Marka katmanı (28.10.2026) — EN SON yüklenir, öteki dosyaların
+   üstüne yazar. Renkler LOGODAN: "ARVO" lacivert #002045, "OS" yeşil
+   #6F9548. Sitenin dili korunur (Inter, beyaz / açık gri sahneler,
+   sade düzen); ayrıntılar yeşil: sürdürülebilir, sakin, modern.
+   Eskiden vurgu rengi şampanya altınıydı; kurum sahibi lüksün altınla
+   değil logonun yeşiliyle anlatılmasını istedi. İki ara deneme de
+   (fildişi + serif + altın eğik satır, sonra altın kıl çizgiler)
+   beğenilmedi.
+
+   ALTIN DEĞİŞKENLERİ YEŞİLE BAĞLANIR: --gold-* adları otuz küsur
+   kuralda (alt bilgi dahil) kullanılıyor; adlarını tek tek değiştirmek
+   yerine değerleri burada logonun yeşil skalasına çevriliyor. Adı
+   "gold" kalsa da renk yeşildir. Küçük metin için en koyu ton (beyazda
+   6.1:1), lacivert üstü yazı için açık ton (8.7:1) — WCAG AA ölçüldü.
+   Arayüz maketlerinin iç renklerine dokunulmaz; onlar ürünün kendisi.
+   ============================================================ */
+.site{
+  --navy:#002045; --navy-2:#0a2c55; --mid-950:#00152f; --mid-800:#002045;
+  --ink:#0d1b2a; --ink-soft:#34425a;
+  --gold-600:#4a6b2e; --gold-500:#5a7f3a; --gold-400:#6f9548; --gold-300:#a9c78a; --gold-100:#eef4e6;
+  --link:var(--navy);
+  --accent-hair:color-mix(in srgb,var(--green) 38%,transparent);
+  --shadow-s:0 1px 2px rgba(0,32,69,.04),0 10px 30px rgba(0,32,69,.06);
+  --shadow-m:0 2px 8px rgba(0,32,69,.05),0 28px 64px rgba(0,32,69,.12);
+}
+
+/* ---------- tipografi: Inter, daha sıkı ve iddialı ---------- */
+.site .display{font-size:clamp(48px,6.8vw,108px);line-height:1;font-weight:700;letter-spacing:-.045em}
+.site .h1{font-size:clamp(42px,5.4vw,84px);line-height:1.02;letter-spacing:-.04em}
+.site .h2{font-size:clamp(34px,3.8vw,60px);line-height:1.05;font-weight:700;letter-spacing:-.035em}
+.site .ptile-title{letter-spacing:-.035em;font-weight:700}
+/* İkinci satır logodaki gibi: lacivertten yeşile. */
+.site :is(.lhero-copy .thin,.phero .grey-text){background:linear-gradient(90deg,var(--navy),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:.06em}
+.site .eyebrow,.site .ptile-kicker,.site .suite-kicker{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-600)}
+.site .ptile-kicker{color:var(--muted)}
+.site [lang="ar"] :is(.eyebrow,.ptile-kicker,.suite-kicker){letter-spacing:0;font-size:13px}
+.site [dir="rtl"] :is(.lhero-copy .thin,.phero .grey-text){background-image:linear-gradient(270deg,var(--navy),var(--green))}
+
+/* ---------- düğmeler ve bağlantılar ---------- */
+.site .btn-primary,.site .btn-gold{background:var(--navy);box-shadow:0 8px 24px rgba(0,32,69,.18)}
+.site .btn-primary:hover,.site .btn-gold:hover{background:var(--mid-950);box-shadow:inset 0 0 0 1px var(--accent-hair),0 12px 32px rgba(0,32,69,.24)}
+.site .btn-ghost{color:var(--navy);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--navy) 30%,transparent)}
+.site .btn-ghost:hover{background:var(--navy);color:#fff;box-shadow:inset 0 0 0 1px var(--navy)}
+/* Bağlantılar Apple mavisi değil, logonun laciverti; üzerine gelince yeşil alt çizgi. */
+.site .link,.site .alink{color:var(--navy);font-weight:500}
+.site .link:hover,.site .alink:hover{text-decoration-color:var(--green);text-decoration-thickness:1.5px}
+.site .alink::after{color:var(--green)}
+
+/* ---------- üst menü ---------- */
+.site .hdr-cta{background:var(--navy)}
+.site .hdr-cta:hover{background:var(--mid-950)}
+
+/* ---------- kartlar ---------- */
+.site :is(.suite-card,.fcard,.aud>*):hover{box-shadow:var(--hair),var(--shadow-m)}
+.site .suite-price{font-size:20px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.site .phero-price{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.site .fcard-n,.site .pillars-num{letter-spacing:.14em}
+.site .pillars-grid li{border-top-color:var(--accent-hair)}
+
+/* ---------- lacivert durak 1: "her yerde çalışır" şeridi ---------- */
+.site .scenes>section.gstrip{background:var(--navy);color:rgba(255,255,255,.7);position:relative;isolation:isolate;overflow:hidden}
+.site .scenes>section.gstrip::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(45% 80% at 12% 0%,color-mix(in srgb,var(--green) 22%,transparent),transparent 70%),
+             radial-gradient(35% 70% at 95% 100%,color-mix(in srgb,var(--green) 14%,transparent),transparent 70%)}
+.site .gstrip .h2{color:#fff}
+.site .gstrip .eyebrow{color:var(--gold-300)}
+.site .gstrip .lead{color:rgba(255,255,255,.64)}
+.site .gstrip .gstrip-item{background:color-mix(in srgb,#fff 4%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--green) 28%,transparent)}
+.site .gstrip .gstrip-item h3{color:#fff}
+.site .gstrip .gstrip-item p{color:rgba(255,255,255,.62)}
+.site .gstrip .gstrip-icon{background:color-mix(in srgb,var(--green) 20%,transparent);color:var(--gold-300)}
+
+/* ---------- lacivert durak 2: kapanış — alt bilgiyle tek bir final ---------- */
+.site .scenes>section.cta,.site section.cta{background:var(--navy);color:rgba(255,255,255,.7);position:relative;isolation:isolate;overflow:hidden}
+.site section.cta::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(50% 90% at 50% 0%,color-mix(in srgb,var(--green) 20%,transparent),transparent 70%)}
+.site .cta .eyebrow{color:var(--gold-300)}
+.site .cta .cta-title{color:#fff}
+.site .cta .lead{color:rgba(255,255,255,.66)}
+.site .cta .btn-primary,.site .cta .btn-gold{background:#fff;color:var(--navy);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.site .cta .btn-primary:hover,.site .cta .btn-gold:hover{background:var(--gold-100);color:var(--navy)}
+.site .cta .btn-ghost{color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.site .cta .btn-ghost:hover{background:#fff;color:var(--navy)}
+.site .cta-note{color:rgba(255,255,255,.58)}
+.site .cta-note a{color:var(--gold-300)}

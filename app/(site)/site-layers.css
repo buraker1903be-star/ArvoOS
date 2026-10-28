@@ -31,7 +31,7 @@
 .site .fc-meta{display:grid;gap:6px}
 .site .fc-meta li{display:flex;align-items:center;gap:8px;color:var(--ink-soft);font-size:11.5px}
 .site .fc-meta i{flex:none;width:12px;height:12px;border-radius:50%;background:#2f7d57;box-shadow:inset 0 0 0 3px #e7f3ec}
-.site .fc-meta i[data-s="warn"]{background:#b28a49;box-shadow:inset 0 0 0 3px #f5eddb}
+.site .fc-meta i[data-s="warn"]{background:#5a7f3a;box-shadow:inset 0 0 0 3px #eef4e6}
 
 /* ---------- mobil PWA çerçevesi ---------- */
 .site .phone{aspect-ratio:9/19;padding:6px;border-radius:32px;background:linear-gradient(160deg,#2a3344,#0b111b);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 2px 4px rgba(5,12,26,.12),0 20px 44px rgba(5,12,26,.26),0 50px 100px rgba(5,12,26,.3)}
@@ -47,7 +47,7 @@
 .site .ph-stage{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:9.5px}
 .site .ph-stage i{width:8px;height:8px;border-radius:50%;background:#d1d1d6}
 .site .ph-stage[data-s="done"] i{background:#2f7d57}
-.site .ph-stage[data-s="now"] i{background:#b28a49;box-shadow:0 0 0 3px #f5eddb}
+.site .ph-stage[data-s="now"] i{background:#5a7f3a;box-shadow:0 0 0 3px #eef4e6}
 .site .ph-pay{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:4px;font-size:9.5px;font-weight:600}
 .site .ph-btn{padding:4px 8px;border-radius:999px;background:var(--mid-800);color:#fff;font-size:8.5px;font-weight:600;white-space:nowrap}
 .site .ph-lock{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--muted)}

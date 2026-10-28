@@ -1,7 +1,7 @@
 // Alt bilgi — 28.10.2026'da ikinci kez yeniden kuruldu. İlk deneme (dev
 // slogan, rozetler, sayfa genişliğinde dev "ARVO" yazısı) kurum sahibine
 // gösterişli geldi ve markanın adı ARVO değil ArvoOS. Bu sürüm sade ve
-// seçkin: derin lacivert zemin, ince altın çizgiler, solda ArvoOS logosu
+// seçkin: logonun laciverti, ince yeşil çizgiler (renkler site-luxe.css), solda ArvoOS logosu
 // ve slogan, sağda sütunlar, altta ürün ailesi ve künye. Sitenin geri
 // kalanı açık zeminde kalır; koyu zemin bilerek yalnızca alt bilgide —
 // sayfanın bittiğini söyleyen tek yer burası (site-base.css'teki kural
