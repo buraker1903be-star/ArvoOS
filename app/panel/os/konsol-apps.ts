@@ -119,6 +119,7 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
            çip rayı kaydırılmadan görünmüyordu — kurum sahibi "proforma
            sekmesi gözükmüyor" dedi (28.10.2026). */
         { key: "proformalar", href: "/panel/platform/tahsilat?kanal=proforma", label: "Proformalar" },
+        { key: "otomatik", href: "/panel/platform/tahsilat?kanal=otomatik", label: "Kartla ve otomatik" },
       ],
     },
     {
