@@ -8,7 +8,7 @@ import { zorunlu } from "../../konsol-oku";
 import { ADDON_PRODUCTS, productLicenseLabels, urunSimgesi } from "@/lib/products";
 import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
 import { KURULUM_ADI, LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
-import { ETKINLIK_ADI, VARLIK_ADI } from "../../kiraci-dosyasi";
+import { eylemEtiketi, varlikEtiketi } from "@/lib/kayit-etiketleri";
 import { KiraciUyeleri } from "../../kiraci-uyeleri";
 import { kiraciUyeleriniOku } from "../../kiraci-uyeleri-oku";
 import { LisansBolumu } from "../../licenses/lisans-bolumu";
@@ -309,7 +309,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
           {etkinlikler.length ? (
             <KListe>
               {etkinlikler.map((e, i) => (
-                <KOge key={`${e.created_at}-${i}`} baslik={ETKINLIK_ADI[e.action] ?? e.action} alt={VARLIK_ADI[e.entity_type] ?? e.entity_type} deger={tarih(e.created_at)} />
+                <KOge key={`${e.created_at}-${i}`} baslik={eylemEtiketi(e.action, "edilgen")} alt={varlikEtiketi(e.entity_type)} deger={tarih(e.created_at)} />
               ))}
             </KListe>
           ) : <KBos baslik="Etkinlik yok" aciklama="Kurumun panelinde bir işlem yapıldığında son hareketler burada görünür." />}

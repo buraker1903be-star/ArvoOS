@@ -2,6 +2,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { istanbulDateTime } from "@/lib/istanbul-date";
 import { kisiAdlari } from "@/lib/kisi-adlari";
 import type { FieldChange } from "@/lib/activity-log";
+import { eylemEtiketi, varlikEtiketi } from "@/lib/kayit-etiketleri";
 
 /**
  * Kayıt geçmişi — kim, ne zaman, neyi neyden neye değiştirdi.
@@ -29,52 +30,13 @@ function displayValue(field: string, value: string): string {
   }).format(kurus / 100);
 }
 
-const ACTION_LABELS: Record<string, string> = {
-  create: "oluşturdu",
-  update: "güncelledi",
-  assign: "temsilci atadı",
-  status: "durumu değiştirdi",
-  stage: "aşamasını değiştirdi",
-  send: "müşteriye gönderdi",
-  convert: "sözleşmeye dönüştürdü",
-  archive: "arşivledi",
-  // Satışçı talebi listesinden kaldırdı / yönetici geri verdi (20261022135951).
-  release: "listesinden kaldırdı",
-  release_undo: "kaldırma uyarısını kaldırıp satışçıya geri verdi",
-  delete: "sildi",
-  step: "adım ekledi",
-  comment: "not ekledi",
-  /*
-    Operasyon olayları. Adım olayları ayrı bir varlık türü değil: işin
-    kimliğiyle yazılıyor, adımın adı metadata'da (lib/activity-log.ts).
-    Etiketler "kaydını …" kalıbına oturuyor ve ADIM adı ayrıca yazıldığı
-    için burada "aşama" demek yetiyor.
-  */
-  step_dates: "aşama tarihlerini işin takvimine dağıttı",
-  // Panoda sürüklemek tek kayıt düşürüyor: kapanan/açılan aşamalar içinde yazılı.
-  stage_move: "işi panoda başka aşamaya taşıdı",
-  step_status: "bir aşamanın durumunu değiştirdi",
-  step_due: "bir aşamanın tarihini değiştirdi",
-  step_assign: "bir aşamaya sorumlu atadı",
-  work_type: "çalışma türünü değiştirdi",
-  step_done: "bir aşamayı tamamladı",
-  step_undone: "bir aşamayı yeniden açtı",
-  /*
-    Bu ikisi yoktu ve etiket bulunamayınca HAM eylem adı cümleye
-    giriyordu: "İş akışı kaydını waiting_party" (ekran görüntüsünde
-    görüldü). Operasyonun yazdığı sekiz eylemin hepsi artık burada.
-  */
-  waiting_party: "topun kimde olduğunu değiştirdi",
-  revision_days: "revizyon süresini değiştirdi",
-};
-
-const ENTITY_LABELS: Record<string, string> = {
-  crm_opportunity: "Talep",
-  crm_proposal: "Teklif",
-  crm_contract: "Sözleşme",
-  operation_workflow: "İş akışı",
-};
-
+/*
+  ETİKETLER ORTAK MODÜLDE (lib/kayit-etiketleri). Burada ve konsolun
+  müşteri dosyasında iki ayrı liste vardı ve saptılar: operasyonun
+  yazdığı sekiz kod yalnızca buraya eklenmişti, konsol aynı olayı HAM
+  KODLA gösteriyordu ("step_assign"). İki ekranın dili farklı olduğu
+  için etiketler iki kayıtlı; kümeleri aynı.
+*/
 type LogRow = {
   id: number;
   actor_user_id: string | null;
@@ -201,8 +163,8 @@ export async function RecordHistory({
               <div className="crm-record-history-meta">
                 <strong>{actorName(log.actor_user_id)}</strong>
                 <span>
-                  {ENTITY_LABELS[log.entity_type] ?? log.entity_type} kaydını{" "}
-                  {ACTION_LABELS[log.action] ?? log.action}
+                  {varlikEtiketi(log.entity_type)} kaydını{" "}
+                  {eylemEtiketi(log.action, "kisi")}
                   {/* Hangi aşama: "bir aşamanın tarihini değiştirdi" tek başına
                       dokuz parçalı bir işte hangi bölüm olduğunu söylemiyor. */}
                   {log.metadata?.step_title ? <b className="crm-record-history-step"> · {log.metadata.step_title}</b> : null}

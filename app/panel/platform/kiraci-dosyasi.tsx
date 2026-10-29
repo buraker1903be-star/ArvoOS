@@ -18,6 +18,7 @@ import { toggleOrganizationModule, updateOrganizationSettings } from "./actions"
 import { OwnerAccessLink } from "./owner-access-link";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../components/kayit-formu.css";
+import { eylemEtiketi, varlikEtiketi } from "@/lib/kayit-etiketleri";
 
 /*
   Tek kiracının dosyası.
@@ -44,24 +45,6 @@ export type DosyaUyeligi = { organization_id: string; user_id: string; role: str
 
 const actionLabels: Record<string, string> = { provision_organization: "Kurulum", owner_access_link: "Giriş bağlantısı" };
 
-/* Etkinlik kaydındaki ham kodlar ("status", "crm_proposal") kimseye bir
-   şey anlatmıyor; okunur karşılıkları burada. Listede karşılığı olmayan
-   kod yine de basılır ama artık eksik olanı görünce buraya eklemek
-   yeterli. */
-export const ETKINLIK_ADI: Record<string, string> = {
-  create: "Oluşturuldu", update: "Güncellendi", status: "Durum değişti",
-  send: "Müşteriye gönderildi", delete: "Silindi", sign: "İmzalandı",
-  archive: "Arşivlendi", restore: "Geri alındı", accept: "Kabul edildi",
-  reject: "Reddedildi", cancel: "İptal edildi", complete: "Tamamlandı",
-  invite: "Davet edildi", activate: "Erişim açıldı", deactivate: "Erişim kapatıldı",
-  login: "Giriş yapıldı", payment: "Ödeme bildirildi",
-};
-export const VARLIK_ADI: Record<string, string> = {
-  crm_opportunity: "Talep", crm_proposal: "Teklif", crm_contract: "Sözleşme",
-  organization_membership: "Üye erişimi", organization: "Kurum",
-  payment_notification: "Ödeme bildirimi", operation_workflow: "İş akışı",
-  hr_employee: "Personel", finance_transaction: "Finans hareketi",
-};
 
 
 const Bos = ({ baslik, aciklama }: { baslik: string; aciklama: string }) => (
@@ -475,10 +458,10 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
               <tbody>
                 {etkinlikSatirlari.map((satir, sira) => (
                   <tr key={`${satir.created_at}-${sira}`}>
-                    <td data-label="İşlem"><span className="crm-table-title">{ETKINLIK_ADI[satir.action] ?? satir.action}</span></td>
-                    <td data-label="Kayıt"><span className="crm-table-sub">{VARLIK_ADI[satir.entity_type] ?? satir.entity_type}</span></td>
+                    <td data-label="İşlem"><span className="crm-table-title">{eylemEtiketi(satir.action, "edilgen")}</span></td>
+                    <td data-label="Kayıt"><span className="crm-table-sub">{varlikEtiketi(satir.entity_type)}</span></td>
                     <td className="crm-col-date" data-label="Zaman">{tarihSaat(satir.created_at)}</td>
-                    <MobilSatir baslik={ETKINLIK_ADI[satir.action] ?? satir.action} alt={[VARLIK_ADI[satir.entity_type] ?? satir.entity_type, tarihSaat(satir.created_at)]} />
+                    <MobilSatir baslik={eylemEtiketi(satir.action, "edilgen")} alt={[varlikEtiketi(satir.entity_type), tarihSaat(satir.created_at)]} />
                   </tr>
                 ))}
               </tbody>
