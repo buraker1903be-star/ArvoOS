@@ -349,6 +349,9 @@ export async function describeNotifications(
           actionLabel: "Ödeme yap",
         };
       }
+      case "proforma_hazir":
+        // Müşteriye: proformanız hazır (otomatik ya da kurucunun gönderdiği; lib/otomatik-proforma-isi).
+        return { ...base, label: "Abonelik", tone: "info", icon: "card", headline: row.title || "Proforma faturanız hazır", detail: row.message, actionLabel: "Proformayı aç" };
       case "payment_approved":
         return { ...base, label: "Ödeme", tone: "success", icon: "card", headline: "Ödemeniz onaylandı", detail: "EFT/Havale ödemeniz onaylandı, lisansınız aktif.", actionLabel: "Faturalara git" };
       case "payment_rejected": {
@@ -400,6 +403,21 @@ export async function describeNotifications(
           detail: row.message,
           actionLabel: "Sistem Sağlığı'nı aç",
         };
+      /* Otomatik proforma işinin günlük özeti (lib/otomatik-proforma-isi):
+         gönderilemeyen ya da ücreti girilmemiş bir lisans varsa uyarı,
+         yoksa yalnızca bilgi. */
+      case "otomatik_proforma": {
+        const uyari = Boolean((row.metadata as { uyari?: boolean } | null)?.uyari);
+        return {
+          ...base,
+          label: "Tahsilat",
+          tone: uyari ? "gold" : "info",
+          icon: "card",
+          headline: row.title,
+          detail: row.message,
+          actionLabel: "Proformaları aç",
+        };
+      }
       default:
         return { ...base, label: "Bildirim", tone: "neutral", icon: "bell", headline: row.title, detail: row.message };
     }

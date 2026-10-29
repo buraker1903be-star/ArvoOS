@@ -162,6 +162,8 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
     { ad: "Garanti BBVA sanal POS", grup: "Ödeme", durum: "yok", not: "Kimlik saklanabiliyor ama ödeme akışı bağlı değil" },
     { ad: "Havale / EFT", grup: "Ödeme", durum: "bagli", not: "Kiracı dekontla bildiriyor, Ödeme onaylarında karar veriliyor" },
     { ad: "WhatsApp (Meta)", grup: "Mesaj ve bildirim", durum: var_("WHATSAPP_PHONE_ID") && var_("WHATSAPP_TOKEN") ? "bagli" : "eksik", not: var_("WHATSAPP_PHONE_ID") && var_("WHATSAPP_TOKEN") ? "Arvo numarası tanımlı" : "WHATSAPP_PHONE_ID / WHATSAPP_TOKEN eksik" },
+    /* Platformun kendi postası: otomatik proforma ve "Müşteriye gönder" (lib/eposta-gonder). */
+    { ad: "E-posta (Resend)", grup: "Mesaj ve bildirim", durum: var_("RESEND_API_KEY") ? "bagli" : "eksik", not: var_("RESEND_API_KEY") ? "Proforma e-postaları noreply@arvo-os.com adresinden gidiyor" : "RESEND_API_KEY eksik: proformalar kesilip bildirilir ama e-postayla gitmez" },
     { ad: "Anlık bildirim (web push)", grup: "Mesaj ve bildirim", durum: pushYapilandi() ? "bagli" : "eksik", not: pushYapilandi() ? "VAPID anahtarları tanımlı" : "VAPID anahtarları eksik" },
     { ad: "ArvoARC köprüsü", grup: "Ürün köprüsü", durum: arc.ok ? "bagli" : "eksik", not: kopruNotu(arc) },
     { ad: "ArvoCal köprüsü", grup: "Ürün köprüsü", durum: randevu.ok ? "bagli" : "eksik", not: kopruNotu(randevu) },
