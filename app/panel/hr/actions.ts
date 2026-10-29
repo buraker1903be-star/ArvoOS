@@ -41,6 +41,11 @@ async function createEmployee__impl(formData:FormData){
   const operationCommissionRate=number(formData,"operation_commission_rate");
   if(fullName.length<2) throw new Error("Personel adı en az 2 karakter olmalıdır.");
   if(commissionRate<0||commissionRate>100||operationCommissionRate<0||operationCommissionRate>100) throw new Error("Prim oranları 0 ile 100 arasında olmalıdır.");
+  // Düzenlemeyle aynı doğrulama (updateEmployee): kısıt hatası İngilizce düşmesin.
+  const employmentType=text(formData,"employment_type",30)||"full_time";
+  if(!CALISMA_TIPLERI.includes(employmentType)) throw new Error("Çalışma tipi tanınmadı.");
+  const startDate=text(formData,"start_date",20);
+  if(startDate&&!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error("İşe giriş tarihi geçersiz.");
   const {data:employee,error}=await supabase.from("hr_employees").insert({
     organization_id:membership.organization_id,
     full_name:fullName,
@@ -49,8 +54,8 @@ async function createEmployee__impl(formData:FormData){
     job_title:text(formData,"job_title",160)||null,
     department_id:text(formData,"department_id",80)||null,
     employee_no:text(formData,"employee_no",50)||null,
-    start_date:text(formData,"start_date",20)||null,
-    employment_type:text(formData,"employment_type",30)||"full_time",
+    start_date:startDate||null,
+    employment_type:employmentType,
     employment_status:"active",
     can_receive_sales_requests:formData.get("can_receive_sales_requests")==="on",
     commission_rate:commissionRate,

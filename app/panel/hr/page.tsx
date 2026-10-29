@@ -1,10 +1,10 @@
-import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { MobilSatir } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createDepartment, createEmployee } from "./actions";
+import { PersonelFormu } from "./personel-formu";
 import { cancelInvitation } from "./team-actions";
 import { TeamInviteLink } from "./invite-link";
 import { roleNames } from "./role-names";
@@ -169,26 +169,8 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const durumSayisi = (kod: string) =>
     kod === "" ? depIci.length : kod === "pasif" ? depIci.filter(pasifMi).length : depIci.filter((item) => item.employment_status === kod).length;
 
-  /* Ortak kayıt formu düzeni (components/kayit-formu.css): personel
-     detayındaki düzenleme çekmecesiyle aynı. hr-form sınıfı bilerek yok:
-     alan kuralı ortak formun açılır liste okunu eziyordu. */
-  const employeeForm = <form className="panel-form kayit-formu" action={createEmployee}>
-    <p className="wide kayit-formu-bolum">Kimlik</p>
-    <label className="wide"><span>Ad soyad<b className="req" aria-hidden="true">*</b></span><input name="full_name" required minLength={2} placeholder="Örn. Ayşe Yılmaz" /></label>
-    <label>Personel numarası<input name="employee_no" placeholder="İsteğe bağlı" /></label>
-    <label>İşe giriş tarihi<TarihSecici name="start_date" /></label>
-    <p className="wide kayit-formu-bolum">Görev</p>
-    <label>Pozisyon<input name="job_title" placeholder="Örn. Satış Uzmanı" /></label>
-    <label>Departman<select name="department_id" defaultValue=""><option value="">Departman seçin</option>{departments.filter((item) => item.is_active).map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-    <label>Çalışma tipi<select name="employment_type" defaultValue="full_time"><option value="full_time">Tam zamanlı</option><option value="part_time">Yarı zamanlı</option><option value="contractor">Sözleşmeli</option><option value="intern">Stajyer</option></select></label>
-    <p className="wide kayit-formu-bolum">İletişim</p>
-    <label>E-posta<input name="email" type="email" placeholder="ad@kurum.com" /></label><label>Telefon<input name="phone" type="tel" inputMode="tel" placeholder="05xx xxx xx xx" /></label>
-    <p className="wide kayit-formu-bolum">Prim ve satış</p>
-    <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
-    <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
-    <label className="wide hr-check"><input name="can_receive_sales_requests" type="checkbox" /><span><b>Satış talepleri atanabilir</b><small>Yeni satış talepleri bu personele atanabilir.</small></span></label>
-    <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Personeli kaydet</button></div>
-  </form>;
+  // Düzenleme formuyla aynı bileşen (personel-formu.tsx); yeni kayıtta yalnızca etkin departmanlar.
+  const employeeForm = <PersonelFormu action={createEmployee} departmanlar={departments.filter((item) => item.is_active)} />;
 
   /*
     İSTATİSTİKLER (sağ kart): tüm personelden, süzgeçten bağımsız.

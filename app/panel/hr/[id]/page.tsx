@@ -1,4 +1,3 @@
-import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
@@ -17,6 +16,7 @@ import { DAVET_DURUM_ADLARI, kisininDaveti, OKUNAN_DAVET_DURUMLARI } from "../da
 import { PrimPenceresi } from "../prim-penceresi";
 import { PersonelHareketleri } from "../personel-hareketleri";
 import { personelSil, updateEmployee } from "../actions";
+import { PersonelFormu } from "../personel-formu";
 import { erisimDegistir, updateTeamMemberAccess, cancelInvitation } from "../team-actions";
 import { applyPermissionProfile } from "../../settings/permissions/actions";
 import { departmanaUygunProfiller, profilUygulandiMi } from "@/lib/yetki-profilleri";
@@ -251,53 +251,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
      form (components/kayit-formu.css): bölüm ayırıcıları, zorunlu alan
      işareti, alt kaydet çubuğu. hr-form sınıfı bilerek yok: onun alan kuralı
      özgüllükte ortak formun açılır liste okunu eziyordu (hr.css). */
-  /*
-    DÜZENLEME FORMU (29.10.2026, kurum sahibinin isteği): personel no,
-    işe giriş tarihi ve çalışma tipi eklendi. Eskiden üçü yalnızca kayıt
-    açılırken girilebiliyordu; yanlış girilen personel numarası ya da
-    sözleşmeliden tam zamanlıya geçen biri için kaydı silip yeniden
-    açmaktan başka yol yoktu (silme de çoğu zaman engelli). Çalışma tipi
-    ve durum açılır liste yerine seçenek düğmeleri: dört seçenek bir
-    bakışta görünsün, hangisinin seçili olduğu aranmasın.
-  */
-  const secenekler = (ad: string, secili: string, liste: [string, string][]) => (
-    <div className="wide pf-secenek" role="radiogroup">
-      {liste.map(([deger, etiket]) => (
-        <label key={deger}><input type="radio" name={ad} value={deger} defaultChecked={secili === deger} /><span>{etiket}</span></label>
-      ))}
-    </div>
-  );
-  const editForm = (
-    <form className="panel-form kayit-formu pf-form" action={updateEmployee}>
-      <input type="hidden" name="employee_id" value={employee.id} />
-      <p className="wide kayit-formu-bolum">Kimlik</p>
-      <label className="wide"><span>Ad soyad<b className="req" aria-hidden="true">*</b></span><input name="full_name" required minLength={2} defaultValue={employee.full_name} /></label>
-      <label>Personel no<input name="employee_no" maxLength={50} defaultValue={employee.employee_no ?? ""} placeholder="Örn. P1004" /></label>
-      <label>İşe giriş tarihi<TarihSecici name="start_date" defaultValue={employee.start_date ?? ""} /></label>
-
-      <p className="wide kayit-formu-bolum">Görev</p>
-      <label>Pozisyon<input name="job_title" defaultValue={employee.job_title ?? ""} placeholder="Örn. Satış Uzmanı" /></label>
-      <label>Departman<select name="department_id" defaultValue={employee.department_id ?? ""}><option value="">Departman seçin</option>{departments.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-      <p className="wide pf-etiket">Çalışma tipi</p>
-      {secenekler("employment_type", employee.employment_type, [["full_time", "Tam zamanlı"], ["part_time", "Yarı zamanlı"], ["contractor", "Sözleşmeli"], ["intern", "Stajyer"]])}
-      <p className="wide pf-etiket">Durum</p>
-      {secenekler("employment_status", employee.employment_status, [["active", "Aktif"], ["on_leave", "İzinli"], ["inactive", "Pasif"], ["terminated", "İşten ayrıldı"]])}
-
-      <p className="wide kayit-formu-bolum">İletişim</p>
-      <label>E-posta<input name="email" type="email" defaultValue={employee.email ?? ""} placeholder="ornek@kurum.com" /></label>
-      <label>Telefon<input name="phone" type="tel" inputMode="tel" defaultValue={employee.phone ?? ""} placeholder="05xx xxx xx xx" /></label>
-
-      <p className="wide kayit-formu-bolum">Prim ve satış</p>
-      <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.commission_rate} /></label>
-      <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.operation_commission_rate} /></label>
-      <p className="wide kayit-formu-not">Oran değişikliği geçmiş primleri değiştirmez: o güne kadarki tahsilatlar eski oranla hesaplanmaya devam eder.</p>
-      <label className="wide hr-check"><input name="can_receive_sales_requests" type="checkbox" defaultChecked={employee.can_receive_sales_requests} /><span><b>Satış talepleri atanabilir</b><small>Yeni satış talepleri bu personele atanabilir.</small></span></label>
-      <div className="wide panel-form-actions kayit-formu-eylem">
-        <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
-        <button className="panel-primary" type="submit">Değişiklikleri kaydet</button>
-      </div>
-    </form>
-  );
+  const editForm = <PersonelFormu action={updateEmployee} departmanlar={departments} personel={employee} />;
 
   return (
     <main className="talep cari personel">
