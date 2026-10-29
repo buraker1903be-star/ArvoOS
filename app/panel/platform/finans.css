@@ -7,15 +7,15 @@
 /* Liste tablosu ilk hücredeki bağlantıyı display:block yapıyor
    (kayit-detay.css); simge metnin üstüne düşüyordu. Personel
    tablosundaki kuralın aynısı, finansın ilk hücreleri için. */
-.os-root .finans-sayfa .talep-tablo .crm-data-table td:first-child .ek-kisi{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--sp-3);text-align:left;min-width:0}
-.os-root .finans-sayfa .talep-tablo .crm-data-table thead th:first-child{width:auto}
-.os-root .finans-sayfa .talep-tablo .crm-data-table td:first-child{min-width:190px}
+.os-root :is(.finans-sayfa,.urun-sayfa) .talep-tablo .crm-data-table td:first-child .ek-kisi{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--sp-3);text-align:left;min-width:0}
+.os-root :is(.finans-sayfa,.urun-sayfa) .talep-tablo .crm-data-table thead th:first-child{width:auto}
+.os-root :is(.finans-sayfa,.urun-sayfa) .talep-tablo .crm-data-table td:first-child{min-width:190px}
 /* Kurum köşeli, kişi yuvarlak (Müşteriler listesiyle aynı ayrım). */
-.finans-sayfa .ek-avatar:not([data-tur="bireysel"]){border-radius:var(--r-md)}
-.os-root .finans-sayfa .talep-tablo .crm-data-table td small{display:block;color:var(--muted);font-size:var(--fs-micro)}
+:is(.finans-sayfa,.urun-sayfa) .ek-avatar:not([data-tur="bireysel"]){border-radius:var(--r-md)}
+.os-root :is(.finans-sayfa,.urun-sayfa) .talep-tablo .crm-data-table td small{display:block;color:var(--muted);font-size:var(--fs-micro)}
 .fn-iban{font-size:var(--fs-sm);white-space:nowrap}
-.os-root .finans-sayfa .crm-table-actions .k-proforma-eylem{justify-content:flex-end}
-.os-root .finans-sayfa .crm-table-actions{white-space:nowrap}
+.os-root :is(.finans-sayfa,.urun-sayfa) .crm-table-actions .k-proforma-eylem{justify-content:flex-end}
+.os-root :is(.finans-sayfa,.urun-sayfa) .crm-table-actions{white-space:nowrap}
 
 /* Kartla ve otomatik: iki tablo alt alta, başlıklarıyla. Liste sayfası
    kartın tek tablosunu kaydırıyor; burada iki tablo var, kart kayar. */
@@ -37,5 +37,11 @@
 .fn-urunler>span[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
 .fn-urunler>span[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
 .fn-urunler>span[data-tone="info"]{background:var(--primary-soft);color:var(--primary-strong)}
-.os-root .finans-sayfa .ek-arac{row-gap:var(--sp-2)}
-.os-root .finans-sayfa .crm-data-table th.fn-eylem-bas{text-align:right}
+.os-root :is(.finans-sayfa,.urun-sayfa) .ek-arac{row-gap:var(--sp-2)}
+.os-root :is(.finans-sayfa,.urun-sayfa) .crm-data-table th.fn-eylem-bas{text-align:right}
+/* Ürünler: tablonun altındaki tanım notu (kiracı, gelir, kullanıcı). */
+.os-root .ur-dipnot{flex:none;margin:var(--sp-3) 0 0}
+.ur-tutar{flex:none;display:flex;flex-direction:column;align-items:flex-end;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+.ur-tutar small{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+/* Fiyat listesi: taslak kutusu yanındaki düğmelerle aynı boyda. */
+.os-root .urun-sayfa .plt-fiyat-form input{min-height:40px;width:120px;padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--r-md);font-variant-numeric:tabular-nums}

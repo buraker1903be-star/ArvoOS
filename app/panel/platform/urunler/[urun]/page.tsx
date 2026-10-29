@@ -8,9 +8,17 @@ import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { planlar, type PricedProduct } from "@/lib/site/pricing";
 import { planTutari, planYillikTutari } from "@/lib/site/fiyat-kaynagi";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
-import { KBos, KKart, KListe, KOge } from "../../konsol-ui";
-import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
+import { basHarfleri, LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
+import { MobilSatir } from "../../../crm/table-cells";
+import { SatirTiklama } from "../../../crm/satir-tiklama";
+import { TalepAkis } from "../../../crm/kayit-detay/kayit-akis";
+import { IstatistikKarti } from "../../../crm/istatistik-karti";
 import "../../platform.css";
+import "../../konsol-ui.css";
+import "../../../hr/hr.css";
+import "../../../crm/crm.css";
+import "../../../crm/kayit-detay/kayit-detay.css";
+import "../../finans.css";
 
 /*
   TEK ÜRÜNÜN SAYFASI (14.10.2026, Kurucu Konsolu → Ürünler).
@@ -108,14 +116,21 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
   // Ticari bağlam: satır müşteri detayına (14.10.2026); teknik ayarlar oradan.
   const kiraciAdresi = (id: string) => `/panel/platform/musteriler/${id}`;
 
-  return <main className="plt talep cari ekip liste-sayfa">
+  /*
+    PANELİN TABLOSU (29.10.2026, konsol yeniden kurulurken). Kiracılar
+    iOS satırıydı; paket, kullanıcı ve dönem tek alt satırdaydı ve
+    "kimin dönemi önce doluyor" sorusu satır satır okunuyordu. Sağdaki
+    üç kart (lisans durumu, fiyat basamakları, bireysel aboneler) tek
+    sekmeli kart oldu.
+  */
+  return <main className="plt talep cari ekip talepler teklifler liste-sayfa urun-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · ÜRÜNLER</small>
+        <small className="panel-kicker"><Link href="/panel/platform/urunler">ÜRÜNLER</Link> · {urunTanimi.badge}</small>
         <h1>{urunTanimi.name}</h1>
+        <p className="ek-alt">{urunTanimi.description}</p>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform/urunler">← Dört ürün</Link>
         <Link className="panel-secondary" href="/panel/platform/fiyatlar">Fiyatları düzenle</Link>
       </div>
     </header>
@@ -136,80 +151,78 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
       </dl>
     </nav>
 
-    {/*
-      iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): kiracılar sütun
-      başlıksız tek satırlarda — simge, ad, altında paket · kullanıcı ·
-      dönem; sağda durum ve aylık ücret. Eskiden yedi sütunlu tabloydu,
-      kurum adları ikiye kırılıyordu. Sağ sütundaki dört sayı şeritteki
-      sayıların AYNISIYDI; yerine yalnızca şeritte olmayanlar: lisans
-      dağılımı, fiyat basamakları, bireysel aboneler.
-    */}
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label="Kiracılar">
-        <header className="k-kart-bas">
-          <div>
-            <h2>Kiracılar</h2>
-            <p>{sayi(satirlar.length)} lisans · ödeyenler önce</p>
-          </div>
-        </header>
         {satirlar.length ? (
-          <KListe>
-            {satirlar.map((s) => {
-              const donem = s.durum === "trialing" ? `deneme ${tarih(s.denemeSonu)}` : s.donemSonu ? `dönem ${tarih(s.donemSonu)}` : null;
-              return (
-                <KOge
-                  key={s.id}
-                  href={kiraciAdresi(s.id)}
-                  simge={s.ad}
-                  baslik={s.ad}
-                  alt={[grupKurumu.has(s.id) ? "Grup markası" : null, s.paket ? PAKET_ADI[s.paket] ?? s.paket : null, `${sayi(s.kullanici)} kullanıcı`, donem].filter(Boolean).join(" · ")}
-                  durum={{ etiket: productLicenseLabels[s.durum] ?? s.durum, ton: LISANS_TONU[s.durum] ?? "neutral" }}
-                  /* Ücreti girilmemiş lisans ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */
-                  deger={s.ucret ? para(Number(s.ucret)) : <span className="k-ios-eksik">Ücret yok</span>}
-                  degerAlt={s.ucret ? "aylık" : "girilmedi"}
-                />
-              );
-            })}
-          </KListe>
-        ) : <KBos baslik="Lisanslı kiracı yok" aciklama="Bu ürünün lisanslı kiracısı yok." />}
+          <div className="talep-tablo">
+            <table className="crm-data-table" data-cols="ur-kiraci">
+              <thead><tr><th>Kiracı</th><th>Paket</th><th>Kullanıcı</th><th className="crm-col-date">Dönem</th><th className="crm-col-amount">Aylık</th><th>Durum</th><th></th></tr></thead>
+              <tbody>
+                {satirlar.map((s) => {
+                  const donem = s.durum === "trialing" ? s.denemeSonu : s.donemSonu;
+                  const durum = { etiket: productLicenseLabels[s.durum] ?? s.durum, ton: LISANS_TONU[s.durum] ?? "neutral" };
+                  const href = kiraciAdresi(s.id);
+                  return (
+                    <tr key={s.id} className={ACIK.has(s.durum) ? undefined : "is-pasif"}>
+                      <td data-label="Kiracı">
+                        <Link className="crm-row-link ek-kisi" href={href}>
+                          <span className="ek-avatar" aria-hidden="true">{basHarfleri(s.ad)}</span>
+                          <span className="ek-kisi-metin"><span className="crm-table-title" title={s.ad}>{s.ad}</span><span className="crm-table-sub">{grupKurumu.has(s.id) ? "Grup markası" : "Kurumsal"}</span></span>
+                        </Link>
+                      </td>
+                      <td data-label="Paket">{s.paket ? <span className="crm-table-title">{PAKET_ADI[s.paket] ?? s.paket}</span> : <span className="crm-table-sub">—</span>}</td>
+                      <td data-label="Kullanıcı"><span className="crm-table-title">{sayi(s.kullanici)}</span></td>
+                      <td className="crm-col-date" data-label="Dönem">{donem ? tarih(donem) : "—"}{donem ? <small>{s.durum === "trialing" ? "deneme bitişi" : "dönem sonu"}</small> : null}</td>
+                      {/* Ücreti girilmemiş lisans ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */}
+                      <td className="crm-col-amount" data-label="Aylık">{s.ucret ? <span className="crm-table-title">{para(Number(s.ucret))}</span> : <span className="k-ios-eksik">Ücret yok</span>}</td>
+                      <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                      <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                      <MobilSatir href={href} baslik={s.ad} durum={durum}
+                        alt={[s.paket ? PAKET_ADI[s.paket] ?? s.paket : null, `${sayi(s.kullanici)} kullanıcı`, donem ? tarih(donem) : null, s.ucret ? `${para(Number(s.ucret))} / ay` : null]} />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <SatirTiklama />
+          </div>
+        ) : (
+          <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>Lisanslı kiracı yok</h2><p>Bu ürünün lisanslı kiracısı yok.</p></div>
+        )}
       </section>
 
       <div className="liste-sag">
-        <KKart baslik="Lisans durumu">
-          <KListe>
-            {durumSayilari.map((d) => (
-              <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />
-            ))}
-          </KListe>
-        </KKart>
-
-        <KKart baslik="Fiyat basamakları" aciklama="Yayımlanmış tutarlar, KDV dahil"
-          sag={<Link className="panel-secondary" href="/panel/platform/fiyatlar">Düzenle</Link>}>
-          <KListe>
-            {basamaklar.map((plan) => {
-              const aylik = planTutari(plan, fiyatlar);
-              const yillik = planYillikTutari(plan, fiyatlar);
-              return (
-                <KOge
-                  key={plan.code}
-                  baslik={plan.ad.tr}
-                  alt={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
-                  deger={aylik === null ? "Teklif" : para(aylik)}
-                  degerAlt={yillik === null ? undefined : `${para(yillik)} / yıl`}
-                />
-              );
-            })}
-          </KListe>
-        </KKart>
-
-        {bireyselVar ? (
-          <KKart baslik="Bireysel aboneler" sag={<Link className="panel-secondary" href="/panel/platform/subscribers">Planlar</Link>}>
-            <KListe>
-              <KOge baslik="Açık abonelik" deger={sayi(acikAbone)} />
-              <KOge baslik="Kapalı" deger={sayi(aboneler.length - acikAbone)} />
-            </KListe>
-          </KKart>
-        ) : null}
+        <TalepAkis kimlik="urun-detay-sag" sinif="ek-sag" etiket={`${urunTanimi.name} ayrıntıları`} sekmeler={["Fiyatlar", "İstatistikler"]}>
+          <section className="ek-panel" aria-label="Fiyat basamakları">
+            <p className="ek-not">Yayımlanmış tutarlar, KDV dahil. <Link className="pu-tumu" href="/panel/platform/fiyatlar">Düzenle</Link></p>
+            <ul className="pu-liste">
+              {basamaklar.map((plan) => {
+                const aylik = planTutari(plan, fiyatlar);
+                const yillik = planYillikTutari(plan, fiyatlar);
+                return (
+                  <li key={plan.code}>
+                    <Link href="/panel/platform/fiyatlar">
+                      <span className="pu-govde"><b>{plan.ad.tr}</b><small>{plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}</small></span>
+                      <span className="ur-tutar">{aylik === null ? "Teklif" : para(aylik)}{yillik === null ? null : <small>{para(yillik)} / yıl</small>}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+          <IstatistikKarti
+            kapsam="bütün lisanslar"
+            kutular={[
+              { ad: "Lisans", deger: sayi(satirlar.length), alt: `${sayi(acik.length)} açık` },
+              { ad: "Ödeyen", deger: sayi(odeyen.length), alt: "aktif ya da gecikmiş" },
+              ...(bireyselVar ? [
+                { ad: "Bireysel abone", deger: sayi(acikAbone), alt: "açık abonelik" },
+                { ad: "Kapalı abone", deger: sayi(aboneler.length - acikAbone), alt: "süresi geçmiş ya da iptal" },
+              ] : []),
+            ]}
+            gruplar={[{ baslik: "Lisans durumuna göre", satirlar: durumSayilari }]}
+          />
+        </TalepAkis>
       </div>
     </div>
   </main>;

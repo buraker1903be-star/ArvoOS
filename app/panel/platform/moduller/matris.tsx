@@ -85,10 +85,9 @@ export function Matris({ urunler, satirlar, durum }: {
     /* Parça (fragment), sarmalayıcı yok: liste sayfasında kaydırma kartın
        doğrudan çocuğu olan tabloda (.talep-bilgi > .talep-tablo). */
     <>
-      <div className="ekip-suzgec talep-suzgec" role="group" aria-label="Süzgeç">
-        {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
-            masaüstünde sarmalayıcı display:contents ile görünmez. */}
-        <div className="suzgec-ray">
+      <div className="ekip-suzgec talep-suzgec ek-arac" role="group" aria-label="Süzgeç">
+        {/* Panelin segmenti (29.10.2026, Ekip listesiyle aynı); eskiden çip rayıydı. */}
+        <nav className="ek-segment" aria-label="Süzgeç">
         {SUZGECLER.map((secim) => (
           <Link
             key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?suzgec=${secim.kod}`}
@@ -97,7 +96,7 @@ export function Matris({ urunler, satirlar, durum }: {
             {secim.ad} <small>{satirlar.filter((satir) => (!yalnizMusteri || !satir.kendiMarkamiz) && suzgeceUyar(satir, urunler, secim.kod)).length}</small>
           </Link>
         ))}
-        </div>
+        </nav>
         {/* Kendi markalarımız sayımda zaten yok; tabloda gizlemek ayrı bir
             tercih, çünkü bazen tam da onlara bakmak gerekiyor. */}
         <label className="plt-matris-onay">

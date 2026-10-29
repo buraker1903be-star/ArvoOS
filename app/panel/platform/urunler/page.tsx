@@ -7,9 +7,15 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
-import { KKart, KListe, KOge } from "../konsol-ui";
 import { para, sayi } from "../bicim";
+import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /*
   ÜRÜNLER (14.10.2026, kurum sahibinin tarifi).
@@ -119,17 +125,30 @@ export default async function UrunlerPage({ searchParams }: {
   const kopukKopru = satirlar.filter((s) => !s.saglik.ok).length;
 
 
-  return <main className="plt talep cari ekip liste-sayfa">
+  /*
+    PANELİN TABLOSU (29.10.2026, konsol yeniden kurulurken). Ürün başına
+    iOS satırıydı: kiracı, ödeyen, kullanıcı ve bireysel abone sayıları
+    tek bir alt satıra virgülle diziliyordu ve dört ürün arasında
+    karşılaştırma ("en çok kullanıcı hangisinde") satır satır okunarak
+    yapılıyordu. Artık her sayı kendi sütununda.
+  */
+  return <main className="plt talep cari ekip talepler teklifler liste-sayfa urun-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · ÜRÜNLER</small>
+        <small className="panel-kicker">ÜRÜNLER VE FİYATLAR</small>
         <h1>Ürünler</h1>
+        <p className="ek-alt">{sayi(PRODUCTS.length)} ürün · {sayi(toplamKurum)} lisanslı kurum · beklenen aylık {para(toplamGelir)}</p>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform/fiyatlar">Fiyat listesi</Link>
-        <Link className="panel-secondary" href="/panel/platform/moduller">Modül matrisi</Link>
-        <Link className="panel-secondary" href="/panel/platform/subscribers">Bireysel abone planları</Link>
-        <Link className="panel-secondary" href="/panel/platform/saglik">Sistem sağlığı</Link>
+        <Link className="panel-primary" href="/panel/platform/fiyatlar">Fiyat listesi</Link>
+        <details className="os-menu talep-menu">
+          <summary className="panel-secondary" aria-label="Diğer ekranlar">⋯</summary>
+          <div className="os-menu-list" role="menu">
+            <Link className="os-menu-item" role="menuitem" href="/panel/platform/moduller">Modül matrisi</Link>
+            <Link className="os-menu-item" role="menuitem" href="/panel/platform/subscribers">Bireysel abone planları</Link>
+            <Link className="os-menu-item" role="menuitem" href="/panel/platform/saglik">Sistem sağlığı</Link>
+          </div>
+        </details>
       </div>
     </header>
 
@@ -143,7 +162,7 @@ export default async function UrunlerPage({ searchParams }: {
         <div>
           <dt>Fiyat listesi</dt>
           <dd><Link href="/panel/platform/fiyatlar">{sayi(PLANS.length + ADD_ONS.length)}</Link></dd>
-          <small>Fiyat listesinde</small>
+          <small>basamak ve ek hizmet</small>
         </div>
         <div>
           <dt>Lisanslı kurum</dt>
@@ -160,71 +179,77 @@ export default async function UrunlerPage({ searchParams }: {
 
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label="Ürün performansı">
-        <header className="k-kart-bas">
-          <div>
-            <h2>Ürün performansı</h2>
-            <p>
-              Kiracı = lisansı açık kurum (deneme dahil), grup markaları dahil — onlar da ürünü kullanıyor.
-              Gelire ise yalnızca gerçek müşteriler giriyor, grup markalarının ücreti ayrıca &quot;grup içi değer&quot;
-              olarak yazılıyor. Kullanıcı sayısı kurumun aktif üyesidir: ürün başına ayrı bir
-              üyelik kaydı yok, kurumun ekibi ürünü birlikte kullanıyor. Arvo&apos;nun kendi kaydı sayımda yok.
-            </p>
-          </div>
-        </header>
-        {/*
-          iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"; urunler/[urun] ile
-          aynı dil): ürün başına tek satır — simge, ad, altında müşteri ·
-          ödeyen · kullanıcı · bireysel abone; sağda köprü durumu ve aylık
-          gelir. Eskiden sekiz sütunlu tabloydu (KTablo); sütun başlıkları
-          sayılardan uzundu ve satır ikiye kırılıyordu.
-        */}
-        <KListe>
-          {satirlar.map((urun) => {
-            // Randevu'nun bireysel aboneliği yok: salon kurumdur.
-            const bireyselVar = SUBSCRIBER_PRODUCTS.some((p) => p.code === urun.code);
-            const href = `/panel/platform/urunler/${urun.code}`;
-            const durum = { etiket: urun.saglik.ok ? "Ayakta" : "Sorunlu", ton: urun.saglik.ok ? "success" : "danger" };
-            return (
-              <KOge
-                key={urun.code}
-                href={href}
-                simge={urunSimgesi(urun.code) ?? urun.name}
-                baslik={urun.name}
-                alt={[
-                  `${sayi(urun.kurum)} kiracı`,
-                  `${sayi(urun.odeyen)} ödeyen`,
-                  `${sayi(urun.kullanici)} kullanıcı`,
-                  bireyselVar ? `${sayi(urun.bireysel)} bireysel abone` : null,
-                ].filter(Boolean).join(" · ")}
-                durum={durum}
-                deger={urun.gelir ? para(urun.gelir) : "—"}
-                degerAlt={urun.grupDegeri ? `aylık · grup içi ${para(urun.grupDegeri)}` : "aylık"}
-              />
-            );
-          })}
-        </KListe>
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="ur-urun">
+            <thead>
+              <tr>
+                <th>Ürün</th>
+                <th>Kiracı</th>
+                <th>Ödeyen</th>
+                <th>Kullanıcı</th>
+                <th>Bireysel</th>
+                <th className="crm-col-amount">Aylık</th>
+                <th>Köprü</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {satirlar.map((urun) => {
+                // ArvoCal'ın bireysel aboneliği yok: salon kurumdur.
+                const bireyselVar = SUBSCRIBER_PRODUCTS.some((p) => p.code === urun.code);
+                const href = `/panel/platform/urunler/${urun.code}`;
+                const durum = { etiket: urun.saglik.ok ? "Ayakta" : "Sorunlu", ton: urun.saglik.ok ? "success" : "danger" };
+                return (
+                  <tr key={urun.code}>
+                    <td data-label="Ürün">
+                      <Link className="crm-row-link ek-kisi" href={href}>
+                        <span className="ek-avatar" aria-hidden="true">{urunSimgesi(urun.code) ?? urun.name.slice(0, 2)}</span>
+                        <span className="ek-kisi-metin"><span className="crm-table-title">{urun.name}</span><span className="crm-table-sub">{urun.description}</span></span>
+                      </Link>
+                    </td>
+                    <td data-label="Kiracı"><span className="crm-table-title">{sayi(urun.kurum)}</span></td>
+                    <td data-label="Ödeyen"><span className="crm-table-title">{sayi(urun.odeyen)}</span></td>
+                    <td data-label="Kullanıcı"><span className="crm-table-title">{sayi(urun.kullanici)}</span></td>
+                    <td data-label="Bireysel">{bireyselVar ? <span className="crm-table-title">{sayi(urun.bireysel)}</span> : <span className="crm-table-sub">yok</span>}</td>
+                    <td className="crm-col-amount" data-label="Aylık">
+                      <span className="crm-table-title">{urun.gelir ? para(urun.gelir) : "—"}</span>
+                      {urun.grupDegeri ? <small>grup içi {para(urun.grupDegeri)}</small> : null}
+                    </td>
+                    <td data-label="Köprü"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                    <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                    <MobilSatir href={href} baslik={urun.name} durum={durum}
+                      alt={[`${sayi(urun.kurum)} kiracı`, `${sayi(urun.kullanici)} kullanıcı`, urun.gelir ? `${para(urun.gelir)} / ay` : null]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <SatirTiklama />
+        </div>
+        <p className="ek-not ur-dipnot">
+          Kiracı = lisansı açık kurum (deneme dahil), grup markaları dahil — onlar da ürünü kullanıyor. Gelire yalnızca
+          gerçek müşteriler giriyor; grup markalarının ücreti &quot;grup içi&quot; olarak ayrı yazılıyor. Kullanıcı sayısı
+          kurumun aktif üyesi: ürün başına ayrı üyelik yok. Arvo&apos;nun kendi kaydı sayımda yok.
+        </p>
       </section>
 
-      {/*
-        Sağ sütun (14.10.2026): eskiden İstatistikler kartıydı; dört kutusu
-        şeritteki sayıların AYNISI, iki dağılımı (müşteri, aylık gelir)
-        listedeki satırların aynısıydı. Yerine yalnızca başka yerde
-        yazmayan bilgi: her ürünün köprüsünün ne dediği. Yine listede
-        zaten hesaplanan değerlerden: yeni sorgu yok.
-      */}
+      {/* Sağ sütun: yalnızca başka yerde yazmayan bilgi — her ürünün
+          köprüsünün ne dediği. Tablodaki değerlerden, yeni sorgu yok. */}
       <div className="liste-sag">
-        <KKart baslik="Köprüler" sag={<Link className="panel-secondary" href="/panel/platform/saglik">Sağlık</Link>}>
-          <KListe>
-            {satirlar.map((urun) => (
-              <KOge
-                key={urun.code}
-                baslik={urun.name}
-                alt={urun.saglik.not}
-                durum={{ etiket: urun.saglik.ok ? "Ayakta" : "Sorunlu", ton: urun.saglik.ok ? "success" : "danger" }}
-              />
-            ))}
-          </KListe>
-        </KKart>
+        <TalepAkis kimlik="urun-sag" sinif="ek-sag" etiket="Köprüler" sekmeler={[kopukKopru ? `Köprüler · ${kopukKopru}` : "Köprüler"]}>
+          <section className="ek-panel" aria-label="Köprüler">
+            <ul className="pu-liste">
+              {satirlar.map((urun) => (
+                <li key={urun.code}>
+                  <Link href="/panel/platform/saglik">
+                    <span className="pu-govde"><b>{urun.name}</b><small>{urun.saglik.not}</small></span>
+                    <span className="status-pill" data-tone={urun.saglik.ok ? "success" : "danger"}>{urun.saglik.ok ? "Ayakta" : "Sorunlu"}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </TalepAkis>
       </div>
     </div>
   </main>;
