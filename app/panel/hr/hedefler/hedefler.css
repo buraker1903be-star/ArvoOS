@@ -4,8 +4,7 @@
   Düzenin tamamı panelin kendi parçalarından geliyor: başlık
   (.talep-bas), özet şeridi (.kayit-serit), kart (.panel-card), tablo
   (.crm-data-table), form eylem satırı (.kayit-formu-eylem). Burada
-  yalnızca bu sayfaya özgü olan var — tutar kutusu, pay çubuğu, ay
-  şeridi ve kopyalama kartı.
+  yalnızca bu sayfaya özgü olanlar var.
 
   İlk sürüm kendi kart/düğme sınıflarını yazmıştı ve ekranda kartsız,
   düğmesi düz yazı görünen bir tablo çıktı: o sınıflar bu depoda hiç
@@ -13,57 +12,94 @@
   (app/panel/hr/page.tsx) iskeletine bakın.
 */
 
-.hedefler-sayfa{display:flex;flex-direction:column;gap:var(--sp-4)}
+.hedefler-sayfa{display:flex;flex-direction:column;gap:var(--sp-3)}
 .hedefler-arac{margin-top:calc(var(--sp-1) * -1)}
 .hedefler-aylar{max-width:100%;overflow-x:auto;flex-wrap:nowrap}
 .hedefler-aylar a{white-space:nowrap}
+.talep-bas-eylem form{margin:0}
 
 /*
-  Kart yalnızca `.panel-card`: başta `.talep-bilgi` de vardı ve
-  `.os-root main.liste-sayfa > .talep-bilgi` onu sınırlı yükseklikte
-  bir flex kutusu yapıyordu — form taşıp overflow:hidden ile
-  KIRPILIYOR, ekranda tablo bitiyor ama "Hedefleri kaydet" düğmesi hiç
-  görünmüyordu. O sınıf kendi içinde kayan liste tabloları için.
+  KAYDIRMA KARTIN İÇİNDE, SAYFADA DEĞİL.
+
+  `main.liste-sayfa` sabit yükseklikte (os-shell.css: 100dvh eksi üst
+  çubuk ve dock) ve kaydırmayı kartın yapmasını bekliyor. Kart esnemeyen
+  bir öğe olarak kaldığında tablo sayfayı taşırıyor, başlık üst çubuğun
+  altına kayıyor ve sağdaki düğmeler kırpılıyordu.
+
+  Panelin hazır kabuğu (.talep-bilgi) buraya uymuyor: o, içinde FORM
+  olmayan listeler için: formun kaydet satırı da kaydırma alanına
+  girerdi ve düğme listenin dibinde kalırdı. Burada yalnızca TABLO
+  kayıyor, kaydet satırı kartın altında sabit duruyor.
 */
-.hedefler-kart{padding:0;overflow:hidden}
-.hedefler-form{display:block;padding:0}
-.hedefler-tablo-sarmal{overflow-x:auto}
+.hedefler-kart{padding:0}
+/*
+  `.talep-tablo` kartın `--sp-5` dolgusunu geri almak için negatif
+  kenar boşluğuyla geliyor; bu kartın dolgusu 0, o yüzden tablo
+  kartın DIŞINA taşıyordu (ölçüldü: kart 32–1368, tablo 13–1387).
+*/
+.hedefler-tablo-sarmal{margin:0}
+.hedefler-form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;padding:0}
+.hedefler-eylem{flex:0 0 auto;margin:0;padding:var(--sp-3) var(--sp-5);border-top:1px solid var(--line-soft)}
 
 /*
-  TELEFONDA (≤760px) satır karta dönüyor; bu panelin kendi kuralı
-  (crm.css, .crm-table-wrap). Burada yalnızca bu tablonun kendine
-  özgü iki şeyi düzeltiliyor: kişi hücresi etiketsiz kart başlığı
-  olsun ve tutar kutusu tam genişliğe otursun.
+  SÜTUN GENİŞLİKLERİ. Tablo `table-layout:auto`; ad hücresinin içi
+  alt alta iki satır olduğu için tarayıcı o sütunu en dar içeriğe
+  kadar kısabiliyordu (ölçüldü: 25 satırda 125px, adlar üç satıra
+  sarıyordu). Ad ve unvan tek satırda kalıp taşarsa üç noktaya
+  iniyor.
+
+  `--cols` burada YOK: o değişken panelin ızgaraya dönen kart
+  görünümü için (.crm-page-stack); bu tablo gerçek tablo olarak
+  çiziliyor ve yazılsa okunmayan bir kural olurdu.
 */
-@media (max-width:760px){
-  .hedefler-kart{border:0;background:transparent;box-shadow:none;overflow:visible}
-  .hedefler-tablo-sarmal{padding:0 var(--sp-4)}
-  /* Kart başlığı sola: kart görünümünde hücreler sağa yaslı
-     (crm.css), ama kişinin adı başlıktır ve sağa yaslı bir ad
-     etiketsiz kaldığı için havada duruyordu. */
-  .hedefler-tablo tbody td:first-child{justify-content:flex-start;text-align:left;border-bottom:1px solid var(--line-soft);padding-bottom:10px}
-  .hedefler-tablo tbody td:first-child::before{content:none}
-  .hedefler-tutar input{max-width:none;width:100%;min-width:120px}
-  .hedefler-pay{justify-content:flex-end}
-  .hedefler-pay-iz{max-width:120px}
+/* Genişlikler YALNIZCA tablo görünümünde: telefonda satır karta
+   dönüyor ve aynı genişlikler hücreyi sıkıştırıp etiketle rakamı alt
+   alta düşürüyordu (ölçüldü: 160px hücrede "Gerçekleşen" + tutar
+   sığmıyor, flex sarıyor). */
+@media (min-width:761px){
+  .hedefler-tablo{min-width:860px}
+  .hedefler-tablo :is(th,td):nth-child(1){min-width:220px;width:26%}
+  .hedefler-tablo :is(th,td):nth-child(2){min-width:160px}
+  .hedefler-tablo :is(th,td):nth-child(3){width:190px}
+  .hedefler-tablo :is(th,td):nth-child(4){width:160px}
+  .hedefler-tablo :is(th,td):nth-child(5){width:150px}
 }
+.hedefler-kisi a,.hedefler-kisi small{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
 
-/* Dört sütun: kişi, departman, tutar, pay. Varsayılan şablon sekiz
-   sütunluk listeler için; bu tabloda satırlar kart görünümüne
-   indiğinde de aynı sıra korunuyor. */
-.panel-root .crm-data-table[data-cols="hedefler"]{--cols:minmax(0,1.6fr) minmax(0,1fr) 190px minmax(0,.9fr);min-width:720px}
+/*
+  SIK SATIR. Varsayılan liste satırı (12px dolgu, 28px rozet) yedi
+  kişilik bir kadroda ekranın tamamını yiyordu; hedef girerken bütün
+  kadronun aynı anda görünmesi gerekiyor. Ölçüldü: 53px → 45px.
+*/
+/*
+  HÜCRE DOLGUSU PANELİN: `.os-root .talep-tablo .crm-data-table tbody
+  td` zaten sıkı dolgu veriyor (--sp-2 = 8px) ve özgüllüğü yüksek.
+  Buraya 4px yazmayı denedim, hiç uygulanmadı — ölçmeden bırakılsaydı
+  "yazdım ama olmadı" diye duran ölü bir kural kalacaktı. Satır
+  yüksekliği rozet ve satır aralığından kısaldı: 77px → 56px.
+*/
+.hedefler-tablo.crm-data-table thead th{padding:8px 14px}
+.hedefler-kisi>i{width:26px;height:26px;font-size:11px}
+.hedefler-kisi>span{display:flex;flex-direction:column;gap:0;min-width:0;line-height:1.3}
 
-.hedefler-kisi>span{display:flex;flex-direction:column;gap:1px;min-width:0}
+/*
+  PARA SÜTUNLARI SAĞA. `.crm-col-amount` hizası panelde yalnızca
+  `.crm-page-stack` içinde tanımlı; bu sayfa o kabukta değil ve
+  rakamlar sola yaslı kalıyordu — tutarları alt alta karşılaştırmak
+  sağa yaslı olmadan göz işi oluyor.
+*/
+.hedefler-tablo :is(th,td).crm-col-amount{text-align:right}
+.hedefler-tablo td.hedefler-tutar{padding-block:4px}
 .hedefler-kisi a{color:var(--ink);font-weight:var(--fw-semibold);text-decoration:none}
 .hedefler-kisi a:hover{text-decoration:underline}
-.hedefler-kisi small{color:var(--muted);font-size:12px}
+.hedefler-kisi small{color:var(--muted);font-size:11.5px;line-height:1.35}
 .hedefler-dep{color:var(--muted)}
 
 .hedefler-tutar input{
-  width:100%;max-width:170px;min-height:38px;padding:0 12px;
+  width:100%;max-width:160px;min-height:32px;padding:0 11px;
   border:1px solid var(--line);border-radius:var(--r-sm);
   background:var(--surface);color:var(--ink);
-  font-size:14px;font-weight:var(--fw-semibold);text-align:right;
+  font-size:13.5px;font-weight:var(--fw-semibold);text-align:right;
   font-variant-numeric:tabular-nums;transition:.18s ease;
 }
 .hedefler-tutar input::placeholder{color:var(--muted);font-weight:var(--fw-medium)}
@@ -71,21 +107,25 @@
 .hedefler-tutar input:focus-visible{outline:2px solid color-mix(in srgb, var(--primary) 55%, transparent);outline-offset:1px;border-color:var(--primary)}
 .hedefler-tutar input:disabled{background:var(--surface-2);color:var(--muted);cursor:not-allowed}
 
-.hedefler-pay{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
-.hedefler-pay small{flex:none;min-width:44px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
-.hedefler-pay-iz{flex:1;min-width:48px;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
-.hedefler-pay-iz i{display:block;width:var(--w,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--brand-400),var(--brand-500))}
+/* Gerçekleşen ve kalan: rakam + altında küçük bağlam, tek öğede. */
+.hedefler-deger{display:block;text-align:right}
+.hedefler-deger small{display:block;margin-top:1px;color:var(--muted);font-size:11.5px;font-weight:var(--fw-medium)}
+.hedefler-tuttu{color:var(--success);font-weight:var(--fw-semibold)}
 
-.hedefler-eylem{margin:0;padding:var(--sp-4) var(--sp-5)}
-.hedefler-not{margin:0;padding:var(--sp-4) var(--sp-5);color:var(--muted);font-size:12.5px;border-top:1px solid var(--line-soft)}
+.hedefler-not{margin:0;padding:var(--sp-3) var(--sp-5);color:var(--muted);font-size:12.5px;border-top:1px solid var(--line-soft)}
 .hedefler-bos{margin:0}
 
-.hedefler-kopya{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;padding:var(--sp-4) var(--sp-5)}
-.hedefler-kopya div{display:flex;flex-direction:column;gap:2px;min-width:0}
-.hedefler-kopya b{color:var(--ink);font-size:14px;font-weight:var(--fw-semibold)}
-.hedefler-kopya small{color:var(--muted);font-size:12.5px}
-
 @media (max-width:760px){
-  .hedefler-tutar input{max-width:none}
-  .hedefler-eylem,.hedefler-not,.hedefler-kopya{padding:var(--sp-4)}
+  /* Telefonda satır karta dönüyor (crm.css, .crm-table-wrap); sayfa
+     da normal akışa dönüyor, sabit yükseklik orada anlamsız. */
+  .os-root main.liste-sayfa>.hedefler-kart{display:block;flex:0 0 auto;border:0;background:transparent;box-shadow:none;overflow:visible}
+  .hedefler-form{display:block}
+  .hedefler-tablo-sarmal{overflow:visible}
+  /* Kart başlığı sola: kart görünümünde hücreler sağa yaslı
+     (crm.css), ama kişinin adı başlıktır ve sağa yaslı bir ad
+     etiketsiz kaldığı için havada duruyordu. */
+  .hedefler-tablo tbody td:first-child{justify-content:flex-start;text-align:left;border-bottom:1px solid var(--line-soft);padding-bottom:10px}
+  .hedefler-tablo tbody td:first-child::before{content:none}
+  .hedefler-tutar input{max-width:none;width:100%;min-width:120px}
+  .hedefler-eylem,.hedefler-not{padding:var(--sp-4)}
 }

@@ -4,9 +4,11 @@ import { getPanelContext } from "@/lib/panel-context";
 import { modulGerek } from "@/lib/modul-kapisi";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { money } from "@/lib/rapor-bicim";
+import { ayinSonGunu } from "@/lib/rapor-donemi";
+import { sozlesmeleriBagla, type PersonelSozlesmesi } from "@/lib/rapor-personel";
+import { tumSatirlar } from "@/lib/rapor-okuma";
 import { ayEtiketi, aySecenekleri, gerceklesme, type HedefKaydi } from "@/lib/personel-hedefi";
 import { liraYazisi } from "@/lib/turkish-amount";
-import { cssVar } from "@/lib/css-var";
 import { hedefleriKaydet, hedefleriOncekiAydanKopyala } from "../actions";
 import "../hr.css";
 import "../../components/kayit-formu.css";
@@ -89,6 +91,43 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
   if (pHata) throw new Error("Personel okunamadı: " + pHata.message);
   if (hHata) throw new Error("Hedefler okunamadı: " + hHata.message);
 
+  /*
+    GERÇEKLEŞEN, RAPORLA AYNI YERDEN HESAPLANIYOR
+    (lib/rapor-personel → sozlesmeleriBagla). Burada kendi toplamımı
+    yazsaydım aynı kişi için bu ekranda bir rakam, Personel
+    Performansı raporunda başka bir rakam çıkardı: sözleşmenin
+    personele TALEP ÜZERİNDEN bağlandığı, yalnızca imzalı/tamamlanmış
+    sayıldığı ve imza anı boşsa oluşturulma gününe düşüldüğü kuralların
+    hepsi o işlevde ve testli.
+
+    Sözleşmeler önce okunuyor, talepler SONRA ve yalnızca o
+    sözleşmelerin fırsat kimlikleriyle: talep eski olabilir, dönemle
+    süzmek satışı sahipsiz bırakırdı.
+  */
+  const ayDonemi = { startKey: ay, endKey: ayinSonGunu(Number(ay.slice(0, 4)), Number(ay.slice(5, 7))), key: "ay" };
+  const sozlesmeler = await tumSatirlar<PersonelSozlesmesi & { opportunity_id: string | null }>("sözleşmeler", (bas, son) =>
+    supabase.from("crm_contracts")
+      .select("opportunity_id,amount,status,signed_at,created_at")
+      .eq("organization_id", org)
+      .in("status", ["signed", "completed"])
+      .or(`signed_at.gte.${ayDonemi.startKey},created_at.gte.${ayDonemi.startKey}`)
+      .lte("created_at", `${ayDonemi.endKey}T23:59:59.999Z`)
+      .order("opportunity_id")
+      .range(bas, son));
+  const firsatKimlikleri = [...new Set(sozlesmeler.map((c) => c.opportunity_id).filter((id): id is string => Boolean(id)))];
+  const talepler = firsatKimlikleri.length
+    ? await tumSatirlar<{ id: string; assigned_employee_id: string | null }>("talepler", (bas, son) =>
+        supabase.from("crm_opportunities")
+          .select("id,assigned_employee_id")
+          .eq("organization_id", org)
+          .in("id", firsatKimlikleri)
+          .order("id")
+          .range(bas, son))
+    : [];
+  const talebinPersoneli = new Map<string, string>();
+  for (const t of talepler) if (t.assigned_employee_id) talebinPersoneli.set(t.id, t.assigned_employee_id);
+  const gerceklesenHarita = sozlesmeleriBagla({ sozlesmeler, talebinPersoneli, donem: ayDonemi });
+
   const personel = ((pVeri ?? []) as Personel[]).filter((p) => CALISAN.includes(p.employment_status));
   const hedefler = (hVeri ?? []) as HedefKaydi[];
   const hedef = new Map(hedefler.map((h) => [h.employee_id, h.tutar]));
@@ -97,7 +136,15 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
   const konan = personel.filter((p) => hedef.has(p.id)).length;
   const hedefsiz = personel.length - konan;
   const oncekiSayi = ((oVeri ?? []) as HedefKaydi[]).length;
-  const enYuksek = Math.max(1, ...personel.map((p) => hedef.get(p.id) ?? 0));
+  /* Gerçekleşen toplamı yalnızca HEDEFİ OLANLARDAN: hedefi konmamış
+     kişinin satışını paya katmak "hedefin %140'ı" gibi bir sayı
+     üretirdi (raporla aynı kural). */
+  const gerceklesenToplam = personel.reduce((t, p) => t + (hedef.has(p.id) ? gerceklesenHarita.get(p.id)?.tutar ?? 0 : 0), 0);
+  const kalanToplam = personel.reduce((t, p) => {
+    const h = hedef.get(p.id);
+    return h === undefined ? t : t + Math.max(0, h - (gerceklesenHarita.get(p.id)?.tutar ?? 0));
+  }, 0);
+  const gecmisAy = ay < buAy;
 
   return <main className="talep cari ekip talepler teklifler liste-sayfa hedefler-sayfa">
     <header className="talep-bas">
@@ -110,16 +157,44 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
         </p>
       </div>
       <div className="talep-bas-eylem">
+        {/*
+          KOPYALAMA BAŞLIKTA, AYRI BİR FORM. Tablonun altında kendi
+          kartındaydı ve sabit yükseklikli liste sayfasında dikey yer
+          yiyordu. Ayrı form olması şart: aynı formun içindeki ikinci
+          düğme, Enter'a basan kullanıcının yazdığı rakamların üstüne
+          geçen ayı kopyalardı. Yalnızca bu ayda BOŞ olan satırlar
+          doldurulur.
+        */}
+        {yonetir && oncekiSayi > 0 && hedefsiz > 0 ? (
+          <form action={hedefleriOncekiAydanKopyala}>
+            <input type="hidden" name="ay" value={ay} />
+            <input type="hidden" name="kaynak" value={oncekiAy} />
+            <button className="panel-secondary" type="submit" title={`${ayEtiketi(oncekiAy)} ayında ${oncekiSayi} kişiye hedef konmuştu`}>
+              {ayEtiketi(oncekiAy)} hedeflerini kopyala
+            </button>
+          </form>
+        ) : null}
         <Link className="panel-secondary" href="/panel/finance/raporlar?rapor=personel">Personel raporu</Link>
       </div>
     </header>
 
     <nav className="kayit-serit talep-serit" aria-label="Hedef özeti">
       <dl>
-        <div><dt>Seçili ay</dt><dd>{ayEtiketi(ay)}</dd><small>{ay === buAy ? "içinde bulunulan ay" : ay < buAy ? "geçmiş ay" : "gelecek ay"}</small></div>
+        <div><dt>Seçili ay</dt><dd>{ayEtiketi(ay)}</dd><small>{ay === buAy ? "ay sürüyor" : gecmisAy ? "geçmiş ay" : "gelecek ay"}</small></div>
         <div><dt>Toplam hedef</dt><dd className={toplam ? "cari-arti" : "talep-bos"}>{toplam ? money(toplam) : "—"}</dd><small>{konan} kişiye konmuş</small></div>
+        {/* Gerçekleşen ve kalan yalnızca hedefi olanlardan; oran da
+            aynı tabandan, yoksa "hedefin %140'ı" gibi bir sayı çıkar. */}
+        <div>
+          <dt>Gerçekleşen</dt>
+          <dd className={gerceklesenToplam ? "cari-arti" : "talep-bos"}>{gerceklesenToplam ? money(gerceklesenToplam) : "—"}</dd>
+          <small>{toplam ? `hedefin %${(gerceklesme(gerceklesenToplam, toplam) ?? 0).toLocaleString("tr-TR")}'i` : "hedef konmamış"}</small>
+        </div>
+        <div>
+          <dt>Kalan</dt>
+          <dd className={kalanToplam ? "talep-uyari" : toplam ? "cari-arti" : "talep-bos"}>{toplam ? money(kalanToplam) : "—"}</dd>
+          <small>{toplam ? (kalanToplam ? (buAy === ay ? "ay sonuna kadar" : "tutturulamadı") : "hedefe ulaşıldı") : "—"}</small>
+        </div>
         <div><dt>Hedefsiz personel</dt><dd className={hedefsiz ? "talep-uyari" : undefined}>{hedefsiz}</dd><small>{personel.length} kişilik kadro</small></div>
-        <div><dt>Kişi başı ortalama</dt><dd>{konan ? money(Math.round(toplam / konan)) : "—"}</dd><small>yalnızca hedefi olanlar</small></div>
       </dl>
     </nav>
 
@@ -140,10 +215,17 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
       </nav>
     </div>
 
-    {/* `talep-bilgi` BİLEREK YOK: o sınıf liste sayfalarında kendi
-        içinde kayan tablo kabuğu (flex, sınırlı yükseklik) ve kart
-        formun kaydet satırını kırpıyordu. */}
-    <section className="panel-card hedefler-kart" aria-label={`${ayEtiketi(ay)} hedefleri`}>
+    {/*
+      KABUK PANELİN KENDİ KABUĞU: `talep-bilgi` kartı sabit yükseklikli
+      liste sayfasında esneyen bir flex sütunu yapıyor, `talep-tablo`
+      da içindeki asıl kaydırma alanı (os-shell.css). Önce kendi
+      kurallarımı yazmıştım: formun kaydet satırı kartı taşırıp
+      overflow:hidden ile kırpılıyordu, sonra da kendi "flex:1"
+      kuralım panelin `>:not(.talep-izgara):not(.talep-bilgi)
+      {flex:0 0 auto}` kuralına özgüllükte yeniliyordu — tablo sayfayı
+      taşırıyor, başlık üst çubuğun altına kayıyordu.
+    */}
+    <section className="panel-card talep-bilgi hedefler-kart" aria-label={`${ayEtiketi(ay)} hedefleri`}>
       {personel.length === 0 ? (
         <div className="panel-empty hedefler-bos">
           <b>Kadroda çalışan personel yok</b>
@@ -156,19 +238,25 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
               görünümü (≤760px) ona bağlı. Kendi sarmalımı yazdığımda
               tablo min-width'iyle kalıyordu ve telefonda hücreler
               ekranın dışına taşıyordu. */}
-          <div className="crm-table-wrap hedefler-tablo-sarmal">
-            <table className="crm-data-table hedefler-tablo" data-cols="hedefler">
+          {/* `talep-tablo` kaydırma alanı, `crm-table-wrap` telefon
+              kart görünümü; ikisi birden gerekiyor. */}
+          <div className="talep-tablo crm-table-wrap hedefler-tablo-sarmal">
+            <table className="crm-data-table hedefler-tablo">
               <thead>
                 <tr>
                   <th>Personel</th>
                   <th>Departman</th>
                   <th className="crm-col-amount">Aylık hedef (₺)</th>
-                  <th>Payı</th>
+                  <th className="crm-col-amount">Gerçekleşen</th>
+                  <th className="crm-col-amount">Kalan</th>
                 </tr>
               </thead>
               <tbody>
                 {personel.map((p) => {
                   const tutar = hedef.get(p.id) ?? null;
+                  const gerceklesen = gerceklesenHarita.get(p.id)?.tutar ?? 0;
+                  const adet = gerceklesenHarita.get(p.id)?.adet ?? 0;
+                  const kalan = tutar === null ? null : Math.max(0, tutar - gerceklesen);
                   return (
                     <tr key={p.id}>
                       <td>
@@ -194,14 +282,33 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
                           aria-label={`${p.full_name} için ${ayEtiketi(ay)} hedefi`}
                         />
                       </td>
-                      <td className="hedefler-pay" data-label="Payı">
-                        {/* Payı: kişinin hedefinin ayın toplamındaki
-                            ağırlığı. Hedef konmamışsa çubuk YOK — boş
-                            bir çubuk "payı sıfır" gibi okunurdu. */}
-                        {tutar === null ? <span className="talep-bos">—</span> : <>
-                          <span className="hedefler-pay-iz"><i style={cssVar("--w", `${Math.max(3, (tutar / enYuksek) * 100)}%`)} /></span>
-                          <small>%{(gerceklesme(tutar, toplam) ?? 0).toLocaleString("tr-TR")}</small>
-                        </>}
+                      {/*
+                        GERÇEKLEŞEN HEDEFTEN BAĞIMSIZ GÖSTERİLİYOR:
+                        hedefi konmamış kişinin de satışı var ve onu
+                        gizlemek "bu kişi hiç satmadı" gibi okunurdu.
+                        KALAN ise hedefsiz satırda yok — hedefi
+                        olmayanın "kalanı" tanımsız, sıfır değil.
+                      */}
+                      <td className="crm-col-amount hedefler-gerceklesen" data-label="Gerçekleşen">
+                        {gerceklesen ? (
+                          /* Rakam ve altındaki bağlam TEK öğede: telefonda
+                             hücre etiketli bir satıra dönüşüyor ve iki ayrı
+                             çocuk, etiketle rakamı alt alta düşürüyordu. */
+                          <span className="hedefler-deger">
+                            {money(gerceklesen)}
+                            {adet ? <small>{adet} sözleşme</small> : null}
+                          </span>
+                        ) : <span className="talep-bos">—</span>}
+                      </td>
+                      <td className="crm-col-amount hedefler-kalan" data-label="Kalan">
+                        {tutar === null || kalan === null ? <span className="talep-bos">—</span>
+                          : kalan === 0 ? <span className="hedefler-tuttu">Tamam</span>
+                          : (
+                            <span className="hedefler-deger">
+                              {money(kalan)}
+                              <small>%{(gerceklesme(gerceklesen, tutar) ?? 0).toLocaleString("tr-TR")}</small>
+                            </span>
+                          )}
                       </td>
                     </tr>
                   );
