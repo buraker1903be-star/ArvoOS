@@ -18,6 +18,7 @@ import { arvolabAdlari, fiyatKisayollari, kurumAlicilari } from "./proforma-veri
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { MobilSatir } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
+import { AylikGrafik, type AylikSatir } from "./aylik-grafik";
 import "../platform.css";
 import "../../components/kayit-formu.css";
 import "../../hr/hr.css";
@@ -352,6 +353,23 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
   // tuzak-tamam: sınırsız sorgu (bekleyen havalelerin hepsi), toplam doğru.
   const bekleyenTutar = bekleyenSatirlar.reduce((t, b) => t + Number(b.amount), 0);
 
+  /*
+    Aylık grafik yalnızca ana Tahsilatlar ekranında (süzgeçsiz): kanal
+    süzgeci listeyi süzüyor, grafik bütün kanalların toplamı ve süzgeç
+    değişince değişmeyen bir çizim "süzüldü" diye okunurdu. Okunamazsa
+    sayfa düşmüyor, grafiğin yerinde nedeni yazıyor — liste ve şerit yine
+    doğru.
+  */
+  let aylik: { satirlar: AylikSatir[]; hata: string | null } | null = null;
+  if (secili === "") {
+    if (!admin) aylik = { satirlar: [], hata: "Sunucu anahtarı tanımlı değil." };
+    else {
+      const { data, error } = await admin.rpc("platform_tahsilat_aylik", { p_ay: 12 });
+      if (error) console.error("[konsol] aylık tahsilat okunamadı", error.message);
+      aylik = { satirlar: (data ?? []) as AylikSatir[], hata: error ? error.message : null };
+    }
+  }
+
   const ekran = EKRAN_ADI[secili] ?? EKRAN_ADI[""];
   const kanalAdeti = (kod: string) =>
     kod === "havale" ? kanalSayisi("Havale/EFT") : kod === "kart" ? kanalSayisi("Kart (PayTR)") : kod === "bireysel" ? tahsilatlar.filter((t) => !t.organizationId).length : tahsilatlar.length;
@@ -439,6 +457,12 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
         </div>
       </dl>
     </nav>
+
+    {aylik ? (
+      aylik.hata
+        ? <KNot ton="uyari"><b>Aylık tahsilat grafiği okunamadı.</b> {aylik.hata}</KNot>
+        : <AylikGrafik satirlar={aylik.satirlar} />
+    ) : null}
 
     <section className="panel-card talep-bilgi" aria-label={ekran.baslik}>
       {SUZGEC_KANALLARI.has(secili) ? (

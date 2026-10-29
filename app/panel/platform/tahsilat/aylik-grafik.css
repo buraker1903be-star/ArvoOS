@@ -1,0 +1,64 @@
+/* Aylık tahsilat grafiği (aylik-grafik.tsx). Liste sayfasının üstünde
+   sabit boyda: listeye kalan yer grafiğe göre daralmasın diye flex:none. */
+.os-root .ag-kart{flex:none;display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-4)}
+.os-root .ag-bas{display:flex;align-items:flex-start;gap:var(--sp-5);flex-wrap:wrap}
+.os-root .ag-bas>div:first-child{flex:1 1 220px;min-width:0}
+.os-root .ag-bas h2{margin:0;font-size:var(--fs-base);color:var(--ink)}
+.os-root .ag-bas p{margin:2px 0 0;font-size:var(--fs-sm);color:var(--muted)}
+.os-root .ag-lejant{display:flex;gap:var(--sp-4);margin:0;padding:0;list-style:none;align-self:center;font-size:var(--fs-sm);color:var(--ink-soft)}
+.os-root .ag-lejant li{display:flex;align-items:center;gap:6px}
+.os-root .ag-lejant li::before{content:"";width:12px;height:12px;border-radius:3px}
+.os-root .ag-lejant [data-seri="tahsilat"]::before,.os-root .ag-dilim[data-seri="tahsilat"]{background:var(--brand-500)}
+/* Bekleyen taralı: renk görmeyen ve siyah-beyaz yazdıran da iki seriyi ayırsın. */
+.os-root .ag-lejant [data-seri="bekleyen"]::before,.os-root .ag-dilim[data-seri="bekleyen"]{background:repeating-linear-gradient(135deg,var(--warning) 0 3px,var(--warning-soft) 3px 6px)}
+.os-root .ag-toplam{display:flex;gap:var(--sp-5);margin:0}
+.os-root .ag-toplam div{display:flex;flex-direction:column;align-items:flex-end}
+.os-root .ag-toplam dt{font-size:var(--fs-sm);color:var(--muted)}
+.os-root .ag-toplam dd{margin:0;font-size:var(--fs-lg);font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+
+.os-root .ag-cizim{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--sp-3);height:170px}
+/* Eksen etiketleri ızgara çizgileriyle aynı formülden: çizim alanı üstte 18px (değer etiketi), altta 22px (ay adı) boşluk bırakıyor. */
+.os-root .ag-eksen{position:relative;min-width:44px;font-size:11px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.os-root .ag-eksen span{position:absolute;right:0;transform:translateY(-50%);white-space:nowrap}
+.os-root .ag-eksen span:nth-child(1){top:18px}
+.os-root .ag-eksen span:nth-child(2){top:calc(18px + (100% - 40px) / 2)}
+.os-root .ag-eksen span:nth-child(3){top:calc(100% - 22px)}
+.os-root .ag-cubuklar{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none;
+  /* Izgara çizgisi yalnızca orta ve taban: eksen etiketleriyle aynı yükseklikte, çekinik. */
+  background:linear-gradient(var(--line),var(--line)) 0 18px/100% 1px no-repeat,
+             linear-gradient(var(--line),var(--line)) 0 calc(18px + (100% - 40px) / 2)/100% 1px no-repeat,
+             linear-gradient(var(--line),var(--line)) 0 calc(100% - 22px)/100% 1px no-repeat}
+.os-root .ag-cubuklar li{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0;outline:none;cursor:default}
+.os-root .ag-yigin{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;width:100%;max-width:34px;flex:1;padding-top:18px;padding-bottom:0}
+.os-root .ag-dilim{display:block;flex:none;width:100%;min-height:3px;border-radius:0}
+.os-root .ag-dilim[data-seri="tahsilat"]{height:var(--t,0%)}
+.os-root .ag-dilim[data-seri="bekleyen"]{height:var(--b,0%)}
+/* Yalnızca verinin ucu (en üstteki dilim) yuvarlak; taban düz, çizgiye oturuyor. */
+.os-root .ag-yigin>.ag-dilim:first-of-type{border-radius:4px 4px 0 0}
+.os-root .ag-dilim.is-bos{height:3px;border-radius:2px;background:var(--surface-2)}
+/* Değer etiketi akışta, en üst dilimin hemen üstünde; çizim alanının üst boşluğuna taşabilir. */
+.os-root .ag-deger{flex:none;align-self:center;margin-bottom:2px;font-style:normal;white-space:nowrap;font-size:11px;font-weight:700;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.os-root .ag-cubuklar li small{height:22px;display:flex;align-items:flex-end;font-size:11px;color:var(--muted)}
+.os-root .ag-cubuklar li.is-bu-ay small{color:var(--ink);font-weight:700}
+.os-root .ag-cubuklar li:hover .ag-yigin,.os-root .ag-cubuklar li:focus-visible .ag-yigin{filter:brightness(1.08)}
+.os-root .ag-cubuklar li:focus-visible small{outline:2px solid var(--focus);outline-offset:2px;border-radius:3px}
+
+.os-root .ag-ipucu{position:absolute;bottom:calc(100% - 8px);left:50%;z-index:5;display:none;flex-direction:column;gap:2px;min-width:200px;padding:8px 10px;
+  transform:translateX(-50%);border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-raised);box-shadow:var(--shadow-md);font-size:var(--fs-sm);color:var(--ink-soft);white-space:nowrap;pointer-events:none}
+.os-root .ag-ipucu b{color:var(--ink)}
+.os-root .ag-cubuklar li:hover .ag-ipucu,.os-root .ag-cubuklar li:focus-visible .ag-ipucu{display:flex}
+/* Kenardaki çubukların ipucu kartın dışına taşmasın. */
+.os-root .ag-cubuklar li:nth-child(-n+2) .ag-ipucu{left:0;transform:none}
+.os-root .ag-cubuklar li:nth-last-child(-n+2) .ag-ipucu{left:auto;right:0;transform:none}
+
+.os-root .ag-tablo summary{cursor:pointer;font-size:var(--fs-sm);color:var(--primary);width:max-content}
+.os-root .ag-tablo[open] summary{margin-bottom:var(--sp-2)}
+.os-root .ag-tablo .talep-tablo{max-height:260px;overflow:auto}
+
+@media (max-width:720px){
+  .os-root .ag-kart{padding:var(--sp-3)}
+  .os-root .ag-toplam{width:100%;justify-content:space-between}
+  .os-root .ag-toplam div{align-items:flex-start}
+  .os-root .ag-cubuklar{gap:4px}
+  .os-root .ag-deger{display:none}
+}
