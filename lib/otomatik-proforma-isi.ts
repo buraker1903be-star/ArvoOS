@@ -8,6 +8,7 @@ import { PRODUCT_APPS } from "@/lib/site/routes";
 import { kurucuyaBildir } from "@/lib/kurucu-bildirimi";
 import { epostaGonder, type EpostaSonucu } from "@/lib/eposta-gonder";
 import { arvolabClient } from "@/lib/arvolab";
+import { otomatikYenilemeAcik } from "@/lib/paytr-kart-akisi";
 import type { ProformaAlici } from "@/lib/proforma";
 import {
   alicilariTopla, OTOMATIK_KDV_ORANI, otomatikKalemler, proformaBildirimi, proformaPostasi, proformaZamaniMi, sonrakiDonemSonu, turkiyeGunu,
@@ -153,7 +154,8 @@ async function adaylariKes(admin: Admin, bugun: string, adaylar: Aday[], sonuc: 
   const kurum = new Map(((kurumlar.data ?? []) as Kurum[]).map((k) => [k.id, k]));
   const abone = new Map(((aboneler.data ?? []) as { id: string; email: string; full_name: string | null }[]).map((a) => [a.id, a]));
   const anahtar = (r: { organization_id: string | null; subscriber_id: string | null; product: string }) => `${r.organization_id ?? r.subscriber_id}:${r.product}`;
-  const otomatikAcik = new Set(((otomatikler.data ?? []) as { organization_id: string | null; subscriber_id: string | null; product: string }[]).map(anahtar));
+  // Otomatik yenileme kapalıyken (29.10.2026) eski bir "aktif" satır proformayı engellemez: kimsenin kartından çekilmiyor.
+  const otomatikAcik = new Set(((otomatikYenilemeAcik() ? (otomatikler.data ?? []) : []) as { organization_id: string | null; subscriber_id: string | null; product: string }[]).map(anahtar));
   const elleBekleyen = new Set(((elle.data ?? []) as { organization_id: string | null; subscriber_id: string | null; product: string }[]).map(anahtar));
 
   // Kurum sahiplerinin adları (alıcıda muhatap); okunamazsa ad boş kalır.
