@@ -20,6 +20,7 @@ export function OsKullaniciMenusu({
   paket,
   workspaces,
   aktifKurumId,
+  abonelik = false,
   cikis,
 }: {
   ad: string;
@@ -28,6 +29,8 @@ export function OsKullaniciMenusu({
   paket: string;
   workspaces: PanelWorkspace[];
   aktifKurumId: string;
+  /** Abonelik ve faturalama bağlantısı (finance.lisans.yonet; os-bolumler abonelikGorur). */
+  abonelik?: boolean;
   cikis: () => Promise<void>;
 }) {
   return (
@@ -79,6 +82,8 @@ export function OsKullaniciMenusu({
           </div>
         ) : null}
         <nav className="os-user-links" aria-label="Hesap">
+          {/* Abonelik ve faturalama 29.10.2026'ya kadar panelde hiçbir menüde yoktu. */}
+          {abonelik ? <Link href="/panel/billing"><OsSimge ad="wallet" boyut={16} />Abonelik ve faturalama</Link> : null}
           <Link href="/panel/settings"><OsSimge ad="settings" boyut={16} />Ayarlar</Link>
           <Link href="/panel/notifications"><OsSimge ad="bell" boyut={16} />Bildirimler</Link>
         </nav>

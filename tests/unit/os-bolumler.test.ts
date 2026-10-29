@@ -14,6 +14,8 @@ test("Finans: maliyet ve raporlar yalnızca yetkiyle (raporlar modülle birlikte
   assert.deepEqual(finansBolumleri(bos).map((b) => b.key), ["genel-bakis", "cari"]);
   const tam = { modules: [{ code: "reporting" }], yetkiler: new Set(["finance.maliyet.yonet", "finance.rapor.gor"]) };
   assert.deepEqual(finansBolumleri(tam).map((b) => b.key), ["genel-bakis", "cari", "maliyet", "raporlar"]);
+  // Abonelik sekmesi ödeme yetkisiyle (sayfadaki ödeme düğmeleriyle aynı kural)
+  assert.deepEqual(finansBolumleri({ modules: [], yetkiler: new Set(["finance.lisans.yonet"]) }).map((b) => b.key), ["genel-bakis", "cari", "abonelik"]);
   // Rapor yetkisi var ama Raporlama modülü kapalı: sekme yok
   assert.ok(!finansBolumleri({ modules: [], yetkiler: new Set(["finance.rapor.gor"]) }).some((b) => b.key === "raporlar"));
 });
