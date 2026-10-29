@@ -164,6 +164,19 @@ export function personelTutarliligi(m: PersonelModeli): Tutarsizlik[] {
        kazanım bu dönemde olmuş olabilir. Geçerli bir üst sınır yok,
        o yüzden burada bir ölçüt de yok. */
     ...esit(R, "Aylık seri 6 ay", 6, m.aylik.length),
+    /*
+      HEDEF ÖLÇÜTLERİ (29.10.2026). Hedef toplamı iki ayrı yerde
+      yazılıyor: kutu modelin `hedefToplam`ını, liste satırların
+      `hedef` alanını. Sapmayı ekran söylesin — "kutuda bir rakam,
+      listede başka" bu depoda daha önce yaşandı.
+    */
+    ...esit(R, "Satırlardaki hedef = dönem hedefi", m.hedefToplam, topla(m.satis, (s) => s.hedef ?? 0)),
+    /* Gerçekleşme payı yalnızca hedefi OLANLARIN satışı; kurumun
+       bütün satışını aşamaz. */
+    ...enCok(R, "Hedefli satış ≤ toplam satış", topla(m.satis, (s) => s.sozlesmeTutari), m.hedefGerceklesenToplam),
+    /* Dönem tam aylara oturmuyorsa hedef HİÇ hesaplanmaz; bir satırda
+       hedef kalmışsa süzgeç delinmiş demektir. */
+    ...(m.hedefDonemUygun ? [] : esit(R, "Uygun olmayan dönemde hedef yok", 0, m.satis.filter((s) => s.hedef !== null).length + m.hedefToplam)),
   ];
 }
 

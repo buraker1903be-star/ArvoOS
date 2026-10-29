@@ -3,13 +3,15 @@ import type { Metadata } from "next";
 import { getPanelContext } from "@/lib/panel-context";
 import { modulGerek } from "@/lib/modul-kapisi";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { money } from "@/lib/rapor-bicim";
 import { ayEtiketi, aySecenekleri, gerceklesme, type HedefKaydi } from "@/lib/personel-hedefi";
 import { liraYazisi } from "@/lib/turkish-amount";
 import { cssVar } from "@/lib/css-var";
-import { hedefleriKaydet } from "../actions";
-import "../../components/kayit-formu.css";
-import "../../crm/kayit-detay/kayit-detay.css";
+import { hedefleriKaydet, hedefleriOncekiAydanKopyala } from "../actions";
 import "../hr.css";
+import "../../components/kayit-formu.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 import "./hedefler.css";
 
 export const metadata: Metadata = { title: "Satış hedefleri" };
@@ -21,25 +23,38 @@ export const metadata: Metadata = { title: "Satış hedefleri" };
   girecek hiçbir yer yoktu — program eksiği söylüyor, kapatmanın
   yolunu vermiyordu (docs/RAPORLAMA-ASAMA-1.md §2.1).
 
-  TEK EKRANDA BÜTÜN KADRO. Hedef kişi başına ayrı bir pencerede
-  sorulsaydı on kişilik bir ekip için on pencere açılırdı; hedef ay
+  DÜZEN PANELİN KENDİ DÜZENİ: başlık (talep-bas) + özet şeridi
+  (kayit-serit) + panel-card içinde liste, personel listesiyle aynı.
+  İlk sürüm kendi sınıflarını yazıyordu ve ekranda kartsız, düğmesi
+  düz yazı görünen bir tablo çıktı: kullanılan sınıfların bir kısmı
+  bu depoda HİÇ yoktu (.kayit-kart, .projects-primary-button — başka
+  bir depodan taşınmış). `npm run check:css` tanımlı olup rotaya
+  girmeyen sınıfı arıyor, HİÇ TANIMLANMAMIŞ olanı değil; o yüzden
+  denetim sessiz kaldı.
+
+  TEK EKRANDA BÜTÜN KADRO. Hedef kişi başına ayrı pencerede
+  sorulsaydı on kişilik ekip için on pencere açılırdı; hedef ay
   başında toplu konan bir şey. Ay seçici adreste (?ay=2026-11):
-  sunucuda kalıyor, geri tuşu çalışıyor, bağlantı paylaşılabiliyor.
+  sorgular sunucuda kalıyor, geri tuşu çalışıyor, bağlantı
+  paylaşılabiliyor.
 
   TUTAR KUTUSU `type="number"` DEĞİL (AGENTS.md "Para kuruş cinsinden
   tamsayıdır"): sayı kutusu "1.500" yazımını geçersiz sayıp kutuyu
   boşaltıyor, kullanıcı doğru yazdığı hâlde uyarı alıyordu. Metin
   kutusu + inputMode="decimal", okuması `kurusOku`.
 
-  GEÇMİŞ AY KAPATILMIYOR. Hedefi ay geçtikten sonra girmek meşru
-  (ilk kurulumda geçmiş aylar da doldurulur) ve rapor zaten hangi
-  ayın ölçüldüğünü yazıyor.
+  GEÇMİŞ AY KAPATILMIYOR: ilk kurulumda geçmiş aylar da doldurulur ve
+  rapor zaten hangi ayı ölçtüğünü yazıyor.
 */
 
 type Personel = { id: string; full_name: string; job_title: string | null; department_id: string | null; employment_status: string };
 
-/** Hedef satış personeline konur; kadroda çalışan herkes listede. */
+/** Kadroda çalışan herkes listede: kimin satış yaptığına kurum karar
+    verir, program bir unvan listesi uydurmaz. */
 const CALISAN = ["active", "on_leave"];
+
+const basHarf = (ad: string) =>
+  ad.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr-TR")).join("") || "?";
 
 export default async function HedeflerSayfasi({ searchParams }: { searchParams: Promise<{ ay?: string }> }) {
   const { ay: istenenAy } = await searchParams;
@@ -49,16 +64,27 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
   const org = membership.organization_id;
 
   const bugun = todayInIstanbul();
-  const secenekler = aySecenekleri(bugun);
+  /* Üç ay geri, altı ay ileri: hedef gelecek aya konur, geçmiş ay
+     yalnızca ilk kurulumda ya da düzeltme için gerekiyor. On üç ay
+     şeridi ekranı boydan boya kaplıyordu. */
+  const secenekler = aySecenekleri(bugun, 3, 6);
+  const buAy = secenekler.find((a) => a.slice(0, 7) === bugun.slice(0, 7))!;
   /* Adresten gelen ay listede yoksa içinde bulunulan aya düşülüyor:
-     elle yazılmış bir tarih için boş bir ekran göstermek, kullanıcıya
+     elle yazılmış bir tarih için boş ekran göstermek, kullanıcıya
      hedeflerin silindiğini düşündürürdü. */
-  const ay = istenenAy && secenekler.includes(istenenAy) ? istenenAy : secenekler.find((a) => a.slice(0, 7) === bugun.slice(0, 7))!;
+  const ay = istenenAy && secenekler.includes(istenenAy) ? istenenAy : buAy;
+  const oncekiAy = secenekler[Math.max(0, secenekler.indexOf(ay) - 1)];
 
-  const [{ data: pVeri, error: pHata }, { data: hVeri, error: hHata }, { data: dVeri }] = await Promise.all([
+  const [{ data: pVeri, error: pHata }, { data: hVeri, error: hHata }, { data: dVeri }, { data: oVeri }] = await Promise.all([
     supabase.from("hr_employees").select("id,full_name,job_title,department_id,employment_status").eq("organization_id", org).order("full_name"),
     supabase.from("hr_personel_hedefleri").select("employee_id,donem,tutar").eq("organization_id", org).eq("donem", ay),
     supabase.from("hr_departments").select("id,name").eq("organization_id", org),
+    /* Önceki ay yalnızca "kopyala" teklifini göstermek için okunuyor:
+       hedefi olmayan bir aydan kopyalama teklif etmek, basınca hiçbir
+       şey yapmayan bir düğme olurdu. */
+    ay === oncekiAy
+      ? Promise.resolve({ data: [] as HedefKaydi[] })
+      : supabase.from("hr_personel_hedefleri").select("employee_id,donem,tutar").eq("organization_id", org).eq("donem", oncekiAy),
   ]);
   if (pHata) throw new Error("Personel okunamadı: " + pHata.message);
   if (hHata) throw new Error("Hedefler okunamadı: " + hHata.message);
@@ -68,124 +94,155 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
   const hedef = new Map(hedefler.map((h) => [h.employee_id, h.tutar]));
   const departman = new Map(((dVeri ?? []) as { id: string; name: string }[]).map((d) => [d.id, d.name]));
   const toplam = hedefler.reduce((t, h) => t + h.tutar, 0);
-  const konan = hedefler.length;
+  const konan = personel.filter((p) => hedef.has(p.id)).length;
+  const hedefsiz = personel.length - konan;
+  const oncekiSayi = ((oVeri ?? []) as HedefKaydi[]).length;
+  const enYuksek = Math.max(1, ...personel.map((p) => hedef.get(p.id) ?? 0));
 
-  return (
-    <main className="panel-page hedefler-sayfa">
-      <div className="talep-bas">
-        <div>
-          <span className="talep-kicker">İnsan Kaynakları</span>
-          <h1>Satış hedefleri</h1>
-          <p className="talep-ozet">
-            Aylık hedef kişi başına konur; Personel Performansı raporu gerçekleşmeyi bu rakama göre
-            hesaplar. Hedef konmayan kişinin raporda hedef hücresi <b>boş</b> kalır — sıfır değil.
-          </p>
-        </div>
-        <Link href="/panel/finance/raporlar?rapor=personel" className="projects-filter-button hedefler-rapor-link">
-          Personel raporu
-        </Link>
+  return <main className="talep cari ekip talepler teklifler liste-sayfa hedefler-sayfa">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
+        <small className="panel-kicker">İNSAN KAYNAKLARI</small>
+        <h1>Satış hedefleri</h1>
+        <p className="ek-alt">
+          Aylık hedef kişi başına konur; Personel Performansı raporu gerçekleşmeyi bu rakama göre
+          hesaplar. Hedef konmayan kişinin raporda hedef hücresi boş kalır — sıfır değil.
+        </p>
       </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/finance/raporlar?rapor=personel">Personel raporu</Link>
+      </div>
+    </header>
 
-      {/* Ay seçici adreste: sunucuda kalıyor, geri tuşu çalışıyor. */}
-      <nav className="hedefler-aylar" aria-label="Hedef ayı">
+    <nav className="kayit-serit talep-serit" aria-label="Hedef özeti">
+      <dl>
+        <div><dt>Seçili ay</dt><dd>{ayEtiketi(ay)}</dd><small>{ay === buAy ? "içinde bulunulan ay" : ay < buAy ? "geçmiş ay" : "gelecek ay"}</small></div>
+        <div><dt>Toplam hedef</dt><dd className={toplam ? "cari-arti" : "talep-bos"}>{toplam ? money(toplam) : "—"}</dd><small>{konan} kişiye konmuş</small></div>
+        <div><dt>Hedefsiz personel</dt><dd className={hedefsiz ? "talep-uyari" : undefined}>{hedefsiz}</dd><small>{personel.length} kişilik kadro</small></div>
+        <div><dt>Kişi başı ortalama</dt><dd>{konan ? money(Math.round(toplam / konan)) : "—"}</dd><small>yalnızca hedefi olanlar</small></div>
+      </dl>
+    </nav>
+
+    {/* Ay seçici: listelerdeki segment şeridiyle aynı. Bağlantıların
+        stili `.ek-arac .ek-segment a` ile geliyor, sarmalayıcı şart. */}
+    <div className="ek-arac hedefler-arac">
+      <nav className="ek-segment hedefler-aylar" aria-label="Hedef ayı">
         {secenekler.map((secenek) => (
           <Link
             key={secenek}
             href={`/panel/hr/hedefler?ay=${secenek}`}
-            className={`hedefler-ay${secenek === ay ? " is-active" : ""}`}
+            className={secenek === ay ? "is-active" : undefined}
             aria-current={secenek === ay ? "page" : undefined}
           >
             {ayEtiketi(secenek)}
           </Link>
         ))}
       </nav>
+    </div>
 
-      <section className="kayit-kart hedefler-kart">
-        <header className="hedefler-ozet">
-          <div>
-            <b>{ayEtiketi(ay)}</b>
-            <span>{konan ? `${konan} kişiye hedef konmuş · toplam ₺${liraYazisi(toplam)}` : "Bu aya henüz hedef konmamış"}</span>
-          </div>
-        </header>
-
-        {personel.length === 0 ? (
-          <p className="hedefler-bos">
-            Kadroda çalışan personel yok. Hedef koymadan önce <Link href="/panel/hr">personel kaydı</Link> açın.
-          </p>
-        ) : (
-          <form action={hedefleriKaydet} className="panel-form hedefler-form">
-            <input type="hidden" name="ay" value={ay} />
-            <table className="hedefler-tablo">
-              <caption>
-                Tutarı boş bırakmak hedefi <b>kaldırır</b>; sıfır hedef koymak isterseniz
-                <b> 0</b> yazın. Binlik ayırıcı nokta, kuruş virgül: 30.000,00
-              </caption>
+    {/* `talep-bilgi` BİLEREK YOK: o sınıf liste sayfalarında kendi
+        içinde kayan tablo kabuğu (flex, sınırlı yükseklik) ve kart
+        formun kaydet satırını kırpıyordu. */}
+    <section className="panel-card hedefler-kart" aria-label={`${ayEtiketi(ay)} hedefleri`}>
+      {personel.length === 0 ? (
+        <div className="panel-empty hedefler-bos">
+          <b>Kadroda çalışan personel yok</b>
+          <p>Hedef koymadan önce <Link href="/panel/hr">personel kaydı</Link> açın.</p>
+        </div>
+      ) : (
+        <form action={hedefleriKaydet} className="panel-form kayit-formu hedefler-form">
+          <input type="hidden" name="ay" value={ay} />
+          {/* Sarmal `crm-table-wrap`: panelin kendi mobil kart
+              görünümü (≤760px) ona bağlı. Kendi sarmalımı yazdığımda
+              tablo min-width'iyle kalıyordu ve telefonda hücreler
+              ekranın dışına taşıyordu. */}
+          <div className="crm-table-wrap hedefler-tablo-sarmal">
+            <table className="crm-data-table hedefler-tablo" data-cols="hedefler">
               <thead>
                 <tr>
-                  <th scope="col">Personel</th>
-                  <th scope="col">Departman</th>
-                  <th scope="col" className="hedefler-tutar-bas">Aylık hedef (₺)</th>
+                  <th>Personel</th>
+                  <th>Departman</th>
+                  <th className="crm-col-amount">Aylık hedef (₺)</th>
+                  <th>Payı</th>
                 </tr>
               </thead>
               <tbody>
-                {personel.map((p) => (
-                  <tr key={p.id}>
-                    <th scope="row">
-                      <Link href={`/panel/hr/${p.id}`}><b>{p.full_name}</b></Link>
-                      <small>{p.job_title?.trim() || "—"}</small>
-                    </th>
-                    <td>{(p.department_id && departman.get(p.department_id)) || "—"}</td>
-                    <td className="hedefler-tutar">
-                      <input
-                        name={`hedef_${p.id}`}
-                        type="text"
-                        inputMode="decimal"
-                        autoComplete="off"
-                        maxLength={18}
-                        defaultValue={hedef.has(p.id) ? liraYazisi(hedef.get(p.id)!) : ""}
-                        placeholder="Hedef yok"
-                        disabled={!yonetir}
-                        aria-label={`${p.full_name} için ${ayEtiketi(ay)} hedefi`}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {personel.map((p) => {
+                  const tutar = hedef.get(p.id) ?? null;
+                  return (
+                    <tr key={p.id}>
+                      <td>
+                        <span className="crm-rep hedefler-kisi">
+                          <i aria-hidden="true">{basHarf(p.full_name)}</i>
+                          <span>
+                            <Link href={`/panel/hr/${p.id}`}>{p.full_name}</Link>
+                            <small>{p.job_title?.trim() || "—"}</small>
+                          </span>
+                        </span>
+                      </td>
+                      <td className="hedefler-dep" data-label="Departman">{(p.department_id && departman.get(p.department_id)) || "—"}</td>
+                      <td className="crm-col-amount hedefler-tutar" data-label="Aylık hedef">
+                        <input
+                          name={`hedef_${p.id}`}
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          maxLength={18}
+                          defaultValue={tutar === null ? "" : liraYazisi(tutar)}
+                          placeholder="Hedef yok"
+                          disabled={!yonetir}
+                          aria-label={`${p.full_name} için ${ayEtiketi(ay)} hedefi`}
+                        />
+                      </td>
+                      <td className="hedefler-pay" data-label="Payı">
+                        {/* Payı: kişinin hedefinin ayın toplamındaki
+                            ağırlığı. Hedef konmamışsa çubuk YOK — boş
+                            bir çubuk "payı sıfır" gibi okunurdu. */}
+                        {tutar === null ? <span className="talep-bos">—</span> : <>
+                          <span className="hedefler-pay-iz"><i style={cssVar("--w", `${Math.max(3, (tutar / enYuksek) * 100)}%`)} /></span>
+                          <small>%{(gerceklesme(tutar, toplam) ?? 0).toLocaleString("tr-TR")}</small>
+                        </>}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            {yonetir ? (
-              <div className="project-form-actions">
-                <button type="submit" className="projects-primary-button">Hedefleri kaydet</button>
-              </div>
-            ) : (
-              <p className="hedefler-bos">Hedefleri yalnızca Kurum Sahibi ve Yönetici değiştirebilir; bu ekranı görüntüleyebilirsiniz.</p>
-            )}
-          </form>
-        )}
-      </section>
+          </div>
 
-      {konan > 0 ? (
-        <section className="kayit-kart">
-          <header className="hedefler-ozet"><div><b>Bu ayın dağılımı</b><span>Hedefi olan kişiler</span></div></header>
-          <ul className="hedefler-dagilim">
-            {personel
-              .filter((p) => hedef.has(p.id))
-              .sort((a, b) => (hedef.get(b.id) ?? 0) - (hedef.get(a.id) ?? 0))
-              .map((p) => {
-                const tutar = hedef.get(p.id) ?? 0;
-                const pay = gerceklesme(tutar, toplam) ?? 0;
-                return (
-                  <li key={p.id}>
-                    <div className="hedefler-dagilim-bas"><b>{p.full_name}</b><span>₺{liraYazisi(tutar)}</span></div>
-                    {/* Genişlik CSS değişkeniyle: TSX'te satır içi stil
-                        yok (AGENTS.md "Stil"), ölçü de CSS tarafında
-                        sınırlanabiliyor. */}
-                    <div className="hedefler-dagilim-iz"><i style={cssVar("--w", `${Math.max(2, pay)}%`)} /></div>
-                  </li>
-                );
-              })}
-          </ul>
-        </section>
-      ) : null}
-    </main>
-  );
+          {yonetir ? (
+            <div className="wide panel-form-actions kayit-formu-eylem hedefler-eylem">
+              <p>
+                Tutarı boş bırakmak hedefi <b>kaldırır</b>; sıfır hedef için <b>0</b> yazın.
+                Binlik ayırıcı nokta, kuruş virgül: <b>30.000,00</b>
+              </p>
+              <button className="panel-primary" type="submit">Hedefleri kaydet</button>
+            </div>
+          ) : (
+            <p className="hedefler-not">
+              Hedefleri yalnızca Kurum Sahibi ve Yönetici değiştirebilir; bu ekranı görüntüleyebilirsiniz.
+            </p>
+          )}
+        </form>
+      )}
+    </section>
+
+    {/*
+      ÖNCEKİ AYDAN KOPYALAMA AYRI BİR FORM: üstteki formun içinde
+      ikinci bir düğme olsaydı Enter'a basan kullanıcı yazdığı
+      rakamların üstüne geçen ayı kopyalayabilirdi. Yalnızca BOŞ olan
+      satırlar doldurulur, yazılmış hedef ezilmez.
+    */}
+    {yonetir && oncekiSayi > 0 && hedefsiz > 0 ? (
+      <form action={hedefleriOncekiAydanKopyala} className="panel-card hedefler-kopya">
+        <input type="hidden" name="ay" value={ay} />
+        <input type="hidden" name="kaynak" value={oncekiAy} />
+        <div>
+          <b>{ayEtiketi(oncekiAy)} hedeflerini kopyala</b>
+          <small>O ay {oncekiSayi} kişiye hedef konmuştu. Yalnızca bu ayda boş olan {hedefsiz} satır doldurulur.</small>
+        </div>
+        <button className="panel-secondary" type="submit">Kopyala</button>
+      </form>
+    ) : null}
+  </main>;
 }

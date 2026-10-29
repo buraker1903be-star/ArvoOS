@@ -340,3 +340,58 @@ async function hedefleriKaydet__impl(formData: FormData) {
 export async function hedefleriKaydet(...args: Parameters<typeof hedefleriKaydet__impl>) {
   return runPanelAction(() => hedefleriKaydet__impl(...args), "Hedefler kaydedildi");
 }
+
+/*
+  ÖNCEKİ AYIN HEDEFLERİNİ KOPYALAMA.
+
+  Aylık hedef çoğu ay aynı kalıyor; on kişilik bir ekip için her ay on
+  rakamı yeniden yazmak, ekranı kullanılmaz yapan türden bir angarya.
+
+  YAZILMIŞ HEDEF EZİLMİYOR: yalnızca bu ayda satırı OLMAYAN kişiler
+  dolduruluyor. Tersi, bu ay bilerek değiştirilmiş bir hedefi sessizce
+  geçen aya döndürürdü — kullanıcı farkı ancak rapora bakınca görürdü.
+*/
+async function hedefleriOncekiAydanKopyala__impl(formData: FormData) {
+  const context = await getPanelContext();
+  if (!context.modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
+  assertYetki(context.yetkiler, "hr.hedef.yonet");
+  assertModuleKeyAccess(context.membership.role, "hr", context.hiddenModuleKeys);
+  const { supabase, membership } = context;
+
+  const ay = text(formData, "ay", 10);
+  const kaynak = text(formData, "kaynak", 10);
+  const ayBicimi = /^\d{4}-\d{2}-01$/;
+  if (!ayBicimi.test(ay) || !ayBicimi.test(kaynak)) throw new Error("Hedef ayı okunamadı.");
+  if (ay === kaynak) throw new Error("Kaynak ay ile hedef ay aynı olamaz.");
+
+  const [{ data: kaynakSatirlari, error: kaynakHatasi }, { data: mevcut, error: mevcutHatasi }] = await Promise.all([
+    supabase.from("hr_personel_hedefleri").select("employee_id,tutar")
+      .eq("organization_id", membership.organization_id).eq("donem", kaynak),
+    supabase.from("hr_personel_hedefleri").select("employee_id")
+      .eq("organization_id", membership.organization_id).eq("donem", ay),
+  ]);
+  if (kaynakHatasi) throw new Error("Kaynak ay okunamadı: " + kaynakHatasi.message);
+  if (mevcutHatasi) throw new Error("Bu ayın hedefleri okunamadı: " + mevcutHatasi.message);
+
+  const dolu = new Set((mevcut ?? []).map((m) => m.employee_id));
+  const yazilacak = (kaynakSatirlari ?? [])
+    .filter((k) => !dolu.has(k.employee_id))
+    .map((k) => ({
+      organization_id: membership.organization_id,
+      employee_id: k.employee_id,
+      donem: ay,
+      tutar: k.tutar,
+      olusturan: context.userId,
+    }));
+  if (!yazilacak.length) throw new Error("Kopyalanacak hedef yok: bu ayın satırları zaten dolu.");
+
+  const { error } = await supabase.from("hr_personel_hedefleri").insert(yazilacak);
+  if (error) throw new Error("Hedefler kopyalanamadı: " + error.message);
+
+  revalidatePath("/panel/hr/hedefler");
+  revalidatePath("/panel/finance/raporlar");
+}
+
+export async function hedefleriOncekiAydanKopyala(...args: Parameters<typeof hedefleriOncekiAydanKopyala__impl>) {
+  return runPanelAction(() => hedefleriOncekiAydanKopyala__impl(...args), "Hedefler kopyalandı");
+}
