@@ -103,7 +103,7 @@ const AKTIF_ASAMALAR = ["lead", "qualified"];
 const LISTEDEKI_IS_DURUMLARI = ["planned", "in_progress", "blocked", "completed"];
 const LISTE = 6;
 
-type Arama = { pencere?: string; prim?: string; prim_bas?: string; prim_bit?: string; prim_is?: string; hareket?: string; hsayfa?: string };
+type Arama = { pencere?: string; prim?: string; prim_bas?: string; prim_bit?: string; prim_is?: string; prim_kart?: string; hareket?: string; hsayfa?: string };
 
 export default async function EmployeeDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Arama> }) {
   const { id } = await params;
@@ -291,7 +291,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               baslangicAcik={pencere === "prim"}
               kapaninca={pencere === "prim" ? temelAdres : undefined}
             >
-              <PrimPenceresi veri={prim} employeeId={employee.id} temelAdres={temelAdres} donemKodu={arama.prim} baslangic={arama.prim_bas} bitis={arama.prim_bit} isSekmesi={arama.prim_is} />
+              <PrimPenceresi veri={prim} employeeId={employee.id} temelAdres={temelAdres} donemKodu={arama.prim} baslangic={arama.prim_bas} bitis={arama.prim_bit} isSekmesi={arama.prim_is} kart={arama.prim_kart} />
             </PanelModal>
           ) : null}
           {yetkiDuzenler && employee.user_id ? (

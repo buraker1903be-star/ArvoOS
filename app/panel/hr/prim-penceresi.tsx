@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { inPeriod } from "@/lib/commission-accruals";
-import { employeeLedger, ledgerTotals } from "@/lib/commission-ledger";
 import { todayInIstanbul } from "@/lib/istanbul-date";
-import { gunDonemde, PRIM_DONEMLERI, primDonemi, primDonemiYazisi } from "@/lib/prim-donemi";
+import { PRIM_DONEMLERI, primDonemi } from "@/lib/prim-donemi";
+import { primDokumu, type PrimBolumu } from "@/lib/prim-dokumu";
 import { PanelDrawer } from "../components/panel-drawer";
+import { PanelModal } from "../components/panel-modal";
 import { ConfirmDeleteButton } from "../accounts/confirm-delete-button";
 import { primOdemesiDuzenle, primOdemesiKaydet, primOdemesiSil } from "./prim-actions";
-import { baglanmamisKisim, beklenenPrimler, isKapandi, isPrimleri } from "@/lib/prim-is-dagilimi";
+import type { IsPrimi } from "@/lib/prim-is-dagilimi";
 import { PrimOdemeFormu, type FormIsi } from "./prim-odeme-formu";
 import type { primVerisi } from "./prim-verisi";
 import "../finance/finance.css";
@@ -28,12 +28,16 @@ import "./prim-penceresi.css";
   Dönem süzgeci adreste (?prim=bu-ay): pencere yeniden yüklendiğinde açık
   ve süzgeç yerinde kalsın, bağlantı paylaşılabilsin.
 
-  Görünüm (29.10.2026, kurum sahibinin isteği: personel sayfasıyla "aynı
-  kalitede"): üstte üç büyük rakam (hak edilen, ödenen, ödenecek) ve
-  oranlar; hareketler gün sırasıyla çerçeveli listede, tutar sağda ve
-  yönüne göre renkli; dönem seçici segmentli. Eskiden pencerenin sağ
-  sütununun yarısı dört paragraflık açıklamaydı ve asıl rakamları
-  aşağı itiyordu — açıklamalar artık "Hesap nasıl yapılıyor?" altında.
+  Görünüm (29.10.2026, kurum sahibinin isteği): üstte bakiye şeridi,
+  altında yan yana ÜÇ KART — Dönem özeti, Hareket dökümü, İş bazında
+  prim. Kart ön bilgiyi gösterir, tıklanınca ayrıntısı kendi penceresinde
+  açılır; her ayrıntıda PDF ve Excel çıktısı var. Eskiden üçü tek
+  pencerede iki sütuna sıkışıyordu ve hareket listesi uzadıkça iş bazında
+  prime ulaşmak için uzun bir kaydırma gerekiyordu.
+
+  Rakamlar lib/prim-dokumu'dan: kart, ayrıntı, Excel ve PDF aynı dökümü
+  okuyor. Açık ayrıntı adreste (?prim_kart=hareket): dönem değiştirince
+  ya da sayfa yenilenince ayrıntı açık kalsın.
 */
 
 const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(value / 100);
@@ -41,67 +45,164 @@ const percent = (value: number) => new Intl.NumberFormat("tr-TR", { maximumFract
 const dateText = (value: string) => new Date(`${value}T12:00:00+03:00`).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "2-digit", month: "short", year: "numeric" });
 
 /** veri: primVerisi() sonucu; sayfa bakiyeyi başlıkta da gösterdiği için bir kez okuyup buraya veriyor. */
-export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, baslangic, bitis, isSekmesi }: { veri: Awaited<ReturnType<typeof primVerisi>>; employeeId: string; temelAdres: string; donemKodu?: string; baslangic?: string; bitis?: string; /** ?prim_is=arsiv: kapanan işler. */ isSekmesi?: string }) {
+export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, baslangic, bitis, isSekmesi, kart }: { veri: Awaited<ReturnType<typeof primVerisi>>; employeeId: string; temelAdres: string; donemKodu?: string; baslangic?: string; bitis?: string; /** ?prim_is=arsiv: kapanan işler. */ isSekmesi?: string; /** ?prim_kart=…: açık ayrıntı. */ kart?: string }) {
   const { izin } = await getPanelContext();
   const canManage = izin("hr.prim.yonet");
-  const { employees, accruals, payments, dagitimlar, dagitimAcik, beklenenGirdisi } = veri;
+  const { employees, dagitimlar, dagitimAcik } = veri;
   const personel = employees.find((item) => item.id === employeeId);
   if (!personel) return <p className="ic-akis-bos">Personel bulunamadı.</p>;
 
-  const toplam = ledgerTotals(employeeId, accruals, payments);
   const donem = primDonemi(donemKodu, todayInIstanbul(), baslangic, bitis);
-  // Yürüyen bakiye tüm geçmişten hesaplanır, süzgeç ondan SONRA uygulanır:
-  // önce süzülseydi her dönemin bakiyesi sıfırdan başlardı.
-  const hareketler = employeeLedger(employeeId, accruals, payments).filter((h) => gunDonemde(h.date, donem)).reverse();
-  const donemTahakkuku = accruals.filter((row) => row.employeeId === employeeId && (!donem || inPeriod(row, donem)));
-  const satis = donemTahakkuku.filter((row) => row.type === "Satış");
-  const operasyon = donemTahakkuku.filter((row) => row.type === "Operasyon");
-  const satisToplam = satis.reduce((sum, row) => sum + row.amount, 0);
-  const operasyonToplam = operasyon.reduce((sum, row) => sum + row.amount, 0);
-  const donemOdemesi = payments.filter((p) => p.employeeId === employeeId && gunDonemde(p.paidOn, donem)).reduce((sum, p) => sum + p.amount, 0);
-  const odemeById = new Map(payments.filter((p) => p.employeeId === employeeId).map((p) => [p.id, p]));
-  /* İş bazında prim (lib/prim-is-dagilimi): ödemenin hangi işlere
-     istinaden yapıldığı. Bakiye yine toplamdan (yukarıdaki şerit). */
-  const girdi = beklenenGirdisi(employeeId);
-  const isler = isPrimleri(employeeId, accruals, payments, dagitimlar, girdi ? beklenenPrimler(girdi, accruals) : []);
-  const formIsi = ({ contractId, reference, customer, acik, beklenen, devam }: (typeof isler)[number], geriEklenen = 0): FormIsi =>
+  const d = primDokumu(veri, employeeId, donem);
+  const { toplam, hareketler, isler, acikIsler, kapananIsler, odemeById } = d;
+
+  /* Ödeme formları: hangi işlere dağıtılabileceği (yalnızca bu pencerede; dökümün parçası değil). */
+  const formIsi = ({ contractId, reference, customer, acik, beklenen, devam }: IsPrimi, geriEklenen = 0): FormIsi =>
     ({ contractId, reference, customer, acik: acik + geriEklenen, beklenen, devam });
-  const isAdi = new Map(isler.map((is) => [is.contractId, is.reference]));
   // Ödenebilecek: hak edilip ödenmemiş ya da henüz hak edilmemiş (erken ödeme) primi kalan işler.
   const yeniOdemeIsleri: FormIsi[] = isler.filter((is) => is.acik > 0 || is.acik + is.beklenen > 0).map((is) => formIsi(is));
-  const odemeDagilimi = (odemeId: string) => dagitimlar.filter((d) => d.paymentId === odemeId);
+  const odemeDagilimi = (odemeId: string) => dagitimlar.filter((dg) => dg.paymentId === odemeId);
   // Düzenlemede: açık prim, bu ödemenin payı geri eklenerek; bu ödemenin dağıtıldığı iş açığı kapanmış olsa da listede.
   const duzenlemeIsleri = (odemeId: string): FormIsi[] => {
-    const pay = new Map(odemeDagilimi(odemeId).filter((d) => d.contractId).map((d) => [d.contractId as string, d.amount]));
+    const pay = new Map(odemeDagilimi(odemeId).filter((dg) => dg.contractId).map((dg) => [dg.contractId as string, dg.amount]));
     return isler.filter((is) => is.acik > 0 || is.acik + is.beklenen > 0 || pay.has(is.contractId))
       .map((is) => formIsi(is, pay.get(is.contractId) ?? 0));
   };
-  const dagilimYazisi = (odemeId: string) => {
-    const odeme = odemeById.get(odemeId);
-    const kalemler = odemeDagilimi(odemeId).filter((d) => d.contractId);
-    if (!odeme || !kalemler.length) return null;
-    const bagsiz = baglanmamisKisim(odeme, dagitimlar);
-    return kalemler.map((d) => `${isAdi.get(d.contractId as string) ?? "İş"} ${money(d.amount)}`).join(" + ") + (bagsiz ? ` + işe bağlanmamış ${money(bagsiz)}` : "");
-  };
+
   const seciliKod = donem?.kod ?? "tum";
   /* İş bazında prim: kapanan işler (primi hak edilip tamamı ödenmiş)
      ARŞİV sekmesinde; açık listede yalnızca takip edilecekler kalıyor
-     (12.10.2026). Eskiden kapanan işler "Kapandı" yazısıyla listede
-     duruyor, iş sayısı arttıkça açık olanlar aralarında kayboluyordu.
-     Sekme adreste; dönem süzgeci de korunuyor. */
+     (12.10.2026). */
   const arsivde = isSekmesi === "arsiv";
-  const kapananIsler = isler.filter(isKapandi);
-  const acikIsler = isler.filter((is) => !isKapandi(is));
   const gosterilenIsler = arsivde ? kapananIsler : acikIsler;
-  const isSekmeAdresi = (arsiv: boolean) => {
-    const p = new URLSearchParams({ pencere: "prim" });
+
+  /* Adresler: dönem süzgeci ve açık ayrıntı birlikte taşınıyor. */
+  const donemParametreleri = () => {
+    const p = new URLSearchParams();
     if (donemKodu) p.set("prim", donemKodu);
     if (baslangic) p.set("prim_bas", baslangic);
     if (bitis) p.set("prim_bit", bitis);
-    if (arsiv) p.set("prim_is", "arsiv");
+    return p;
+  };
+  const adres = (ek: { kod?: string; kart?: PrimBolumu; arsiv?: boolean } = {}) => {
+    const p = ek.kod !== undefined ? new URLSearchParams() : donemParametreleri();
+    if (ek.kod && ek.kod !== "tum") p.set("prim", ek.kod);
+    p.set("pencere", "prim");
+    if (ek.kart) p.set("prim_kart", ek.kart);
+    if (ek.arsiv ?? arsivde) p.set("prim_is", "arsiv");
     return `${temelAdres}?${p.toString()}`;
   };
-  const donemAdresi = (kod: string) => (kod === "tum" ? `${temelAdres}?pencere=prim` : `${temelAdres}?pencere=prim&prim=${kod}`);
+  const cikti = (tur: "prim-excel" | "prim-yazdir", bolum: PrimBolumu) => {
+    const p = donemParametreleri();
+    p.set("bolum", bolum);
+    return `${temelAdres}/${tur}?${p.toString()}`;
+  };
+
+  const donemSecici = (kartta?: PrimBolumu) => (
+    <div className="pp-suzgec">
+      <nav className="pp-segment" aria-label="Dönem">
+        {PRIM_DONEMLERI.filter(([kod]) => kod !== "ozel").map(([kod, ad]) => (
+          <Link key={kod} href={adres({ kod, kart: kartta })} scroll={false} className={seciliKod === kod ? "is-active" : undefined} aria-current={seciliKod === kod ? "page" : undefined}>{ad}</Link>
+        ))}
+      </nav>
+      {/* Özel aralık: GET formu, pencere (ve açık ayrıntı) açık kalsın diye taşınıyor. */}
+      <form className="pp-aralik" action={temelAdres} method="get">
+        <input type="hidden" name="pencere" value="prim" />
+        <input type="hidden" name="prim" value="ozel" />
+        {kartta ? <input type="hidden" name="prim_kart" value={kartta} /> : null}
+        <input type="date" name="prim_bas" defaultValue={donem?.kod === "ozel" ? donem.startKey : ""} aria-label="Başlangıç" required />
+        <span aria-hidden="true">–</span>
+        <input type="date" name="prim_bit" defaultValue={donem?.kod === "ozel" ? bitis : ""} aria-label="Bitiş" required />
+        <button className={seciliKod === "ozel" ? "panel-primary" : "panel-secondary"}>Göster</button>
+      </form>
+    </div>
+  );
+
+  const ciktiCubugu = (bolum: PrimBolumu) => (
+    <div className="pp-cikti">
+      <span>{d.donemYazisi}</span>
+      <div>
+        <a className="panel-secondary" href={cikti("prim-yazdir", bolum)} target="_blank" rel="noopener">PDF</a>
+        <a className="panel-secondary" href={cikti("prim-excel", bolum)} download>Excel</a>
+      </div>
+    </div>
+  );
+
+  const ayrinti = (bolum: PrimBolumu, baslik: string, tetik: React.ReactNode, icerik: React.ReactNode, boy: "orta" | "genis" = "genis") => (
+    <PanelModal
+      triggerLabel={`${baslik} ayrıntısı`}
+      triggerClassName="pp-kart"
+      tetik={tetik}
+      kicker={`PRİM HESABI · ${personel.full_name}`}
+      title={baslik}
+      description={d.donemYazisi}
+      boy={boy}
+      baslangicAcik={kart === bolum}
+      kapaninca={kart === bolum ? adres() : undefined}
+    >
+      <div className="pp-ayrinti">
+        {ciktiCubugu(bolum)}
+        {icerik}
+      </div>
+    </PanelModal>
+  );
+
+  const kartBasi = (simge: string, baslik: string, alt: string) => (
+    <span className="pp-kart-bas">
+      <span className="pp-kart-simge" aria-hidden="true">{simge}</span>
+      <span><b>{baslik}</b><small>{alt}</small></span>
+    </span>
+  );
+  const kartSonu = <span className="pp-kart-son">Ayrıntıyı aç · PDF · Excel →</span>;
+
+  const hareketSatiri = (h: (typeof hareketler)[number]) => {
+    const odeme = h.kind === "payment";
+    const tur = odeme ? "Ödeme" : h.title.startsWith("Satış") ? "Satış" : "Operasyon";
+    const dagilim = odeme ? d.dagilimYazisi(h.id, money) : null;
+    return (
+      <li key={`${h.kind}-${h.id}`}>
+        <span className="pp-tur" data-tone={odeme ? "success" : h.accrual < 0 ? "warning" : tur === "Satış" ? "gold" : "info"} aria-hidden="true">{tur.slice(0, 1)}</span>
+        <span className="pp-govde">
+          <b>{h.title}</b>
+          <small>{dateText(h.date)} · {tur}{h.detail ? ` · ${h.detail}` : ""}</small>
+          {dagilim ? <small className="pp-dagilim">İstinaden: {dagilim}</small> : null}
+        </span>
+        <span className="pp-tutar">
+          <strong data-tone={odeme ? "success" : undefined}>{odeme ? `−${money(h.payment)}` : `+${money(h.accrual)}`}</strong>
+          <small>bakiye {money(h.balance)}</small>
+        </span>
+        {canManage && odeme ? (
+          <span className="pp-eylem">
+            {odemeById.get(h.id) ? (
+              <PanelDrawer genis triggerLabel="Düzenle" triggerClassName="panel-secondary pp-kucuk" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesini düzenle" description={`${dateText(h.date)} · ${money(h.payment)}`}>
+                <PrimOdemeFormu eylem={primOdemesiDuzenle} personelId={personel.id} odeme={odemeById.get(h.id)} isler={duzenlemeIsleri(h.id)} dagitimAcik={dagitimAcik}
+                  mevcut={Object.fromEntries(odemeDagilimi(h.id).filter((dg) => dg.contractId).map((dg) => [dg.contractId as string, dg.amount]))} />
+              </PanelDrawer>
+            ) : null}
+            {/* Prim ödemesi bir PARA kaydı: silinince personelin prim
+                bakiyesi değişiyor ve geri gelmiyor. Onay soruluyor. */}
+            <form action={primOdemesiSil}>
+              <input type="hidden" name="id" value={h.id} />
+              <ConfirmDeleteButton label="Sil" confirmMessage="Bu prim ödemesini silmek istediğinize emin misiniz? Bakiye yeniden hesaplanır." />
+            </form>
+          </span>
+        ) : null}
+      </li>
+    );
+  };
+
+  const isSatiri = (is: IsPrimi) => (
+    <li key={is.contractId}>
+      <span className="pp-govde">
+        <b>{is.reference}{is.devam ? <em className="pp-devam">iş sürüyor</em> : null}</b>
+        <small>{is.customer} · hak edilen {money(is.hakEdilen)} · ödenen {money(is.odenen)}{is.beklenen > 0 ? ` · hak edilecek ~${money(is.beklenen)}` : ""}</small>
+      </span>
+      <span className="pp-tutar">
+        <strong data-tone={is.acik > 0 ? "warning" : is.acik < 0 ? undefined : "success"}>{is.acik > 0 ? money(is.acik) : is.acik < 0 ? `${money(-is.acik)} avans` : is.beklenen > 0 ? "—" : "Kapandı"}</strong>
+        {is.acik > 0 ? <small>açık prim</small> : null}
+      </span>
+    </li>
+  );
 
   return (
     <div className="pp">
@@ -128,116 +229,80 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
       </dl>
       {toplam.balance < 0 ? <p className="pp-uyari">Bu personele hak ettiğinden <b>{money(-toplam.balance)}</b> fazla ödenmiş görünüyor; sonraki primlerden mahsup edilir.</p> : null}
 
-      <div className="pp-izgara">
-        <section aria-label="Prim hareketleri">
-          <header className="pp-bolum-bas">
-            <h3>Prim hareketleri <small className="pp-sayi">{hareketler.length}</small></h3>
-          </header>
-          <div className="pp-suzgec">
-            <nav className="pp-segment" aria-label="Dönem">
-              {PRIM_DONEMLERI.filter(([kod]) => kod !== "ozel").map(([kod, ad]) => (
-                <Link key={kod} href={donemAdresi(kod)} scroll={false} className={seciliKod === kod ? "is-active" : undefined} aria-current={seciliKod === kod ? "page" : undefined}>{ad}</Link>
-              ))}
-            </nav>
-            {/* Özel aralık: GET formu, pencere açık kalsın diye pencere=prim taşınıyor. */}
-            <form className="pp-aralik" action={temelAdres} method="get">
-              <input type="hidden" name="pencere" value="prim" />
-              <input type="hidden" name="prim" value="ozel" />
-              <input type="date" name="prim_bas" defaultValue={donem?.kod === "ozel" ? donem.startKey : ""} aria-label="Başlangıç" required />
-              <span aria-hidden="true">–</span>
-              <input type="date" name="prim_bit" defaultValue={donem?.kod === "ozel" ? bitis : ""} aria-label="Bitiş" required />
-              <button className={seciliKod === "ozel" ? "panel-primary" : "panel-secondary"}>Göster</button>
-            </form>
-          </div>
-          {hareketler.length ? (
-            <ul className="pp-liste">
-              {hareketler.map((h) => {
-                const odeme = h.kind === "payment";
-                const tur = odeme ? "Ödeme" : h.title.startsWith("Satış") ? "Satış" : "Operasyon";
-                return (
-                  <li key={`${h.kind}-${h.id}`} data-tur={odeme ? "odeme" : "hak"}>
-                    <span className="pp-tur" data-tone={odeme ? "success" : h.accrual < 0 ? "warning" : tur === "Satış" ? "gold" : "info"} aria-hidden="true">{tur.slice(0, 1)}</span>
-                    <span className="pp-govde">
-                      <b>{h.title}</b>
-                      <small>{dateText(h.date)} · {tur}{h.detail ? ` · ${h.detail}` : ""}</small>
-                      {odeme && dagilimYazisi(h.id) ? <small className="pp-dagilim">İstinaden: {dagilimYazisi(h.id)}</small> : null}
-                    </span>
-                    <span className="pp-tutar">
-                      <strong data-tone={odeme ? "success" : undefined}>{odeme ? `−${money(h.payment)}` : `+${money(h.accrual)}`}</strong>
-                      <small>bakiye {money(h.balance)}</small>
-                    </span>
-                    {canManage && odeme ? (
-                      <span className="pp-eylem">
-                        {odemeById.get(h.id) ? (
-                          <PanelDrawer genis triggerLabel="Düzenle" triggerClassName="panel-secondary pp-kucuk" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesini düzenle" description={`${dateText(h.date)} · ${money(h.payment)}`}>
-                            <PrimOdemeFormu eylem={primOdemesiDuzenle} personelId={personel.id} odeme={odemeById.get(h.id)} isler={duzenlemeIsleri(h.id)} dagitimAcik={dagitimAcik}
-                              mevcut={Object.fromEntries(odemeDagilimi(h.id).filter((d) => d.contractId).map((d) => [d.contractId as string, d.amount]))} />
-                          </PanelDrawer>
-                        ) : null}
-                        {/* Prim ödemesi bir PARA kaydı: silinince personelin prim
-                            bakiyesi değişiyor ve geri gelmiyor. Onay soruluyor. */}
-                        <form action={primOdemesiSil}>
-                          <input type="hidden" name="id" value={h.id} />
-                          <ConfirmDeleteButton label="Sil" confirmMessage="Bu prim ödemesini silmek istediğinize emin misiniz? Bakiye yeniden hesaplanır." />
-                        </form>
-                      </span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="pp-bos">{donem ? "Bu dönemde prim hareketi yok." : "Henüz prim hareketi yok. Müşteriden tahsilat yapıldığında ya da bir iş tamamlandığında burada görünür."}</p>
-          )}
-        </section>
-
-        <aside className="pp-yan" aria-label="Dönem özeti">
-          <section>
-            <header className="pp-bolum-bas"><h3>Dönem özeti</h3><small>{donem ? primDonemiYazisi(donem) : "Tüm zamanlar"}</small></header>
+      <section className="pp-kartlar-alan" aria-label="Prim dökümleri">
+        <header className="pp-bolum-bas"><h3>Dökümler</h3><small>Dönem: {d.donemYazisi}</small></header>
+        {donemSecici()}
+        <div className="pp-kartlar">
+          {ayrinti("ozet", "Dönem özeti", <>
+            {kartBasi("Σ", "Dönem özeti", d.donemYazisi)}
+            <span className="pp-kart-rakam"><small>Dönemde hak ediş</small><b>{money(d.ozet.hakEdis)}</b></span>
+            <span className="pp-kart-satirlar">
+              <span><span>Satış primi · {d.ozet.satisAdet} tahsilat</span><b>{money(d.ozet.satisToplam)}</b></span>
+              <span><span>Operasyon primi · {d.ozet.operasyonAdet} iş</span><b>{money(d.ozet.operasyonToplam)}</b></span>
+              <span><span>Dönemde ödenen</span><b data-tone="success">{money(d.ozet.donemOdemesi)}</b></span>
+            </span>
+            {kartSonu}
+          </>, <>
             <dl className="pp-tablo">
-              <div><dt>Satış primi <small>{satis.length} tahsilat</small></dt><dd>{money(satisToplam)}</dd></div>
-              <div><dt>Operasyon primi <small>{operasyon.length} iş</small></dt><dd>{money(operasyonToplam)}</dd></div>
-              <div className="pp-toplam"><dt>Toplam hak ediş</dt><dd>{money(satisToplam + operasyonToplam)}</dd></div>
-              <div><dt>Dönemde ödenen</dt><dd data-tone="success">{money(donemOdemesi)}</dd></div>
+              <div><dt>Satış primi <small>{d.ozet.satisAdet} tahsilat</small></dt><dd>{money(d.ozet.satisToplam)}</dd></div>
+              <div><dt>Operasyon primi <small>{d.ozet.operasyonAdet} iş</small></dt><dd>{money(d.ozet.operasyonToplam)}</dd></div>
+              <div className="pp-toplam"><dt>Dönemde hak ediş</dt><dd>{money(d.ozet.hakEdis)}</dd></div>
+              <div><dt>Dönemde ödenen <small>{d.ozet.odemeAdet} ödeme</small></dt><dd data-tone="success">{money(d.ozet.donemOdemesi)}</dd></div>
             </dl>
-          </section>
+            <dl className="pp-tablo">
+              <div><dt>Hak edilen <small>tüm zamanlar</small></dt><dd>{money(toplam.accrued)}</dd></div>
+              <div><dt>Ödenen <small>tüm zamanlar</small></dt><dd data-tone="success">{money(toplam.paid)}</dd></div>
+              <div className="pp-toplam"><dt>Ödenecek bakiye</dt><dd>{money(toplam.balance)}</dd></div>
+            </dl>
+            <p className="pp-not">Satış primi yalnızca müşteriden gerçekleşen tahsilat üzerinden, tahsilat tarihindeki oranla hesaplanır; tahsil edilmemiş satıştan prim doğmaz. Operasyon primi iş tamamlanınca hak edilir.</p>
+          </>, "orta")}
 
-          {dagitimAcik && isler.length ? (
-            <section>
-              <header className="pp-bolum-bas">
-                <h3>İş bazında prim</h3>
-                <nav className="pp-segment" aria-label="İş bazında prim">
-                  <Link href={isSekmeAdresi(false)} scroll={false} className={!arsivde ? "is-active" : undefined} aria-current={!arsivde ? "page" : undefined}>Açık <small>{acikIsler.length}</small></Link>
-                  <Link href={isSekmeAdresi(true)} scroll={false} className={arsivde ? "is-active" : undefined} aria-current={arsivde ? "page" : undefined}>Arşiv <small>{kapananIsler.length}</small></Link>
-                </nav>
-              </header>
-              {gosterilenIsler.length ? <ul className="pp-liste pp-isler">
-                {gosterilenIsler.map((is) => (
-                  <li key={is.contractId}>
-                    <span className="pp-govde">
-                      <b>{is.reference}{is.devam ? <em className="pp-devam">iş sürüyor</em> : null}</b>
-                      <small>{is.customer} · hak edilen {money(is.hakEdilen)} · ödenen {money(is.odenen)}{is.beklenen > 0 ? ` · hak edilecek ~${money(is.beklenen)}` : ""}</small>
-                    </span>
-                    <span className="pp-tutar">
-                      <strong data-tone={is.acik > 0 ? "warning" : is.acik < 0 ? undefined : "success"}>{is.acik > 0 ? money(is.acik) : is.acik < 0 ? `${money(-is.acik)} avans` : is.beklenen > 0 ? "—" : "Kapandı"}</strong>
-                      {is.acik > 0 ? <small>açık prim</small> : null}
-                    </span>
-                  </li>
+          {ayrinti("hareket", "Hareket dökümü", <>
+            {kartBasi("≡", "Hareket dökümü", d.donemYazisi)}
+            <span className="pp-kart-rakam"><small>Hareket</small><b>{hareketler.length}</b></span>
+            {hareketler.length ? (
+              <span className="pp-kart-satirlar">
+                {hareketler.slice(0, 3).map((h) => (
+                  <span key={`${h.kind}-${h.id}`}><span>{dateText(h.date)} · {h.title}</span><b data-tone={h.kind === "payment" ? "success" : undefined}>{h.kind === "payment" ? `−${money(h.payment)}` : `+${money(h.accrual)}`}</b></span>
                 ))}
-              </ul> : <p className="pp-bos">{arsivde ? "Henüz primi tamamen ödenip kapanan iş yok." : "Takip edilecek açık iş yok; bütün işlerin primi ödenmiş. Kapananlar Arşiv'de."}</p>}
-            </section>
-          ) : null}
+              </span>
+            ) : <span className="pp-kart-bos">Bu dönemde hareket yok.</span>}
+            {kartSonu}
+          </>, <>
+            {donemSecici("hareket")}
+            {hareketler.length ? <ul className="pp-liste">{hareketler.map(hareketSatiri)}</ul> : (
+              <p className="pp-bos">{donem ? "Bu dönemde prim hareketi yok." : "Henüz prim hareketi yok. Müşteriden tahsilat yapıldığında ya da bir iş tamamlandığında burada görünür."}</p>
+            )}
+          </>)}
 
-          <details className="pp-aciklama">
-            <summary>Hesap nasıl yapılıyor?</summary>
-            <p>Satış primi yalnızca müşteriden gerçekleşen tahsilat üzerinden, tahsilat tarihindeki oranla hesaplanır; tahsil edilmemiş satıştan prim doğmaz. Operasyon primi iş tamamlanınca hak edilir.</p>
-            {dagitimAcik && isler.length ? <>
-              <p>Açık prim, işin hak edilen priminden o işe istinaden yapılan ödemeler düşülerek bulunur. Henüz hak edilmemiş işe yapılan erken ödeme “avans” görünür; iş tamamlanıp prim hak edilince ona sayılır. “Hak edilecek” tahminidir: bugünkü orandan, kesin rakam hak edilince oluşur. İşe bağlanmadan yapılan ödemeler burada değil, yalnızca bakiyede görünür.</p>
-              <p>Arşivde primi hak edilip tamamı ödenen işler var. Bir işe sonradan yeni prim doğarsa (ör. ek tahsilat) iş kendiliğinden açık listeye döner.</p>
-            </> : null}
-          </details>
-        </aside>
-      </div>
+          {dagitimAcik ? ayrinti("is", "İş bazında prim", <>
+            {kartBasi("▦", "İş bazında prim", "tüm zamanlar")}
+            <span className="pp-kart-rakam"><small>Açık prim</small><b data-tone={d.acikPrim > 0 ? "warning" : undefined}>{money(d.acikPrim)}</b></span>
+            <span className="pp-kart-satirlar">
+              <span><span>Açık iş</span><b>{acikIsler.length}</b></span>
+              {acikIsler.slice(0, 2).map((is) => (
+                <span key={is.contractId}><span>{is.reference} · {is.customer}</span><b>{is.acik > 0 ? money(is.acik) : is.acik < 0 ? "avans" : "—"}</b></span>
+              ))}
+              <span><span>Kapanan (arşiv)</span><b>{kapananIsler.length}</b></span>
+            </span>
+            {kartSonu}
+          </>, <>
+            <nav className="pp-segment" aria-label="İş bazında prim">
+              <Link href={adres({ kart: "is", arsiv: false })} scroll={false} className={!arsivde ? "is-active" : undefined} aria-current={!arsivde ? "page" : undefined}>Açık <small>{acikIsler.length}</small></Link>
+              <Link href={adres({ kart: "is", arsiv: true })} scroll={false} className={arsivde ? "is-active" : undefined} aria-current={arsivde ? "page" : undefined}>Arşiv <small>{kapananIsler.length}</small></Link>
+            </nav>
+            {gosterilenIsler.length ? <ul className="pp-liste pp-isler">{gosterilenIsler.map(isSatiri)}</ul> : (
+              <p className="pp-bos">{arsivde ? "Henüz primi tamamen ödenip kapanan iş yok." : isler.length ? "Takip edilecek açık iş yok; bütün işlerin primi ödenmiş. Kapananlar Arşiv'de." : "Henüz prim doğmuş iş yok."}</p>
+            )}
+            <p className="pp-not">Açık prim, işin hak edilen priminden o işe istinaden yapılan ödemeler düşülerek bulunur. Henüz hak edilmemiş işe yapılan erken ödeme “avans” görünür; iş tamamlanıp prim hak edilince ona sayılır. “Hak edilecek” tahminidir: bugünkü orandan, kesin rakam hak edilince oluşur. İşe bağlanmadan yapılan ödemeler burada değil, yalnızca bakiyede görünür. Bir işe sonradan yeni prim doğarsa (ör. ek tahsilat) iş arşivden açık listeye kendiliğinden döner.</p>
+          </>) : (
+            <div className="pp-kart" aria-disabled="true">
+              {kartBasi("▦", "İş bazında prim", "şu an okunamıyor")}
+              <span className="pp-kart-bos">Ödemelerin işlere dağılımı okunamadı; bakiye etkilenmez. Biraz sonra yeniden deneyin.</span>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

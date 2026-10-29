@@ -1,0 +1,44 @@
+/*
+  Prim dökümü PDF sayfası. Ekranda panel içinde A4 benzeri bir kağıt.
+  Yazdırırken YALNIZCA kağıt basılıyor: panel.css'in @media print'i
+  çerçeveyi düzeltiyor ama üst çubuğu ve alttaki modül çubuğunu
+  gizlemiyor, PDF'in başında ve sonunda panel parçaları çıkardı. Kural
+  :has() ile bu sayfaya bağlı — CSS istemci geçişinde sonraki sayfalara
+  da taşınıyor, çıplak "body *" başka bir sayfanın çıktısını boşaltırdı.
+*/
+.panel-root .pyz{display:grid;gap:var(--sp-4);max-width:900px;margin:0 auto}
+.panel-root .pyz-eylem{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--sp-2)}
+.panel-root .pyz-belge{display:grid;gap:var(--sp-5);padding:40px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);font-size:13px;line-height:1.5}
+.panel-root .pyz-bas{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--sp-4);padding-bottom:var(--sp-4);border-bottom:2px solid var(--ink)}
+.panel-root .pyz-bas small{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.panel-root .pyz-bas h1{margin:4px 0;font-size:22px;font-weight:700}
+.panel-root .pyz-bas p{margin:0;color:var(--ink-soft)}
+.panel-root .pyz-bas dl{display:grid;gap:4px;margin:0;text-align:right}
+.panel-root .pyz-bas dt{color:var(--muted);font-size:11px}
+.panel-root .pyz-bas dd{margin:0;font-weight:600}
+.panel-root .pyz-ozet{display:grid;grid-template-columns:repeat(3,1fr);margin:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.panel-root .pyz-ozet>div{padding:12px 14px;border-left:1px solid var(--line)}
+.panel-root .pyz-ozet>div:first-child{border-left:0}
+.panel-root .pyz-ozet dt{color:var(--muted);font-size:11px}
+.panel-root .pyz-ozet dd{margin:2px 0 0;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.panel-root .pyz-belge h2{display:flex;align-items:baseline;gap:8px;margin:0 0 8px;font-size:15px;font-weight:700}
+.panel-root .pyz-belge h2 small{color:var(--muted);font-size:12px;font-weight:500}
+.panel-root .pyz-tablo{width:100%;border-collapse:collapse}
+.panel-root .pyz-tablo :is(th,td){padding:8px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+.panel-root .pyz-tablo thead th{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.panel-root .pyz-tablo tbody th{font-weight:500}
+.panel-root .pyz-tablo .pyz-sayi{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.panel-root .pyz-tablo td small{display:block;color:var(--muted);font-size:11px}
+.panel-root .pyz-toplam :is(th,td){font-weight:700;background:var(--surface-2)}
+.panel-root .pyz-bos{margin:0;color:var(--muted)}
+.panel-root .pyz-not{padding-top:var(--sp-3);border-top:1px solid var(--line-soft);color:var(--muted);font-size:11px}
+@media print{
+  @page{margin:12mm}
+  body:has(.pyz-belge) *{visibility:hidden}
+  body:has(.pyz-belge) :is(.pyz-belge,.pyz-belge *){visibility:visible}
+  body:has(.pyz-belge) .pyz-belge{position:absolute;inset:0 0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .panel-root .pyz-eylem{display:none!important}
+  .panel-root .pyz{max-width:none}
+  .panel-root .pyz-belge{padding:0;border:0;border-radius:0;background:transparent}
+  .panel-root .pyz-tablo tr{break-inside:avoid}
+}
