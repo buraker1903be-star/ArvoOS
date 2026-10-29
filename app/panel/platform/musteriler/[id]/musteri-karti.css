@@ -1,0 +1,42 @@
+/*
+  Müşteri kartı (29.10.2026): personel kartının dili — TalepAkis sekme
+  çubuğu (kayit-detay.css), pu-liste satırları ve phr-bas başlıkları
+  (hr.css). Sekmeler burada istemci düğmesi değil BAĞLANTI (page.tsx
+  notu), aynı görünüm için talep-akis-sekmeler'in düğme kurallarını
+  bağlantıya da veriyoruz.
+*/
+.musteri-karti .talep-akis-sekmeler a{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-3);color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap}
+.musteri-karti .talep-akis-sekmeler a:hover{color:var(--ink)}
+.musteri-karti .talep-akis-sekmeler a.is-active{color:var(--ink);font-weight:var(--fw-semibold);box-shadow:inset 0 -2px 0 var(--primary)}
+.musteri-karti .talep-akis-sekmeler a:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
+.musteri-karti .talep-akis-sekmeler .pu-sayi{margin-left:0}
+.musteri-karti .pu-sayi[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
+
+/* Sekme gövdesi eski pencerenin gövdesiyle aynı ızgara: içerideki
+   bileşenler (lisans, ödeme, kiracı dosyası) pencere için yazılmıştı ve
+   kartlarını alt alta 16px aralıkla diziyordu. */
+.mu-govde{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4);padding:var(--sp-4) var(--sp-5) var(--sp-5)}
+.mu-govde>*{min-width:0}
+.os-root .mu-govde>.panel-card{margin:0}
+.mu-govde>.phr-bas:not(:first-child){margin-top:var(--sp-2)}
+.mu-govde>.phr-bas{margin-bottom:calc(var(--sp-2) * -1)}
+
+.mu-simge{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:var(--r-md);background:var(--surface-2);color:var(--ink);font-size:var(--fs-micro);font-weight:var(--fw-semibold)}
+.mu-simge svg{width:18px;height:18px}
+.mu-tutar{flex:none;display:flex;flex-direction:column;align-items:flex-end;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+.mu-tutar small{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.pu-liste li.is-pasif .pu-govde b,.pu-liste li.is-pasif .mu-simge{color:var(--muted)}
+/* Sayfa liste düzeninde DEĞİL (liste-sayfa yok): liste sayfası ekrana
+   sabitlenip kartı kendi içinde kaydırıyor ve sekme gövdesi uzadıkça
+   kart ekranın altında kesiliyordu. Kartın kendi boyu olsun, sayfa kaysın. */
+.os-root .mu-govde .phr-bas h2{font-size:var(--fs-base);font-weight:var(--fw-semibold)}
+.mu-bilgi{margin:0;padding:0 var(--sp-4) var(--sp-1);border:1px solid var(--line-soft);border-radius:var(--r-md)}
+.mu-bilgi>div:nth-child(-n+2){border-top:0}
+
+@media (max-width:760px){
+  .musteri-karti .talep-akis-sekmeler{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .musteri-karti .talep-akis-sekmeler>*{flex:none}
+  .mu-govde{padding:var(--sp-3)}
+  .mu-tutar{display:none}
+  .mu-bilgi>div:nth-child(2){border-top:1px solid var(--line-soft)}
+}

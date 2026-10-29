@@ -8,13 +8,23 @@ import { aramaDeseni } from "@/lib/liste-arama";
 import { PRODUCTS } from "@/lib/products";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
-import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
-import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../bicim";
+import { KNot } from "../konsol-ui";
+import { basHarfleri, LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../bicim";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { createCustomerOrganization } from "../actions";
 import { NewOrganizationWizard } from "../new-organization-wizard";
 import { kurumTuru } from "@/lib/kurum-turu";
+import { MobilSatir } from "../../crm/table-cells";
+import { OtomatikSecim } from "../../crm/otomatik-secim";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { enCok } from "@/lib/liste-istatistik";
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "./musteriler.css";
 // Panelin liste sayfası kalıbı (talep-bas, kayit-serit, talep-izgara) ve
 // tablosunun CSS'i konsol-ui.tsx'in import ettiği dosyalardan geliyor.
 
@@ -97,6 +107,10 @@ type Satir = {
   /** En yakın yenileme ya da deneme bitişi (gösterim için). */
   yenileme: string | null;
   ucretGirilmedi: boolean;
+  /** Kurumsal: "Profesyonel paket"; bireyselde yok. */
+  paket?: string | null;
+  /** Kurumsal: "4 / 10"; bireyselde yok. */
+  kullanici?: string | null;
 };
 
 const ACIK = new Set(["active", "trialing", "past_due"]);
@@ -350,6 +364,8 @@ export default async function MusterilerPage({ searchParams }: {
         `${sayi(Number(kurum.aktif_uye))}${kurum.user_limit ? `/${sayi(Number(kurum.user_limit))}` : ""} kullanıcı`,
       ].filter(Boolean).join(" · "),
       arama: kurum.contact_phone ?? undefined,
+      paket: kurum.plan_code ? `${PAKET_ADI[kurum.plan_code] ?? kurum.plan_code} paket` : null,
+      kullanici: `${sayi(Number(kurum.aktif_uye))}${kurum.user_limit ? ` / ${sayi(Number(kurum.user_limit))}` : ""}`,
       // Müşteri detayı (14.10.2026); teknik ayarlar oradan "Kurum ayarları" ile.
       href: `/panel/platform/musteriler/${kurum.id}`,
       durum: durum.ad,
@@ -407,183 +423,225 @@ export default async function MusterilerPage({ searchParams }: {
     return q ? `/panel/platform/musteriler?${q}` : "/panel/platform/musteriler";
   };
 
-  return <main className="plt talep cari ekip liste-sayfa">
+  /* Telefonda satırın altına düşen kısa yazılar: dikkat isteyen durum
+     önde, sonra ürünler. */
+  const dikkatliler = tumSatirlar.filter((satir) => satir.ton === "danger");
+  const urunDagilimi = enCok(tumSatirlar.flatMap((satir) => satir.urunler.map((u) => u.etiket)), 6);
+  const durumDagilimi = enCok(tumSatirlar.map((satir) => satir.durum), 6);
+  const TURLER: [string | null, string, number][] = [
+    [null, "Tümü", tumSatirlar.length],
+    ["kurumsal", "Kurumsal", musteriKurumlari.length],
+    ["bireysel", "Bireysel", bireyselSatirlar.length],
+    ...(grupSatirlar.length ? [["grup", "Grup markaları", grupSatirlar.length] as [string, string, number]] : []),
+    /* Arvo'nun kendi kaydı ayrı süzgeçte: grup markası değil, kuralın
+       üçüncü türü (lib/kurum-turu). */
+    ...(arvoSatirlar.length ? [["arvo", "Arvo", arvoSatirlar.length] as [string, string, number]] : []),
+  ];
+
+  /*
+    PANELİN LİSTE DİLİ (29.10.2026, konsol yeniden kurulurken). Liste
+    iOS satırlarıydı (KListe): tür, paket, kullanıcı, yenileme ve tutar
+    tek satırın altına sıkışıyor, sütunlar hizalanmadığı için "en çok
+    ödeyen kim" ya da "kimin dönemi bu hafta doluyor" sorusu satır satır
+    okunarak yanıtlanıyordu. Ekip ve personel listesiyle aynı tablo:
+    hizalı sütunlar, telefonda tek satırlık özet (MobilSatir). Ürün ve
+    sıralama iki çip rayıydı; şimdi arama kutusunun yanında iki seçim.
+  */
+  return <main className="plt talep cari ekip talepler teklifler liste-sayfa konsol-musteriler">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · MÜŞTERİLER</small>
+        <small className="panel-kicker">MÜŞTERİLER</small>
         <h1>Müşteriler</h1>
+        <p className="ek-alt">{sayi(musteriKurumlari.length)} kurumsal · {sayi(bireyselSatirlar.length)} bireysel{kurumsalGelir ? ` · beklenen aylık ${para(kurumsalGelir)}` : ""}</p>
       </div>
       <div className="talep-bas-eylem">
         {/* Yeni müşteri kurulumu (14.10.2026): kiracı sayfası kaldırıldı,
             sihirbaz buraya taşındı. Çalışma alanı adı bütün kurumlar
             arasında benzersiz olmalı; Arvo'nun kendi kurumları dahil. */}
-        <PanelDrawer triggerLabel="+ Yeni müşteri" triggerClassName="panel-secondary" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
+        <PanelDrawer triggerLabel="Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
           <NewOrganizationWizard
             action={createCustomerOrganization}
             plans={((paketler ?? []) as { code: string; name: string }[]).map((p) => ({ code: String(p.code), name: paketAdi(String(p.code)) || String(p.name) }))}
             existingSlugs={((kayitTarihleri ?? []) as { slug: string }[]).map((k) => k.slug)}
           />
         </PanelDrawer>
-        <Link className="panel-primary" href="/panel/platform/billing">Abonelikler</Link>
+        <details className="os-menu talep-menu">
+          <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
+          <div className="os-menu-list" role="menu">
+            <Link className="os-menu-item" href="/panel/platform/kullanicilar" role="menuitem">Kullanıcılar</Link>
+            <Link className="os-menu-item" href="/panel/platform/subscribers" role="menuitem">Bireysel aboneler</Link>
+            <Link className="os-menu-item" href="/panel/platform/billing" role="menuitem">Abonelikler</Link>
+          </div>
+        </details>
       </div>
     </header>
 
     <nav className="kayit-serit talep-serit" aria-label="Müşteri özeti">
       <dl>
-        <div className={!secilenTur ? "is-active" : undefined}>
-          {/* "Tüm KAYIT", "tüm müşteri" değil: listede grup markaları ve
-              Arvo'nun kendi kaydı da var, onlar müşteri değil
-              (lib/kurum-turu). Aynı kelimenin iki kümeyi göstermesi,
-              kurucunun aynı soruya iki yanıt alması demekti. */}
-          <dt>Tüm kayıt</dt>
-          <dd><Link href={adres({ tur: null })} aria-current={!secilenTur ? "page" : undefined}>{sayi(tumSatirlar.length)}</Link></dd>
-        </div>
+        {/* "Tüm KAYIT", "tüm müşteri" değil: listede grup markaları ve
+            Arvo'nun kendi kaydı da var, onlar müşteri değil (lib/kurum-turu). */}
+        <div className={!secilenTur ? "is-active" : undefined}><dt>Tüm kayıt</dt><dd><Link href={adres({ tur: null })}>{sayi(tumSatirlar.length)}</Link></dd></div>
         <div className={secilenTur === "kurumsal" ? "is-active" : undefined}>
-          <dt>Kurumsal</dt>
-          <dd><Link href={adres({ tur: "kurumsal" })} aria-current={secilenTur === "kurumsal" ? "page" : undefined}>{sayi(musteriKurumlari.length)}</Link></dd>
+          <dt>Kurumsal</dt><dd><Link href={adres({ tur: "kurumsal" })}>{sayi(musteriKurumlari.length)}</Link></dd>
           <small>{sayi(kurumsalKullanimda)} kullanımda</small>
         </div>
         <div className={secilenTur === "bireysel" ? "is-active" : undefined}>
-          <dt>Bireysel</dt>
-          <dd><Link href={adres({ tur: "bireysel" })} aria-current={secilenTur === "bireysel" ? "page" : undefined}>{sayi(bireyselSatirlar.length)}</Link></dd>
-          <small>{sayi(bireyselOdeyen)} ödüyor</small>
+          <dt>Bireysel</dt><dd><Link href={adres({ tur: "bireysel" })}>{sayi(bireyselSatirlar.length)}</Link></dd>
+          <small>{sayi(bireyselOdeyen)} ödüyor · {sayi(bireyselDeneme)} denemede</small>
         </div>
-        <div>
-          <dt>Dikkat gerektiren</dt>
-          <dd className={kurumsalSorunlu + bireyselKapali ? "talep-uyari" : undefined}>{sayi(kurumsalSorunlu + bireyselKapali)}</dd>
-          <small>Kurulum hatası ya da kapalı erişim</small>
-        </div>
+        <div><dt>Beklenen aylık</dt><dd className={kurumsalGelir ? "cari-arti" : undefined}>{para(kurumsalGelir)}</dd><small>ödeyen kurumlar</small></div>
+        {grupSatirlar.length || arvoSatirlar.length ? <div><dt>Grup içi değer</dt><dd>{para(grupDegeri)}</dd><small>müşteri gelirine girmez</small></div> : null}
+        <div><dt>Dikkat gerektiren</dt><dd className={dikkatliler.length ? "talep-uyari" : undefined}>{sayi(dikkatliler.length)}</dd><small>kurulum hatası ya da kapalı erişim</small></div>
       </dl>
     </nav>
 
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label="Müşteri listesi">
-        <div className="ekip-suzgec talep-suzgec">
-          {/* Çipler rayda: telefonda tek sıra kaydırılabilir, masaüstünde
-              sarmalayıcı display:contents olduğu için hiç yokmuş gibi. */}
-          <div className="suzgec-ray">
-          <Link href={adres({ tur: null })} className={!secilenTur ? "is-active" : undefined}>Tümü <small>{sayi(tumSatirlar.length)}</small></Link>
-          <Link href={adres({ tur: "kurumsal" })} className={secilenTur === "kurumsal" ? "is-active" : undefined}>Kurumsal <small>{sayi(musteriKurumlari.length)}</small></Link>
-          <Link href={adres({ tur: "bireysel" })} className={secilenTur === "bireysel" ? "is-active" : undefined}>Bireysel <small>{sayi(bireyselSatirlar.length)}</small></Link>
-          {grupSatirlar.length ? <Link href={adres({ tur: "grup" })} className={secilenTur === "grup" ? "is-active" : undefined}>Grup markaları <small>{sayi(grupSatirlar.length)}</small></Link> : null}
-          {/* Arvo'nun kendi kaydı ayrı çipte: grup markası değil, kuralın
-              üçüncü türü (lib/kurum-turu). */}
-          {arvoSatirlar.length ? <Link href={adres({ tur: "arvo" })} className={secilenTur === "arvo" ? "is-active" : undefined}>Arvo <small>{sayi(arvoSatirlar.length)}</small></Link> : null}
-          </div>
-          <form action="/panel/platform/musteriler" className="talep-ara" role="search">
+        <div className="ekip-suzgec talep-suzgec ek-arac">
+          <nav className="ek-segment" aria-label="Tür">
+            {TURLER.map(([kod, ad, adet]) => (
+              <Link key={kod ?? "tumu"} href={adres({ tur: kod })} className={secilenTur === kod ? "is-active" : undefined} aria-current={secilenTur === kod ? "page" : undefined}>
+                {ad} <small>{sayi(adet)}</small>
+              </Link>
+            ))}
+          </nav>
+          <form action="/panel/platform/musteriler" className="talep-ara talep-ara--secimli" role="search">
             {secilenTur ? <input type="hidden" name="tur" value={secilenTur} /> : null}
-            {secilenUrun ? <input type="hidden" name="urun" value={secilenUrun} /> : null}
-            {secilenSira !== "ad" ? <input type="hidden" name="sira" value={secilenSira} /> : null}
+            <OtomatikSecim name="urun" defaultValue={secilenUrun ?? ""} className="talep-temsilci-sec" label="Ürün">
+              <option value="">Bütün ürünler</option>
+              {PRODUCTS.map((p) => <option key={p.code} value={p.code}>{p.name} ({sayi(urunSayisi(p.code))})</option>)}
+            </OtomatikSecim>
+            <OtomatikSecim name="sira" defaultValue={secilenSira} className="talep-temsilci-sec" label="Sıralama">
+              {SIRALAR.map((x) => <option key={x.kod} value={x.kod}>{x.ad}</option>)}
+            </OtomatikSecim>
             <input type="search" name="ara" defaultValue={aranan} placeholder="Ad, e-posta, telefon ya da ürün" aria-label="Müşteri ara" />
           </form>
         </div>
-        {/* İkinci satır: ürüne göre süz ve sırala (seçimler adreste). */}
-        <div className="ekip-suzgec talep-suzgec k-ikinci-suzgec">
-          <div className="suzgec-ray">
-          <Link href={adres({ urun: null })} className={!secilenUrun ? "is-active" : undefined}>Bütün ürünler</Link>
-          {PRODUCTS.map((p) => (
-            <Link key={p.code} href={adres({ urun: p.code })} className={secilenUrun === p.code ? "is-active" : undefined}>
-              {p.name} <small>{sayi(urunSayisi(p.code))}</small>
-            </Link>
-          ))}
-          <span className="k-suzgec-ayrac" aria-hidden="true" />
-          {SIRALAR.map((x) => (
-            <Link key={x.kod} href={adres({ sira: x.kod })} className={secilenSira === x.kod ? "is-active" : undefined} aria-current={secilenSira === x.kod ? "true" : undefined}>{x.ad}</Link>
-          ))}
-          </div>
-        </div>
 
-        {/*
-          UYARI ÖNCE ÇALIŞMAYAN BİR ÇÖZÜM ÖNERİYORDU (15.10.2026). Cümlenin
-          sonu "Aradığınızı bulamazsanız arama kutusunu kullanın" idi.
-          Oysa bu sayfanın araması SUNUCUDA DEĞİL: süzgeç, yukarıda
-          okunan aynı 1000 satırın üzerinde bellekte çalışıyor
-          (tumSatirlar.filter). Yani listeye girmeyen 1001. abone
-          arandığında da bulunamıyor; tavsiye, mümkün olmayan bir şeyi
-          öneriyordu. Bireysel Aboneler ekranı da aynı sınırla ve yine
-          bellekte arıyor, yani konsolda kaçan aboneyi bulabilecek bir
-          yer yok.
-
-          Sonra asıl çözüm uygulandı: arama yapıldığında ikinci bir sorgu
-          tabloyu tarıyor (yukarıda, sunucuDeseni). Tavsiye artık doğru —
-          arama gerçekten listeyle sınırlı değil.
-        */}
+        {/* Arama yapıldığında ikinci bir sorgu bütün tabloyu tarıyor
+            (sunucuDeseni): tavsiye doğru, arama listeyle sınırlı değil. */}
         {eksikKapsam ? (
           <KNot ton="uyari">
             Bireysel abonelerin en yeni {sayi(LISTE_SINIRI)} kaydı listeleniyor (toplam {sayi(toplamAbone)}). Daha eski bir aboneyi görmek için arama kutusunu kullanın: arama listeyle sınırlı değil, bütün kayıtlara bakar.
           </KNot>
         ) : null}
 
-        {/*
-          iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): sütun başlığı yok;
-          solda simge, ad ve altında tür · özet, sağda durum ve aylık
-          ücret. Eskiden beş sütunlu tabloydu (Müşteri, Tür, Durum, Aylık).
-        */}
         {liste.length ? (
-          <KListe>
-            {liste.map((satir) => (
-              <KOge
-                key={satir.anahtar}
-                href={satir.href}
-                simge={satir.ad}
-                baslik={satir.ad}
-                alt={[TUR_ADI[satir.tur], satir.alt].filter(Boolean).join(" · ")}
-                etiketler={satir.urunler.map((u) => ({ etiket: u.etiket, ton: u.ton }))}
-                durum={{ etiket: satir.durum, ton: satir.ton }}
-                /* Aylık tutar bütün ödeyen ürünlerin toplamı; ödeyen ürünü
-                   olup hiçbirinin ücreti girilmemişse "Ücret yok". */
-                deger={satir.ucret ? para(satir.ucret) : satir.ucretGirilmedi ? <span className="k-ios-eksik">Ücret yok</span> : "—"}
-                degerAlt={satir.yenileme ? `yenileme ${tarih(satir.yenileme)}` : satir.ucret ? "aylık" : undefined}
-              />
-            ))}
-          </KListe>
+          <div className="talep-tablo">
+            <table className="crm-data-table" data-cols="konsol-musteri">
+              <thead>
+                <tr>
+                  <th>Müşteri</th>
+                  <th>Ürünler</th>
+                  <th>Kullanıcı</th>
+                  <th className="crm-col-date">Yenileme</th>
+                  <th className="crm-col-amount">Aylık</th>
+                  <th>Durum</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {liste.map((satir) => (
+                  <tr key={satir.anahtar} className={satir.ton === "neutral" ? "is-pasif" : undefined}>
+                    <td data-label="Müşteri">
+                      <Link className="crm-row-link ek-kisi" href={satir.href} aria-label={`${satir.ad} kartını aç`}>
+                        <span className="ek-avatar" data-tur={satir.tur} aria-hidden="true">{basHarfleri(satir.ad)}</span>
+                        <span className="ek-kisi-metin">
+                          <span className="crm-table-title" title={satir.ad}>{satir.ad}</span>
+                          <span className="crm-table-sub">{[TUR_ADI[satir.tur], satir.tur === "bireysel" ? satir.alt : satir.paket].filter(Boolean).join(" · ")}</span>
+                        </span>
+                      </Link>
+                    </td>
+                    <td data-label="Ürünler">
+                      <span className="mu-urunler">
+                        {satir.urunler.length ? satir.urunler.map((u) => <span key={u.kod} data-tone={u.ton}>{u.etiket}</span>) : <span className="crm-table-sub">Ürün yok</span>}
+                      </span>
+                    </td>
+                    <td data-label="Kullanıcı">{satir.kullanici ? <span className="crm-table-title">{satir.kullanici}</span> : <span className="crm-table-sub">—</span>}</td>
+                    <td className="crm-col-date" data-label="Yenileme">{satir.yenileme ? tarih(satir.yenileme) : "—"}</td>
+                    <td className="crm-col-amount" data-label="Aylık">
+                      {/* Bütün ödeyen ürünlerin toplamı; ödeyen ürünü olup hiçbirinin ücreti girilmemişse "Ücret yok". */}
+                      {satir.ucret ? <span className="crm-table-title">{para(satir.ucret)}</span> : satir.ucretGirilmedi ? <span className="k-ios-eksik">Ücret yok</span> : <span className="crm-table-sub">—</span>}
+                      {satir.ucret && (satir.tur === "grup" || satir.tur === "arvo") ? <small>grup içi</small> : null}
+                    </td>
+                    <td data-label="Durum"><span className="status-pill" data-tone={satir.ton}>{satir.durum}</span></td>
+                    <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                    <MobilSatir
+                      href={satir.href}
+                      baslik={satir.ad}
+                      durum={{ etiket: satir.durum, ton: satir.ton }}
+                      alt={[TUR_ADI[satir.tur], satir.urunler.map((u) => u.etiket).join(", ")]}
+                      isaretler={[
+                        satir.ucret ? { metin: `${para(satir.ucret)} / ay`, ton: "sessiz" } : null,
+                        satir.yenileme ? { metin: `yenileme ${tarih(satir.yenileme)}`, ton: "sessiz" } : null,
+                      ]}
+                    />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <SatirTiklama />
+          </div>
         ) : (
-          <KBos baslik={aranan ? `“${aranan}” ile eşleşen müşteri yok` : "Bu süzgeçte müşteri yok"} />
+          <div className="crm-empty-state talep-bos-kutu ek-bos">
+            <h2>{aranan ? `“${aranan}” ile eşleşen müşteri yok` : "Bu süzgeçte müşteri yok"}</h2>
+            <p>Aramayı ya da süzgeci değiştirip yeniden deneyin.</p>
+            <div className="crm-empty-actions"><Link className="panel-secondary" href="/panel/platform/musteriler">Süzgeci temizle</Link></div>
+          </div>
         )}
       </section>
 
-      {/* Sağ kart süzgeçten bağımsız: her zaman bütün müşterileri anlatır.
-          Bireysel gelir burada YOK: tutar ürün planında duruyor ve
-          abonelik ekranında ürün ürün hesaplanıyor. İki yerde ayrı
-          hesaplamak, birinin sapması demek. Eskiden kartın altında
-          "Abonelik ayarları" bağlantısı vardı; o ekran başlıktaki
-          Abonelikler düğmesinden açılıyor.
-
-          14.10.2026: İstatistik kartının dört kutusundan üçü (kurumsal,
-          bireysel, dikkat) şeritteki sayıların AYNISIYDI. Yerine yalnızca
-          şeritte olmayanlar, iOS listesiyle: beklenen aylık gelir ve
-          kurumsal/bireysel durum dağılımı. */}
+      {/* Sağ sütun süzgeçten BAĞIMSIZ: her zaman bütün müşterileri
+          anlatır; seçili sekmeye göre değişseydi "kaç müşterim var"
+          sorusunun yanıtı da değişirdi. Ekip listesindeki sekmeli kart. */}
       <div className="liste-sag">
-        {grupSatirlar.length ? (
-          <KKart baslik="Grup içi değer" aciklama="ArvoOS'un grup markalarına sağladığı, liste fiyatıyla">
-            <KListe>
-              {grupSatirlar.map((satir) => (
-                <KOge key={satir.anahtar} href={satir.href} simge={satir.ad} baslik={satir.ad}
-                  deger={satir.ucret ? para(satir.ucret) : <span className="k-ios-eksik">Ücret yok</span>}
-                  degerAlt={satir.ucret ? "aylık" : "girilmedi"} />
-              ))}
-              <KOge baslik="Toplam" deger={para(grupDegeri)} degerAlt="aylık" />
-            </KListe>
-          </KKart>
-        ) : null}
-        <KKart baslik="Kurumsal" aciklama="Süzgeçten bağımsız, bütün kiracılar">
-          <KListe>
-            <KOge baslik="Beklenen aylık" deger={para(kurumsalGelir)} degerAlt="ödeyenler" />
-            <KOge baslik="Kullanımda" deger={sayi(kurumsalKullanimda)} />
-            <KOge baslik="Kurulum hatası ya da askıda" deger={sayi(kurumsalSorunlu)} />
-          </KListe>
-        </KKart>
-
-        <KKart
-          baslik="Bireysel"
-          aciklama={`${eksikKapsam ? `En yeni ${sayi(aboneler.length)} kayıt · ` : ""}son kayıt ${tarih(bireyselSatirlar[0]?.olusma ?? null)}`}
-        >
-          <KListe>
-            <KOge baslik="Ödüyor" deger={sayi(bireyselOdeyen)} />
-            <KOge baslik="Denemede" deger={sayi(bireyselDeneme)} />
-            <KOge baslik="Erişimi kapalı" deger={sayi(bireyselKapali)} />
-          </KListe>
-        </KKart>
+        <TalepAkis kimlik="musteri-sag" sinif="ek-sag" etiket="Müşteri istatistikleri"
+          sekmeler={["İstatistikler", dikkatliler.length ? `Dikkat · ${dikkatliler.length}` : "Dikkat", ...(grupSatirlar.length ? ["Grup içi"] : [])]}>
+          <IstatistikKarti
+            kapsam="bütün kayıtlar"
+            kutular={[
+              { ad: "Beklenen aylık", deger: para(kurumsalGelir), alt: "ödeyen kurumlar" },
+              { ad: "Kullanımda", deger: sayi(kurumsalKullanimda), alt: `${sayi(musteriKurumlari.length)} kurumdan` },
+              { ad: "Bireysel ödüyor", deger: sayi(bireyselOdeyen), alt: `${sayi(bireyselDeneme)} denemede` },
+              { ad: "Erişimi kapalı", deger: sayi(bireyselKapali + kurumsalSorunlu), alt: "kurumsal ve bireysel", ton: bireyselKapali + kurumsalSorunlu ? "uyari" : undefined },
+            ]}
+            gruplar={[
+              { baslik: "Ürüne göre", satirlar: urunDagilimi.map(([ad, adet]) => ({ ad, adet })) },
+              { baslik: "Duruma göre", satirlar: durumDagilimi.map(([ad, adet]) => ({ ad, adet })) },
+            ]}
+          />
+          <section className="ek-panel" aria-label="Dikkat gerektirenler">
+            {dikkatliler.length ? <>
+              <p className="ek-not" data-tone="danger">Kurulumu hatada kalan, askıya alınan ya da erişimi kapanan kayıtlar.</p>
+              <ul className="pu-liste">
+                {dikkatliler.map((satir) => (
+                  <li key={satir.anahtar}>
+                    <Link href={satir.href}>
+                      <span className="pu-govde"><b>{satir.ad}</b><small>{[TUR_ADI[satir.tur], satir.urunler.map((u) => u.etiket).join(", ")].filter(Boolean).join(" · ")}</small></span>
+                      <span className="status-pill" data-tone="danger">{satir.durum}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </> : <p className="ek-bos-kucuk">Dikkat gerektiren kayıt yok.</p>}
+          </section>
+          {grupSatirlar.length ? (
+            <section className="ek-panel" aria-label="Grup içi değer">
+              <p className="ek-not">ArvoOS&apos;un grup markalarına sağladığı değer, liste fiyatıyla. Müşteri gelirine girmez.</p>
+              <ul className="pu-liste">
+                {[...grupSatirlar, ...arvoSatirlar].map((satir) => (
+                  <li key={satir.anahtar}>
+                    <Link href={satir.href}>
+                      <span className="pu-govde"><b>{satir.ad}</b><small>{TUR_ADI[satir.tur]}</small></span>
+                      <span className="mu-grup-tutar">{satir.ucret ? para(satir.ucret) : <span className="k-ios-eksik">Ücret yok</span>}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="ek-alt mu-toplam">Toplam <b>{para(grupDegeri)}</b> / ay</p>
+            </section>
+          ) : null}
+        </TalepAkis>
       </div>
     </div>
   </main>;
