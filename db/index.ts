@@ -1,4 +1,4 @@
-// @ts-expect-error Cloudflare provides this virtual module in the Sites runtime.
+// @ts-expect-error Cloudflare bu sanal modülü Workers çalışma zamanında sağlar.
 import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
@@ -6,7 +6,7 @@ import * as schema from "./schema";
 export function getDb() {
   if (!env.DB) {
     throw new Error(
-      "Cloudflare D1 binding `DB` is unavailable. Set the `d1` field in .openai/hosting.json to `DB` or let your control plane inject the real binding values before using the database."
+      "Cloudflare D1 bağlaması `DB` yok. Bu dosya vinext şablonundan kalma ve ArvoOS'ta kullanılmıyor (bütün veri Supabase'de); D1'i açacaksanız bağlamayı vite.config.ts'teki Cloudflare yapılandırmasına ekleyin."
     );
   }
 
