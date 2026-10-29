@@ -512,6 +512,19 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd{--ff-boy:32px;--ff-dolgu:9px;--ff-yazi:12.5px;--ff-aralik:7px}
 
 .opd-ff{display:inline-flex;align-items:center;gap:var(--ff-aralik);margin:0}
+/*
+  TARİH SEÇİCİ DE AYNI DEĞİŞKENLE (29.10.2026). Panelin ortak tarih
+  seçicisi (components/tarih-secici) bulunduğu kutuyu doldurmak için
+  width:100% ile geliyor. Görev satırının denetim sütunu "auto"
+  genişlikte olduğu için kutu ~310 piksele açılıyor, görev adına 140
+  piksel kalıyor ve "Tez Öneri Formunun Hazırlanması" dört satıra
+  kırılıyordu (canlıda görüldü). Burada sabit genişlik ve satırın
+  öteki denetimleriyle aynı boy (--ff-boy); özgüllük ortak dosyadaki
+  .tsc-kucuk kuralının üstünde.
+*/
+.panel-root .opd-ff .tsc.tsc-kucuk{width:138px;min-width:138px;flex:none}
+.panel-root .opd-ff .tsc.tsc-kucuk .tsc-kutu{height:var(--ff-boy);min-height:var(--ff-boy);padding:0 30px 0 var(--ff-dolgu);border-radius:9px;font-size:var(--ff-yazi)}
+.panel-root .opd-ff .tsc.tsc-kucuk .tsc-dugme{right:3px;width:26px;height:26px}
 .opd-ff select,.opd-ff input[type="date"],.opd-ff input[type="text"]{height:var(--ff-boy);max-width:100%;padding:0 var(--ff-dolgu);border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--ff-yazi);transition:border-color .18s ease,box-shadow .18s ease}
 .opd-ff select:hover,.opd-ff input:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
 .opd-ff select:focus-visible,.opd-ff input:focus-visible,.opd-ff select:focus,.opd-ff input:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
@@ -675,3 +688,18 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .ek-sorumlu-secimi label:has(input:checked){border-color:color-mix(in srgb,var(--primary) 45%,var(--line));background:var(--primary-soft)}
 .ek-sorumlu-secimi input{width:auto;margin:0}
 @media (max-width:760px){.ek-sorumlu-secimi{grid-template-columns:minmax(0,1fr)}}
+
+/*
+  GÖREV SATIRI KARTIN GENİŞLİĞİNE GÖRE (29.10.2026). Denetimleri başlığın
+  altına alan kural yalnızca EKRAN genişliğine bakıyordu (860px). İş
+  detayı üç sütuna geçtiğinden beri görev kartı geniş bir ekranda da
+  ~450px kalıyor: denetimler yan yana 340px tutuyor, görev adına 70-90
+  piksel kalıyor ve ad kelime kelime alt alta kırılıyordu (canlıda
+  "Tez Öneri / Formunun / Hazırlanması"). Karar artık kartın kendi
+  genişliğinde: 640px'ten darsa denetimler ikinci sırada.
+*/
+.opd-steps{container-type:inline-size;container-name:opd-gorevler}
+@container opd-gorevler (max-width:640px){
+  .opd-step{grid-template-columns:minmax(0,1fr)}
+  .opd-step-meta{justify-content:flex-start;padding:0 8px 10px 52px}
+}
