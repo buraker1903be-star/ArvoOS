@@ -4,14 +4,17 @@ import { getPanelContext } from "@/lib/panel-context";
 import { zorunlu } from "../konsol-oku";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productName } from "@/lib/products";
-import { para, tarih } from "../bicim";
+import { basHarfleri, para, tarih } from "../bicim";
 import { IstekKarti, type BekleyenIstek, type Kurum } from "./istek-karti";
-import { KBos, KKart, KListe, KOge } from "../konsol-ui";
+import { KKart } from "../konsol-ui";
+import { MobilSatir } from "../../crm/table-cells";
 // İstek kartlarının düzeni (.istek-listesi, .istek-karti) platform.css'te.
 import "../platform.css";
 // Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
 import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
+import "../../hr/hr.css";
+import "../finans.css";
 
 /*
   Onay bekleyen sözleşmeler.
@@ -121,30 +124,25 @@ export default async function SozlesmelerPage() {
     };
   };
 
-  return <main className="plt talep cari">
+  /*
+    PANELİN DİLİ (29.10.2026, konsol yeniden kurulurken). Bekleyen
+    istekler kendi kartlarında kalıyor (kiracı seçimi ve ret sebebi olan
+    karar formu bir tablo satırına sığmıyor); sonuçlananlar iOS satırı
+    yerine Finans'ın öteki ekranlarıyla aynı hizalı tablo.
+  */
+  return <main className="plt talep cari ekip finans-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · SÖZLEŞME ONAYLARI</small>
-        <h1>Onay bekleyen sözleşmeler</h1>
+        <small className="panel-kicker"><Link href="/panel/platform/billing">FİNANS · ABONELİKLER</Link></small>
+        <h1>Sözleşme onayları</h1>
+        <p className="ek-alt">ArvoOS kurumunda imzalanan sözleşmeler; onay seçilen kiracıya modülleri açar ve aboneliği başlatır.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
       </div>
     </header>
 
-    {/*
-      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "onay bekleyen
-      yok" demek, satırın hiç olmamasından daha çok şey söyler.
-    */}
-    {/*
-      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
-      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
-      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
-      sayıları her seferinde yeniden aramak demekti.
-
-      Hepsi her zaman çiziliyor: sıfır da bir cevaptır ve satırın hiç
-      olmamasından daha çok şey söyler.
-    */}
+    {/* Hepsi her zaman çiziliyor: sıfır da bir cevaptır. */}
     <nav className="kayit-serit talep-serit" aria-label="Kuyruk özeti">
       <dl>
         <div><dt>Onay bekliyor</dt><dd className={bekleyenler.length ? "talep-uyari" : undefined}>{bekleyenler.length}</dd><small>{bekleyenler.length ? "Tahsilatı doğrulayıp onaylayın" : "Kuyruk boş"}</small></div>
@@ -154,49 +152,51 @@ export default async function SozlesmelerPage() {
       </dl>
     </nav>
 
-    {/*
-      GÖRÜNÜŞ (14.10.2026, "bizim ArvoOS panel gibi olmalı"): ayarlar
-      ekranının kartı (StgSection) ve simgeli satır listesi yerine panelin
-      kartı ve tablosu. Bekleyen istekler kendi kartlarında kalıyor:
-      her birinde kiracı seçimi ve ret sebebi olan bir karar formu var,
-      tablo satırına sığmıyor.
-    */}
     {bekleyenler.length ? (
       <div className="istek-listesi">
         {bekleyenler.map((satir) => <IstekKarti key={satir.id} istek={bekleyen(satir)} kurumlar={kurumlar} />)}
       </div>
     ) : (
       <KKart baslik="Onay kuyruğu">
-        <KBos baslik="Onay bekleyen sözleşme yok" aciklama="ArvoOS kurumunda bir sözleşme imzalandığında burada görünür." />
+        <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>Onay bekleyen sözleşme yok</h2><p>ArvoOS kurumunda bir sözleşme imzalandığında burada görünür.</p></div>
       </KKart>
     )}
 
     {sonuclananlar.length ? (
-      <KKart
-        id="gecmis" baslik="Sonuçlanan istekler"
-        aciklama="Son 20 karar. Kararlar geri alınamaz: onay modülleri açar, ret imzalı bir sözleşmeyi reddeder."
-        sag={<span className="status-pill">{sonuclananlar.length} kayıt</span>}
-      >
-        {/* Satırın gidecek bir sayfası yok: ok (chevron) çizilmiyor.
-            iOS listesi (14.10.2026): beş sütunlu tablo yerine tek satır —
-            sözleşme no, karar tarihi ve not özette; sağda karar ve tutar. */}
-        <KListe>
-          {sonuclananlar.map((satir) => {
-            const onay = satir.status === "approved";
-            const karar = onay ? "Onaylandı" : "Reddedildi";
-            return (
-              <KOge
-                key={satir.id}
-                simge={satir.customer_name ?? "Müşteri"}
-                baslik={satir.customer_name ?? "Müşteri"}
-                alt={[satir.contract_no ?? "—", tarih(satir.reviewed_at), satir.review_note].filter(Boolean).join(" · ")}
-                durum={{ etiket: karar, ton: onay ? "success" : "danger" }}
-                deger={satir.amount ? para(Number(satir.amount), satir.currency) : "—"}
-              />
-            );
-          })}
-        </KListe>
-      </KKart>
+      <section className="panel-card talep-bilgi" id="gecmis" aria-label="Sonuçlanan istekler">
+        <header className="phr-bas fn-alt-bas">
+          <h2>Sonuçlanan istekler <span className="pu-sayi">{sonuclananlar.length}</span></h2>
+          <small>Son 20 karar. Kararlar geri alınamaz: onay modülleri açar, ret imzalı bir sözleşmeyi reddeder.</small>
+        </header>
+        {/* Satırın gidecek bir sayfası yok: ok (chevron) çizilmiyor. */}
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="fn-sozlesme">
+            <thead><tr><th>Müşteri</th><th>Sözleşme</th><th className="crm-col-date">Karar</th><th className="crm-col-amount">Tutar</th><th>Durum</th></tr></thead>
+            <tbody>
+              {sonuclananlar.map((satir) => {
+                const onay = satir.status === "approved";
+                const karar = { etiket: onay ? "Onaylandı" : "Reddedildi", ton: onay ? "success" : "danger" };
+                const ad = satir.customer_name ?? "Müşteri";
+                return (
+                  <tr key={satir.id} className={onay ? undefined : "is-pasif"}>
+                    <td data-label="Müşteri">
+                      <span className="ek-kisi">
+                        <span className="ek-avatar" aria-hidden="true">{basHarfleri(ad)}</span>
+                        <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span>{satir.review_note ? <span className="crm-table-sub" title={satir.review_note}>{satir.review_note}</span> : null}</span>
+                      </span>
+                    </td>
+                    <td data-label="Sözleşme"><span className="crm-table-title plt-mono">{satir.contract_no ?? "—"}</span></td>
+                    <td className="crm-col-date" data-label="Karar">{tarih(satir.reviewed_at)}</td>
+                    <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{satir.amount ? para(Number(satir.amount), satir.currency) : "—"}</span></td>
+                    <td data-label="Durum"><span className="status-pill" data-tone={karar.ton}>{karar.etiket}</span></td>
+                    <MobilSatir baslik={ad} durum={karar} alt={[satir.contract_no, satir.amount ? para(Number(satir.amount), satir.currency) : null, tarih(satir.reviewed_at), satir.review_note]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     ) : null}
   </main>;
 }

@@ -1,0 +1,41 @@
+/*
+  Konsolun Finans ekranları (29.10.2026): Tahsilatlar, Ödeme onayları,
+  Abonelikler, Sözleşme onayları. Ekip ve Müşteriler listesinin
+  tablosu (hr.css: ek-arac, ek-segment, ek-avatar; kayit-detay.css:
+  talep-tablo); burada yalnızca finansa özgü hücreler.
+*/
+/* Liste tablosu ilk hücredeki bağlantıyı display:block yapıyor
+   (kayit-detay.css); simge metnin üstüne düşüyordu. Personel
+   tablosundaki kuralın aynısı, finansın ilk hücreleri için. */
+.os-root .finans-sayfa .talep-tablo .crm-data-table td:first-child .ek-kisi{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--sp-3);text-align:left;min-width:0}
+.os-root .finans-sayfa .talep-tablo .crm-data-table thead th:first-child{width:auto}
+.os-root .finans-sayfa .talep-tablo .crm-data-table td:first-child{min-width:190px}
+/* Kurum köşeli, kişi yuvarlak (Müşteriler listesiyle aynı ayrım). */
+.finans-sayfa .ek-avatar:not([data-tur="bireysel"]){border-radius:var(--r-md)}
+.os-root .finans-sayfa .talep-tablo .crm-data-table td small{display:block;color:var(--muted);font-size:var(--fs-micro)}
+.fn-iban{font-size:var(--fs-sm);white-space:nowrap}
+.os-root .finans-sayfa .crm-table-actions .k-proforma-eylem{justify-content:flex-end}
+.os-root .finans-sayfa .crm-table-actions{white-space:nowrap}
+
+/* Kartla ve otomatik: iki tablo alt alta, başlıklarıyla. Liste sayfası
+   kartın tek tablosunu kaydırıyor; burada iki tablo var, kart kayar. */
+.fn-alt-bas{margin:0 0 var(--sp-2)}
+.fn-alt-bas:not(:first-child){margin-top:var(--sp-5)}
+.fn-alt-bas>small{color:var(--muted);font-size:var(--fs-sm)}
+.os-root main.liste-sayfa .talep-bilgi:has(>.fn-ic-tablo){overflow:auto}
+.os-root main.liste-sayfa .talep-bilgi>.talep-tablo.fn-ic-tablo{flex:none;overflow:visible}
+
+/* Ödeme onayları: bekleyen dekont kartları alt alta. */
+.fn-kartlar{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+.os-root .fn-kartlar>.panel-card{margin:0}
+
+/* Ürün rozetleri (Müşteriler listesindeki mu-urunler'in finans ikizi;
+   iki sayfa ayrı CSS yüklüyor, sınıf adı çakışmasın). */
+.fn-urunler{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
+.fn-urunler>span[data-tone]{padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-semibold);white-space:nowrap}
+.fn-urunler>span[data-tone="success"]{background:var(--success-soft);color:var(--success)}
+.fn-urunler>span[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
+.fn-urunler>span[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
+.fn-urunler>span[data-tone="info"]{background:var(--primary-soft);color:var(--primary-strong)}
+.os-root .finans-sayfa .ek-arac{row-gap:var(--sp-2)}
+.os-root .finans-sayfa .crm-data-table th.fn-eylem-bas{text-align:right}

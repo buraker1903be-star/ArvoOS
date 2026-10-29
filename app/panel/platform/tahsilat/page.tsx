@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getPaymentIncidents } from "@/lib/payment-incidents";
 import { musteriMi } from "@/lib/kurum-turu";
-import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
-import { para, sayi, tarih } from "../bicim";
+import { KNot } from "../konsol-ui";
+import { basHarfleri, para, sayi, tarih } from "../bicim";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PanelModal } from "../../components/panel-modal";
 import { bankaHesabiDurumu, bankaHesabiKaydet, faturaYukle, proformaEsle, proformaIptal, proformaOlustur } from "./actions";
@@ -16,8 +16,14 @@ import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { ProformaFormu, type ProformaFiyatKisayolu, type ProformaMusterisi } from "./proforma-formu";
 import { arvolabAdlari, fiyatKisayollari, kurumAlicilari } from "./proforma-verisi";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
 import "../platform.css";
 import "../../components/kayit-formu.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /*
   FATURALAMA VE TAHSİLAT (14.10.2026, Kurucu Konsolu'nun ana menüsü).
@@ -50,6 +56,14 @@ const LISTE = 50;
 type Tahsilat = { anahtar: string; id: string; tur: "kurum" | "abone"; organizationId: string | null; kim: string; kanal: string; amount: number; currency: string; tarih: string | null };
 type Fatura = { no: string; tarih: string; url: string | null };
 
+/*
+  İKİ KAT SÜZGEÇ (29.10.2026, konsol yeniden kurulurken). Sekiz çip tek
+  rayda duruyordu ve ikisi başka şeydi: Havale, Kart, Bireysel listeyi
+  SÜZÜYOR; Faturalar, Proformalar, Banka hesapları, Kartla ve otomatik
+  başka bir EKRAN açıyor. Ekranlar artık dock'un Finans bölümlerinde
+  (konsol-apps.ts) ve sayfanın başlığı hangisinin açık olduğunu
+  söylüyor; listenin içinde yalnızca tahsilat süzgeçleri kaldı.
+*/
 const KANALLAR = [
   { kod: "", ad: "Tümü" },
   { kod: "havale", ad: "Havale" },
@@ -61,6 +75,17 @@ const KANALLAR = [
   // Proformada ve müşterinin Havale / EFT sekmesinde görünen hesaplar (29.10.2026'ya kadar düzenlenemiyordu).
   { kod: "banka", ad: "Banka hesapları" },
 ] as const;
+const SUZGEC_KANALLARI = new Set(["", "havale", "kart", "bireysel"]);
+const EKRAN_ADI: Record<string, { baslik: string; alt: string }> = {
+  "": { baslik: "Tahsilatlar", alt: "Onaylanan kurum ödemeleri ve bireysel abone ödemeleri; son elli kayıt" },
+  havale: { baslik: "Tahsilatlar", alt: "Havale / EFT ile gelenler" },
+  kart: { baslik: "Tahsilatlar", alt: "Kartla (PayTR) gelenler" },
+  bireysel: { baslik: "Tahsilatlar", alt: "Bireysel abone ödemeleri" },
+  fatura: { baslik: "Faturalar", alt: "Tahsilatlara yüklenen platform faturaları; son elli" },
+  proforma: { baslik: "Proformalar", alt: "Ödemeden önce müşteriye giden belgeler; son elli" },
+  otomatik: { baslik: "Kartla ve otomatik", alt: "Kayıtlı kartla ödeme denemeleri ve açık otomatik yenilemeler" },
+  banka: { baslik: "Banka hesapları", alt: "Proformada ve müşterinin Havale / EFT sekmesinde görünen hesaplar" },
+};
 
 /* Kartla ödeme denemeleri (PayTR Direkt API, 28.10.2026). */
 const KART_TURU: Record<string, string> = { ilk: "Kartla ödeme", kayitli: "Kayıtlı kart", otomatik: "Otomatik yenileme" };
@@ -327,15 +352,74 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
   // tuzak-tamam: sınırsız sorgu (bekleyen havalelerin hepsi), toplam doğru.
   const bekleyenTutar = bekleyenSatirlar.reduce((t, b) => t + Number(b.amount), 0);
 
-  return <main className="plt talep cari ekip liste-sayfa">
+  const ekran = EKRAN_ADI[secili] ?? EKRAN_ADI[""];
+  const kanalAdeti = (kod: string) =>
+    kod === "havale" ? kanalSayisi("Havale/EFT") : kod === "kart" ? kanalSayisi("Kart (PayTR)") : kod === "bireysel" ? tahsilatlar.filter((t) => !t.organizationId).length : tahsilatlar.length;
+  const kisi = (ad: string, alt: string, href: string | null, tur?: string) => (
+    href ? (
+      <Link className="crm-row-link ek-kisi" href={href}>
+        <span className="ek-avatar" data-tur={tur} aria-hidden="true">{basHarfleri(ad)}</span>
+        <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span><span className="crm-table-sub">{alt}</span></span>
+      </Link>
+    ) : (
+      <span className="ek-kisi">
+        <span className="ek-avatar" data-tur={tur} aria-hidden="true">{basHarfleri(ad)}</span>
+        <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span><span className="crm-table-sub">{alt}</span></span>
+      </span>
+    )
+  );
+  const bosKutu = (baslik: string, aciklama: string) => (
+    <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
+  );
+  const faturaFormu = (t: Tahsilat) => (
+    <PanelModal triggerLabel="Fatura yükle" kicker="Platform faturası" title={`${t.kim} · ${para(t.amount, t.currency)}`}
+      description="Kestiğiniz faturanın PDF'ini yükleyin; müşteri ArvoLab'daki Faturalar ve ödemeler bölümünde görür." basaridaKapan>
+      <form className="panel-form kayit-formu" action={faturaYukle}>
+        <input type="hidden" name="tur" value={t.tur} />
+        <input type="hidden" name="odeme_id" value={t.id} />
+        <label><span>Fatura numarası<b className="req" aria-hidden="true">*</b></span><input name="fatura_no" maxLength={60} required autoComplete="off" /></label>
+        <label><span>Fatura tarihi<b className="req" aria-hidden="true">*</b></span><TarihSecici name="fatura_tarihi" required /></label>
+        <label className="wide"><span>Fatura PDF<b className="req" aria-hidden="true">*</b></span><input name="dosya" type="file" accept="application/pdf" required /></label>
+        <div className="wide panel-form-actions kayit-formu-eylem"><p>Yeniden yüklemek bu ödemenin faturasını değiştirir.</p><button className="panel-primary" type="submit">Faturayı yükle</button></div>
+      </form>
+    </PanelModal>
+  );
+
+  /*
+    PANELİN LİSTE DİLİ (29.10.2026). Beş görünümün hepsi iOS satırıydı
+    (KListe): tarih, kanal ve tutar tek satırın altına sıkışıyordu, tutar
+    sütunu hizalanmadığı için "bu hafta ne geldi" satır satır okunuyordu.
+    Müşteriler ve Ekip listesiyle aynı tablo: hizalı sütunlar, telefonda
+    tek satırlık özet (MobilSatir), satır sonunda kendi düğmesi.
+  */
+  return <main className="plt talep cari ekip talepler teklifler liste-sayfa finans-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · FATURALAMA VE TAHSİLAT</small>
-        <h1>Faturalama ve Tahsilat</h1>
+        <small className="panel-kicker">FİNANS</small>
+        <h1>{ekran.baslik}</h1>
+        <p className="ek-alt">{ekran.alt}</p>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
-        <Link className="panel-secondary" href="/panel/platform/billing">Abonelikler</Link>
+        {secili === "proforma" ? (
+          <PanelModal triggerLabel="Yeni proforma" triggerClassName="panel-primary" kicker="Proforma" title="Yeni proforma" boy="genis"
+            description="Müşteriyi seçin; alıcı bilgileri kayıttan dolar. Kurum ArvoOS ve ArvoCal proformasını ArvoOS panelinde, ArvoLab proformasını ArvoLab'da görür ve yazdırır." basaridaKapan>
+            <ProformaFormu musteriler={proformaMusterileri} kisayollar={kisayollar} bugun={bugun} gecerlilik={onBesGunSonra(bugun)}
+              kdvOrani={VARSAYILAN_KDV_ORANI} action={proformaOlustur} />
+          </PanelModal>
+        ) : secili === "banka" ? (
+          <PanelModal triggerLabel="Yeni banka hesabı" triggerClassName="panel-primary" kicker="Banka hesapları" title="Yeni banka hesabı" basaridaKapan
+            description="Proformada ve müşterinin Havale / EFT sekmesinde görünür.">{bankaFormu()}</PanelModal>
+        ) : null}
+        <details className="os-menu talep-menu">
+          <summary className="panel-secondary" aria-label="Diğer ekranlar">⋯</summary>
+          <div className="os-menu-list" role="menu">
+            {KANALLAR.filter((k) => !SUZGEC_KANALLARI.has(k.kod)).map((k) => (
+              <Link key={k.kod} className="os-menu-item" role="menuitem" href={`/panel/platform/tahsilat?kanal=${k.kod}`}>{k.ad}</Link>
+            ))}
+            <Link className="os-menu-item" role="menuitem" href="/panel/platform/payments">Ödeme onayları</Link>
+            <Link className="os-menu-item" role="menuitem" href="/panel/platform/billing">Abonelikler</Link>
+          </div>
+        </details>
       </div>
     </header>
 
@@ -356,206 +440,228 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
       </dl>
     </nav>
 
-    {/*
-      Sağdaki istatistik kartı kalktı (14.10.2026, iOS listesi): dört
-      kutusu şeritteki sayıların aynısıydı, kanal dağılımı çiplerin
-      yanında yazıyor, "platform faturası yok" da Faturalar sekmesinde.
-      Liste kartı tek başına, liste sayfası düzeninde.
-    */}
-    <section className="panel-card talep-bilgi" aria-label="Tahsilat listesi">
-      <div className="ekip-suzgec talep-suzgec">
-        {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
-            masaüstünde sarmalayıcı display:contents ile görünmez. */}
-        <div className="suzgec-ray">
-          {KANALLAR.map((k) => (
-            <Link key={k.kod} href={k.kod ? `/panel/platform/tahsilat?kanal=${k.kod}` : "/panel/platform/tahsilat"}
-              className={secili === k.kod ? "is-active" : undefined} aria-current={secili === k.kod ? "page" : undefined}>
-              {k.ad}
-              {k.kod === "havale" ? <small>{kanalSayisi("Havale/EFT")}</small> : k.kod === "kart" ? <small>{kanalSayisi("Kart (PayTR)")}</small> : k.kod === "bireysel" ? <small>{tahsilatlar.filter((t) => !t.organizationId).length}</small> : null}
-            </Link>
-          ))}
+    <section className="panel-card talep-bilgi" aria-label={ekran.baslik}>
+      {SUZGEC_KANALLARI.has(secili) ? (
+        <div className="ekip-suzgec talep-suzgec ek-arac">
+          <nav className="ek-segment" aria-label="Kanal">
+            {KANALLAR.filter((k) => SUZGEC_KANALLARI.has(k.kod)).map((k) => (
+              <Link key={k.kod} href={k.kod ? `/panel/platform/tahsilat?kanal=${k.kod}` : "/panel/platform/tahsilat"}
+                className={secili === k.kod ? "is-active" : undefined} aria-current={secili === k.kod ? "page" : undefined}>
+                {k.ad} <small>{kanalAdeti(k.kod)}</small>
+              </Link>
+            ))}
+          </nav>
         </div>
-      </div>
+      ) : null}
 
       {birimKarisik ? <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</KNot> : null}
 
       {secili === "banka" ? (
         <>
-          <div className="talep-bas-eylem">
-            <PanelModal triggerLabel="Yeni banka hesabı" triggerClassName="panel-primary" kicker="Banka hesapları" title="Yeni banka hesabı" basaridaKapan
-              description="Proformada ve müşterinin Havale / EFT sekmesinde görünür.">{bankaFormu()}</PanelModal>
-          </div>
           {bankaHesaplari.some((h) => h.is_active && !h.account_holder) ? <KNot ton="uyari">Hesap sahibi adı boş olan etkin hesap var: müşteri havalede alıcı adını yazamıyor ve proformada yalnızca banka adı görünüyor. Düzenle ile ekleyin.</KNot> : null}
           {bankaHesaplari.length ? (
-            <KListe>
-              {bankaHesaplari.map((h) => (
-                <KOge key={h.id} simge={h.bank_name}
-                  baslik={`${h.bank_name} · ${h.currency}`}
-                  alt={<><code>{ibanYazisi(h.iban)}</code>{` · ${h.account_holder || "hesap sahibi yazılmamış"} · sıra ${h.sort_order}`}</>}
-                  durum={h.is_active ? (h.account_holder ? { etiket: "Etkin", ton: "success" } : { etiket: "Hesap sahibi eksik", ton: "warning" }) : { etiket: "Pasif", ton: "neutral" }}
-                  sonu={<span className="k-proforma-eylem">
-                    <PanelModal triggerLabel="Düzenle" kicker="Banka hesapları" title={`${h.bank_name} hesabını düzenle`} basaridaKapan
-                      description="Değişiklik bundan sonra açılan proformalarda ve Havale / EFT sekmesinde görünür.">{bankaFormu(h)}</PanelModal>
-                    <form action={bankaHesabiDurumu}>
-                      <input type="hidden" name="id" value={h.id} />
-                      <input type="hidden" name="aktif" value={h.is_active ? "0" : "1"} />
-                      <button className="panel-secondary" type="submit">{h.is_active ? "Pasife al" : "Etkinleştir"}</button>
-                    </form>
-                  </span>}
-                />
-              ))}
-            </KListe>
-          ) : <KBos baslik="Banka hesabı yok" aciklama="Havaleyle ödeyecek müşteriler için en az bir hesap ekleyin; proformada ödeme bilgileri bölümü buradan dolar." />}
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="fn-banka">
+                <thead><tr><th>Banka</th><th>IBAN</th><th>Hesap sahibi</th><th>Sıra</th><th>Durum</th><th></th></tr></thead>
+                <tbody>
+                  {bankaHesaplari.map((h) => {
+                    const durum = h.is_active ? (h.account_holder ? { etiket: "Etkin", ton: "success" } : { etiket: "Hesap sahibi eksik", ton: "warning" }) : { etiket: "Pasif", ton: "neutral" };
+                    return (
+                      <tr key={h.id} className={h.is_active ? undefined : "is-pasif"}>
+                        <td data-label="Banka">{kisi(h.bank_name, h.currency, null, "kurum")}</td>
+                        <td data-label="IBAN"><code className="fn-iban">{ibanYazisi(h.iban)}</code></td>
+                        <td data-label="Hesap sahibi">{h.account_holder ? <span className="crm-table-title">{h.account_holder}</span> : <span className="k-ios-eksik">Yazılmamış</span>}</td>
+                        <td data-label="Sıra"><span className="crm-table-sub">{h.sort_order}</span></td>
+                        <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                        <td className="crm-table-actions">
+                          <span className="k-proforma-eylem">
+                            <PanelModal triggerLabel="Düzenle" kicker="Banka hesapları" title={`${h.bank_name} hesabını düzenle`} basaridaKapan
+                              description="Değişiklik bundan sonra açılan proformalarda ve Havale / EFT sekmesinde görünür.">{bankaFormu(h)}</PanelModal>
+                            <form action={bankaHesabiDurumu}>
+                              <input type="hidden" name="id" value={h.id} />
+                              <input type="hidden" name="aktif" value={h.is_active ? "0" : "1"} />
+                              <button className="panel-secondary" type="submit">{h.is_active ? "Pasife al" : "Etkinleştir"}</button>
+                            </form>
+                          </span>
+                        </td>
+                        <MobilSatir baslik={`${h.bank_name} · ${h.currency}`} durum={durum} alt={[ibanYazisi(h.iban), h.account_holder || "hesap sahibi yazılmamış"]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : bosKutu("Banka hesabı yok", "Havaleyle ödeyecek müşteriler için en az bir hesap ekleyin; proformada ödeme bilgileri bölümü buradan dolar.")}
         </>
       ) : secili === "proforma" ? (
-        <>
-          <div className="talep-bas-eylem">
-            <PanelModal triggerLabel="Yeni proforma" triggerClassName="panel-primary" kicker="Proforma" title="Yeni proforma" boy="genis"
-              description="Müşteriyi seçin; alıcı bilgileri kayıttan dolar. Kurum ArvoOS ve ArvoCal proformasını ArvoOS panelinde, ArvoLab proformasını ArvoLab'da görür ve yazdırır." basaridaKapan>
-              <ProformaFormu musteriler={proformaMusterileri} kisayollar={kisayollar} bugun={bugun} gecerlilik={onBesGunSonra(bugun)}
-                kdvOrani={VARSAYILAN_KDV_ORANI} action={proformaOlustur} />
-            </PanelModal>
+        proformalar.length ? (
+          <div className="talep-tablo">
+            <table className="crm-data-table" data-cols="fn-proforma">
+              <thead><tr><th>Proforma</th><th>Müşteri</th><th className="crm-col-date">Geçerlilik</th><th className="crm-col-amount">Tutar</th><th>Durum</th><th></th></tr></thead>
+              <tbody>
+                {proformalar.map((p) => {
+                  const gorunum = proformaGorunumu(p.durum, p.gecerlilik_tarihi, bugun);
+                  const kalemler = kalemleriCoz(p.kalemler);
+                  const secenekler = adaylar.get(p.id) ?? [];
+                  const belge = `/panel/platform/tahsilat/proforma/${p.id}`;
+                  const durum = { etiket: PROFORMA_DURUM_ADI[gorunum], ton: DURUM_TONU[gorunum] };
+                  return (
+                    <tr key={p.id} className={gorunum === "iptal" ? "is-pasif" : undefined}>
+                      <td data-label="Proforma">
+                        <Link className="crm-row-link" href={belge}>
+                          <span className="crm-table-title plt-mono">{p.proforma_no}</span>
+                          <span className="crm-table-sub">{[productName(p.product), kalemler.map((k) => k.aciklama).join(", ")].filter(Boolean).join(" · ")}</span>
+                        </Link>
+                      </td>
+                      <td data-label="Müşteri">
+                        <span className="crm-table-title" title={p.musteri_adi}>{p.musteri_adi}</span>
+                        {/* Kurumda unvanın yanında yetkili, abonede adın yanında e-posta. */}
+                        <span className="crm-table-sub">{[p.alici?.unvan && p.alici.adSoyad ? p.alici.adSoyad : null, p.alici?.eposta].filter(Boolean).join(" · ") || "—"}</span>
+                      </td>
+                      <td className="crm-col-date" data-label="Geçerlilik">{tarih(p.gecerlilik_tarihi)}<small>düzenleme {tarih(p.duzenleme_tarihi)}</small></td>
+                      <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{para(Number(p.toplam), p.para_birimi)}</span><small>KDV %{Number(p.kdv_orani)} dahil</small></td>
+                      <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                      <td className="crm-table-actions">
+                        {p.durum === "bekliyor" ? (
+                          <PanelModal triggerLabel="Ödemeyle eşleştir" kicker={p.proforma_no} title={`${p.musteri_adi} · ${para(Number(p.toplam), p.para_birimi)}`}
+                            description="Müşterinin bu proforma için yaptığı ödemeyi seçin. Tutarı tutan ödemeler başta; ödeme makbuzunda proforma numarası görünür." basaridaKapan>
+                            {secenekler.length ? (
+                              <form className="panel-form kayit-formu" action={proformaEsle}>
+                                <input type="hidden" name="id" value={p.id} />
+                                <label className="wide"><span>Ödeme<b className="req" aria-hidden="true">*</b></span>
+                                  <select name="odeme_id" required defaultValue={secenekler[0]?.tutarTutuyor ? secenekler[0].id : ""}>
+                                    <option value="" disabled>Seçin</option>
+                                    {secenekler.map((o) => (
+                                      <option key={o.id} value={o.id}>{tarih(o.tarih)} · {para(o.tutar, p.para_birimi)}{o.tutarTutuyor ? " · tutar tutuyor" : ""}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <div className="wide panel-form-actions kayit-formu-eylem"><p>Bir ödeme yalnızca bir proformayı kapatır.</p><button className="panel-primary" type="submit">Eşleştir</button></div>
+                              </form>
+                            ) : (
+                              <KNot>Bu müşterinin henüz eşlenmemiş bir ödemesi yok. Kurumun havalesi önce Ödeme onaylarından onaylanmalı.</KNot>
+                            )}
+                            <form className="panel-form kayit-formu" action={proformaIptal}>
+                              <input type="hidden" name="id" value={p.id} />
+                              <div className="wide panel-form-actions kayit-formu-eylem"><p>Müşteri ödemeyecekse proformayı iptal edin; numara korunur.</p><button className="panel-secondary" type="submit">Proformayı iptal et</button></div>
+                            </form>
+                          </PanelModal>
+                        ) : <span className="crm-row-chevron" aria-hidden="true">›</span>}
+                      </td>
+                      <MobilSatir href={belge} baslik={`${p.proforma_no} · ${p.musteri_adi}`} durum={durum}
+                        alt={[productName(p.product), para(Number(p.toplam), p.para_birimi), `son gün ${tarih(p.gecerlilik_tarihi)}`]} />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <SatirTiklama />
           </div>
-          {proformalar.length ? (
-            <KListe>
-              {proformalar.map((p) => {
-                const gorunum = proformaGorunumu(p.durum, p.gecerlilik_tarihi, bugun);
-                const kalemler = kalemleriCoz(p.kalemler);
-                const secenekler = adaylar.get(p.id) ?? [];
-                return (
-                  <KOge
-                    key={p.id}
-                    simge={p.musteri_adi}
-                    baslik={`${p.proforma_no} · ${productName(p.product)} · ${p.musteri_adi}`}
-                    /* Kurumda unvanın yanında yetkili, abonede adın yanında e-posta: eskiden yalnızca musteri_adi vardı. */
-                    alt={[p.alici?.unvan && p.alici.adSoyad ? p.alici.adSoyad : null, p.alici?.eposta, kalemler.map((k) => k.aciklama).join(", "), `${tarih(p.duzenleme_tarihi)} – ${tarih(p.gecerlilik_tarihi)}`].filter(Boolean).join(" · ")}
-                    durum={{ etiket: PROFORMA_DURUM_ADI[gorunum], ton: DURUM_TONU[gorunum] }}
-                    deger={para(Number(p.toplam), p.para_birimi)}
-                    degerAlt={`KDV %${Number(p.kdv_orani)} dahil`}
-                    /* Bekleyende eşleştirme düğmesi de var; satırın tamamı bağlantı olamıyor
-                       (KOge sonu verilince satırı bağlantı yapmıyor), belge düğmesi yanında. */
-                    href={`/panel/platform/tahsilat/proforma/${p.id}`}
-                    sonu={p.durum === "bekliyor" ? (<span className="k-proforma-eylem">
-                      <Link className="panel-secondary" href={`/panel/platform/tahsilat/proforma/${p.id}`}>Belge</Link>
-                      <PanelModal triggerLabel="Ödemeyle eşleştir" kicker={p.proforma_no} title={`${p.musteri_adi} · ${para(Number(p.toplam), p.para_birimi)}`}
-                        description="Müşterinin bu proforma için yaptığı ödemeyi seçin. Tutarı tutan ödemeler başta; ödeme makbuzunda proforma numarası görünür." basaridaKapan>
-                        {secenekler.length ? (
-                          <form className="panel-form kayit-formu" action={proformaEsle}>
-                            <input type="hidden" name="id" value={p.id} />
-                            <label className="wide"><span>Ödeme<b className="req" aria-hidden="true">*</b></span>
-                              <select name="odeme_id" required defaultValue={secenekler[0]?.tutarTutuyor ? secenekler[0].id : ""}>
-                                <option value="" disabled>Seçin</option>
-                                {secenekler.map((o) => (
-                                  <option key={o.id} value={o.id}>{tarih(o.tarih)} · {para(o.tutar, p.para_birimi)}{o.tutarTutuyor ? " · tutar tutuyor" : ""}</option>
-                                ))}
-                              </select>
-                            </label>
-                            <div className="wide panel-form-actions kayit-formu-eylem"><p>Bir ödeme yalnızca bir proformayı kapatır.</p><button className="panel-primary" type="submit">Eşleştir</button></div>
-                          </form>
-                        ) : (
-                          <KNot>Bu müşterinin henüz eşlenmemiş bir ödemesi yok. Kurumun havalesi önce Ödeme onaylarından onaylanmalı.</KNot>
-                        )}
-                        <form className="panel-form kayit-formu" action={proformaIptal}>
-                          <input type="hidden" name="id" value={p.id} />
-                          <div className="wide panel-form-actions kayit-formu-eylem"><p>Müşteri ödemeyecekse proformayı iptal edin; numara korunur.</p><button className="panel-secondary" type="submit">Proformayı iptal et</button></div>
-                        </form>
-                      </PanelModal>
-                    </span>) : null}
-                  />
-                );
-              })}
-            </KListe>
-          ) : (
-            <KBos baslik="Henüz proforma yok" aciklama="Ödeme almadan önce müşteriye proforma düzenleyin; müşteri ödedikten sonra burada ödemeyle eşleştirin, faturayı da tahsilatın yanından yükleyin." />
-          )}
-        </>
+        ) : bosKutu("Henüz proforma yok", "Ödeme almadan önce müşteriye proforma düzenleyin; müşteri ödedikten sonra burada ödemeyle eşleştirin, faturayı da tahsilatın yanından yükleyin.")
       ) : secili === "otomatik" ? (
         <>
-          <KKart baslik={`Açık otomatik yenilemeler (${sayi(acikYenilemeler.length)})`} aciklama="Kurumun onayıyla kayıtlı karttan her dönem sonunda çekilir; 3 gün önce hatırlatma gider.">
+          <header className="phr-bas fn-alt-bas"><h2>Açık otomatik yenilemeler <span className="pu-sayi">{sayi(acikYenilemeler.length)}</span></h2><small>Kayıtlı karttan her dönem sonunda çekilir; 3 gün önce hatırlatma gider.</small></header>
           {acikYenilemeler.length ? (
-            <KListe>
-              {acikYenilemeler.map((y) => (
-                <KOge key={`${y.organization_id}-${y.product}`} simge={kurumAdi(y.organization_id)}
-                  baslik={`${kurumAdi(y.organization_id)} · ${productName(y.product)}`}
-                  alt={`•••• ${y.paytr_kayitli_kartlar?.son4 ?? "????"} · onay ${tarih(y.onay_at)}${y.son_hata ? ` · son deneme: ${y.son_hata}` : ""}`}
-                  durum={y.deneme_sayisi > 0 ? { etiket: `${y.deneme_sayisi}. deneme başarısız`, ton: "warning" } : { etiket: "Açık", ton: "success" }} />
-              ))}
-            </KListe>
-          ) : <KBos baslik="Açık otomatik yenileme yok" aciklama="Kurum kartla öderken “Kartımı kaydet, aboneliğim otomatik yenilensin” seçeneğini işaretlerse burada görünür." />}
-          </KKart>
-          <KKart baslik="Son kartla ödeme denemeleri" aciklama="Kartla ödeme, kayıtlı kart ve otomatik yenileme; son elli deneme.">
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="fn-yenileme">
+                <thead><tr><th>Kurum</th><th>Kart</th><th className="crm-col-date">Onay</th><th>Durum</th></tr></thead>
+                <tbody>
+                  {acikYenilemeler.map((y) => {
+                    const durum = y.deneme_sayisi > 0 ? { etiket: `${y.deneme_sayisi}. deneme başarısız`, ton: "warning" } : { etiket: "Açık", ton: "success" };
+                    return (
+                      <tr key={`${y.organization_id}-${y.product}`}>
+                        <td data-label="Kurum">{kisi(kurumAdi(y.organization_id), productName(y.product), `/panel/platform/musteriler/${y.organization_id}`, "kurum")}</td>
+                        <td data-label="Kart"><span className="crm-table-title plt-mono">•••• {y.paytr_kayitli_kartlar?.son4 ?? "????"}</span>{y.son_hata ? <span className="crm-table-sub" title={y.son_hata}>{y.son_hata}</span> : null}</td>
+                        <td className="crm-col-date" data-label="Onay">{tarih(y.onay_at)}</td>
+                        <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                        <MobilSatir href={`/panel/platform/musteriler/${y.organization_id}`} baslik={kurumAdi(y.organization_id)} durum={durum}
+                          alt={[productName(y.product), `•••• ${y.paytr_kayitli_kartlar?.son4 ?? "????"}`, y.son_hata]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : bosKutu("Açık otomatik yenileme yok", "Kurum kartla öderken “Kartımı kaydet, aboneliğim otomatik yenilensin” seçeneğini işaretlerse burada görünür.")}
+
+          <header className="phr-bas fn-alt-bas"><h2>Son kartla ödeme denemeleri</h2><small>Kartla ödeme, kayıtlı kart ve otomatik yenileme; son elli deneme.</small></header>
           {kartIslemleri.length ? (
-            <KListe>
-              {kartIslemleri.map((i) => (
-                <KOge key={i.merchant_oid} simge={kurumAdi(i.payment_links?.payer_organization_id)}
-                  baslik={`${kurumAdi(i.payment_links?.payer_organization_id)} · ${productName(i.payment_links?.product ?? "arvoos")}`}
-                  alt={`${KART_TURU[i.tur] ?? i.tur} · ${tarih(i.created_at)} · ${i.merchant_oid}${i.hata_mesaji ? ` · ${i.hata_mesaji}` : ""}`}
-                  durum={KART_DURUMU[i.durum] ?? { etiket: i.durum, ton: "neutral" }}
-                  deger={para(Number(i.tutar), "TRY")} />
-              ))}
-            </KListe>
-          ) : <KBos baslik="Henüz kartla ödeme denemesi yok" aciklama="PayTR kart saklama açıldığında kurumların kartla ödemeleri ve otomatik çekimler burada listelenir." />}
-          </KKart>
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="fn-kart">
+                <thead><tr><th>Kurum</th><th>Tür</th><th className="crm-col-date">Tarih</th><th className="crm-col-amount">Tutar</th><th>Durum</th></tr></thead>
+                <tbody>
+                  {kartIslemleri.map((i) => {
+                    const kurum = i.payment_links?.payer_organization_id;
+                    const durum = KART_DURUMU[i.durum] ?? { etiket: i.durum, ton: "neutral" };
+                    return (
+                      <tr key={i.merchant_oid}>
+                        <td data-label="Kurum">{kisi(kurumAdi(kurum), productName(i.payment_links?.product ?? "arvoos"), kurum ? `/panel/platform/musteriler/${kurum}` : null, "kurum")}</td>
+                        <td data-label="Tür"><span className="crm-table-title">{KART_TURU[i.tur] ?? i.tur}</span><span className="crm-table-sub plt-mono" title={i.hata_mesaji ?? undefined}>{i.hata_mesaji ?? i.merchant_oid}</span></td>
+                        <td className="crm-col-date" data-label="Tarih">{tarih(i.created_at)}</td>
+                        <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{para(Number(i.tutar), "TRY")}</span></td>
+                        <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                        <MobilSatir href={kurum ? `/panel/platform/musteriler/${kurum}` : null} baslik={kurumAdi(kurum)} durum={durum}
+                          alt={[KART_TURU[i.tur] ?? i.tur, para(Number(i.tutar), "TRY"), tarih(i.created_at), i.hata_mesaji]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : bosKutu("Henüz kartla ödeme denemesi yok", "PayTR kart saklama açıldığında kurumların kartla ödemeleri ve otomatik çekimler burada listelenir.")}
         </>
       ) : secili === "fatura" ? (
         /* Yüklenen platform faturaları (son elli). Fatura elle kesilip her
            tahsilatın yanından yükleniyor; müşteri ArvoLab'da görüyor. */
         faturaListesi.length ? (
-          <KListe>
-            {faturaListesi.map((f) => (
-              <KOge
-                key={`${f.no}-${f.tarih}`}
-                simge={f.kim}
-                baslik={`Fatura ${f.no}`}
-                alt={`${f.kim} · ${tarih(f.tarih)}`}
-                sonu={f.url ? <a className="panel-secondary" href={f.url} target="_blank" rel="noreferrer noopener">PDF</a> : null}
-              />
-            ))}
-          </KListe>
-        ) : (
-          <KBos
-            baslik="Henüz fatura yüklenmedi"
-            aciklama="Faturalar elle kesiliyor. Tahsilat listesinde ödemenin yanındaki “Fatura yükle” ile PDF'i ekleyin; müşteri ArvoLab'daki Faturalar ve ödemeler bölümünde görür."
-          />
-        )
+          <div className="talep-tablo">
+            <table className="crm-data-table" data-cols="fn-fatura">
+              <thead><tr><th>Fatura</th><th>Müşteri</th><th className="crm-col-date">Tarih</th><th></th></tr></thead>
+              <tbody>
+                {faturaListesi.map((f) => (
+                  <tr key={`${f.no}-${f.tarih}`}>
+                    <td data-label="Fatura"><span className="crm-table-title plt-mono">{f.no}</span></td>
+                    <td data-label="Müşteri"><span className="crm-table-title">{f.kim}</span></td>
+                    <td className="crm-col-date" data-label="Tarih">{tarih(f.tarih)}</td>
+                    <td className="crm-table-actions">{f.url ? <a className="panel-secondary" href={f.url} target="_blank" rel="noreferrer noopener">PDF</a> : <span className="crm-table-sub">dosya açılamadı</span>}</td>
+                    <MobilSatir baslik={`Fatura ${f.no}`} alt={[f.kim, tarih(f.tarih)]} />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : bosKutu("Henüz fatura yüklenmedi", "Faturalar elle kesiliyor. Tahsilat listesinde ödemenin yanındaki “Fatura yükle” ile PDF'i ekleyin; müşteri ArvoLab'daki Faturalar ve ödemeler bölümünde görür.")
       ) : gorunen.length ? (
-        /* iOS listesi (14.10.2026): kim, kanal ve tarih tek satırda;
-           sağda tutar. Eskiden dört sütunlu tabloydu. */
-        <KListe>
-          {gorunen.map((t) => (
-            <KOge
-              key={t.anahtar}
-              href={t.organizationId ? `/panel/platform/musteriler/${t.organizationId}` : "/panel/platform/subscribers"}
-              simge={t.kim}
-              baslik={t.kim}
-              alt={`${t.kanal} · ${tarih(t.tarih)}`}
-              deger={para(t.amount, t.currency)}
-              sonu={
-                faturaHaritasi.get(t.anahtar) ? (
-                  <a className="panel-secondary" href={faturaHaritasi.get(t.anahtar)!.url ?? undefined} target="_blank" rel="noreferrer noopener">
-                    Fatura {faturaHaritasi.get(t.anahtar)!.no}
-                  </a>
-                ) : (
-                  <PanelModal triggerLabel="Fatura yükle" kicker="Platform faturası" title={`${t.kim} · ${para(t.amount, t.currency)}`}
-                    description="Kestiğiniz faturanın PDF'ini yükleyin; müşteri ArvoLab'daki Faturalar ve ödemeler bölümünde görür." basaridaKapan>
-                    <form className="panel-form kayit-formu" action={faturaYukle}>
-                      <input type="hidden" name="tur" value={t.tur} />
-                      <input type="hidden" name="odeme_id" value={t.id} />
-                      <label><span>Fatura numarası<b className="req" aria-hidden="true">*</b></span><input name="fatura_no" maxLength={60} required autoComplete="off" /></label>
-                      <label><span>Fatura tarihi<b className="req" aria-hidden="true">*</b></span><TarihSecici name="fatura_tarihi" required /></label>
-                      <label className="wide"><span>Fatura PDF<b className="req" aria-hidden="true">*</b></span><input name="dosya" type="file" accept="application/pdf" required /></label>
-                      <div className="wide panel-form-actions kayit-formu-eylem"><p>Yeniden yüklemek bu ödemenin faturasını değiştirir.</p><button className="panel-primary" type="submit">Faturayı yükle</button></div>
-                    </form>
-                  </PanelModal>
-                )
-              }
-            />
-
-          ))}
-        </KListe>
-      ) : (
-        <KBos baslik={secili ? "Bu kanalda tahsilat yok" : "Henüz tahsilat yok"} aciklama="Havale onayları, kart ödemeleri ve bireysel abonelikler burada toplanır." />
-      )}
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="fn-tahsilat">
+            <thead><tr><th>Müşteri</th><th>Kanal</th><th className="crm-col-date">Tarih</th><th className="crm-col-amount">Tutar</th><th className="fn-eylem-bas">Fatura</th></tr></thead>
+            <tbody>
+              {gorunen.map((t) => {
+                const href = t.organizationId ? `/panel/platform/musteriler/${t.organizationId}` : "/panel/platform/subscribers";
+                const fatura = faturaHaritasi.get(t.anahtar);
+                return (
+                  <tr key={t.anahtar}>
+                    <td data-label="Müşteri">{kisi(t.kim, t.tur === "abone" ? "Bireysel" : "Kurumsal", href, t.tur === "abone" ? "bireysel" : "kurum")}</td>
+                    <td data-label="Kanal"><span className="crm-table-title">{t.kanal}</span></td>
+                    <td className="crm-col-date" data-label="Tarih">{tarih(t.tarih)}</td>
+                    <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title cari-arti">{para(t.amount, t.currency)}</span></td>
+                    <td className="crm-table-actions">
+                      {fatura ? (
+                        <a className="panel-secondary" href={fatura.url ?? undefined} target="_blank" rel="noreferrer noopener">Fatura {fatura.no}</a>
+                      ) : faturaFormu(t)}
+                    </td>
+                    <MobilSatir href={href} baslik={t.kim} alt={[t.kanal, tarih(t.tarih)]}
+                      isaretler={[{ metin: para(t.amount, t.currency), ton: "basari" }]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <SatirTiklama />
+        </div>
+      ) : bosKutu(secili ? "Bu kanalda tahsilat yok" : "Henüz tahsilat yok", "Havale onayları, kart ödemeleri ve bireysel abonelikler burada toplanır.")}
     </section>
   </main>;
 }

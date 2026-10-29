@@ -3,13 +3,22 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
-import { ODEME_DURUMU, PAKET_ADI, para, tarihSaat } from "../bicim";
+import { KKart, KNot } from "../konsol-ui";
+import { basHarfleri, ODEME_DURUMU, PAKET_ADI, para, tarih, tarihSaat } from "../bicim";
+import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { enCok } from "@/lib/liste-istatistik";
 import { reviewBankTransferPayment } from "./actions";
 import { KararFormu } from "./karar-formu";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
 // plt-quote, plt-receipt, plt-mono, kiraci-baglanti hâlâ buradan.
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /* Durum etiketleri ORTAK (bicim.ts ODEME_DURUMU): burada ayrı bir harita
    vardı ve kısıtın izin verdiği dördüncü değeri ('canceled') tanımıyordu,
@@ -93,36 +102,42 @@ export default async function PaymentApprovalsPage() {
   // tuzak-tamam: ödeme yolu dağılımı bilerek yalnızca gösterilen son 30 karardan; kart başlığı da "son 30 karar" diyor.
   const gecmisKartla = sonuclananlar.filter((payment) => payment.payment_method === "paytr").length;
 
-  return <main className="plt talep cari">
+  const kisi = (ad: string, alt: string, href: string | null) => {
+    const ic = <>
+      <span className="ek-avatar" aria-hidden="true">{basHarfleri(ad)}</span>
+      <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span><span className="crm-table-sub">{alt}</span></span>
+    </>;
+    return href ? <Link className="crm-row-link ek-kisi" href={href}>{ic}</Link> : <span className="ek-kisi">{ic}</span>;
+  };
+  /* tuzak-tamam: ürün dağılımı bilerek yalnızca gösterilen son 30 karardan; kartın kapsamı da "son 30 karar" diyor. */
+  const urunDagilimi = enCok(sonuclananlar.map((payment) => productName(payment.product ?? "arvoos")), 5);
+
+  /*
+    PANELİN DİLİ (29.10.2026, konsol yeniden kurulurken). Karşılıksız
+    bildirimler ve sonuçlananlar iOS satırıydı; tutar, tarih ve not tek
+    satırın altına sıkışıyordu. Artık hizalı tablo. Bekleyen dekontlar
+    KART kalıyor: karar formu bir tablo satırına sığmıyor ve dekontu
+    incelerken bütün bilgiler bir arada durmalı.
+  */
+  return <main className="plt talep cari ekip finans-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · ÖDEME ONAYLARI</small>
-        <h1>Ödeme Onayları</h1>
+        <small className="panel-kicker">FİNANS</small>
+        <h1>Ödeme onayları</h1>
+        <p className="ek-alt">Kurumların havale bildirimleri ve PayTR&apos;nin işlenemeyen ödemeleri; onay lisansı açar ve dönemi uzatır.</p>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform/billing">Abonelikler</Link>
+        <Link className="panel-secondary" href="/panel/platform/tahsilat">Tahsilatlar</Link>
       </div>
     </header>
 
-    {/*
-      13.10.2026: dört StgWidget kutusu yerine panelin özet şeridi.
-      Konsol kendi tasarım dilini kullanıyordu (stg-widgets); aynı
-      kurucunun gün içinde gidip geldiği panel ekranları şerit
-      kullanıyor ve iki dil arasında geçiş, sayıları her seferinde
-      yeniden aramak demekti.
-
-      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "karşılıksız
-      bildirim yok" demek, satırın hiç olmamasından daha çok şey söyler.
-      Sayılar bölümlere bağlanıyor; şerit bakılıp geçilen bir kutu
-      değil, işin başladığı yer.
-    */}
+    {/* Dördü de her zaman çiziliyor: "karşılıksız bildirim yok" demek,
+        satırın hiç olmamasından daha çok şey söyler. */}
     <nav className="kayit-serit talep-serit" aria-label="Ödeme özeti">
       <dl>
         <div>
           <dt>İnceleme bekliyor</dt>
-          <dd className={incelenecekler.length ? "talep-uyari" : undefined}>
-            <a href="#bekleyen">{incelenecekler.length}</a>
-          </dd>
+          <dd className={incelenecekler.length ? "talep-uyari" : undefined}><a href="#bekleyen">{incelenecekler.length}</a></dd>
           <small>{incelenecekler.length ? `${para(pendingTotal, currency)} tutarında` : "Bekleyen dekont yok"}</small>
         </div>
         <div>
@@ -137,61 +152,58 @@ export default async function PaymentApprovalsPage() {
         </div>
         <div>
           <dt>Karşılıksız</dt>
-          <dd className={incidents.length ? "talep-uyari" : undefined}>
-            {incidents.length ? <a href="#karsiliksiz">{incidents.length}</a> : 0}
-          </dd>
+          <dd className={incidents.length ? "talep-uyari" : undefined}>{incidents.length ? <a href="#karsiliksiz">{incidents.length}</a> : 0}</dd>
           <small>{incidents.length ? "PayTR ödedi, kayıt oluşmadı" : "İşlenemeyen bildirim yok"}</small>
         </div>
       </dl>
     </nav>
 
-    <div className="talep-izgara personel-iki ekip-izgara">
-      {/* Sol sütunun kartları alt alta; .talep yalnızca aralarındaki boşluğu veriyor. */}
-      <div className="talep" style={{ minWidth: 0 }}>
-        {incidents.length ? (
-          <KKart
-            id="karsiliksiz"
-            baslik={`${incidents.length} ödeme bildirimi işlenemedi`}
-            aciklama="PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın."
-            sag={<span className="status-pill" data-tone="danger">Müdahale bekliyor</span>}
-          >
-            {/* iOS listesi (14.10.2026): sebep ve tutar sağda, açıklama,
-                PayTR numarası ve tarih tek satırlık özette. */}
-            <KListe>
-              {incidents.map((incident) => {
-                const href = incident.organizationId ? `/panel/platform/musteriler/${incident.organizationId}` : null;
-                const sebep = incidentLabels[incident.result] ?? incident.result;
-                return (
-                  <KOge
-                    key={incident.id}
-                    href={href}
-                    simge={incident.organizationName ?? "Kurum bilinmiyor"}
-                    baslik={incident.organizationName ?? "Kurum bilinmiyor"}
-                    alt={[incidentNotes[incident.result], incident.merchantOid, tarihSaat(incident.createdAt)].filter(Boolean).join(" · ")}
-                    durum={{ etiket: sebep, ton: "danger" }}
-                    deger={incident.paymentAmount !== null ? para(incident.paymentAmount) : "—"}
-                  />
-                );
-              })}
-            </KListe>
-          </KKart>
-        ) : null}
+    {/* Farklı para birimleri toplanamaz; toplamı doğru sanmaktansa
+        güvenilmez olduğunu söylüyoruz. */}
+    {birimKarisik ? (
+      <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar {currency} varsayımıyla yazıldı ve güvenilir değil.</KNot>
+    ) : null}
 
-        {/* Farklı para birimleri toplanamaz; toplamı doğru sanmaktansa
-            güvenilmez olduğunu söylüyoruz. */}
-        {birimKarisik ? (
-          <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar {currency} varsayımıyla yazıldı ve güvenilir değil.</KNot>
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <div className="fn-kartlar">
+        {incidents.length ? (
+          <section className="panel-card talep-bilgi" id="karsiliksiz" aria-label="İşlenemeyen ödeme bildirimleri">
+            <header className="phr-bas fn-alt-bas">
+              <h2>{incidents.length} ödeme bildirimi işlenemedi <span className="status-pill" data-tone="danger">Müdahale bekliyor</span></h2>
+              <small>PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın.</small>
+            </header>
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="fn-karsiliksiz">
+                <thead><tr><th>Kurum</th><th>Sebep</th><th className="crm-col-date">Tarih</th><th className="crm-col-amount">Tutar</th></tr></thead>
+                <tbody>
+                  {incidents.map((incident) => {
+                    const href = incident.organizationId ? `/panel/platform/musteriler/${incident.organizationId}` : null;
+                    const ad = incident.organizationName ?? "Kurum bilinmiyor";
+                    const sebep = incidentLabels[incident.result] ?? incident.result;
+                    return (
+                      <tr key={incident.id}>
+                        <td data-label="Kurum">{kisi(ad, incident.merchantOid, href)}</td>
+                        <td data-label="Sebep"><span className="status-pill" data-tone="danger">{sebep}</span><small title={incidentNotes[incident.result]}>{incidentNotes[incident.result]}</small></td>
+                        <td className="crm-col-date" data-label="Tarih">{tarihSaat(incident.createdAt)}</td>
+                        <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{incident.paymentAmount !== null ? para(incident.paymentAmount) : "—"}</span></td>
+                        <MobilSatir href={href} baslik={ad} durum={{ etiket: sebep, ton: "danger" }}
+                          alt={[incident.paymentAmount !== null ? para(incident.paymentAmount) : null, tarihSaat(incident.createdAt), incident.merchantOid]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          </section>
         ) : null}
 
         {/*
-          Bekleyenler kart, sonuçlananlar kısa liste. Eskiden yüz bildirimin
-          hepsi tam kart olarak çiziliyordu; bugün yapılacak işi (dört bekleyen
-          dekont) bulmak için doksan altı sonuçlanmış kartı geçmek gerekiyordu.
-
-          Her bekleyen ödeme kendi panel kartı: karar formu tablo satırına
-          sığmıyor, dekontu incelerken de bütün bilgiler bir arada olmalı.
+          Bekleyenler kart, sonuçlananlar tablo. Eskiden yüz bildirimin
+          hepsi tam kart olarak çiziliyordu; bugün yapılacak işi bulmak
+          için doksan altı sonuçlanmış kartı geçmek gerekiyordu.
         */}
-        <div id="bekleyen">
+        <div id="bekleyen" className="fn-kartlar">
           {incelenecekler.length ? incelenecekler.map((payment) => {
             const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
             const account = Array.isArray(payment.platform_bank_accounts) ? payment.platform_bank_accounts[0] : payment.platform_bank_accounts;
@@ -215,9 +227,8 @@ export default async function PaymentApprovalsPage() {
                 aciklama={`${organization?.slug ?? "kurum"} · tutarın hesaba geçtiğini doğrulayın; onay lisansı açar ve dönemi uzatır.`}
                 sag={<>
                   <span className="status-pill" data-tone={ODEME_DURUMU.pending.ton}>{ODEME_DURUMU.pending.ad}</span>
-                  {/* Dekontu incelerken kiracının tamamına bakmak gerekebilir:
-                      lisansı ne durumda, kaç kullanıcısı var. */}
-                  <Link className="kiraci-baglanti" href={`/panel/platform/musteriler/${payment.organization_id}`}>Müşteri →</Link>
+                  {/* Dekontu incelerken kiracının tamamına bakmak gerekebilir. */}
+                  <Link className="pu-tumu" href={`/panel/platform/musteriler/${payment.organization_id}`}>Müşteri kartı</Link>
                 </>}
               >
                 <dl className="talep-liste talep-liste--iki">
@@ -227,8 +238,6 @@ export default async function PaymentApprovalsPage() {
                       <dd className={deger && mono ? "plt-mono" : undefined}>{deger ? deger : <em>Belirtilmedi</em>}</dd>
                     </div>
                   ))}
-                  {/* Dekont incelemenin asıl belgesi; ayrı bir düğme yerine
-                      bilgi listesinin son satırı. */}
                   <div>
                     <dt>Dekont</dt>
                     <dd>{payment.payment_method === "paytr"
@@ -243,69 +252,69 @@ export default async function PaymentApprovalsPage() {
                   <KNot ton="tehlike"><b>Beklenenle uyuşmuyor.</b>{farklar.map((f) => <span key={f}><br />{f}</span>)}</KNot>
                 ) : null}
                 <div className="talep-not">
-                  <KararFormu paymentId={payment.id} kurumAdi={kurumAdi} tutar={tutar} farklar={denetimler.get(payment.id)?.farklar ?? []} kaydet={reviewBankTransferPayment} />
+                  <KararFormu paymentId={payment.id} kurumAdi={kurumAdi} tutar={tutar} farklar={farklar} kaydet={reviewBankTransferPayment} />
                 </div>
               </KKart>
             );
           }) : (
-            /*
-              KART BAŞLIĞI BÖLÜMÜN ADI, BOŞLUĞUN İLANI DEĞİL (15.10.2026).
-              Başlık "Bekleyen dekont yok" diyor, hemen içindeki kutu da
-              "İncelenecek dekont yok" — aynı cümle üst üste iki kez
-              yazılıyordu. Boşluğu kutu söyler; kartın işi nereye
-              baktığını söylemek.
-            */
-            <KKart baslik="Bekleyen dekontlar">
-              <KBos baslik="İncelenecek dekont yok" aciklama="Kurumlar panelden havale bildirdiğinde burada görünür." />
-            </KKart>
+            /* Başlık bölümün adı, boşluğun ilanı değil (15.10.2026). */
+            <section className="panel-card talep-bilgi" aria-label="Bekleyen dekontlar">
+              <header className="phr-bas fn-alt-bas"><h2>Bekleyen dekontlar</h2></header>
+              <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>İncelenecek dekont yok</h2><p>Kurumlar panelden havale bildirdiğinde burada görünür.</p></div>
+            </section>
           )}
         </div>
 
         {sonuclananlar.length ? (
-          <KKart
-            id="gecmis" baslik="Sonuçlanan bildirimler"
-            aciklama="Son 30 karar. Dekontun kendisine kiracı dosyasından ulaşılır."
-            sag={<span className="status-pill">{sonuclananlar.length} kayıt</span>}
-          >
-            {/* iOS listesi (14.10.2026): ürün, ödeme yolu, karar tarihi ve
-                not özette; sağda durum ve tutar. */}
-            <KListe>
-              {sonuclananlar.map((payment) => {
-                const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
-                const { ad: etiket, ton: tone } = ODEME_DURUMU[payment.status] ?? { ad: payment.status, ton: "neutral" as const };
-                const href = `/panel/platform/musteriler/${payment.organization_id}`;
-                const yol = payment.payment_method === "paytr" ? "Kartla" : "Havale";
-                const tutar = para(Number(payment.amount), payment.currency);
-                const kararTarihi = tarihSaat(payment.reviewed_at ?? payment.created_at);
-                return (
-                  <KOge
-                    key={payment.id}
-                    href={href}
-                    simge={organization?.name ?? "Kurum"}
-                    baslik={organization?.name ?? "Kurum"}
-                    alt={[productName(payment.product ?? "arvoos"), yol, kararTarihi, payment.review_note].filter(Boolean).join(" · ")}
-                    durum={{ etiket, ton: tone }}
-                    deger={tutar}
-                  />
-                );
-              })}
-            </KListe>
-          </KKart>
+          <section className="panel-card talep-bilgi" id="gecmis" aria-label="Sonuçlanan bildirimler">
+            <header className="phr-bas fn-alt-bas">
+              <h2>Sonuçlanan bildirimler <span className="pu-sayi">{sonuclananlar.length}</span></h2>
+              <small>Son 30 karar. Dekontun kendisine müşteri kartından ulaşılır.</small>
+            </header>
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="fn-gecmis">
+                <thead><tr><th>Kurum</th><th>Ürün</th><th className="crm-col-date">Karar</th><th className="crm-col-amount">Tutar</th><th>Durum</th></tr></thead>
+                <tbody>
+                  {sonuclananlar.map((payment) => {
+                    const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
+                    const { ad: etiket, ton } = ODEME_DURUMU[payment.status] ?? { ad: payment.status, ton: "neutral" as const };
+                    const href = `/panel/platform/musteriler/${payment.organization_id}`;
+                    const yol = payment.payment_method === "paytr" ? "Kartla" : "Havale";
+                    const ad = organization?.name ?? "Kurum";
+                    return (
+                      <tr key={payment.id} className={payment.status === "approved" ? undefined : "is-pasif"}>
+                        <td data-label="Kurum">{kisi(ad, yol, href)}</td>
+                        <td data-label="Ürün"><span className="crm-table-title">{productName(payment.product ?? "arvoos")}</span>{payment.review_note ? <small title={payment.review_note}>{payment.review_note}</small> : null}</td>
+                        <td className="crm-col-date" data-label="Karar">{tarih(payment.reviewed_at ?? payment.created_at)}</td>
+                        <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{para(Number(payment.amount), payment.currency)}</span></td>
+                        <td data-label="Durum"><span className="status-pill" data-tone={ton}>{etiket}</span></td>
+                        <MobilSatir href={href} baslik={ad} durum={{ etiket, ton }}
+                          alt={[productName(payment.product ?? "arvoos"), para(Number(payment.amount), payment.currency), tarih(payment.reviewed_at ?? payment.created_at), payment.review_note]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          </section>
         ) : null}
       </div>
 
-      {/*
-        Sağ sütun (14.10.2026, iOS listesi): dört kutu ve "Bildirim durumu"
-        şeritteki sayıların aynısıydı; kalan yalnızca başka yerde olmayan
-        ödeme yolu dağılımı.
-      */}
+      {/* Sağ sütun: Ekip ve Müşteriler listesindeki sekmeli istatistik kartı. */}
       <div className="liste-sag">
-        <KKart baslik="Ödeme yolu" aciklama="Son 30 karar">
-          <KListe>
-            <KOge baslik="Havale / EFT" deger={String(sonuclananlar.length - gecmisKartla)} />
-            <KOge baslik="Kartla (PayTR)" deger={String(gecmisKartla)} />
-          </KListe>
-        </KKart>
+        <TalepAkis kimlik="odeme-sag" sinif="ek-sag" etiket="Ödeme istatistikleri" sekmeler={["İstatistikler"]}>
+          <IstatistikKarti
+            kapsam="son 30 karar"
+            kutular={[
+              { ad: "Havale / EFT", deger: String(sonuclananlar.length - gecmisKartla), alt: "son 30 karar" },
+              { ad: "Kartla (PayTR)", deger: String(gecmisKartla), alt: "son 30 karar" },
+              { ad: "Onaylanan", deger: String(onaylilar.length), alt: "tüm zamanlar" },
+              { ad: "Reddedilen", deger: String(rejected), alt: "tüm zamanlar", ton: rejected ? "uyari" : undefined },
+            ]}
+            gruplar={[{ baslik: "Ürüne göre", satirlar: urunDagilimi.map(([ad, adet]) => ({ ad, adet })) }]}
+          />
+        </TalepAkis>
       </div>
     </div>
   </main>;
