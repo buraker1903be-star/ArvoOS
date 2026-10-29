@@ -7,15 +7,15 @@
 /* Liste tablosu ilk hücredeki bağlantıyı display:block yapıyor
    (kayit-detay.css); simge metnin üstüne düşüyordu. Personel
    tablosundaki kuralın aynısı, finansın ilk hücreleri için. */
-.os-root :is(.finans-sayfa,.urun-sayfa) .talep-tablo .crm-data-table td:first-child .ek-kisi{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--sp-3);text-align:left;min-width:0}
-.os-root :is(.finans-sayfa,.urun-sayfa) .talep-tablo .crm-data-table thead th:first-child{width:auto}
-.os-root :is(.finans-sayfa,.urun-sayfa) .talep-tablo .crm-data-table td:first-child{min-width:190px}
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .talep-tablo .crm-data-table td:first-child .ek-kisi{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--sp-3);text-align:left;min-width:0}
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .talep-tablo .crm-data-table thead th:first-child{width:auto}
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .talep-tablo .crm-data-table td:first-child{min-width:190px}
 /* Kurum köşeli, kişi yuvarlak (Müşteriler listesiyle aynı ayrım). */
-:is(.finans-sayfa,.urun-sayfa) .ek-avatar:not([data-tur="bireysel"]){border-radius:var(--r-md)}
-.os-root :is(.finans-sayfa,.urun-sayfa) .talep-tablo .crm-data-table td small{display:block;color:var(--muted);font-size:var(--fs-micro)}
+:is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .ek-avatar:not([data-tur="bireysel"]){border-radius:var(--r-md)}
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .talep-tablo .crm-data-table td small{display:block;color:var(--muted);font-size:var(--fs-micro)}
 .fn-iban{font-size:var(--fs-sm);white-space:nowrap}
-.os-root :is(.finans-sayfa,.urun-sayfa) .crm-table-actions .k-proforma-eylem{justify-content:flex-end}
-.os-root :is(.finans-sayfa,.urun-sayfa) .crm-table-actions{white-space:nowrap}
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .crm-table-actions .k-proforma-eylem{justify-content:flex-end}
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .crm-table-actions{white-space:nowrap}
 
 /* Kartla ve otomatik: iki tablo alt alta, başlıklarıyla. Liste sayfası
    kartın tek tablosunu kaydırıyor; burada iki tablo var, kart kayar. */
@@ -37,11 +37,36 @@
 .fn-urunler>span[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
 .fn-urunler>span[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
 .fn-urunler>span[data-tone="info"]{background:var(--primary-soft);color:var(--primary-strong)}
-.os-root :is(.finans-sayfa,.urun-sayfa) .ek-arac{row-gap:var(--sp-2)}
-.os-root :is(.finans-sayfa,.urun-sayfa) .crm-data-table th.fn-eylem-bas{text-align:right}
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .ek-arac{row-gap:var(--sp-2)}
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .crm-data-table th.fn-eylem-bas{text-align:right}
 /* Ürünler: tablonun altındaki tanım notu (kiracı, gelir, kullanıcı). */
 .os-root .ur-dipnot{flex:none;margin:var(--sp-3) 0 0}
 .ur-tutar{flex:none;display:flex;flex-direction:column;align-items:flex-end;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
 .ur-tutar small{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
 /* Fiyat listesi: taslak kutusu yanındaki düğmelerle aynı boyda. */
 .os-root .urun-sayfa .plt-fiyat-form input{min-height:40px;width:120px;padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--r-md);font-variant-numeric:tabular-nums}
+
+/* Sistem sağlığı (29.10.2026): beş sekmeli tek kart. Sekme gövdesi kendi
+   boyunda (kayıt detayındaki boy tavanı burada içeriği kesiyordu), sayfa
+   kayar; her sekmede başlıklı bir-iki tablo alt alta. */
+.os-root .sy-kart{margin:0;min-width:0}
+.os-root .sy-kart .talep-akis-panel{max-height:none;min-height:0}
+.os-root .sy-kart .talep-akis-panel>section{display:flex;flex-direction:column;padding:var(--sp-4) var(--sp-5) var(--sp-5)}
+.os-root .sy-kart .talep-tablo.fn-ic-tablo{margin:0 calc(var(--sp-5) * -1)}
+.os-root .sistem-sayfa .crm-empty-state{margin:0}
+.sy-ozet{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4)}
+@media (max-width:760px){
+  .os-root .sy-kart .talep-akis-sekmeler{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .os-root .sy-kart .talep-akis-sekmeler>*{flex:none}
+  .os-root .sy-kart .talep-akis-panel>section{padding:var(--sp-3)}
+  .os-root .sy-kart .talep-tablo.fn-ic-tablo{margin:0 calc(var(--sp-3) * -1)}
+}
+.os-root main.liste-sayfa.sistem-sayfa .talep-bilgi>.k-not{flex:none;margin-top:var(--sp-3)}
+/* Bölüm başlıkları kartın başlığı değil, tablonun adı: kart başlığı
+   boyunda (17px) iki tablolu sekmede hangisinin kart olduğu karışıyordu. */
+.os-root :is(.finans-sayfa,.urun-sayfa,.sistem-sayfa) .fn-alt-bas h2{font-size:var(--fs-base);font-weight:var(--fw-semibold)}
+/* Sekme içindeki boş durum küçük: iki bölümlü sekmede büyük kutu ikinci
+   bölümü ekranın altına itiyordu. */
+.os-root .sy-kart .crm-empty-state{min-height:0;gap:var(--sp-1);padding:var(--sp-4) var(--sp-3)}
+.os-root .sy-kart .crm-empty-state h2{font-size:var(--fs-sm)}
+.os-root .sy-kart .crm-empty-state p{font-size:var(--fs-sm)}

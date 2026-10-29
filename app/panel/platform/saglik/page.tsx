@@ -13,9 +13,17 @@ import { musteriMi } from "@/lib/kurum-turu";
 import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { cronAralikMetni, cronDurumlari, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
-import { PAKET_ADI, gecenSure, para, sayi, tarihSaat } from "../bicim";
-import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
+import type { ReactNode } from "react";
+import { basHarfleri, PAKET_ADI, gecenSure, para, sayi, tarihSaat } from "../bicim";
+import { KNot } from "../konsol-ui";
+import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /*
   SİSTEM SAĞLIĞI (14.10.2026).
@@ -274,11 +282,52 @@ export default async function SistemSagligiPage() {
      bölümlerin toplamı ayrışırsa rozet yanıltıcı olur. */
   const toplamSorun = krediSonucu.veri.length + cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length;
 
-  return <main className="plt talep cari">
+  const kisi = (ad: string, alt: string, href: string | null) => {
+    const ic = <>
+      <span className="ek-avatar" aria-hidden="true">{basHarfleri(ad)}</span>
+      <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span><span className="crm-table-sub" title={alt}>{alt}</span></span>
+    </>;
+    return href ? <Link className="crm-row-link ek-kisi" href={href}>{ic}</Link> : <span className="ek-kisi">{ic}</span>;
+  };
+  const bos = (baslik: string, aciklama: string) => (
+    <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
+  );
+  const bolumBasi = (baslik: string, aciklama: ReactNode) => (
+    <header className="phr-bas fn-alt-bas"><h2>{baslik}</h2><small>{aciklama}</small></header>
+  );
+
+  /*
+    TEK SEKMELİ KART (29.10.2026, konsol yeniden kurulurken). Sekiz bölüm
+    alt alta sekiz karttı ve sayfa 3.000 pikseli geçiyordu: "kota sorunu
+    var mı" sorusunun yanıtı beşinci kartın içinde, ekranın altındaydı.
+    Artık beş sekme (Zamanlanmış işler · Köprü ve kopyalar · Kota ve
+    limitler · Kurulum · Ödeme ve kredi), her birinin adında açık sorun
+    sayısı; sayfa ilk sorunlu sekmeyle açılıyor. Sağda sorun özeti.
+    Sekmeler istemci tarafında: bütün veri zaten sunucuda okunuyor,
+    sekme değişince yeniden okumaya gerek yok.
+
+    Satırlar iOS satırı yerine Finans ve Müşteriler'deki hizalı tablo.
+  */
+  const cronSorunAdedi = cronHatasi ? 1 : cronSorun.length;
+  const kopruSorunu = kopukKopru + bayatKopyalar.length;
+  const kotaSorunu = kotalar.length + limitSapanlar.length;
+  const kurulumSorunu = kurulumHatalari.length;
+  const odemeSorunu = krediSonucu.veri.length + odemeOlaylari.length + (krediSonucu.hata ? 1 : 0);
+  const sekmeler: [string, number][] = [
+    ["Zamanlanmış işler", cronSorunAdedi],
+    ["Köprü ve kopyalar", kopruSorunu],
+    ["Kota ve limitler", kotaSorunu],
+    ["Kurulum", kurulumSorunu],
+    ["Ödeme ve kredi", odemeSorunu],
+  ];
+  const ilkSorunlu = Math.max(0, sekmeler.findIndex(([, adet]) => adet > 0));
+
+  return <main className="plt talep cari ekip sistem-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · SİSTEM SAĞLIĞI</small>
-        <h1>Sistem Sağlığı</h1>
+        <small className="panel-kicker">SİSTEM</small>
+        <h1>Sistem sağlığı</h1>
+        <p className="ek-alt">Zamanlanmış işler, ürün köprüleri, kota, kurulum ve ödeme; açık sorunlar sekmelerin adında.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/kurulumlar">Kurulumlar</Link>
@@ -294,7 +343,7 @@ export default async function SistemSagligiPage() {
             {okunamayan.length ? "—" : sayi(toplamSorun)}
           </dd>
           <small>{okunamayan.length ? "Bazı kayıtlar okunamadı"
-            : toplamSorun ? "Aşağıda bölüm bölüm"
+            : toplamSorun ? "Aşağıda sekme sekme"
             : "Her şey yolunda"}</small>
         </div>
         <div>
@@ -329,209 +378,263 @@ export default async function SistemSagligiPage() {
       </dl>
     </nav>
 
-    {/* Okunamayan sorgu en üstte: aşağıdaki bölümlerin boş görünmesinin
+    {/* Okunamayan sorgu en üstte: aşağıdaki sekmelerin boş görünmesinin
         sebebi burada yazılı olsun (yukarıdaki nota bakın). */}
     {okunamayan.length ? (
-      <KKart baslik="Bazı kayıtlar okunamadı" aciklama="Aşağıdaki bölümler eksik olabilir; boş görünmeleri “sorun yok” demek değil.">
-        <KListe>
-          {okunamayan.map(([ad, hata]) => (
-            <KOge key={ad} baslik={ad} alt={hata.message} durum={{ etiket: "Okunamadı", ton: "danger" }} />
-          ))}
-        </KListe>
-        <KNot ton="tehlike">
-          Kiracı listesi okunamazsa kota, limit sapması ve bayat kopya bölümleri boş çıkar. Sayfayı yenileyin;
-          sürerse veritabanı erişimini denetleyin.
-        </KNot>
-      </KKart>
+      <KNot ton="tehlike">
+        <b>Bazı kayıtlar okunamadı; aşağıdaki sekmeler eksik olabilir, boş görünmeleri “sorun yok” demek değil.</b>
+        {okunamayan.map(([ad, hata]) => <span key={ad}><br />{ad}: {hata.message}</span>)}
+      </KNot>
     ) : null}
 
-    {/* Kiracıya bağlı satırlar kiracının ekranına gider (ok sütunu); köprü
-        ve ödeme bildirimi satırlarının açılacak bir ekranı yok.
-        iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): beş bölüm de sütun
-        başlıksız tek satır — kiracı simgesi, başlık, altında tek satır
-        özet, sağda durum ve değer. Eskiden üç-beş sütunlu tablolardı
-        (KTablo + MobilSatir), kurum adları ikiye kırılıyordu. */}
-    {/* ZAMANLANMIŞ İŞLER EN BAŞTA: aşağıdaki bölümlerin çoğu bunların
-        BELİRTİSİ. Posta eşitlemesi durduğunda kullanıcı "postalar
-        gelmiyor" diyor, köprü işi durduğunda "ürün kopyası bayat"
-        görünüyor; sebep burada yazılı. */}
-    <KKart baslik="Zamanlanmış işler"
-      aciklama="Ekosistemi taşıyan işlerin hiçbiri koştuğunu kaydetmiyordu: biri sessizce dursa belirti kullanıcıda çıkıyordu. Sayı ve aralık vercel.json'dan.">
-      {cronHatasi ? (
-        <KNot ton="tehlike">Koşma kayıtları okunamadı ({cronHatasi.message}) — &quot;sorun yok&quot; demek değil.</KNot>
-      ) : (
-        <KListe>
-          {cronDurum.map((is) => {
-            const sorunlu = is.durum === "gecikti" || is.durum === "dustu";
-            const hata = cronHataMetni(is.ayrinti ?? null);
-            return (
-              <KOge key={is.yol} baslik={is.ad}
-                alt={is.durum === "hic"
-                  ? "Koşma kaydı tutma bugün başladı; ilk koşmada yazılacak."
-                  : sorunlu ? (hata ?? is.aciklama) : is.aciklama}
-                etiketler={[{ etiket: cronAralikMetni(is.aralikDk), ton: is.aralikDk === null ? "warning" : "neutral" }]}
-                durum={CRON_DURUM[is.durum]}
-                /* Hiç koşmamış işte "1 sa önce · en son koşma" yazmak yanlış:
-                   o süre kayıt tutmanın yaşı, işin koşma zamanı değil. */
-                deger={is.sonCalisma ? gecenSure(is.gecikmeDk ?? 0) : "—"}
-                degerAlt={is.sonCalisma ? "en son koşma" : is.durum === "gecikti" ? "hiç koşmadı" : "kayıt bekleniyor"} />
-            );
-          })}
-        </KListe>
-      )}
-    </KKart>
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <TalepAkis kimlik="saglik" sinif="sy-kart" etiket="Sistem sağlığı" baslangic={ilkSorunlu}
+        sekmeler={sekmeler.map(([ad, adet]) => (adet ? `${ad} · ${adet}` : ad))}>
+        {/* ZAMANLANMIŞ İŞLER İLK SEKME: öteki sekmelerin çoğu bunların
+            BELİRTİSİ. Posta eşitlemesi durduğunda kullanıcı "postalar
+            gelmiyor" diyor, köprü işi durduğunda "ürün kopyası bayat". */}
+        <section>
+          {bolumBasi("Zamanlanmış işler", "Her iş koştuğunu kaydediyor; beklenen aralık vercel.json'dan.")}
+          {cronHatasi ? (
+            <KNot ton="tehlike">Koşma kayıtları okunamadı ({cronHatasi.message}) — &quot;sorun yok&quot; demek değil.</KNot>
+          ) : (
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="sy-cron">
+                <thead><tr><th>İş</th><th>Aralık</th><th className="crm-col-date">En son koşma</th><th>Durum</th></tr></thead>
+                <tbody>
+                  {cronDurum.map((is) => {
+                    const sorunlu = is.durum === "gecikti" || is.durum === "dustu";
+                    const hata = cronHataMetni(is.ayrinti ?? null);
+                    const alt = is.durum === "hic" ? "Koşma kaydı tutma bugün başladı; ilk koşmada yazılacak." : sorunlu ? (hata ?? is.aciklama) : is.aciklama;
+                    return (
+                      <tr key={is.yol}>
+                        <td data-label="İş"><span className="crm-table-title">{is.ad}</span><span className="crm-table-sub" title={alt}>{alt}</span></td>
+                        <td data-label="Aralık"><span className={is.aralikDk === null ? "talep-uyari" : "crm-table-sub"}>{cronAralikMetni(is.aralikDk)}</span></td>
+                        {/* Hiç koşmamış işte "1 sa önce" yazmak yanlış: o süre kayıt tutmanın yaşı. */}
+                        <td className="crm-col-date" data-label="En son koşma">{is.sonCalisma ? gecenSure(is.gecikmeDk ?? 0) : "—"}<small>{is.sonCalisma ? "önce" : is.durum === "gecikti" ? "hiç koşmadı" : "kayıt bekleniyor"}</small></td>
+                        <td data-label="Durum"><span className="status-pill" data-tone={CRON_DURUM[is.durum].ton}>{CRON_DURUM[is.durum].etiket}</span></td>
+                        <MobilSatir baslik={is.ad} durum={CRON_DURUM[is.durum]} alt={[cronAralikMetni(is.aralikDk), is.sonCalisma ? `${gecenSure(is.gecikmeDk ?? 0)} önce` : null, sorunlu ? hata : null]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
-    <KKart baslik="Ürün köprüleri"
-      aciklama="Köprü koptuğunda hata yalnızca karşı taraftaki günlükte kalıyor; kurucu aylar sonra fark ediyordu.">
-      <KListe>
-        {kopruler.map((kopru) => (
-          <KOge key={kopru.ad} baslik={kopru.ad} alt={kopru.not}
-            durum={{ etiket: kopru.bozuk ? "Yanıt vermiyor" : "Sağlıklı", ton: kopru.bozuk ? "danger" : "success" }} />
-        ))}
-      </KListe>
-    </KKart>
+        <section>
+          {bolumBasi("Ürün köprüleri", "Köprü koptuğunda hata yalnızca karşı taraftaki günlükte kalıyor; kurucu aylar sonra fark ediyordu.")}
+          <div className="talep-tablo fn-ic-tablo">
+            <table className="crm-data-table" data-cols="sy-kopru">
+              <thead><tr><th>Köprü</th><th>Ayrıntı</th><th>Durum</th></tr></thead>
+              <tbody>
+                {kopruler.map((kopru) => {
+                  const durum = { etiket: kopru.bozuk ? "Yanıt vermiyor" : "Sağlıklı", ton: kopru.bozuk ? "danger" : "success" };
+                  return (
+                    <tr key={kopru.ad}>
+                      <td data-label="Köprü"><span className="crm-table-title">{kopru.ad}</span></td>
+                      <td data-label="Ayrıntı"><span className="crm-table-sub" title={kopru.not}>{kopru.not}</span></td>
+                      <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                      <MobilSatir baslik={kopru.ad} durum={durum} alt={[kopru.not]} />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-    <KKart baslik="Ürün kopyaları"
-      aciklama={<>
-        Köprü sağlıklıyken de kopya bayatlayabiliyor: AkademikMerkez&apos;de altı gün eski kaldı ve hiçbir ekran göstermiyordu.
-        Düzeltme kiracının lisans ekranında: &quot;Ürüne yeniden yansıt&quot;.
-      </>}>
-      {bayatKopyalar.length ? (
-        <KListe>
-          {bayatKopyalar.map((kayit) => {
-            const ad = kurumAdi.get(kayit.organizationId) ?? kayit.organizationId;
-            return (
-              <KOge
-                key={`${kayit.organizationId}-${kayit.product}`}
-                href={`/panel/platform/musteriler/${kayit.organizationId}?pencere=lisanslar`}
-                simge={ad}
-                baslik={ad}
-                alt={`${kayit.product} · konsolda ${kayit.konsolDurumu}`}
-                durum={{ etiket: `Üründe ${kayit.kopyaDurumu}`, ton: "danger" }}
-              />
-            );
-          })}
-        </KListe>
-      ) : <KBos baslik="Bayat kopya yok" aciklama="Kopyası konsoldan farklı erişim veren kiracı yok." />}
-    </KKart>
+          {bolumBasi("Ürün kopyaları", <>Köprü sağlıklıyken de kopya bayatlayabiliyor. Düzeltme kiracının lisans sekmesinde: &quot;Ürüne yeniden yansıt&quot;.</>)}
+          {bayatKopyalar.length ? (
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="sy-kopya">
+                <thead><tr><th>Kiracı</th><th>Ürün</th><th>Konsolda</th><th>Üründe</th></tr></thead>
+                <tbody>
+                  {bayatKopyalar.map((kayit) => {
+                    const ad = kurumAdi.get(kayit.organizationId) ?? kayit.organizationId;
+                    const href = `/panel/platform/musteriler/${kayit.organizationId}?pencere=lisanslar`;
+                    return (
+                      <tr key={`${kayit.organizationId}-${kayit.product}`}>
+                        <td data-label="Kiracı">{kisi(ad, "lisansı aç", href)}</td>
+                        <td data-label="Ürün"><span className="crm-table-title">{kayit.product}</span></td>
+                        <td data-label="Konsolda"><span className="crm-table-sub">{kayit.konsolDurumu}</span></td>
+                        <td data-label="Üründe"><span className="status-pill" data-tone="danger">{kayit.kopyaDurumu}</span></td>
+                        <MobilSatir href={href} baslik={ad} durum={{ etiket: `Üründe ${kayit.kopyaDurumu}`, ton: "danger" }} alt={[kayit.product, `konsolda ${kayit.konsolDurumu}`]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : bos("Bayat kopya yok", "Kopyası konsoldan farklı erişim veren kiracı yok.")}
+        </section>
 
-    <KKart baslik="Kota"
-      aciklama="Limitini aşan ya da %85'ine gelen kiracılar. Ölçümler canlı: kullanıcı üyeliklerden, depolama dosya deposundan.">
-      {kotalar.length ? (
-        <KListe>
-          {kotalar.map((kota) => {
-            const ad = kurumAdi.get(kota.organizationId) ?? kota.organizationId;
-            const durum = { etiket: kota.durum === "asildi" ? "Aşıldı" : "Yaklaştı", ton: kota.durum === "asildi" ? "danger" : "warning" };
-            const kullanici = `${sayi(kota.kullanici.kullanilan)} / ${sayi(kota.kullanici.limit)} kullanıcı · %${kota.kullanici.oran}`;
-            const depolama = `${sayi(kota.depolama.kullanilan)} / ${sayi(kota.depolama.limit)} MB · %${kota.depolama.oran}`;
-            /* Sağdaki değer iki ölçüden dolu olanın oranı: satırı hangi
-               ölçünün limite taşıdığı bir bakışta görünsün. */
-            const enYuksek = Math.max(kota.kullanici.oran, kota.depolama.oran);
-            return (
-              <KOge
-                key={kota.organizationId}
-                href={`/panel/platform/musteriler/${kota.organizationId}?pencere=lisanslar`}
-                simge={ad}
-                baslik={ad}
-                alt={`${kullanici} · ${depolama}`}
-                durum={durum}
-                deger={`%${enYuksek}`}
-                degerAlt={kota.kullanici.oran >= kota.depolama.oran ? "kullanıcı" : "depolama"}
-              />
-            );
-          })}
-        </KListe>
-      ) : <KBos baslik="Kota sorunu yok" aciklama="Limitine yaklaşan kiracı yok." />}
-    </KKart>
+        <section>
+          {bolumBasi("Kota", "Limitini aşan ya da %85'ine gelen kiracılar. Kullanıcı üyeliklerden, depolama dosya deposundan, canlı.")}
+          {kotalar.length ? (
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="sy-kota">
+                <thead><tr><th>Kiracı</th><th>Kullanıcı</th><th>Depolama</th><th>Durum</th></tr></thead>
+                <tbody>
+                  {kotalar.map((kota) => {
+                    const ad = kurumAdi.get(kota.organizationId) ?? kota.organizationId;
+                    const href = `/panel/platform/musteriler/${kota.organizationId}?pencere=lisanslar`;
+                    const durum = { etiket: kota.durum === "asildi" ? "Aşıldı" : "Yaklaştı", ton: kota.durum === "asildi" ? "danger" : "warning" };
+                    return (
+                      <tr key={kota.organizationId}>
+                        <td data-label="Kiracı">{kisi(ad, "lisansı aç", href)}</td>
+                        <td data-label="Kullanıcı"><span className="crm-table-title">%{kota.kullanici.oran}</span><small>{sayi(kota.kullanici.kullanilan)} / {sayi(kota.kullanici.limit)}</small></td>
+                        <td data-label="Depolama"><span className="crm-table-title">%{kota.depolama.oran}</span><small>{sayi(kota.depolama.kullanilan)} / {sayi(kota.depolama.limit)} MB</small></td>
+                        <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                        <MobilSatir href={href} baslik={ad} durum={durum} alt={[`kullanıcı %${kota.kullanici.oran}`, `depolama %${kota.depolama.oran}`]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : bos("Kota sorunu yok", "Limitine yaklaşan kiracı yok.")}
 
-    <KKart baslik="Paketiyle uyuşmayan limitler"
-      aciklama="Paketinin varsayılanından FAZLA hak tanımlanmış kiracılar. Sapma hata değil — pazarlıkla genişletilmiş limitler var — ama ücretli bir pakette sessiz sapma, satılmamış koltuğu bedava vermek demek.">
-      {limitSapanlar.length ? (
-        <KListe>
-          {limitSapanlar.map(({ kiraci, sapmalar }) => {
-            const ad = kiraci.display_name || kiraci.name;
-            return (
-              <KOge
-                key={kiraci.id}
-                href={`/panel/platform/musteriler/${kiraci.id}?pencere=lisanslar`}
-                simge={ad}
-                baslik={ad}
-                alt={sapmalar.map((x) => `${x.alan}: paket ${sayi(x.paket)} · kiracı ${sayi(x.kiraci)}`).join(" · ")}
-                durum={{ etiket: PAKET_ADI[kiraci.plan_code ?? ""] ?? kiraci.plan_code ?? "paket yok", ton: "warning" }}
-                deger={`+${sayi(sapmalar.length)}`}
-                degerAlt="alan"
-              />
-            );
-          })}
-        </KListe>
-      ) : <KBos baslik="Limitler paketleriyle uyumlu" aciklama="Hiçbir kiracıya paketinin üstünde hak tanımlanmamış." />}
-    </KKart>
+          {bolumBasi("Paketiyle uyuşmayan limitler", "Paketinin varsayılanından FAZLA hak tanımlanmış kiracılar. Sapma hata değil — pazarlıkla genişletilmiş limitler var — ama ücretli bir pakette sessiz sapma, satılmamış koltuğu bedava vermek demek.")}
+          {limitSapanlar.length ? (
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="sy-limit">
+                <thead><tr><th>Kiracı</th><th>Paket</th><th>Sapma</th></tr></thead>
+                <tbody>
+                  {limitSapanlar.map(({ kiraci, sapmalar }) => {
+                    const ad = kiraci.display_name || kiraci.name;
+                    const href = `/panel/platform/musteriler/${kiraci.id}?pencere=lisanslar`;
+                    const paket = PAKET_ADI[kiraci.plan_code ?? ""] ?? kiraci.plan_code ?? "paket yok";
+                    const sapmaYazisi = sapmalar.map((x) => `${x.alan}: paket ${sayi(x.paket)} · kiracı ${sayi(x.kiraci)}`).join(" · ");
+                    return (
+                      <tr key={kiraci.id}>
+                        <td data-label="Kiracı">{kisi(ad, "lisansı aç", href)}</td>
+                        <td data-label="Paket"><span className="status-pill" data-tone="warning">{paket}</span></td>
+                        <td data-label="Sapma"><span className="crm-table-sub" title={sapmaYazisi}>{sapmaYazisi}</span></td>
+                        <MobilSatir href={href} baslik={ad} durum={{ etiket: paket, ton: "warning" }} alt={[sapmaYazisi]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : bos("Limitler paketleriyle uyumlu", "Hiçbir kiracıya paketinin üstünde hak tanımlanmamış.")}
+        </section>
 
-    <KKart baslik="Kurulum hataları" aciklama="Kurulumu hatada kalmış kiracılar. Sonradan tamamlanan eski hatalar burada sayılmıyor: çözülmüş bir hatayı açık sorun göstermek listeyi kalıcı olarak dolu tutardı.">
-      {admin ? (
-        kurulumHatalari.length ? (
-          <KListe>
-            {kurulumHatalari.map((kayit) => {
-              const ad = kurumAdi.get(kayit.organization_id) ?? "Kurum";
-              return (
-                <KOge
-                  key={kayit.id}
-                  href={`/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`}
-                  simge={ad}
-                  baslik={ad}
-                  alt={[kayit.action, kayit.state].filter(Boolean).join(" · ")}
-                  deger={tarihSaat(kayit.created_at)}
-                />
-              );
-            })}
-          </KListe>
-        ) : <KBos baslik="Kurulum hatası yok" aciklama="Kurulumu hatada kalmış kiracı yok. Sonradan tamamlanan eski hatalar ana sayfadaki kurulum hareketlerinde." />
-      ) : <KBos baslik="Kurulum günlüğü okunamıyor" aciklama="Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hata yok” demek değil." />}
-    </KKart>
+        <section>
+          {bolumBasi("Kurulum hataları", "Kurulumu hatada kalmış kiracılar. Sonradan tamamlanan eski hatalar burada sayılmıyor; onlar ana sayfadaki kurulum hareketlerinde.")}
+          {admin ? (
+            kurulumHatalari.length ? (
+              <div className="talep-tablo fn-ic-tablo">
+                <table className="crm-data-table" data-cols="sy-kurulum">
+                  <thead><tr><th>Kiracı</th><th>Adım</th><th className="crm-col-date">Zaman</th></tr></thead>
+                  <tbody>
+                    {kurulumHatalari.map((kayit) => {
+                      const ad = kurumAdi.get(kayit.organization_id) ?? "Kurum";
+                      const href = `/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`;
+                      return (
+                        <tr key={kayit.id}>
+                          <td data-label="Kiracı">{kisi(ad, "kurulum sekmesini aç", href)}</td>
+                          <td data-label="Adım"><span className="crm-table-title">{kayit.action}</span>{kayit.state ? <small>{kayit.state}</small> : null}</td>
+                          <td className="crm-col-date" data-label="Zaman">{tarihSaat(kayit.created_at)}</td>
+                          <MobilSatir href={href} baslik={ad} durum={{ etiket: "Kurulum hatası", ton: "danger" }} alt={[kayit.action, kayit.state, tarihSaat(kayit.created_at)]} />
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <SatirTiklama />
+              </div>
+            ) : bos("Kurulum hatası yok", "Kurulumu hatada kalmış kiracı yok.")
+          ) : bos("Kurulum günlüğü okunamıyor", "Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hata yok” demek değil.")}
+        </section>
 
-    <KKart baslik="Yüklenemeyen AI kredisi"
-      aciklama="Müşteri krediyi ödedi ama ArvoLab'a yüklenemedi: ödediği hâlde asistanda durdurulur. On dakikada bir yeniden deneniyor.">
-      {krediSonucu.hata ? (
-        <KNot ton="tehlike">Kredi siparişleri okunamadı ({krediSonucu.hata}) — &quot;bekleyen yok&quot; demek değil.</KNot>
-      ) : krediSonucu.veri.length ? (
-        <KListe>
-          {krediSonucu.veri.map((kayit) => (
-            /* Bireysel abonenin siparişinde kurum yok: tahsilat ekranına gidiyor. */
-            <KOge key={kayit.siparisId}
-              simge={kayit.organizationId ? kurumAdi.get(kayit.organizationId) ?? kayit.organizationId : "Bireysel"}
-              href={kayit.organizationId ? `/panel/platform/musteriler/${kayit.organizationId}?pencere=odemeler` : "/panel/platform/tahsilat"}
-              baslik={kayit.organizationId ? kurumAdi.get(kayit.organizationId) ?? kayit.organizationId : `Bireysel abone · ${kayit.aboneKullaniciId ?? "kimlik yok"}`}
-              alt={`Ödeme ${tarihSaat(kayit.odendiAt)} · ${kayit.merchantOid}`}
-              durum={{ etiket: "Yüklenemedi", ton: "danger" }}
-              deger={`${sayi(kayit.kredi)} kredi`} degerAlt="ödendi" />
-          ))}
-        </KListe>
-      ) : <KBos baslik="Bekleyen kredi yok" aciklama="Ödenen her AI kredisi ArvoLab'a yüklendi." />}
-    </KKart>
+        <section>
+          {bolumBasi("Yüklenemeyen AI kredisi", "Müşteri krediyi ödedi ama ArvoLab'a yüklenemedi: ödediği hâlde asistanda durdurulur. On dakikada bir yeniden deneniyor.")}
+          {krediSonucu.hata ? (
+            <KNot ton="tehlike">Kredi siparişleri okunamadı ({krediSonucu.hata}) — &quot;bekleyen yok&quot; demek değil.</KNot>
+          ) : krediSonucu.veri.length ? (
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="sy-kredi">
+                <thead><tr><th>Müşteri</th><th>Kredi</th><th className="crm-col-date">Ödeme</th><th>Durum</th></tr></thead>
+                <tbody>
+                  {krediSonucu.veri.map((kayit) => {
+                    /* Bireysel abonenin siparişinde kurum yok: tahsilat ekranına gidiyor. */
+                    const ad = kayit.organizationId ? kurumAdi.get(kayit.organizationId) ?? kayit.organizationId : "Bireysel abone";
+                    const href = kayit.organizationId ? `/panel/platform/musteriler/${kayit.organizationId}?pencere=odemeler` : "/panel/platform/tahsilat";
+                    return (
+                      <tr key={kayit.siparisId}>
+                        <td data-label="Müşteri">{kisi(ad, kayit.organizationId ? kayit.merchantOid : kayit.aboneKullaniciId ?? "kimlik yok", href)}</td>
+                        <td data-label="Kredi"><span className="crm-table-title">{sayi(kayit.kredi)}</span></td>
+                        <td className="crm-col-date" data-label="Ödeme">{tarihSaat(kayit.odendiAt)}</td>
+                        <td data-label="Durum"><span className="status-pill" data-tone="danger">Yüklenemedi</span></td>
+                        <MobilSatir href={href} baslik={ad} durum={{ etiket: "Yüklenemedi", ton: "danger" }} alt={[`${sayi(kayit.kredi)} kredi`, tarihSaat(kayit.odendiAt)]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : bos("Bekleyen kredi yok", "Ödenen her AI kredisi ArvoLab'a yüklendi.")}
 
-    <KKart baslik="İşlenemeyen ödemeler"
-      aciklama="PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın.">
-      {odemeOlaylari.length ? (
-        <KListe>
-          {odemeOlaylari.map((olay) => {
-            const sebep = incidentLabels[olay.result] ?? olay.result;
-            const ad = olay.organizationName ?? "—";
-            /* Sebebin açıklaması (incidentNotes) eskiden rozetin altında ayrı
-               satırdı; tek satırlık özete PayTR numarası ve zamanla birlikte
-               giriyor — PayTR panelinde aranacak olan numara. */
-            return (
-              <KOge
-                key={olay.id}
-                simge={olay.organizationName}
-                baslik={ad}
-                alt={[olay.merchantOid, tarihSaat(olay.createdAt), incidentNotes[olay.result]].filter(Boolean).join(" · ")}
-                durum={{ etiket: sebep, ton: "danger" }}
-                deger={olay.paymentAmount !== null ? para(olay.paymentAmount) : "—"}
-              />
-            );
-          })}
-        </KListe>
-      ) : <KBos baslik="İşlenemeyen ödeme yok" aciklama="İşlenemeyen ödeme bildirimi yok." />}
-    </KKart>
+          {bolumBasi("İşlenemeyen ödemeler", "PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Her birini PayTR panelinden doğrulayın.")}
+          {odemeOlaylari.length ? (
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="sy-odeme">
+                <thead><tr><th>Kurum</th><th>Sebep</th><th className="crm-col-date">Zaman</th><th className="crm-col-amount">Tutar</th></tr></thead>
+                <tbody>
+                  {odemeOlaylari.map((olay) => {
+                    const sebep = incidentLabels[olay.result] ?? olay.result;
+                    const ad = olay.organizationName ?? "—";
+                    return (
+                      <tr key={olay.id}>
+                        {/* PayTR numarası alt satırda: PayTR panelinde aranacak olan o. */}
+                        <td data-label="Kurum">{kisi(ad, olay.merchantOid, olay.organizationId ? `/panel/platform/musteriler/${olay.organizationId}?pencere=odemeler` : null)}</td>
+                        <td data-label="Sebep"><span className="status-pill" data-tone="danger">{sebep}</span><small title={incidentNotes[olay.result]}>{incidentNotes[olay.result]}</small></td>
+                        <td className="crm-col-date" data-label="Zaman">{tarihSaat(olay.createdAt)}</td>
+                        <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{olay.paymentAmount !== null ? para(olay.paymentAmount) : "—"}</span></td>
+                        <MobilSatir baslik={ad} durum={{ etiket: sebep, ton: "danger" }} alt={[olay.merchantOid, tarihSaat(olay.createdAt), olay.paymentAmount !== null ? para(olay.paymentAmount) : null]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : bos("İşlenemeyen ödeme yok", "İşlenemeyen ödeme bildirimi yok.")}
+        </section>
+      </TalepAkis>
+
+      {/* Sağ sütun: açık sorunların bölüm bölüm özeti. Satır sekmeyi
+          söylüyor; sekme kartın kendisinde. */}
+      <div className="liste-sag">
+        <TalepAkis kimlik="saglik-sag" sinif="ek-sag" etiket="Sorun özeti" sekmeler={["Sorun özeti"]}>
+          <section className="ek-panel" aria-label="Sorun özeti">
+            <ul className="pu-liste">
+              {[
+                ["Gecikti ya da düştü", cronHatasi ? null : cronSorun.length, "Zamanlanmış işler"],
+                ["Kopuk köprü", kopukKopru, "Köprü ve kopyalar"],
+                ["Bayat ürün kopyası", bayatKopyalar.length, "Köprü ve kopyalar"],
+                ["Kota sorunu", kiraciHatasi ? null : kotalar.length, "Kota ve limitler"],
+                ["Paketinden fazla limit", kiraciHatasi ? null : limitSapanlar.length, "Kota ve limitler"],
+                ["Kurulum hatası", kurulumHatalari.length, "Kurulum"],
+                ["Yüklenemeyen AI kredisi", krediSonucu.hata ? null : krediSonucu.veri.length, "Ödeme ve kredi"],
+                ["İşlenemeyen ödeme", odemeOlaylari.length, "Ödeme ve kredi"],
+              ].map(([ad, adet, sekme]) => (
+                <li key={ad as string}>
+                  <span className="sy-ozet">
+                    <span className="pu-govde"><b>{ad}</b><small>{sekme}</small></span>
+                    <span className="status-pill" data-tone={adet === null ? "danger" : adet ? "warning" : "success"}>{adet === null ? "okunamadı" : adet ? sayi(adet as number) : "yok"}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </TalepAkis>
+      </div>
+    </div>
   </main>;
 }

@@ -10,13 +10,21 @@ import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { NewOrganizationWizard } from "../new-organization-wizard";
 import { createCustomerOrganization } from "../actions";
-import { LISANS_TONU, PAKET_ADI, KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
+import { basHarfleri, LISANS_TONU, PAKET_ADI, KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
 import { productLicenseLabels } from "@/lib/products";
 import { listeFiyatiniUygula } from "./actions";
 import { kurumTuru } from "@/lib/kurum-turu";
-import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
+import { KNot } from "../konsol-ui";
+import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 // Sihirbaz (.plw) ve sözleşme no (.plt-mono) burada.
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /*
   KURULUMLAR (14.10.2026, kurum sahibinin tarifi).
@@ -141,14 +149,31 @@ export default async function KurulumlarPage({ searchParams }: {
     liste kartı (aşama çipleri + o aşamanın tablosu), sağda istatistik.
     Aşama hâlâ ?asama= ile seçiliyor; şerit ve çipler aynı adrese gidiyor.
   */
-  return <main className="plt talep cari ekip liste-sayfa">
+  const kisi = (ad: string, alt: string, href: string) => (
+    <Link className="crm-row-link ek-kisi" href={href}>
+      <span className="ek-avatar" aria-hidden="true">{basHarfleri(ad)}</span>
+      <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span><span className="crm-table-sub">{alt}</span></span>
+    </Link>
+  );
+  const bos = (baslik: string, aciklama: string) => (
+    <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
+  );
+
+  /*
+    PANELİN TABLOSU (29.10.2026, konsol yeniden kurulurken). Üç aşamanın
+    satırları iOS satırıydı: davetin kime ne zaman gittiği, paket,
+    kullanıcı ve dönem tek alt satırda virgülle diziliyordu. Artık her
+    biri kendi sütununda; aşama seçimi Ekip listesindeki segment.
+  */
+  return <main className="plt talep cari ekip talepler teklifler liste-sayfa sistem-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · KURULUM</small>
-        <h1>Kurulum</h1>
+        <small className="panel-kicker">SİSTEM</small>
+        <h1>Kurulumlar</h1>
+        <p className="ek-alt">İmzalanan sözleşmeden kurumun açılmasına, sahibin davetinden ilk girişe kadar.</p>
       </div>
       <div className="talep-bas-eylem">
-        <PanelDrawer triggerLabel="+ Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
+        <PanelDrawer triggerLabel="Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
           <NewOrganizationWizard action={createCustomerOrganization} plans={planList} existingSlugs={tumKiracilar.map((k) => k.slug)} />
         </PanelDrawer>
       </div>
@@ -172,164 +197,153 @@ export default async function KurulumlarPage({ searchParams }: {
 
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label={ASAMALAR.find((a) => a.kod === secili)?.ad ?? "Kurulumlar"}>
-        <div className="ekip-suzgec talep-suzgec">
-          {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
-              masaüstünde sarmalayıcı display:contents ile görünmez. */}
-          <div className="suzgec-ray">
+        <div className="ekip-suzgec talep-suzgec ek-arac">
+          <nav className="ek-segment" aria-label="Aşama">
             {ASAMALAR.map((a) => (
               <Link key={a.kod} href={adres(a.kod)} className={secili === a.kod ? "is-active" : undefined} aria-current={secili === a.kod ? "page" : undefined}>
                 {a.ad} <small>{sayi(sayim[a.kod])}</small>
               </Link>
             ))}
-          </div>
+          </nav>
         </div>
 
-        {/*
-          ÜÇ SEKME AYNI DİL (14.10.2026, "diğerlerini de yap"). Yeni ve
-          devam eden sekmelerinin üstünde uzun birer açıklama kutusu vardı
-          (biri artık olmayan "kiracı dosyası"na yönlendiriyordu) ve satırlar
-          az şey söylüyordu. Açıklama boş listenin kısa cümlesine indi;
-          satır asıl soruyu yanıtlıyor: yeni istekte "kim, hangi sözleşme,
-          ne tutar"; süren kurulumda "davet kime, ne zaman gitti, nerede
-          takıldı".
-        */}
         {secili === "yeni" ? (
           admin ? (
             bekleyenIstekler.length ? (
-              <KListe>
-                {bekleyenIstekler.map((istek) => (
-                  /* Satır sözleşme kuyruğuna gider: önce kurum açılır
-                     (başlıktaki "Yeni müşteri"), sonra istek o kuruma onaylanır. */
-                  <KOge
-                    key={istek.id}
-                    href="/panel/platform/sozlesmeler"
-                    simge={istek.customer_name ?? "—"}
-                    baslik={istek.customer_name ?? "Adsız müşteri"}
-                    alt={<>Sözleşme <span className="plt-mono">{istek.contract_no ?? "—"}</span> · imza {tarihSaat(istek.created_at)}</>}
-                    durum={{ etiket: "Kurum açılmadı", ton: "warning" }}
-                    deger={istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : <span className="k-ios-eksik">Tutar yok</span>}
-                    degerAlt={istek.amount !== null ? "sözleşme tutarı" : undefined}
-                  />
-                ))}
-              </KListe>
-            ) : (
-              <KBos
-                baslik="Bekleyen yeni kurulum yok"
-                aciklama="İmzalanan sözleşmeler kurumu açılana kadar burada bekler. Elle eklemek için başlıktaki Yeni müşteri."
-              />
-            )
+              <div className="talep-tablo">
+                <table className="crm-data-table" data-cols="sy-yeni">
+                  <thead><tr><th>Müşteri</th><th>Sözleşme</th><th className="crm-col-date">İmza</th><th className="crm-col-amount">Tutar</th><th>Durum</th><th></th></tr></thead>
+                  <tbody>
+                    {bekleyenIstekler.map((istek) => {
+                      const ad = istek.customer_name ?? "Adsız müşteri";
+                      const tutar = istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : null;
+                      /* Satır sözleşme kuyruğuna gider: önce kurum açılır
+                         (başlıktaki "Yeni müşteri"), sonra istek o kuruma onaylanır. */
+                      return (
+                        <tr key={istek.id}>
+                          <td data-label="Müşteri">{kisi(ad, "Kurum açılmadı", "/panel/platform/sozlesmeler")}</td>
+                          <td data-label="Sözleşme"><span className="crm-table-title plt-mono">{istek.contract_no ?? "—"}</span></td>
+                          <td className="crm-col-date" data-label="İmza">{tarihSaat(istek.created_at)}</td>
+                          <td className="crm-col-amount" data-label="Tutar">{tutar ? <span className="crm-table-title">{tutar}</span> : <span className="k-ios-eksik">Tutar yok</span>}</td>
+                          <td data-label="Durum"><span className="status-pill" data-tone="warning">Kurum açılmadı</span></td>
+                          <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                          <MobilSatir href="/panel/platform/sozlesmeler" baslik={ad} durum={{ etiket: "Kurum açılmadı", ton: "warning" }}
+                            alt={[istek.contract_no, tutar, tarihSaat(istek.created_at)]} />
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <SatirTiklama />
+              </div>
+            ) : bos("Bekleyen yeni kurulum yok", "İmzalanan sözleşmeler kurumu açılana kadar burada bekler. Elle eklemek için başlıktaki Yeni müşteri.")
           ) : <KNot ton="uyari">Sunucu anahtarı tanımlı olmadığı için istekler okunamıyor — &quot;istek yok&quot; demek değil.</KNot>
         ) : null}
 
         {secili === "devam" ? (
           bekleyenler.length ? (
-            <KListe>
-              {bekleyenler.map((kiraci) => {
-                const ad = kiraci.display_name || kiraci.name;
-                const asamaAdi = KURULUM_ADI[kiraci.provisioning_state] ?? kiraci.provisioning_state;
-                const ton = KURULUM_TONU[kiraci.provisioning_state] ?? "neutral";
-                /* Takıldığı yer: hata varsa hatanın kendisi, yoksa davetin kime ve ne zaman gittiği. */
-                const davet = kiraci.davet_hatasi
-                  ? `davet gönderilemedi: ${kiraci.davet_hatasi}`
-                  : kiraci.davet_eposta
-                    ? `davet ${kiraci.davet_eposta}${kiraci.davet_gonderildi ? ` · ${tarihSaat(kiraci.davet_gonderildi)}` : " · gönderilmedi"}`
-                    : "sahip daveti yok";
-                return (
-                  <KOge
-                    key={kiraci.id}
-                    /* Kurulum adımları ve sahibe giriş bağlantısı müşteri detayının Kurum Ayarları penceresinde. */
-                    href={`/panel/platform/musteriler/${kiraci.id}?pencere=ayarlar`}
-                    simge={ad}
-                    baslik={ad}
-                    alt={[kiraci.plan_code ? `${PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code} paket` : null, davet].filter(Boolean).join(" · ")}
-                    durum={{ etiket: asamaAdi, ton }}
-                    deger={sayi(Number(kiraci.aktif_uye))}
-                    degerAlt="kullanıcı"
-                  />
-                );
-              })}
-            </KListe>
-          ) : (
-            <KBos
-              baslik="Süren kurulum yok"
-              aciklama="Açılan her kurum çalışır durumda. Davet bekleyen ya da hata veren kurulum olursa burada görünür."
-            />
-          )
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="sy-devam">
+                <thead><tr><th>Kurum</th><th>Paket</th><th>Sahip daveti</th><th>Kullanıcı</th><th>Aşama</th><th></th></tr></thead>
+                <tbody>
+                  {bekleyenler.map((kiraci) => {
+                    const ad = kiraci.display_name || kiraci.name;
+                    const asama = { etiket: KURULUM_ADI[kiraci.provisioning_state] ?? kiraci.provisioning_state, ton: KURULUM_TONU[kiraci.provisioning_state] ?? "neutral" };
+                    /* Kurulum adımları ve sahibe giriş bağlantısı müşteri kartının Kurulum sekmesinde. */
+                    const href = `/panel/platform/musteriler/${kiraci.id}?pencere=ayarlar`;
+                    return (
+                      <tr key={kiraci.id}>
+                        <td data-label="Kurum">{kisi(ad, kiraci.slug, href)}</td>
+                        <td data-label="Paket">{kiraci.plan_code ? <span className="crm-table-title">{PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code}</span> : <span className="crm-table-sub">—</span>}</td>
+                        <td data-label="Sahip daveti">
+                          {/* Takıldığı yer: hata varsa hatanın kendisi, yoksa davetin kime ve ne zaman gittiği. */}
+                          {kiraci.davet_hatasi ? (
+                            <><span className="status-pill" data-tone="danger">Gönderilemedi</span><small title={kiraci.davet_hatasi}>{kiraci.davet_hatasi}</small></>
+                          ) : kiraci.davet_eposta ? (
+                            <><span className="crm-table-title" title={kiraci.davet_eposta}>{kiraci.davet_eposta}</span><small>{kiraci.davet_gonderildi ? tarihSaat(kiraci.davet_gonderildi) : "gönderilmedi"}</small></>
+                          ) : <span className="crm-table-sub">sahip daveti yok</span>}
+                        </td>
+                        <td data-label="Kullanıcı"><span className="crm-table-title">{sayi(Number(kiraci.aktif_uye))}</span></td>
+                        <td data-label="Aşama"><span className="status-pill" data-tone={asama.ton}>{asama.etiket}</span></td>
+                        <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                        <MobilSatir href={href} baslik={ad} durum={asama}
+                          alt={[kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : null, kiraci.davet_hatasi ? `davet gönderilemedi: ${kiraci.davet_hatasi}` : kiraci.davet_eposta]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : bos("Süren kurulum yok", "Açılan her kurum çalışır durumda. Davet bekleyen ya da hata veren kurulum olursa burada görünür.")
         ) : null}
 
         {secili === "tamam" ? (
           tamamlananlar.length ? (
-            /*
-              iOS LİSTESİ (14.10.2026, "panel kalitesinde değil"). Burası
-              beş sütunlu bir tabloydu ve her satırda deneme günü kutusuyla
-              "Uygula" düğmesi duruyordu: dört satırda dört form, ekranın
-              yarısı. Deneme süresi müşteri detayının Lisanslar penceresinde
-              (lisans formundaki deneme bitişi) — aynı işi iki yerde tutmak,
-              birinin kuralı atlaması demekti. Satır artık o pencereye gidiyor.
-
-              Tek kısayol kalıyor: ücreti GİRİLMEMİŞ kiracıda "liste fiyatını
-              uygula" (yayımlanmış liste, lib/paket-ucreti). O satır form
-              taşıdığı için bağlantı değil; öteki satırlar bağlantı.
-            */
-            <KListe>
-              {tamamlananlar.map((kiraci) => {
-                const ad = kiraci.display_name || kiraci.name;
-                const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
-                const denemede = kiraci.license_status === "trialing";
-                const lisans = kiraci.license_status ?? "inactive";
-                return (
-                  <KOge
-                    key={kiraci.id}
-                    href={`/panel/platform/musteriler/${kiraci.id}?pencere=lisanslar`}
-                    simge={ad}
-                    baslik={ad}
-                    alt={[
-                      kiraci.plan_code ? `${PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code} paket` : null,
-                      `${sayi(Number(kiraci.aktif_uye))} kullanıcı`,
-                      denemede
-                        ? `deneme ${tarih(kiraci.trial_ends_at)}'e kadar`
-                        : kiraci.current_period_end ? `dönem sonu ${tarih(kiraci.current_period_end)}` : null,
-                    ].filter(Boolean).join(" · ")}
-                    durum={{ etiket: productLicenseLabels[lisans] ?? lisans, ton: LISANS_TONU[lisans] ?? "neutral" }}
-                    /* Kapalı (iptal / askıda) lisansta ücret beklenmiyor: "₺0,00" yerine —. */
-                    deger={!ACIK_LISANS.has(lisans) && !sapma.mevcut ? "—" : sapma.durum === "girilmedi" ? <span className="k-ios-eksik">Ücret yok</span> : para(sapma.mevcut ?? 0)}
-                    /* Sapma hata değil: çoğu kiracının pazarlıkla değişmiş tutarı var. */
-                    degerAlt={sapma.durum === "teklif" ? "teklif usulü" : sapma.durum === "farkli" ? `liste ${para(sapma.liste ?? 0)}` : sapma.durum === "liste" ? "liste fiyatı" : undefined}
-                    sonu={sapma.durum === "girilmedi" && sapma.liste !== null ? (
-                      <form action={listeFiyatiniUygula}>
-                        <input type="hidden" name="organization_id" value={kiraci.id} />
-                        <button className="panel-secondary" type="submit">Liste fiyatı · {para(sapma.liste)}</button>
-                      </form>
-                    ) : undefined}
-                  />
-                );
-              })}
-            </KListe>
-          ) : <KBos baslik="Tamamlanmış kurulum yok" aciklama="Kurulumu biten kurumlar burada listelenir." />
+            /* Tek kısayol: ücreti GİRİLMEMİŞ kiracıda "liste fiyatını
+               uygula" (yayımlanmış liste, lib/paket-ucreti); deneme süresi
+               müşteri kartının Ürünler ve lisans sekmesinde. */
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="sy-tamam">
+                <thead><tr><th>Kurum</th><th>Paket</th><th>Kullanıcı</th><th className="crm-col-date">Dönem</th><th className="crm-col-amount">Aylık</th><th>Lisans</th><th></th></tr></thead>
+                <tbody>
+                  {tamamlananlar.map((kiraci) => {
+                    const ad = kiraci.display_name || kiraci.name;
+                    const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
+                    const deneme = kiraci.license_status === "trialing";
+                    const lisans = kiraci.license_status ?? "inactive";
+                    const durum = { etiket: productLicenseLabels[lisans] ?? lisans, ton: LISANS_TONU[lisans] ?? "neutral" };
+                    const donem = deneme ? kiraci.trial_ends_at : kiraci.current_period_end;
+                    const href = `/panel/platform/musteriler/${kiraci.id}?pencere=lisanslar`;
+                    return (
+                      <tr key={kiraci.id} className={ACIK_LISANS.has(lisans) ? undefined : "is-pasif"}>
+                        <td data-label="Kurum">{kisi(ad, kiraci.slug, href)}</td>
+                        <td data-label="Paket">{kiraci.plan_code ? <span className="crm-table-title">{PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code}</span> : <span className="crm-table-sub">—</span>}</td>
+                        <td data-label="Kullanıcı"><span className="crm-table-title">{sayi(Number(kiraci.aktif_uye))}</span></td>
+                        <td className="crm-col-date" data-label="Dönem">{donem ? tarih(donem) : "—"}{donem ? <small>{deneme ? "deneme bitişi" : "dönem sonu"}</small> : null}</td>
+                        <td className="crm-col-amount" data-label="Aylık">
+                          {/* Kapalı (iptal / askıda) lisansta ücret beklenmiyor: "₺0,00" yerine —. */}
+                          {!ACIK_LISANS.has(lisans) && !sapma.mevcut ? <span className="crm-table-sub">—</span>
+                            : sapma.durum === "girilmedi" ? <span className="k-ios-eksik">Ücret yok</span>
+                            : <span className="crm-table-title">{para(sapma.mevcut ?? 0)}</span>}
+                          {/* Sapma hata değil: çoğu kiracının pazarlıkla değişmiş tutarı var. */}
+                          {sapma.durum === "teklif" ? <small>teklif usulü</small> : sapma.durum === "farkli" ? <small>liste {para(sapma.liste ?? 0)}</small> : sapma.durum === "liste" ? <small>liste fiyatı</small> : null}
+                        </td>
+                        <td data-label="Lisans"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                        <td className="crm-table-actions">
+                          {sapma.durum === "girilmedi" && sapma.liste !== null ? (
+                            <form action={listeFiyatiniUygula}>
+                              <input type="hidden" name="organization_id" value={kiraci.id} />
+                              <button className="panel-secondary" type="submit">Liste fiyatı · {para(sapma.liste)}</button>
+                            </form>
+                          ) : <span className="crm-row-chevron" aria-hidden="true">›</span>}
+                        </td>
+                        <MobilSatir href={href} baslik={ad} durum={durum}
+                          alt={[kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : null, `${sayi(Number(kiraci.aktif_uye))} kullanıcı`, donem ? tarih(donem) : null]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : bos("Tamamlanmış kurulum yok", "Kurulumu biten kurumlar burada listelenir.")
         ) : null}
       </section>
 
-      {/* Sayılar yukarıda zaten hesaplananlar; yalnızca "yeni" istekler en
-          yeni yirmiyle sınırlı okunuyor ve kart bunu söylüyor.
-
-          SAĞ SÜTUN SADE (14.10.2026, "iOS gibi"): İstatistik kartının
-          dört kutusu (yeni, süren, tamamlanan, ücreti girilmemiş) ve
-          "Tamamlananlar" grubu şeritteki sayıların AYNISIYDI. Kalan tek
-          yeni bilgi süren kurulumların aşama dağılımı; o da iOS listesi. */}
+      {/* Sağ sütun: süren kurulumların aşama dağılımı. Yeni istekler en
+          yeni yirmiyle sınırlı okunuyor ve kart bunu söylüyor. */}
       <div className="liste-sag">
-        {/* Açıklama 14.10.2026'ya kadar "Kendi markalarımız hariç" diyordu ve
-            YANLIŞTI: süzgeç yalnızca Arvo'nun kendi kurumunu eliyor, grup
-            markaları (ArvoCulture, AkademikMerkez) listede — oysa kurum
-            sahibinin tanımında "kendi markamız" tam olarak onlar. */}
-        <KKart baslik="Süren kurulumun aşaması" aciklama="Arvo'nun kendi kurumu hariç; yeni istekler en yeni 20 kayıttan">
-          {asamaDagilimi.length ? (
-            <KListe>
-              {asamaDagilimi.map((d) => (
-                <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />
-              ))}
-            </KListe>
-          ) : <KBos baslik="Aşama dağılımı yok" aciklama="Kurulumu süren kurum oldukça aşamaları burada dağılır." />}
-        </KKart>
+        <TalepAkis kimlik="kurulum-sag" sinif="ek-sag" etiket="Kurulum istatistikleri" sekmeler={["İstatistikler"]}>
+          <IstatistikKarti
+            kapsam="Arvo'nun kendi kurumu hariç; yeni istekler en yeni 20 kayıttan"
+            kutular={[
+              ...ASAMALAR.map((a) => ({ ad: a.ad, deger: sayi(sayim[a.kod]), alt: a.kod === "yeni" ? "imzalı, kurum açılmadı" : a.kod === "devam" ? "davet ya da hata bekliyor" : "çalışıyor" })),
+              { ad: "Ücreti girilmemiş", deger: sayi(ucretsiz), alt: denemede ? `${sayi(denemede)} denemede` : "açık lisans" },
+            ]}
+            gruplar={[{ baslik: "Süren kurulumun aşaması", satirlar: asamaDagilimi }]}
+          />
+        </TalepAkis>
       </div>
     </div>
   </main>;

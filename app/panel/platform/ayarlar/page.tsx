@@ -8,10 +8,15 @@ import { pushYapilandi } from "@/lib/anlik-bildirim-gonder";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
-import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
-import { KURULUM_ADI, KURULUM_ISLEMI, para, tarihSaat } from "../bicim";
+import { KNot } from "../konsol-ui";
+import { basHarfleri, KURULUM_ADI, KURULUM_ISLEMI, para, tarihSaat } from "../bicim";
+import { MobilSatir } from "../../crm/table-cells";
 import { roleNames } from "../../hr/role-names";
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /*
   SİSTEM AYARLARI (14.10.2026, Kurucu Konsolu'nun ana menüsü).
@@ -176,11 +181,31 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   const eksikEntegrasyon = entegrasyonlar.filter((e) => e.durum === "eksik").length;
   const eksikSir = sirlar.filter((s) => !s.var).length;
 
-  return <main className="plt talep cari">
+  const BOLUM_ADI: Record<Bolum, { baslik: string; alt: string }> = {
+    yetkiler: { baslik: "Kurucu yetkileri", alt: "Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Sunucu işlemleri ve veritabanı politikaları aynı kuralı uyguluyor." },
+    entegrasyonlar: { baslik: "Entegrasyonlar", alt: "Ortam değişkenlerinin ve kayıtlı bağlantıların gerçek durumu; sırların değeri gösterilmez." },
+    guvenlik: { baslik: "Güvenlik", alt: "Sırlar yalnızca sunucuda; burada yalnızca tanımlı olup olmadıkları yazıyor." },
+    kayitlar: { baslik: "İşlem kayıtları", alt: "Kurulum adımları, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt." },
+  };
+  const SEKME_ADI: Record<Bolum, string> = { yetkiler: "Kurucu yetkileri", entegrasyonlar: "Entegrasyonlar", guvenlik: "Güvenlik", kayitlar: "İşlem kayıtları" };
+  const bas = BOLUM_ADI[bolum];
+  const bos = (baslik: string, aciklama: string) => (
+    <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
+  );
+
+  /*
+    PANELİN TABLOSU (29.10.2026, konsol yeniden kurulurken). Dört bölüm
+    iOS satırıydı; işlem kayıtlarında işlem, kim ve zaman tek satıra
+    sıkışıyordu ve "dün kim ne yaptı" sorusu satır satır okunuyordu.
+    Artık hizalı tablo; bölüm seçimi Ekip listesindeki segment, şerit
+    özet olarak kaldı. Satırların açılacak bir ekranı yok, ok çizilmiyor.
+  */
+  return <main className="plt talep cari ekip talepler teklifler liste-sayfa sistem-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · SİSTEM AYARLARI</small>
-        <h1>Sistem Ayarları</h1>
+        <small className="panel-kicker">SİSTEM</small>
+        <h1>{bas.baslik}</h1>
+        <p className="ek-alt">{bas.alt}</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/saglik">Sistem sağlığı</Link>
@@ -205,80 +230,112 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
     </nav>
 
     {/* Bölüm kimlikleri (#yetkiler, #entegrasyonlar, #guvenlik, #kayitlar)
-        dock'taki ve şeritteki bağlantıların hedefi: değiştirilmez.
-        Satırların açılacak bir ekranı yok; ok bu yüzden yok (href verilmiyor).
-        iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): dört bölüm de sütun
-        başlıksız tek satır — başlık, altında tek satır özet, sağda durum.
-        Eskiden üç-dört sütunlu tablolardı (KTablo + MobilSatir). */}
-    {bolum === "yetkiler" ? (
-    <KKart id="yetkiler" baslik="Konsola kim girebiliyor"
-      aciklama="Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Hem sunucu işlemleri hem veritabanı politikaları aynı kuralı uyguluyor.">
-      <KListe>
-        {uyeler.filter((u) => u.is_active).map((u) => {
-          const ad = kisiAdi.get(u.user_id) ?? calisanAdi.get(u.user_id) ?? "—";
-          const rol = roleNames[u.role] ?? u.role;
-          const konsol = { etiket: u.role === "owner" ? "Tam yetki" : "Giremez", ton: u.role === "owner" ? "success" : "neutral" };
-          return <KOge key={u.user_id} simge={ad} baslik={ad} alt={rol} durum={konsol} />;
-        })}
-      </KListe>
-      <KNot>Kademeli kurucu rolü (yalnızca finans, yalnızca kurulum gibi) henüz yok; konsola giren herkes tam yetkili.</KNot>
-    </KKart>
-    ) : null}
+        dock'taki ve şeritteki bağlantıların hedefi: değiştirilmez. */}
+    <section className="panel-card talep-bilgi" id={bolum} aria-label={bas.baslik}>
+      <div className="ekip-suzgec talep-suzgec ek-arac">
+        <nav className="ek-segment" aria-label="Bölüm">
+          {BOLUMLER.map((kod) => (
+            <Link key={kod} {...sekmeBag(kod)} {...sekme(kod)}>{SEKME_ADI[kod]}</Link>
+          ))}
+        </nav>
+      </div>
 
-    {bolum === "entegrasyonlar" ? (
-    <KKart id="entegrasyonlar" baslik="Bağlantıların durumu"
-      aciklama="Ortam değişkenlerinin ve kayıtlı bağlantıların gerçek durumu; sırların değeri gösterilmez.">
-      <KListe>
-        {entegrasyonlar.map((e) => (
-          <KOge key={e.ad} baslik={e.ad} alt={e.not} durum={{ etiket: DURUM_ADI[e.durum], ton: DURUM_TONU[e.durum] }} />
-        ))}
-      </KListe>
-    </KKart>
-    ) : null}
+      {bolum === "yetkiler" ? <>
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="sy-yetki">
+            <thead><tr><th>Kişi</th><th>Kurumdaki rolü</th><th>Konsol</th></tr></thead>
+            <tbody>
+              {uyeler.filter((u) => u.is_active).map((u) => {
+                const ad = kisiAdi.get(u.user_id) ?? calisanAdi.get(u.user_id) ?? "—";
+                const konsol = { etiket: u.role === "owner" ? "Tam yetki" : "Giremez", ton: u.role === "owner" ? "success" : "neutral" };
+                return (
+                  <tr key={u.user_id} className={u.role === "owner" ? undefined : "is-pasif"}>
+                    <td data-label="Kişi"><span className="ek-kisi"><span className="ek-avatar" data-tur="bireysel" aria-hidden="true">{basHarfleri(ad)}</span><span className="ek-kisi-metin"><span className="crm-table-title">{ad}</span></span></span></td>
+                    <td data-label="Kurumdaki rolü"><span className="crm-table-title">{roleNames[u.role] ?? u.role}</span></td>
+                    <td data-label="Konsol"><span className="status-pill" data-tone={konsol.ton}>{konsol.etiket}</span></td>
+                    <MobilSatir baslik={ad} durum={konsol} alt={[roleNames[u.role] ?? u.role]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <KNot>Kademeli kurucu rolü (yalnızca finans, yalnızca kurulum gibi) henüz yok; konsola giren herkes tam yetkili.</KNot>
+      </> : null}
 
-    {bolum === "guvenlik" ? (
-    <KKart id="guvenlik" baslik="Sunucu sırları ve yetki"
-      aciklama="Sırlar yalnızca sunucuda; burada yalnızca tanımlı olup olmadıkları yazıyor.">
-      <KListe>
-        {sirlar.map((s) => (
-          <KOge key={s.ad} baslik={s.ad} alt={s.not} durum={{ etiket: s.var ? "Tanımlı" : "Eksik", ton: s.var ? "success" : "danger" }} />
-        ))}
-      </KListe>
-      <KNot ton={eksikSir ? "uyari" : "bilgi"}>
-        Konsolun her sayfası ve her işlemi kurucu yetkisini sunucuda yeniden doğruluyor; fiyat listesi,
-        fiyat geçmişi ve ödeme kararları ayrıca veritabanı politikalarıyla korunuyor.
-      </KNot>
-    </KKart>
-    ) : null}
+      {bolum === "entegrasyonlar" ? (
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="sy-entegrasyon">
+            <thead><tr><th>Bağlantı</th><th>Ayrıntı</th><th>Durum</th></tr></thead>
+            <tbody>
+              {entegrasyonlar.map((e) => {
+                const durum = { etiket: DURUM_ADI[e.durum], ton: DURUM_TONU[e.durum] };
+                return (
+                  <tr key={e.ad} className={e.durum === "yok" ? "is-pasif" : undefined}>
+                    <td data-label="Bağlantı"><span className="crm-table-title">{e.ad}</span></td>
+                    <td data-label="Ayrıntı"><span className="crm-table-sub" title={e.not}>{e.not}</span></td>
+                    <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                    <MobilSatir baslik={e.ad} durum={durum} alt={[e.not]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
-    {bolum === "kayitlar" ? (
-    <KKart id="kayitlar" baslik="Kurucu işlemleri"
-      aciklama="Kurulum adımları, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt.">
-      {!admin ? (
-        <KBos baslik="Kayıtlar okunamıyor" aciklama="Sunucu anahtarı tanımlı olmadığı için kayıtlar okunamıyor — kayıt yok demek değil." />
-      ) : (
-        <>
+      {bolum === "guvenlik" ? <>
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="sy-sir">
+            <thead><tr><th>Sır</th><th>Ne için</th><th>Durum</th></tr></thead>
+            <tbody>
+              {sirlar.map((s) => {
+                const durum = { etiket: s.var ? "Tanımlı" : "Eksik", ton: s.var ? "success" : "danger" };
+                return (
+                  <tr key={s.ad}>
+                    <td data-label="Sır"><span className="crm-table-title">{s.ad}</span></td>
+                    <td data-label="Ne için"><span className="crm-table-sub" title={s.not}>{s.not}</span></td>
+                    <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                    <MobilSatir baslik={s.ad} durum={durum} alt={[s.not]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <KNot ton={eksikSir ? "uyari" : "bilgi"}>
+          Konsolun her sayfası ve her işlemi kurucu yetkisini sunucuda yeniden doğruluyor; fiyat listesi,
+          fiyat geçmişi ve ödeme kararları ayrıca veritabanı politikalarıyla korunuyor.
+        </KNot>
+      </> : null}
+
+      {bolum === "kayitlar" ? (
+        !admin ? bos("Kayıtlar okunamıyor", "Sunucu anahtarı tanımlı olmadığı için kayıtlar okunamıyor — kayıt yok demek değil.") : <>
           {okumaHatalari.length ? <KNot ton="tehlike">Bazı kayıtlar okunamadı: {okumaHatalari.join(" · ")}</KNot> : null}
           {kayitlar.length ? (
-            <KListe>
-              {/* İlk sütun eskiden zamandı; panel listelerinde ilk hücre
-                  kaydın kendisi. Artık tek satır: işlem, altında kim; sağda
-                  türün tonlu rozeti (hata kırmızı, onay yeşil) ve zaman —
-                  tür rozette olduğu için alt satırda tekrar edilmiyor.
-                  Eskiden dört sütunlu tabloydu. */}
-              {kayitlar.map((k) => (
-                <KOge key={k.anahtar} baslik={k.ne} alt={k.kim ?? "Sistem"}
-                  durum={{ etiket: k.tur, ton: k.ton }} deger={tarihSaat(k.zaman)} />
-              ))}
-            </KListe>
-          ) : <KBos baslik="Henüz kurucu işlemi kaydı yok" aciklama="Konsoldan yapılan kurum, lisans ve ödeme işlemleri burada tarihiyle birikir." />}
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="sy-kayit">
+                <thead><tr><th>İşlem</th><th>Tür</th><th>Kim</th><th className="crm-col-date">Zaman</th></tr></thead>
+                <tbody>
+                  {kayitlar.map((k) => (
+                    <tr key={k.anahtar}>
+                      <td data-label="İşlem"><span className="crm-table-title" title={k.ne}>{k.ne}</span></td>
+                      <td data-label="Tür"><span className="status-pill" data-tone={k.ton}>{k.tur}</span></td>
+                      <td data-label="Kim"><span className="crm-table-title">{k.kim ?? "Sistem"}</span></td>
+                      <td className="crm-col-date" data-label="Zaman">{tarihSaat(k.zaman)}</td>
+                      <MobilSatir baslik={k.ne} durum={{ etiket: k.tur, ton: k.ton }} alt={[k.kim ?? "Sistem", tarihSaat(k.zaman)]} />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : bos("Henüz kurucu işlemi kaydı yok", "Konsoldan yapılan kurum, lisans ve ödeme işlemleri burada tarihiyle birikir.")}
           <KNot>
             Lisans, modül ve deneme düzenlemeleri bugün ayrı bir kayıt bırakmıyor (yalnızca son düzenleyen
             tutuluyor); genel işlem günlüğü sonraki adım.
           </KNot>
         </>
-      )}
-    </KKart>
-    ) : null}
+      ) : null}
+    </section>
   </main>;
 }
