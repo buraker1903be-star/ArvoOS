@@ -41,6 +41,8 @@ tsconfig.tsbuildinfo
 # vinext yerel geliştirmede indirdiği yazı tiplerini buraya yazıyor
 # (npm run dev); üretilen dosya, depoya girmez.
 /.vinext/
+# Sites kalktı ama eski bir .sites-runtime/ klasörü duran makinede
+# kazara commit edilmesin diye satır duruyor.
 /.sites-runtime/
 /outputs/
 /work/

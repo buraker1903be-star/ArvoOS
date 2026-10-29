@@ -126,6 +126,42 @@ export async function proformalar(admin: Admin, alan: "organization_id" | "subsc
 }
 
 /*
+  Tek proforma (29.10.2026): konsolun belge sayfası. Kurumun listesinden
+  farklı olarak İPTAL edilenler de gelir — kurucu iptal ettiği belgeyi
+  de açabilmeli; müşteri tarafı (proformalar) iptali göstermiyor.
+  Yetki çağıranda: yalnızca kurucu sayfası çağırıyor.
+*/
+export async function proformaGetir(admin: Admin, id: string): Promise<(KopruProforma & { urun: string; organizationId: string | null }) | null> {
+  const { data, error } = await admin
+    .from("platform_proformalari")
+    .select("id,proforma_no,product,organization_id,musteri_adi,alici,kalemler,ara_toplam,kdv_orani,kdv,toplam,para_birimi,duzenleme_tarihi,gecerlilik_tarihi,notlar,durum,payment_request_id,subscriber_payment_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error("Proforma okunamadı: " + error.message);
+  if (!data) return null;
+  const p = data as ProformaSatiri & { product: string; organization_id: string | null };
+  return {
+    id: p.id,
+    no: p.proforma_no,
+    musteriAdi: p.musteri_adi,
+    alici: p.alici && typeof p.alici === "object" ? p.alici : null,
+    kalemler: kalemleriCoz(p.kalemler),
+    araToplam: Number(p.ara_toplam),
+    kdvOrani: Number(p.kdv_orani),
+    kdv: Number(p.kdv),
+    toplam: Number(p.toplam),
+    paraBirimi: p.para_birimi || "TRY",
+    duzenlemeTarihi: p.duzenleme_tarihi,
+    gecerlilikTarihi: p.gecerlilik_tarihi,
+    notlar: p.notlar,
+    durum: p.durum === "odendi" ? "odendi" : p.durum === "iptal" ? "iptal" : "bekliyor",
+    odemeId: p.payment_request_id ?? p.subscriber_payment_id,
+    urun: p.product,
+    organizationId: p.organization_id,
+  };
+}
+
+/*
   Satıcı bilgisi: Arvo kurumunun (slug arvo-os) yasal bilgileri ve
   platform banka hesapları. Yalnızca proforma varsa okunuyor.
 */
