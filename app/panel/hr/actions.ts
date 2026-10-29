@@ -1,6 +1,7 @@
 "use server";
 
 import { runPanelAction } from "@/lib/panel-action";
+import { adDegisikligiEngeli } from "@/lib/departman-kurali";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -30,8 +31,67 @@ async function createDepartment__impl(formData:FormData){
   const name=text(formData,"name",120);
   if(name.length<2) throw new Error("Departman adı en az 2 karakter olmalıdır.");
   const {error}=await supabase.from("hr_departments").insert({organization_id:membership.organization_id,name,code:text(formData,"code",30)||null});
-  if(error) throw new Error("Departman oluşturulamadı: "+error.message);
+  if(error) throw new Error(error.code==="23505"?"Bu adla bir departman zaten var.":"Departman oluşturulamadı: "+error.message);
   revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
+}
+
+/*
+  DEPARTMAN DÜZENLEME (29.10.2026, Departmanlar sayfası). Eskiden
+  departman yalnızca açılabiliyordu; yanlış yazılan ad, kod ya da artık
+  kullanılmayan bir departman için yol yoktu.
+
+  Adın yetki anlamı var (lib/departman-kurali.ts): yönetim adına giren
+  ya da çıkan yeniden adlandırmayı yalnızca Kurum Sahibi yapar —
+  veritabanının personel tetikleyicisi ad değişikliğini görmüyor.
+  Pasife alınan departman yeni personel formunda listelenmez; içindeki
+  personel olduğu yerde kalır.
+*/
+async function updateDepartment__impl(formData:FormData){
+  const {supabase,membership}=await hrContext();
+  const id=text(formData,"department_id",80);
+  const name=text(formData,"name",120);
+  if(!id) throw new Error("Departman seçilmedi.");
+  if(name.length<2) throw new Error("Departman adı en az 2 karakter olmalıdır.");
+  const {data:mevcut,error:okumaHatasi}=await supabase.from("hr_departments").select("id,name").eq("id",id).eq("organization_id",membership.organization_id).maybeSingle();
+  if(okumaHatasi) throw new Error("Departman okunamadı: "+okumaHatasi.message);
+  if(!mevcut) throw new Error("Departman bulunamadı.");
+  const engel=adDegisikligiEngeli(mevcut.name as string,name,membership.role==="owner");
+  if(engel) throw new Error(engel);
+  const {data,error}=await supabase.from("hr_departments").update({
+    name,
+    code:text(formData,"code",30)||null,
+    is_active:formData.get("is_active")!=="0",
+    updated_at:new Date().toISOString(),
+  }).eq("id",id).eq("organization_id",membership.organization_id).select("id").maybeSingle();
+  if(error) throw new Error(error.code==="23505"?"Bu adla bir departman zaten var.":"Departman güncellenemedi: "+error.message);
+  if(!data) throw new Error("Departman güncellenemedi; yetkiniz olmayabilir.");
+  revalidatePath("/panel/hr", "layout");
+}
+
+/*
+  DEPARTMAN SİLME: yalnızca içinde personel yoksa. Veritabanı silmede
+  personelin departmanını boşaltıyor (ON DELETE SET NULL): engel olmasa
+  herkes sessizce "Departmansız" kalır ve müdür profilleri anlamını
+  yitirirdi. Engelin sorgusu hata yutmaz (AGENTS.md): okunamayan bir
+  sayı "personel yok" demek değil. Yönetim departmanını yalnızca Kurum
+  Sahibi siler.
+*/
+async function deleteDepartment__impl(formData:FormData){
+  const {supabase,membership}=await hrContext();
+  const id=text(formData,"department_id",80);
+  if(!id) throw new Error("Departman seçilmedi.");
+  const {data:mevcut,error:okumaHatasi}=await supabase.from("hr_departments").select("id,name").eq("id",id).eq("organization_id",membership.organization_id).maybeSingle();
+  if(okumaHatasi) throw new Error("Departman okunamadı: "+okumaHatasi.message);
+  if(!mevcut) throw new Error("Departman bulunamadı.");
+  if(adDegisikligiEngeli(mevcut.name as string,"",membership.role==="owner")) throw new Error("Yönetim departmanını yalnızca Kurum Sahibi silebilir.");
+  const {count,error:sayimHatasi}=await supabase.from("hr_employees").select("id",{count:"exact",head:true}).eq("organization_id",membership.organization_id).eq("department_id",id);
+  if(sayimHatasi) throw new Error("Departmandaki personel sayılamadı: "+sayimHatasi.message);
+  if(count===null) throw new Error("Departmandaki personel sayılamadı.");
+  if(count>0) throw new Error(`Bu departmanda ${count} personel var. Önce personeli başka bir departmana taşıyın ya da departmanı pasife alın.`);
+  const {data,error}=await supabase.from("hr_departments").delete().eq("id",id).eq("organization_id",membership.organization_id).select("id").maybeSingle();
+  if(error) throw new Error("Departman silinemedi: "+error.message);
+  if(!data) throw new Error("Departman silinemedi; yetkiniz olmayabilir.");
+  revalidatePath("/panel/hr", "layout");
 }
 
 async function createEmployee__impl(formData:FormData){
@@ -119,6 +179,12 @@ async function updateEmployee__impl(formData:FormData){
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createDepartment(...args: Parameters<typeof createDepartment__impl>) {
   return runPanelAction(() => createDepartment__impl(...args), "Departman oluşturuldu");
+}
+export async function updateDepartment(...args: Parameters<typeof updateDepartment__impl>) {
+  return runPanelAction(() => updateDepartment__impl(...args), "Departman güncellendi");
+}
+export async function deleteDepartment(...args: Parameters<typeof deleteDepartment__impl>) {
+  return runPanelAction(() => deleteDepartment__impl(...args), "Departman silindi");
 }
 export async function createEmployee(...args: Parameters<typeof createEmployee__impl>) {
   return runPanelAction(() => createEmployee__impl(...args), "Personel eklendi");

@@ -1,0 +1,33 @@
+/*
+  Departmanlar sayfası (29.10.2026): personel detayının kart dili.
+  Kartın sol üstündeki rozet türüne göre renkleniyor (yönetim / satış /
+  operasyon), pasif departman soluk.
+*/
+.dp-izgara{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--sp-4)}
+.os-root .dp-kart{display:flex;flex-direction:column;gap:var(--sp-3);margin:0;padding:var(--sp-4) var(--sp-5)}
+.os-root .dp-kart[data-pasif="evet"]{background:var(--surface-2)}
+.os-root .dp-kart[data-pasif="evet"] :is(h2,.dp-sayilar dd){color:var(--muted)}
+.dp-kart-bas{display:flex;align-items:center;gap:var(--sp-3)}
+.dp-kart-bas>div{flex:1;min-width:0}
+.os-root .dp-kart-bas h2{margin:0;overflow:hidden;color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold);text-overflow:ellipsis;white-space:nowrap}
+.dp-kart-bas small{color:var(--muted);font-size:var(--fs-micro)}
+.dp-simge{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:var(--r-md);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.04em}
+.dp-kart[data-tur="yonetim"] .dp-simge{background:var(--warning-soft);color:var(--warning)}
+.dp-kart[data-tur="satis"] .dp-simge{background:var(--primary-soft);color:var(--primary-strong)}
+.dp-kart[data-tur="operasyon"] .dp-simge{background:var(--info-soft);color:var(--info)}
+.dp-departmansiz .dp-simge{background:var(--danger-soft);color:var(--danger)}
+.os-root .dp-tip{margin:0;color:var(--ink-soft);font-size:var(--fs-sm);line-height:var(--lh-base)}
+.dp-sayilar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2);overflow:hidden}
+.dp-sayilar>div{display:flex;flex-direction:column;gap:2px;padding:var(--sp-2) var(--sp-3);border-left:1px solid var(--line-soft)}
+.dp-sayilar>div:first-child{border-left:0}
+.dp-sayilar dt{color:var(--muted);font-size:var(--fs-micro)}
+.dp-sayilar dd{margin:0;color:var(--ink);font-size:var(--fs-lg);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+.dp-alt{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin-top:auto}
+.dp-kisiler{display:flex;padding-left:6px}
+.dp-avatar{display:grid;place-items:center;width:30px;height:30px;margin-left:-6px;border:2px solid var(--surface);border-radius:50%;background:var(--primary-soft);color:var(--primary-strong);font-size:11px;font-weight:var(--fw-semibold)}
+.dp-fazla{background:var(--surface-2);color:var(--muted)}
+.dp-bos{color:var(--muted);font-size:var(--fs-sm)}
+.dp-eylem{display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-2);padding-top:var(--sp-3);border-top:1px solid var(--line-soft)}
+.dp-eylem form{margin:0}
+.os-root .dp-eylem :is(.panel-secondary,button){min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
+.panel-root .pf-secenek.dp-iki{grid-template-columns:repeat(2,minmax(0,1fr))}

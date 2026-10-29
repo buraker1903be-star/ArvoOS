@@ -47,6 +47,7 @@ const ADLAR: Record<string, string> = {
   "/panel/hr": "Personel",
   "/panel/hr/:id": "Personel kartı",
   "/panel/hr/genel-bakis": "İK · Genel bakış",
+  "/panel/hr/departmanlar": "Departmanlar",
   "/panel/hr/confidentiality": "Gizlilik sözleşmeleri",
   "/panel/posta": "Posta",
   "/panel/posta/:id": "Posta yazışması",
