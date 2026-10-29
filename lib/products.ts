@@ -14,6 +14,17 @@ export const PRODUCTS = [
 export type ProductCode = (typeof PRODUCTS)[number]["code"];
 
 /*
+  ÇEKİRDEK DIŞI ÜRÜNLER. ArvoOS'un aboneliği organization_licenses'ta,
+  ötekiler organization_product_licenses'ta (dosyanın başındaki not).
+  O tabloyu okuyan her yer bu listeyi kullanır; elle yazılan liste
+  30.10.2026'da ArvoARC'ı atlamıştı ve ArvoARC lisansı olan müşteriye
+  ne otomatik ne elle proforma kesilebiliyordu.
+*/
+export const EK_URUN_KODLARI: readonly ProductCode[] = PRODUCTS
+  .map((urun) => urun.code)
+  .filter((kod): kod is Exclude<ProductCode, "arvoos"> => kod !== "arvoos");
+
+/*
   LİSTE SİMGESİNİN İKİ HARFİ ÜRÜNÜN KENDİ TANIMINDAN (15.10.2026).
 
   Konsolun liste satırı, simge verilmediğinde adın baş harflerini

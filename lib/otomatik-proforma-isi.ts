@@ -14,6 +14,7 @@ import {
   alicilariTopla, OTOMATIK_KDV_ORANI, otomatikKalemler, proformaBildirimi, proformaPostasi, proformaZamaniMi, sonrakiDonemSonu, turkiyeGunu,
   type OtomatikUrun,
 } from "@/lib/otomatik-proforma";
+import { EK_URUN_KODLARI } from "@/lib/products";
 
 /*
   OTOMATİK PROFORMA İŞİ (29.10.2026). Karar ve metin saf modülde
@@ -73,7 +74,10 @@ export async function otomatikProformaKos(admin: Admin, bugun: string): Promise<
 
   const [cekirdek, urunler, aboneler] = await Promise.all([
     admin.from("organization_licenses").select("organization_id,license_status,plan_code,monthly_fee,user_limit,extra_user_fee,current_period_end").eq("license_status", "active"),
-    admin.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end").eq("status", "active").in("product", ["arvolab", "randevu"]),
+    admin.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end")/* Çekirdek dışı ürünlerin TAMAMI (lib/products · EK_URUN_KODLARI):
+       elle yazılan liste ArvoARC'ı atlıyordu, yani o lisansın dönemi
+       dolduğunda proforma hiç kesilmiyordu. */
+    .eq("status", "active").in("product", [...EK_URUN_KODLARI]),
     // Kuruma geçmiş abone (kurum_id dolu) kurumun lisansıyla ödüyor; ona ayrıca bireysel proforma kesilmez (otomatik yenilemeyle aynı kural).
     admin.from("product_subscribers").select("id,product,status,current_period_end").eq("status", "active").eq("product", "arvolab").is("kurum_id", null),
   ]);

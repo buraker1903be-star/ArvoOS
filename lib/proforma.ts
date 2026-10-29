@@ -1,3 +1,4 @@
+import { PRODUCTS, type ProductCode } from "@/lib/products";
 /*
   PLATFORM PROFORMASI: kalemler, KDV ve ödeme eşleştirme (27.10.2026).
 
@@ -23,7 +24,15 @@ export const AZAMI_KALEM = 20;
 /* Proforma kesilebilen ürünler; veritabanı kısıtıyla aynı küme
    (20261028155350). Kurum ArvoOS ve ArvoCal proformasını ArvoOS
    panelinde, ArvoLab proformasını ArvoLab'da görür. */
-export const PROFORMA_URUNLERI = ["arvoos", "arvolab", "randevu"] as const;
+/*
+  PROFORMA KESİLEBİLEN ÜRÜNLER = BÜTÜN ÜRÜNLER (lib/products).
+
+  Liste elle yazılıydı ve ArvoARC'ı atlıyordu: ürün dört, proforma üç
+  biliyordu. Sonucu, ArvoARC lisansı olan müşteriye ne elle ne otomatik
+  proforma kesilebilmesiydi — form seçeneği hiç göstermiyor, sunucu da
+  reddediyordu (30.10.2026, kurum sahibinin kararıyla düzeltildi).
+*/
+export const PROFORMA_URUNLERI: readonly ProductCode[] = PRODUCTS.map((urun) => urun.code);
 export const VARSAYILAN_KDV_ORANI = 20;
 
 /** Satır tutarı: miktar × birim fiyat, kuruşa yuvarlanmış. */

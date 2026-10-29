@@ -6,6 +6,8 @@ import { aliciAdi, kdvDahilProforma, PROFORMA_KALEM_SINIRI, proformaToplami, typ
 import { kurusOku, liraYazisi } from "@/lib/turkish-amount";
 import "../../hr/hr.css";
 import "./proforma-formu.css";
+import { productName } from "@/lib/products";
+import { PROFORMA_URUNLERI } from "@/lib/proforma";
 
 /*
   YENİ PROFORMA FORMU (28.10.2026).
@@ -44,7 +46,9 @@ export type ProformaMusterisi = {
 
 export type ProformaFiyatKisayolu = { urun: string; etiket: string; aciklama: string; kurus: number };
 
-const URUN_ADI: Record<string, string> = { arvoos: "ArvoOS", arvolab: "ArvoLab", randevu: "ArvoCal" };
+/* Ürün adları tek kaynaktan (lib/products): elle yazılan bu harita
+   ArvoARC'ı atlıyordu ve o ürünün proforması hiç kesilemiyordu. */
+const URUN_ADI: Record<string, string> = Object.fromEntries(PROFORMA_URUNLERI.map((kod) => [kod, productName(kod)]));
 const BOS_ALICI: ProformaAlici = { adSoyad: null, unvan: null, vergiDairesi: null, vergiNo: null, adres: null, eposta: null };
 const BOS_SATIR = { aciklama: "", miktar: "", fiyat: "" };
 
