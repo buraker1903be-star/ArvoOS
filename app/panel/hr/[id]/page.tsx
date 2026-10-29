@@ -475,155 +475,170 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
           {hareketGorur ? <div><PersonelHareketleri supabase={supabase} orgId={org} userId={employee.user_id} temelAdres={temelAdres} aralik={arama.hareket} sayfa={arama.hsayfa} /></div> : null}
         </TalepAkis>
 
+        {/*
+          Sağ sütun (29.10.2026, kurum sahibinin isteği): ortadaki gibi
+          sekmeli kart — Panel erişimi ve Özlük dosyası alt alta durunca
+          sütun ekrandan taşıyor, belgelere ulaşmak için kaydırmak
+          gerekiyordu. İçerik orta sütunla aynı dilde: sayı rozeti,
+          çerçeveli listeler, gerekçeli boş durum. Erişimin açık/kapalı olduğu eskiden yalnızca düğmenin
+          adından ("Erişimi kapat") çıkarılıyordu; artık başlıkta yazıyor.
+        */}
         {canManageTeam || gizlilikGorur ? (
-          <section className="panel-card talep-bilgi cari-sag" aria-label="Erişim ve özlük dosyası">
-            {canManageTeam ? <>
-            <div className="cari-baslik"><h2>Panel erişimi</h2>{yetkiDuzenler ? <Link className="personel-tumu" href={`${temelAdres}?pencere=yetki`} scroll={false}>Yetkileri düzenle</Link> : null}</div>
-            <div className="personel-erisim">
-              {member ? (
-                employee.user_id === userId ? (
-                  <span className="status-pill" data-tone="gold">{roleNames[member.role] ?? member.role} · Siz</span>
-                ) : managedByDepartment ? (
-                  <span className="status-pill" data-tone="gold">Kurum Sahibi · Yönetici departmanı</span>
-                ) : member.role === "owner" && !isOwner ? (
-                  <span className="status-pill" data-tone="gold">{roleNames.owner}</span>
+          <TalepAkis kimlik="personel-sag" sinif="personel-sag" etiket="Erişim ve özlük dosyası" sekmeler={[...(canManageTeam ? ["Panel erişimi"] : []), "Özlük dosyası"]}>
+            {canManageTeam ? (
+              <div className="ps-panel">
+              <header className="phr-bas ps-bas">
+                <h2>Rol {member ? <span className="status-pill" data-tone={member.is_active ? "success" : "danger"}>{member.is_active ? "Erişim açık" : "Erişim kapalı"}</span> : null}</h2>
+                {yetkiDuzenler ? <Link className="pu-tumu" href={`${temelAdres}?pencere=yetki`} scroll={false}>Yetkileri düzenle →</Link> : null}
+              </header>
+              <div className="personel-erisim">
+                {member ? (
+                  employee.user_id === userId ? (
+                    <span className="status-pill" data-tone="gold">{roleNames[member.role] ?? member.role} · Siz</span>
+                  ) : managedByDepartment ? (
+                    <span className="status-pill" data-tone="gold">Kurum Sahibi · Yönetici departmanı</span>
+                  ) : member.role === "owner" && !isOwner ? (
+                    <span className="status-pill" data-tone="gold">{roleNames.owner}</span>
+                  ) : (
+                    /* Eskiden rolün yanında bir "Aktif" kutusu vardı ve altındaki
+                       "Erişimi kapat/aç" düğmesiyle aynı işi yapıyordu; dar
+                       ekranda rol adı "Operasyon Per…" diye kesiliyordu. Erişim
+                       artık yalnızca o düğmeden değişiyor; burada mevcut durum
+                       gizli alanla korunuyor (işlem kutu yoksa "kapalı" sayıyor). */
+                    <form className="hr-access-form" action={updateTeamMemberAccess}>
+                      <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
+                      {member.is_active ? <input type="hidden" name="is_active" value="on" /> : null}
+                      <select name="role" defaultValue={member.role} aria-label="Panel rolü">
+                        <option value="member">Satış Personeli</option>
+                        <option value="operasyoncu">Operasyon Personeli</option>
+                        <option value="admin">Yönetici</option>
+                        {/* manager seçenekte yoktu; kaydedince sessizce Satış Personeli'ne düşüyordu. */}
+                        {member.role === "manager" ? <option value="manager">Yönetici (sınırlı)</option> : null}
+                        {isOwner ? <option value="owner">Kurum Sahibi</option> : null}
+                      </select>
+                      <button className="panel-secondary" type="submit">Rolü kaydet</button>
+                    </form>
+                  )
+                ) : pendingInvite ? (
+                  <>
+                    <span className="status-pill" data-tone={davetSebebi ? "danger" : statusTone(pendingInvite.status)}>
+                      {davetSebebi ? (DAVET_DURUM_ADLARI[pendingInvite.status] ?? "Davet sorunlu") : pendingInvite.status === "sent" ? "Davet gönderildi" : "Davet gönderiliyor"}
+                    </span>
+                    {/* Sorunun sebebi kartın üstünde: yönetici "neden gitmedi"yi
+                        başka hiçbir yerde göremiyordu. */}
+                    {davetSebebi ? <p className="talep-uyari cari-not">{davetSebebi}</p> : null}
+                    <div className="talep-iletisim">
+                      {davetSebebi ? (
+                        <PanelDrawer triggerLabel="Yeniden davet et" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için panel erişimi`} description="Adresi düzeltip yeniden davet edebilirsiniz; önceki davet geçersiz olur.">
+                          <InviteTeamForm employeeId={employee.id} fullName={employee.full_name} defaultEmail={employee.email ?? ""} />
+                        </PanelDrawer>
+                      ) : (
+                        <PanelDrawer triggerLabel="Giriş bağlantısı" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
+                          <TeamInviteLink invitationId={pendingInvite.id} organizationName={organizationName} personName={employee.full_name} email={pendingInvite.email} />
+                        </PanelDrawer>
+                      )}
+                      <form action={cancelInvitation}><input type="hidden" name="invitation_id" value={pendingInvite.id} /><button className="panel-secondary" type="submit">Daveti iptal et</button></form>
+                    </div>
+                  </>
                 ) : (
-                  /* Eskiden rolün yanında bir "Aktif" kutusu vardı ve altındaki
-                     "Erişimi kapat/aç" düğmesiyle aynı işi yapıyordu; dar
-                     ekranda rol adı "Operasyon Per…" diye kesiliyordu. Erişim
-                     artık yalnızca o düğmeden değişiyor; burada mevcut durum
-                     gizli alanla korunuyor (işlem kutu yoksa "kapalı" sayıyor). */
-                  <form className="hr-access-form" action={updateTeamMemberAccess}>
-                    <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
-                    {member.is_active ? <input type="hidden" name="is_active" value="on" /> : null}
-                    <select name="role" defaultValue={member.role} aria-label="Panel rolü">
-                      <option value="member">Satış Personeli</option>
-                      <option value="operasyoncu">Operasyon Personeli</option>
-                      <option value="admin">Yönetici</option>
-                      {/* manager seçenekte yoktu; kaydedince sessizce Satış Personeli'ne düşüyordu. */}
-                      {member.role === "manager" ? <option value="manager">Yönetici (sınırlı)</option> : null}
-                      {isOwner ? <option value="owner">Kurum Sahibi</option> : null}
-                    </select>
-                    <button className="panel-secondary" type="submit">Rolü kaydet</button>
-                  </form>
-                )
-              ) : pendingInvite ? (
-                <>
-                  <span className="status-pill" data-tone={davetSebebi ? "danger" : statusTone(pendingInvite.status)}>
-                    {davetSebebi ? (DAVET_DURUM_ADLARI[pendingInvite.status] ?? "Davet sorunlu") : pendingInvite.status === "sent" ? "Davet gönderildi" : "Davet gönderiliyor"}
-                  </span>
-                  {/* Sorunun sebebi kartın üstünde: yönetici "neden gitmedi"yi
-                      başka hiçbir yerde göremiyordu. */}
-                  {davetSebebi ? <p className="talep-uyari cari-not">{davetSebebi}</p> : null}
-                  <div className="talep-iletisim">
-                    {davetSebebi ? (
-                      <PanelDrawer triggerLabel="Yeniden davet et" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için panel erişimi`} description="Adresi düzeltip yeniden davet edebilirsiniz; önceki davet geçersiz olur.">
+                  <>
+                    <p className="talep-bos cari-not">Bu personel panele giriş yapamıyor.</p>
+                    <div className="talep-iletisim">
+                      <PanelDrawer triggerLabel="Panele davet et" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için panel erişimi`} description="Bu personele gerçek bir davet e-postası gönderilir.">
                         <InviteTeamForm employeeId={employee.id} fullName={employee.full_name} defaultEmail={employee.email ?? ""} />
                       </PanelDrawer>
-                    ) : (
-                      <PanelDrawer triggerLabel="Giriş bağlantısı" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
-                        <TeamInviteLink invitationId={pendingInvite.id} organizationName={organizationName} personName={employee.full_name} email={pendingInvite.email} />
-                      </PanelDrawer>
-                    )}
-                    <form action={cancelInvitation}><input type="hidden" name="invitation_id" value={pendingInvite.id} /><button className="panel-secondary" type="submit">Daveti iptal et</button></form>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="talep-bos cari-not">Bu personel panele giriş yapamıyor.</p>
-                  <div className="talep-iletisim">
-                    <PanelDrawer triggerLabel="Panele davet et" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için panel erişimi`} description="Bu personele gerçek bir davet e-postası gönderilir.">
-                      <InviteTeamForm employeeId={employee.id} fullName={employee.full_name} defaultEmail={employee.email ?? ""} />
-                    </PanelDrawer>
-                  </div>
-                </>
-              )}
-              {/*
-                ERİŞİM VE MÜDÜRLÜK (2026-10). Erişimi kapatıp açmak tek
-                düğme: rol formundaki "Aktif" kutucuğu gözden kaçıyordu.
-                Müdürlük, kişinin departmanına uygun hazır profil: satış
-                departmanı Satış Müdürü, operasyon departmanı Operasyon
-                Müdürü (lib/yetki-profilleri.ts; işlem de aynı kuralla
-                reddediyor). Kişinin kendisine, Kurum Sahibi'ne ve yönetim
-                departmanına gösterilmiyor — onların rolü elle değişmez.
-              */}
-              {member && employee.user_id !== userId && !managedByDepartment && member.role !== "owner" ? (
-                <div className="personel-erisim-eylem">
-                  <form action={erisimDegistir}>
-                    <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
-                    <input type="hidden" name="ac" value={member.is_active ? "0" : "1"} />
-                    <button className={member.is_active ? "panel-danger" : "panel-primary"} type="submit">{member.is_active ? "Erişimi kapat" : "Erişimi aç"}</button>
-                  </form>
-                  {profilOkunur ? departmanaUygunProfiller(departmentName).map((profil) => {
-                    const uygulandi = profilUygulandiMi(profil, { rol: member.role, modulIstisnalari: kisiModul, yetkiIstisnalari: kisiYetki }, PERMISSION_MODULES);
-                    return uygulandi ? (
-                      <span key={profil.key} className="status-pill" data-tone="success">{profil.label}</span>
-                    ) : (
-                      <form key={profil.key} action={applyPermissionProfile}>
-                        <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
-                        <input type="hidden" name="profil" value={profil.key} />
-                        <button className="panel-secondary" type="submit" title={profil.aciklama}>{profil.label} yap</button>
-                      </form>
-                    );
-                  }) : null}
-                </div>
-              ) : null}
-            </div>
-
-            </> : null}
-
-            {/* ÖZLÜK DOSYASI: gizlilik sözleşmesi (eskiden ayrı arşiv sayfasıydı,
-                /panel/hr/confidentiality) ve yüklenen belgeler. İkisi de gizli:
-                sözleşmeyi hr.gizlilik.gor, belgeleri ekip yönetme yetkisi görür. */}
-            <div className={canManageTeam ? "talep-not" : undefined}>
-              <div className="cari-baslik"><h2>Özlük dosyası</h2></div>
-            </div>
-            {gizlilikGorur ? (
-              <div className="personel-ozluk">
-                <div className="cari-baslik"><h3>Gizlilik sözleşmesi</h3><small>{gizlilikler.length}</small></div>
-                {gizlilikler.length ? (
-                  <ul className="cari-hareketler">
-                    {gizlilikler.map((g) => {
-                      const [ad, ton] = GIZLILIK_DURUMU[g.status] ?? ["İmza bekliyor", "warning"];
-                      return (
-                        <li key={g.id}>
-                          <Link href={`/panel/confidentiality/${g.id}`}>
-                            <span className="hr-doc-icon"><HrIcon name="shield" size={17} /></span>
-                            <span className="cari-hareket-metin"><b>{g.agreement_no}</b><small>{g.signed_at ? `İmza ${shortDate(g.signed_at)}${g.signer_name ? ` · ${g.signer_name}` : ""}` : `Hazırlandı ${shortDate(g.created_at)}`}</small></span>
-                            <span className="status-pill" data-tone={ton}>{ad}</span>
-                          </Link>
-                        </li>
+                    </div>
+                  </>
+                )}
+                {/*
+                  ERİŞİM VE MÜDÜRLÜK (2026-10). Erişimi kapatıp açmak tek
+                  düğme: rol formundaki "Aktif" kutucuğu gözden kaçıyordu.
+                  Müdürlük, kişinin departmanına uygun hazır profil: satış
+                  departmanı Satış Müdürü, operasyon departmanı Operasyon
+                  Müdürü (lib/yetki-profilleri.ts; işlem de aynı kuralla
+                  reddediyor). Kişinin kendisine, Kurum Sahibi'ne ve yönetim
+                  departmanına gösterilmiyor — onların rolü elle değişmez.
+                */}
+                {member && employee.user_id !== userId && !managedByDepartment && member.role !== "owner" ? (
+                  <div className="personel-erisim-eylem">
+                    <small className="ps-etiket">Hızlı işlemler</small>
+                    <form action={erisimDegistir}>
+                      <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
+                      <input type="hidden" name="ac" value={member.is_active ? "0" : "1"} />
+                      <button className={member.is_active ? "panel-danger" : "panel-primary"} type="submit">{member.is_active ? "Erişimi kapat" : "Erişimi aç"}</button>
+                    </form>
+                    {profilOkunur ? departmanaUygunProfiller(departmentName).map((profil) => {
+                      const uygulandi = profilUygulandiMi(profil, { rol: member.role, modulIstisnalari: kisiModul, yetkiIstisnalari: kisiYetki }, PERMISSION_MODULES);
+                      return uygulandi ? (
+                        <span key={profil.key} className="status-pill" data-tone="success">{profil.label}</span>
+                      ) : (
+                        <form key={profil.key} action={applyPermissionProfile}>
+                          <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
+                          <input type="hidden" name="profil" value={profil.key} />
+                          <button className="panel-secondary" type="submit" title={profil.aciklama}>{profil.label} yap</button>
+                        </form>
                       );
-                    })}
-                  </ul>
-                ) : <p className="talep-bos cari-not">Gizlilik sözleşmesi yok; yeni personel kaydında otomatik hazırlanır.</p>}
+                    }) : null}
+                  </div>
+                ) : null}
+              </div>
               </div>
             ) : null}
-            {canManageTeam ? (
-            <div className="personel-ozluk">
-              <div className="cari-baslik"><h3>Belgeler</h3><small>{docs.length}</small></div>
-              {docs.length ? (
-                <ul className="cari-hareketler">
-                  {docs.map((doc) => (
-                    <li key={doc.id}>
-                      <Link href={`/panel/hr/documents/${doc.id}`} target="_blank">
-                        <span className="hr-doc-icon"><HrIcon name="doc" size={17} /></span>
-                        <span className="cari-hareket-metin"><b>{doc.file_name}</b><small>{[fileSize(doc.file_size), shortDate(doc.created_at)].filter(Boolean).join(" · ")}</small></span>
-                      </Link>
-                      {/* Özlük dosyası: silinen belge depodan da gidiyor, geri gelmiyor. */}
-                      <form action={deleteEmployeeDocument}><input type="hidden" name="document_id" value={doc.id} /><ConfirmDeleteButton label="Sil" confirmMessage={`${doc.file_name} dosyasını kalıcı olarak silmek istediğinize emin misiniz?`} /></form>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="talep-bos cari-not">Henüz dosya yüklenmedi.</p>}
-              <form className="personel-yukle" action={uploadEmployeeDocument}>
-                <input type="hidden" name="employee_id" value={employee.id} />
-                <input type="file" name="file" required aria-label="Özlük dosyası" />
-                <button className="panel-primary" type="submit">Yükle</button>
-              </form>
+            <div className="ps-panel">
+              {/* ÖZLÜK DOSYASI: gizlilik sözleşmesi (eskiden ayrı arşiv sayfasıydı,
+                  /panel/hr/confidentiality) ve yüklenen belgeler. İkisi de gizli:
+                  sözleşmeyi hr.gizlilik.gor, belgeleri ekip yönetme yetkisi görür. */}
+              {gizlilikGorur ? (
+                <div className="personel-ozluk">
+                  <h3 className="ps-alt">Gizlilik sözleşmesi <small className="pu-sayi">{gizlilikler.length}</small></h3>
+                  {gizlilikler.length ? (
+                    <ul className="cari-hareketler ps-liste">
+                      {gizlilikler.map((g) => {
+                        const [ad, ton] = GIZLILIK_DURUMU[g.status] ?? ["İmza bekliyor", "warning"];
+                        return (
+                          <li key={g.id}>
+                            <Link href={`/panel/confidentiality/${g.id}`}>
+                              <span className="hr-doc-icon"><HrIcon name="shield" size={17} /></span>
+                              <span className="cari-hareket-metin"><b>{g.agreement_no}</b><small>{g.signed_at ? `İmza ${shortDate(g.signed_at)}${g.signer_name ? ` · ${g.signer_name}` : ""}` : `Hazırlandı ${shortDate(g.created_at)}`}</small></span>
+                              <span className="status-pill" data-tone={ton}>{ad}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : <p className="pu-bos">Gizlilik sözleşmesi yok; yeni personel kaydında otomatik hazırlanır.</p>}
+                </div>
+              ) : null}
+              {canManageTeam ? (
+              <div className="personel-ozluk">
+                <h3 className="ps-alt">Belgeler <small className="pu-sayi">{docs.length}</small></h3>
+                {docs.length ? (
+                  <ul className="cari-hareketler ps-liste">
+                    {docs.map((doc) => (
+                      <li key={doc.id}>
+                        <Link href={`/panel/hr/documents/${doc.id}`} target="_blank">
+                          <span className="hr-doc-icon"><HrIcon name="doc" size={17} /></span>
+                          <span className="cari-hareket-metin"><b>{doc.file_name}</b><small>{[fileSize(doc.file_size), shortDate(doc.created_at)].filter(Boolean).join(" · ")}</small></span>
+                        </Link>
+                        {/* Özlük dosyası: silinen belge depodan da gidiyor, geri gelmiyor. */}
+                        <form action={deleteEmployeeDocument}><input type="hidden" name="document_id" value={doc.id} /><ConfirmDeleteButton label="Sil" confirmMessage={`${doc.file_name} dosyasını kalıcı olarak silmek istediğinize emin misiniz?`} /></form>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="pu-bos">Henüz dosya yüklenmedi. Sözleşme, kimlik fotokopisi, diploma gibi belgeleri aşağıdan ekleyin.</p>}
+                <form className="personel-yukle" action={uploadEmployeeDocument}>
+                  <input type="hidden" name="employee_id" value={employee.id} />
+                  <label className="ps-dosya">
+                    <span className="ps-dosya-simge" aria-hidden="true"><HrIcon name="doc" size={16} /></span>
+                    <span><b>Belge ekle</b><small>En fazla 15 MB · yalnızca ekip yöneticileri görür</small></span>
+                    <input type="file" name="file" required aria-label="Özlük dosyası" />
+                  </label>
+                  <button className="panel-primary" type="submit">Yükle</button>
+                </form>
+              </div>
+              ) : null}
             </div>
-            ) : null}
-          </section>
+          </TalepAkis>
         ) : null}
       </div>
     </main>

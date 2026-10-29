@@ -300,7 +300,7 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .phr-aralik a{padding:4px var(--sp-3);border-radius:var(--r-sm);color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap}
 .phr-aralik a:hover{color:var(--ink)}
 .phr-aralik a.is-active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px var(--line)}
-.phr-gun h3{display:flex;align-items:baseline;gap:var(--sp-2);margin:0 0 var(--sp-2);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.os-root .phr-gun h3{display:flex;align-items:baseline;gap:var(--sp-2);margin:0 0 var(--sp-2);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .phr-gun h3 small{font-weight:var(--fw-medium);letter-spacing:0;text-transform:none}
 .phr-zaman{list-style:none;margin:0;padding:0;border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
 .phr-zaman li{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line-soft)}
@@ -337,7 +337,49 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .pu-govde small{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pu-govde small [data-tone="danger"]{color:var(--danger);font-weight:var(--fw-semibold)}
 .pu-liste .status-pill{flex:none}
-.pu-bos{margin:0;padding:var(--sp-4);border:1px dashed var(--line);border-radius:var(--r-md);text-align:center;color:var(--muted);font-size:var(--fs-sm)}
+.os-root .pu-bos{margin:0;padding:var(--sp-4);border:1px dashed var(--line);border-radius:var(--r-md);text-align:center;color:var(--muted);font-size:var(--fs-sm)}
+/*
+  .panel-card tabanı listeye 20px girinti, satıra 5px dış boşluk ve her
+  bağlantıya 12px/800 yazı veriyor (panel.css). Yeni listeler kartın
+  içinde olduğu için bunları devralıyordu: Üstündekiler satırları içeri
+  kaymış ve alt satır kalın görünüyordu (29.10.2026). Seçiciler .os-root
+  ile tabanın önüne geçiyor.
+*/
+.os-root :is(.pu-liste,.phr-zaman,.ps-liste){margin:0;padding:0}
+.os-root :is(.pu-liste,.phr-zaman,.ps-liste)>li{margin-block:0}
+.os-root :is(.pu-liste,.ps-liste) li>a{font-size:inherit;font-weight:inherit;color:inherit}
+.os-root :is(.pu-tumu,.phr-durum-metin a,.phr-govde a){font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--primary)}
+.os-root .phr-aralik a{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--muted)}
+.os-root .phr-aralik a.is-active{color:var(--ink)}
+
+/* Sağ sütun: sekmeli kart (Panel erişimi · Özlük dosyası). Sekme paneli
+   kenarsız; iç boşluk orta sütundaki sekmelerle aynı. */
+.personel-sag .ps-panel{padding:var(--sp-4)}
+.personel-sag .ps-bas{margin-bottom:var(--sp-3)}
+.personel-sag .ps-bas h2{display:flex;align-items:center;gap:var(--sp-2);margin:0;font-size:var(--fs-md)}
+.personel-sag .personel-erisim{gap:var(--sp-3)}
+.personel-sag .personel-erisim>.hr-access-form{width:100%;flex-wrap:nowrap}
+.personel-sag .personel-erisim>.hr-access-form select{flex:1 1 auto}
+.personel-sag .personel-erisim-eylem{width:100%;margin-top:0;padding-top:var(--sp-3);border-top:1px dashed var(--line-soft)}
+.ps-etiket{flex-basis:100%;color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.04em;text-transform:uppercase}
+.os-root .personel-sag h3.ps-alt{display:flex;align-items:center;gap:var(--sp-1);margin:0 0 var(--sp-2);color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.personel-sag .personel-ozluk+.personel-ozluk{margin-top:var(--sp-5)}
+.personel-sag .personel-ozluk{margin-top:0}
+.os-root .ps-liste{border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
+.os-root .ps-liste li{min-height:0;padding:0;border-top:1px solid var(--line-soft)}
+.os-root .ps-liste li:first-child{border-top:0}
+.os-root .ps-liste li>a{margin:0;padding:var(--sp-3);border-radius:0}
+.os-root .ps-liste li>form{padding-right:var(--sp-3)}
+.os-root .ps-liste .cari-hareket-metin b{font-weight:var(--fw-semibold)}
+.os-root .personel-sag .pu-bos{padding:var(--sp-4) var(--sp-3)}
+.personel-sag .personel-yukle{align-items:center;gap:var(--sp-3);padding:var(--sp-3);background:var(--surface-2)}
+.ps-dosya{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);cursor:pointer}
+.ps-dosya-simge{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);background:var(--surface);color:var(--muted)}
+.ps-dosya>span:nth-child(2){display:flex;flex-direction:column;min-width:0}
+.ps-dosya b{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.ps-dosya small{color:var(--muted);font-size:var(--fs-micro)}
+.os-root .personel-yukle .ps-dosya input[type="file"]{flex-basis:100%;font-size:var(--fs-micro);color:var(--muted)}
+
 @media (max-width:760px){
   .personel-hareket,.personel-ustunde{padding:var(--sp-3)}
   .pu-serit{grid-template-columns:repeat(2,minmax(0,1fr))}
