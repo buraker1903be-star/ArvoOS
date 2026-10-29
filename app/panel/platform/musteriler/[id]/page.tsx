@@ -115,7 +115,10 @@ export default async function MusteriDetayi({ params, searchParams }: {
     supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,trial_ends_at").eq("organization_id", id),
     supabase.from("organization_payment_requests").select(ODEME_SECIMI).eq("organization_id", id).order("created_at", { ascending: false }),
     admin
-      ? admin.from("activity_logs").select("action,entity_type,created_at").eq("organization_id", id).order("created_at", { ascending: false }).limit(6)
+      /* metadata da okunuyor: aşama adı orada (lib/activity-log) ve
+         onsuz liste "Aşamaya sorumlu atandı · İş akışı"yı beş kez
+         tekrarlıyordu — kurucu için tek bir "bir şeyler oldu". */
+      ? admin.from("activity_logs").select("action,entity_type,created_at,metadata").eq("organization_id", id).order("created_at", { ascending: false }).limit(6)
       : Promise.resolve({ data: [] }),
   ]);
   if (kurumHatasi) throw new Error(`Müşteri okunamadı: ${kurumHatasi.message}`);
@@ -125,7 +128,10 @@ export default async function MusteriDetayi({ params, searchParams }: {
   if (odemeHatasi) throw new Error(`Ödemeler okunamadı: ${odemeHatasi.message}`);
   const kurum = kurumSatiri as unknown as Kurum;
   const odemeler = (odemeSatirlari ?? []) as Odeme[];
-  const etkinlikler = (etkinlikSatirlari ?? []) as { action: string; entity_type: string; created_at: string }[];
+  const etkinlikler = (etkinlikSatirlari ?? []) as {
+    action: string; entity_type: string; created_at: string;
+    metadata: { step_title?: string | null } | null;
+  }[];
 
   // ---- Ürünler: çekirdek (ArvoOS) + ek ürünler, tek liste.
   const urunById = new Map(((urunSatirlari ?? []) as UrunLisansi[]).map((u) => [u.product, u]));
@@ -309,7 +315,18 @@ export default async function MusteriDetayi({ params, searchParams }: {
           {etkinlikler.length ? (
             <KListe>
               {etkinlikler.map((e, i) => (
-                <KOge key={`${e.created_at}-${i}`} baslik={eylemEtiketi(e.action, "edilgen")} alt={varlikEtiketi(e.entity_type)} deger={tarih(e.created_at)} />
+                /* Aşama adı varsa alt satır onu da yazıyor: beş "İş
+                   akışı" satırını birbirinden ayıran tek şey o.
+                   Yapan kişi BURADA yok, tablo sürümünde var
+                   (kiraci-dosyasi): adı çözmek üye listesini okumayı
+                   gerektiriyor ve bu sayfada o liste yalnızca
+                   Kullanıcılar sekmesi açıkken okunuyor. */
+                <KOge
+                  key={`${e.created_at}-${i}`}
+                  baslik={eylemEtiketi(e.action, "edilgen")}
+                  alt={[e.metadata?.step_title, varlikEtiketi(e.entity_type)].filter(Boolean).join(" · ")}
+                  deger={tarih(e.created_at)}
+                />
               ))}
             </KListe>
           ) : <KBos baslik="Etkinlik yok" aciklama="Kurumun panelinde bir işlem yapıldığında son hareketler burada görünür." />}
