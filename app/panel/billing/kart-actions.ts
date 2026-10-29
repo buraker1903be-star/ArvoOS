@@ -10,6 +10,7 @@ import { assertYetki } from "@/lib/yetkiler";
 import { kartOnayiniKaydet, kartSaklamaAcik, kurumKartOdemesiAc, platformKimligi } from "@/lib/paytr-kart-akisi";
 import { kayitliKartiSil } from "@/lib/paytr-direkt";
 import { firstForwardedIp } from "@/app/_components/request-origin";
+import { KARTLA_ODENEBILEN } from "@/lib/products";
 
 /*
   Kartla ödeme ve kayıtlı kart işlemleri (28.10.2026). Yetki her işlemde
@@ -17,7 +18,9 @@ import { firstForwardedIp } from "@/app/_components/request-origin";
   kişi). Veritabanı yazımı servis rolüyle — tablolar istemciye kapalı.
 */
 
-const URUNLER = ["arvoos", "arvolab", "randevu"] as const;
+/* Liste tek kaynakta (lib/products · KARTLA_ODENEBILEN): aynı dışlama
+   abonelik ekranında da yazılıydı ve ikisi tesadüfen tutuyordu. */
+const URUNLER = KARTLA_ODENEBILEN;
 
 async function istekIp() {
   const h = await headers();
@@ -35,7 +38,7 @@ async function yetkili() {
 
 async function kartlaOdemeyeBasla__impl(formData: FormData) {
   const urun = String(formData.get("product") ?? "");
-  if (!URUNLER.includes(urun as (typeof URUNLER)[number])) throw new Error("Geçerli bir ürün seçilmedi.");
+  if (!URUNLER.includes(urun as (typeof URUNLER)[number])) throw new Error("Bu ürün kartla ödenemiyor; havale/EFT ile ödeyebilirsiniz.");
   const { organization, userId, admin } = await yetkili();
   const ip = await istekIp();
   if (!ip) throw new Error("Bağlantı bilgisi okunamadı; sayfayı yenileyip tekrar deneyin.");

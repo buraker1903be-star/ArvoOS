@@ -1,7 +1,7 @@
 import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { getPaytrStatus, getPlatformOrganizationId } from "@/lib/paytr-status";
 import { paketAdi } from "@/lib/paket-adlari";
-import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
+import { KARTLA_ODENEBILEN, PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
 import { istanbulDateTime } from "@/lib/istanbul-date";
 import { submitBankTransferPayment } from "./actions";
@@ -243,7 +243,10 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 Otomatik yenileme açık · {yenilemeKarti ? `•••• ${yenilemeKarti.son4}` : "kayıtlı kart"}{yenileme.son_hata ? ` · son deneme başarısız: ${yenileme.son_hata}` : " · her çekimden 3 gün önce bildirim gelir"}
               </p> : null}
               {canSubmit && !disari ? (
-                kartAcik && storeReady && product.fee > 0 && product.code !== "arc" ? (
+                /* Hangi ürünün kartla ödenebildiği tek yerde
+                   (lib/products · KARTLA_ODENEBILEN); burada ayrıca
+                   `!== "arc"` yazmak, iki listenin sessizce sapmasıydı. */
+                kartAcik && storeReady && product.fee > 0 && KARTLA_ODENEBILEN.includes(product.code) ? (
                   <form action={kartlaOdemeyeBasla} className="abk-eylem">
                     <input type="hidden" name="product" value={product.code} />
                     <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>

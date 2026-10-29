@@ -20,6 +20,27 @@ export type ProductCode = (typeof PRODUCTS)[number]["code"];
   30.10.2026'da ArvoARC'ı atlamıştı ve ArvoARC lisansı olan müşteriye
   ne otomatik ne elle proforma kesilebiliyordu.
 */
+/*
+  KARTLA ÖDENEBİLEN ÜRÜNLER.
+
+  ArvoARC bugün DIŞARIDA ve sebebi hiçbir yerde yazılı değil
+  (30.10.2026'da arandı). Dışlama iki ayrı yerde, gerekçesiz
+  duruyordu: abonelik ekranındaki `product.code !== "arc"` koşulu ve
+  kart işleminin kendi ürün listesi. İkisi bugün birbirini tutuyor
+  ama tesadüfen — biri değişse öteki sessizce sapardı ve müşteri
+  "Geçerli bir ürün seçilmedi" hatasına düşerdi.
+
+  Veritabanı buna engel DEĞİL: organization_payment_requests'in
+  product kısıtı 'arc'ı kabul ediyor, yani havale/EFT yolu ArvoARC'a
+  zaten açık. Kapalı olan yalnızca kart.
+
+  Proforma tarafı aynı gün ArvoARC'a açıldı (kurum sahibinin kararı).
+  Kart da açılacaksa değişecek tek yer burası.
+*/
+export const KARTLA_ODENEBILEN: readonly ProductCode[] = PRODUCTS
+  .map((urun) => urun.code)
+  .filter((kod) => kod !== "arc");
+
 export const EK_URUN_KODLARI: readonly ProductCode[] = PRODUCTS
   .map((urun) => urun.code)
   .filter((kod): kod is Exclude<ProductCode, "arvoos"> => kod !== "arvoos");

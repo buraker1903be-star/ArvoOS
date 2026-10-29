@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EK_URUN_KODLARI, PRODUCTS } from "../../lib/products";
+import { EK_URUN_KODLARI, KARTLA_ODENEBILEN, PRODUCTS } from "../../lib/products";
 import { PROFORMA_URUNLERI } from "../../lib/proforma";
 
 /*
@@ -34,4 +34,20 @@ test("çekirdek dışı ürünler ArvoOS'u dışlıyor, ötekilerin hepsini kaps
 test("katalog büyüyünce iki liste de büyüyor", () => {
   assert.equal(PROFORMA_URUNLERI.length, PRODUCTS.length);
   assert.equal(EK_URUN_KODLARI.length, PRODUCTS.length - 1);
+});
+
+/*
+  KART DIŞLAMASI TEK YERDE. Aynı dışlama iki yerde yazılıydı
+  (abonelik ekranındaki `product.code !== "arc"` ve kart işleminin
+  listesi) ve tesadüfen tutuyordu; biri değişse müşteri "geçerli ürün
+  seçilmedi" hatasına düşerdi. Sebebi hiçbir yerde yazmıyordu —
+  lib/products'taki not durumu olduğu gibi kaydediyor.
+*/
+test("kartla ödenebilen ürünler listesi kataloğa bağlı", () => {
+  for (const kod of KARTLA_ODENEBILEN) {
+    assert.ok(PRODUCTS.some((u) => u.code === kod), `${kod} katalogda yok`);
+  }
+  /* Bugünün kararı: ArvoARC kartla ödenmiyor, havale/EFT açık. */
+  assert.ok(!KARTLA_ODENEBILEN.includes("arc"));
+  assert.equal(KARTLA_ODENEBILEN.length, PRODUCTS.length - 1);
 });
