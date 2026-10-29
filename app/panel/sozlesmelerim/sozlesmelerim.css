@@ -1,0 +1,14 @@
+/* Sözleşmelerim (sozlesmelerim/page.tsx): onay kayıtları ve yürürlükteki metin. */
+.panel-root .sozlesmelerim{display:flex;flex-direction:column;gap:var(--sp-4);max-width:880px}
+.panel-root .sozlesmelerim .so-kart{padding:var(--sp-4) var(--sp-5)}
+.panel-root .sozlesmelerim .so-kart h2{margin:0 0 var(--sp-3);font-size:var(--fs-base);color:var(--ink)}
+.panel-root .sozlesmelerim .so-kart h3{margin:16px 0 4px;font-size:var(--fs-base);color:var(--ink)}
+.panel-root .sozlesmelerim .so-kart p{margin:0 0 8px;font-size:var(--fs-base);line-height:1.6;color:var(--ink)}
+.panel-root .sozlesmelerim .so-giris{color:var(--ink-soft)!important}
+.panel-root .sozlesmelerim .so-bos{color:var(--muted)!important}
+.panel-root .sozlesmelerim .so-onaylar{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.panel-root .sozlesmelerim .so-onaylar li{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.panel-root .sozlesmelerim .so-onaylar dl{display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;margin:6px 0 0;font-size:var(--fs-sm)}
+.panel-root .sozlesmelerim .so-onaylar dt{color:var(--muted)}
+.panel-root .sozlesmelerim .so-onaylar dd{margin:0;word-break:break-word}
+.panel-root .sozlesmelerim .so-ozet{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}

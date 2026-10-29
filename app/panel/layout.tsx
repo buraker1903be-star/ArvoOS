@@ -48,6 +48,8 @@ import { postaBaglantiDurumu } from "@/lib/posta-hesabi";
 import { OsPostaDugmesi } from "./os/os-posta-dugmesi";
 import { OsPostaUyarisi } from "./os/os-posta-uyarisi";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
+import { sozlesmeOnayGerekli } from "@/lib/sozlesme/onay-durumu";
+import { SozlesmeOnayi } from "./sozlesme-onayi";
 
 /*
   SEKME BAŞLIĞI VE SİMGESİ KURUMUN (11.10.2026).
@@ -164,6 +166,15 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       </section>
     </main></div>;
   }
+
+  /*
+    KULLANIM SÖZLEŞMESİ (29.10.2026). Yürürlükteki sürümü onaylamamış
+    kullanıcıda panel bir onay penceresinin arkasında etkisiz kalır
+    (lib/sozlesme). Muafiyet yok: kurucu ve Kurum Sahibi dâhil. Sorgu
+    kabuğun öteki okumalarıyla birlikte başlıyor; okunamazsa pencere
+    gösterilmiyor (onay-durumu.ts'in başı).
+  */
+  const sozlesmeSorgusu = sozlesmeOnayGerekli(supabase, userId);
 
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
@@ -300,6 +311,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     notificationUnreadCount, ownEmployee, messagesInit, pendingAgreement, urunLisanslari,
     postaBilgisi, postaSayimi, varlikSatirlari, ekipSatirlari, kurumSimgesi,
   } = (await tekCagri()) ?? (await eskiYol());
+  const sozlesmeGerekli = await sozlesmeSorgusu;
   const messageUnreadCount = messagesInit ? Object.values(messagesInit.unread).reduce((total, count) => total + count, 0) : 0;
 
   /*
@@ -392,7 +404,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       .map((s) => ({ userId: s.user_id, ad: formatPersonName(s.full_name) || "Ekip üyesi" }));
     const benimAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
-    return <div className="panel-root os-root" style={tenantStyle}><main className="panel-frame os-frame">
+    return <div className="panel-root os-root" style={tenantStyle}>{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
       <PresenceHeartbeat />
       <NavProgress />
       <GlobalActionFeedback />
@@ -436,10 +448,11 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       <section className="os-workspace">
         <div className="panel-content">{agreementBanner}{children}</div>
       </section>
-      <OsDock uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} />
+      {/* Onay penceresi açıkken dock ve komut paleti (Ctrl+K) çizilmez: pencerenin üstüne açılıp odağı çalmasınlar. */}
+      {sozlesmeGerekli ? null : <OsDock uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} />}
       {/* Uygulama kabuğu: çevrimdışı ekranı, yeni sürüm uyarısı, ana ekrana ekleme önerisi. */}
       <OsUygulamaKabugu />
-      <OsKomutPaleti uygulamalar={uygulamalar} cikis={logout} />
+      {sozlesmeGerekli ? null : <OsKomutPaleti uygulamalar={uygulamalar} cikis={logout} />}
       <OsCanliSayfa organizationId={membership.organization_id} />
       {/* Ctrl+K'daki müşteri araması bu pencereyi açar; yalnızca CRM'i görene. */}
       {uygulamalar.some((u) => u.key === "crm") ? <CustomerLookupHost /> : null}
@@ -499,7 +512,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
   const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
-  return <div className="panel-root os-root os-konsol"><main className="panel-frame os-frame">
+  return <div className="panel-root os-root os-konsol">{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
@@ -529,17 +542,17 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     </section>
     {/* "Diğer uygulamalar": konsoldan kiracı paneline dönüş. Eskiden sol
         menünün dibinde bir bağlantıydı. */}
-    <OsDock
+    {sozlesmeGerekli ? null : <OsDock
       uygulamalar={konsolUygulamalariListesi}
       digerUygulamalar={[{ kod: "panel", ad: "Kiracı Paneli", href: `https://${DEFAULT_APP_HOST}/panel`, ayniSekme: false, marka: "arvoos" as const }]}
-    />
+    />}
     <OsUygulamaKabugu />
     {/* Ctrl+K kiracı adıyla da arıyor: konsolda en çok tekrarlanan
         gezinme "şu kurumun dosyasını aç" ve menüde karşılığı yok. */}
-    <OsKomutPaleti
+    {sozlesmeGerekli ? null : <OsKomutPaleti
       uygulamalar={konsolUygulamalariListesi}
       cikis={logout}
       kayitAramasi={{ etiket: "için kiracı ara", ipucu: "Müşteriler", adresOneki: "/panel/platform/musteriler?ara=" }}
-    />
+    />}
   </main></div>;
 }
