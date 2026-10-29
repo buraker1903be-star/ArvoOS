@@ -18,6 +18,7 @@ import { MobilSatir } from "../../crm/table-cells";
 import { OtomatikSecim } from "../../crm/otomatik-secim";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { SatirTiklama } from "../../crm/satir-tiklama";
+import { TopluIslem, type CsvSatiri } from "./toplu-islem";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { enCok } from "@/lib/liste-istatistik";
 import "../platform.css";
@@ -70,6 +71,7 @@ type Kurum = {
   contact_phone: string | null;
   aktif_uye: number;
   grup_markasi: boolean | null;
+  davet_eposta: string | null;
 };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
 
@@ -107,6 +109,11 @@ type Satir = {
   /** En yakın yenileme ya da deneme bitişi (gösterim için). */
   yenileme: string | null;
   ucretGirilmedi: boolean;
+  /** Toplu işlemin seçim değeri: "kurum:<id>" ya da "abone:<id>". */
+  secim: string;
+  /** Dışa aktarımda: kurumun davet adresi ya da abonenin e-postası, telefon. */
+  eposta?: string | null;
+  telefon?: string | null;
   /** Kurumsal: "Profesyonel paket"; bireyselde yok. */
   paket?: string | null;
   /** Kurumsal: "4 / 10"; bireyselde yok. */
@@ -157,6 +164,8 @@ function bireyselSatirlariKur(aboneler: Abone[], liste: (urun: string) => number
       yenileme: abone.status === "trialing" ? abone.trial_ends_at : abone.current_period_end,
       ucretGirilmedi: false,
       anahtar: `b-${abone.id}`,
+      secim: `abone:${abone.id}`,
+      eposta: abone.email,
       tur: "bireysel" as const,
       ad: abone.full_name?.trim() || abone.email,
       /* Adı girilmemiş abonede ad zaten e-posta: alt satıra ikinci kez
@@ -230,7 +239,7 @@ export default async function MusterilerPage({ searchParams }: {
   const sunucuDeseni = aranan ? aramaDeseni(aranan) : null;
   const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu, aramaSonucu] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi")
+      .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi,davet_eposta")
       .order("name"),
     // Kuruma geçmiş abone (kurum_id) bireysel değil: kurum lisansını kullanıyor.
     supabase.from("product_subscribers")
@@ -336,6 +345,9 @@ export default async function MusterilerPage({ searchParams }: {
     ].filter((t): t is string => Boolean(t)).sort();
     return {
       anahtar: `k-${kurum.id}`,
+      secim: `kurum:${kurum.id}`,
+      eposta: kurum.davet_eposta ?? null,
+      telefon: kurum.contact_phone ?? null,
       /* GRUP MARKASI (14.10.2026): AkademikMerkez ve ArvoCulture ArvoOS ile
          aynı şirketin markaları. Listede ayrı türde: ücretleri ArvoOS'un
          gruba yarattığı değeri gösteriyor, müşteri geliri değil. */
@@ -526,11 +538,19 @@ export default async function MusterilerPage({ searchParams }: {
           </KNot>
         ) : null}
 
+        {/* Toplu işlem (29.10.2026): seçilenlere hatırlatma e-postası, CSV. */}
+        {liste.length ? <TopluIslem satirlar={liste.map((satir): CsvSatiri => ({
+          secim: satir.secim, tur: TUR_ADI[satir.tur], ad: satir.ad, eposta: satir.eposta ?? null, telefon: satir.telefon ?? null,
+          urunler: satir.urunler.map((u) => u.etiket).join(", "), paket: satir.paket ?? null, kullanici: satir.kullanici ?? null,
+          durum: satir.durum, aylik: satir.ucret || null, yenileme: satir.yenileme, olusma: satir.olusma,
+        }))} /> : null}
+
         {liste.length ? (
           <div className="talep-tablo">
             <table className="crm-data-table" data-cols="konsol-musteri">
               <thead>
                 <tr>
+                  <th className="mu-secim" aria-label="Seç"></th>
                   <th>Müşteri</th>
                   <th>Ürünler</th>
                   <th>Kullanıcı</th>
@@ -543,6 +563,7 @@ export default async function MusterilerPage({ searchParams }: {
               <tbody>
                 {liste.map((satir) => (
                   <tr key={satir.anahtar} className={satir.ton === "neutral" ? "is-pasif" : undefined}>
+                    <td className="mu-secim"><input type="checkbox" form="mu-toplu" name="secim" value={satir.secim} aria-label={`${satir.ad} seç`} /></td>
                     <td data-label="Müşteri">
                       <Link className="crm-row-link ek-kisi" href={satir.href} aria-label={`${satir.ad} kartını aç`}>
                         <span className="ek-avatar" data-tur={satir.tur} aria-hidden="true">{basHarfleri(satir.ad)}</span>

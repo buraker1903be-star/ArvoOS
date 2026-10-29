@@ -8,7 +8,9 @@
    (kayit-detay.css); simge metnin üstüne düşüyordu. Personel
    tablosundaki kuralın aynısı, Müşteri hücresi için. */
 .os-root .talep-tablo .crm-data-table td[data-label="Müşteri"] .crm-row-link.ek-kisi{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--sp-3);text-align:left}
-.os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] thead th:first-child{width:auto}
+/* İlk sütun 29.10.2026'dan beri toplu işlemin seçim kutusu (toplu-islem.css); genişleyen sütun Müşteri. */
+.os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] thead th:first-child{width:36px}
+.os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] thead th:nth-child(2){width:auto}
 .os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] td[data-label="Müşteri"]{min-width:200px}
 /* Kurum yuvarlak değil köşeli: bir bakışta kişi (bireysel) ile kurum ayrılsın. */
 .konsol-musteriler .ek-avatar:not([data-tur="bireysel"]){border-radius:var(--r-md)}
@@ -26,5 +28,5 @@
 .os-root .ek-sag .mu-toplam{margin:0;text-align:right}
 
 @media (max-width:1360px) and (min-width:761px){
-  .os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] :is(th,td):nth-child(3){display:none}
+  .os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] :is(th,td):nth-child(4){display:none}
 }

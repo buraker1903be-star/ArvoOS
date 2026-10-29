@@ -74,11 +74,13 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
       ...(finansRozeti ? { rozet: finansRozeti } : {}),
       /* Sözleşme onayları Abonelikler'in başlığından açılıyor; ayrı bölüm
          değil ama yolu Finans'ta ki dock vurgusu kaymasın. */
-      yollar: ["/panel/platform/tahsilat", "/panel/platform/payments", "/panel/platform/billing", "/panel/platform/sozlesmeler"],
+      yollar: ["/panel/platform/tahsilat", "/panel/platform/payments", "/panel/platform/billing", "/panel/platform/sozlesmeler", "/panel/platform/yenilemeler"],
       bolumler: [
         { key: "tahsilatlar", href: "/panel/platform/tahsilat", label: "Tahsilatlar" },
         { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
         { key: "abonelikler", href: "/panel/platform/billing", label: "Abonelikler" },
+        /* Yenileme takvimi (29.10.2026): 30 günde dönemi dolanlar ve proforma durumları. */
+        { key: "yenilemeler", href: "/panel/platform/yenilemeler", label: "Yenileme takvimi" },
         /* Proforma bölüm şeridinde (28.10.2026): yalnızca süzgeç çipinin
            sonundayken telefonda görünmüyordu. */
         { key: "proformalar", href: "/panel/platform/tahsilat?kanal=proforma", label: "Proformalar" },
