@@ -11,6 +11,8 @@ import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { KNot } from "../konsol-ui";
 import { basHarfleri, KURULUM_ADI, KURULUM_ISLEMI, para, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { roleNames } from "../../hr/role-names";
 import "../platform.css";
 import "../../hr/hr.css";
@@ -45,7 +47,7 @@ import "../finans.css";
 
 /* Durum rozetinin tonları (panelin status-pill data-tone değerleri). */
 type Ton = "success" | "warning" | "danger" | "info" | "neutral";
-type Entegrasyon = { ad: string; durum: "bagli" | "eksik" | "yok"; not: string };
+type Entegrasyon = { ad: string; grup: string; durum: "bagli" | "eksik" | "yok"; not: string };
 type Kayit = { anahtar: string; zaman: string; tur: string; ton: Ton; ne: string; kim: string | null };
 
 const var_ = (ad: string) => Boolean(process.env[ad]);
@@ -58,8 +60,8 @@ const var_ = (ad: string) => Boolean(process.env[ad]);
 const BOLUMLER = ["yetkiler", "entegrasyonlar", "guvenlik", "kayitlar"] as const;
 type Bolum = (typeof BOLUMLER)[number];
 
-export default async function SistemAyarlariPage({ searchParams }: { searchParams: Promise<{ bolum?: string }> }) {
-  const { bolum: istenen } = await searchParams;
+export default async function SistemAyarlariPage({ searchParams }: { searchParams: Promise<{ bolum?: string; tur?: string }> }) {
+  const { bolum: istenen, tur: istenenTur } = await searchParams;
   const bolum: Bolum = (BOLUMLER as readonly string[]).includes(istenen ?? "") ? (istenen as Bolum) : "entegrasyonlar";
   const sekme = (kod: Bolum) => ({ className: bolum === kod ? "is-active" : undefined });
   const sekmeBag = (kod: Bolum) => ({ href: `/panel/platform/ayarlar?bolum=${kod}`, "aria-current": bolum === kod ? ("page" as const) : undefined });
@@ -151,20 +153,20 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   const kopruNotu = (h: { ok: boolean; missing: string[] }) => (h.ok ? "Bağlı, yanıt veriyor" : h.missing.length ? `Eksik ayar: ${h.missing.join(", ")}` : "Yanıt vermiyor");
   const entegrasyonlar: Entegrasyon[] = [
     {
-      ad: "PayTR (kartla ödeme)",
+      ad: "PayTR (kartla ödeme)", grup: "Ödeme",
       durum: paytr.available && paytr.connected && paytr.enabled ? "bagli" : paytr.available ? "eksik" : "yok",
       not: !paytr.available ? "Sunucu anahtarı ya da şifreleme anahtarı (PAYMENT_CREDENTIALS_KEY) tanımlı değil"
         : !paytr.connected ? "Mağaza bilgileri girilmemiş" : !paytr.enabled ? "Kayıtlı ama kapalı"
         : `Mağaza ${paytr.merchantHint ?? ""}${paytr.lastPaymentAt ? ` · son ödeme ${tarihSaat(paytr.lastPaymentAt)}` : " · henüz ödeme yok"}`,
     },
-    { ad: "Garanti BBVA sanal POS", durum: "yok", not: "Kimlik saklanabiliyor ama ödeme akışı bağlı değil" },
-    { ad: "Havale / EFT", durum: "bagli", not: "Kiracı dekontla bildiriyor, Ödeme onaylarında karar veriliyor" },
-    { ad: "WhatsApp (Meta)", durum: var_("WHATSAPP_PHONE_ID") && var_("WHATSAPP_TOKEN") ? "bagli" : "eksik", not: var_("WHATSAPP_PHONE_ID") && var_("WHATSAPP_TOKEN") ? "Arvo numarası tanımlı" : "WHATSAPP_PHONE_ID / WHATSAPP_TOKEN eksik" },
-    { ad: "Anlık bildirim (web push)", durum: pushYapilandi() ? "bagli" : "eksik", not: pushYapilandi() ? "VAPID anahtarları tanımlı" : "VAPID anahtarları eksik" },
-    { ad: "ArvoARC köprüsü", durum: arc.ok ? "bagli" : "eksik", not: kopruNotu(arc) },
-    { ad: "ArvoCal köprüsü", durum: randevu.ok ? "bagli" : "eksik", not: kopruNotu(randevu) },
-    { ad: "ArvoLab köprüsü", durum: arvolab && !arvolab.broken ? "bagli" : "eksik", not: !arvolab ? "ARVOLAB_SUPABASE_URL / anahtar eksik" : arvolab.broken ? "Yanıt vermiyor" : "Bağlı, yanıt veriyor" },
-    { ad: "E-fatura / e-arşiv (Paraşüt)", durum: "yok", not: "Bağlı değil; planlandı. Platform faturası bugün kesilmiyor" },
+    { ad: "Garanti BBVA sanal POS", grup: "Ödeme", durum: "yok", not: "Kimlik saklanabiliyor ama ödeme akışı bağlı değil" },
+    { ad: "Havale / EFT", grup: "Ödeme", durum: "bagli", not: "Kiracı dekontla bildiriyor, Ödeme onaylarında karar veriliyor" },
+    { ad: "WhatsApp (Meta)", grup: "Mesaj ve bildirim", durum: var_("WHATSAPP_PHONE_ID") && var_("WHATSAPP_TOKEN") ? "bagli" : "eksik", not: var_("WHATSAPP_PHONE_ID") && var_("WHATSAPP_TOKEN") ? "Arvo numarası tanımlı" : "WHATSAPP_PHONE_ID / WHATSAPP_TOKEN eksik" },
+    { ad: "Anlık bildirim (web push)", grup: "Mesaj ve bildirim", durum: pushYapilandi() ? "bagli" : "eksik", not: pushYapilandi() ? "VAPID anahtarları tanımlı" : "VAPID anahtarları eksik" },
+    { ad: "ArvoARC köprüsü", grup: "Ürün köprüsü", durum: arc.ok ? "bagli" : "eksik", not: kopruNotu(arc) },
+    { ad: "ArvoCal köprüsü", grup: "Ürün köprüsü", durum: randevu.ok ? "bagli" : "eksik", not: kopruNotu(randevu) },
+    { ad: "ArvoLab köprüsü", grup: "Ürün köprüsü", durum: arvolab && !arvolab.broken ? "bagli" : "eksik", not: !arvolab ? "ARVOLAB_SUPABASE_URL / anahtar eksik" : arvolab.broken ? "Yanıt vermiyor" : "Bağlı, yanıt veriyor" },
+    { ad: "E-fatura / e-arşiv (Paraşüt)", grup: "Fatura", durum: "yok", not: "Bağlı değil; planlandı. Platform faturası bugün kesilmiyor" },
   ];
   const DURUM_ADI = { bagli: "Bağlı", eksik: "Eksik", yok: "Yok" } as const;
   const DURUM_TONU: Record<Entegrasyon["durum"], Ton> = { bagli: "success", eksik: "warning", yok: "neutral" };
@@ -179,7 +181,15 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   ];
 
   const eksikEntegrasyon = entegrasyonlar.filter((e) => e.durum === "eksik").length;
+  const KAYIT_TURLERI = ["Kurulum", "Üye erişimi", "Fiyat", "Ödeme kararı", "Sözleşme onayı"];
+  const seciliTur = KAYIT_TURLERI.includes(istenenTur ?? "") ? istenenTur! : "";
+  const gorunenKayitlar = seciliTur ? kayitlar.filter((k) => k.tur === seciliTur) : kayitlar;
   const eksikSir = sirlar.filter((s) => !s.var).length;
+  const dikkat: { ad: string; not: string; bolum: Bolum; etiket: string; ton: Ton }[] = [
+    ...sirlar.filter((x) => !x.var).map((x) => ({ ad: x.ad, not: x.not, bolum: "guvenlik" as Bolum, etiket: "Eksik", ton: "danger" as Ton })),
+    ...entegrasyonlar.filter((e) => e.durum === "eksik").map((e) => ({ ad: e.ad, not: e.not, bolum: "entegrasyonlar" as Bolum, etiket: "Eksik", ton: "warning" as Ton })),
+    ...(okumaHatalari.length ? [{ ad: "İşlem kayıtları", not: okumaHatalari.join(" · "), bolum: "kayitlar" as Bolum, etiket: "Okunamadı", ton: "danger" as Ton }] : []),
+  ];
 
   const BOLUM_ADI: Record<Bolum, { baslik: string; alt: string }> = {
     yetkiler: { baslik: "Kurucu yetkileri", alt: "Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Sunucu işlemleri ve veritabanı politikaları aynı kuralı uyguluyor." },
@@ -231,6 +241,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
 
     {/* Bölüm kimlikleri (#yetkiler, #entegrasyonlar, #guvenlik, #kayitlar)
         dock'taki ve şeritteki bağlantıların hedefi: değiştirilmez. */}
+    <div className="talep-izgara personel-iki ekip-izgara">
     <section className="panel-card talep-bilgi" id={bolum} aria-label={bas.baslik}>
       <div className="ekip-suzgec talep-suzgec ek-arac">
         <nav className="ek-segment" aria-label="Bölüm">
@@ -266,13 +277,15 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
       {bolum === "entegrasyonlar" ? (
         <div className="talep-tablo">
           <table className="crm-data-table" data-cols="sy-entegrasyon">
-            <thead><tr><th>Bağlantı</th><th>Ayrıntı</th><th>Durum</th></tr></thead>
+            <thead><tr><th>Bağlantı</th><th>Grup</th><th>Ayrıntı</th><th>Durum</th></tr></thead>
             <tbody>
-              {entegrasyonlar.map((e) => {
+              {/* Gruba göre, grubun içinde önce eksik (bakılacak olan) en üstte. */}
+              {[...entegrasyonlar].sort((a, b) => a.grup.localeCompare(b.grup, "tr") || Number(a.durum !== "eksik") - Number(b.durum !== "eksik")).map((e) => {
                 const durum = { etiket: DURUM_ADI[e.durum], ton: DURUM_TONU[e.durum] };
                 return (
                   <tr key={e.ad} className={e.durum === "yok" ? "is-pasif" : undefined}>
                     <td data-label="Bağlantı"><span className="crm-table-title">{e.ad}</span></td>
+                    <td data-label="Grup"><span className="crm-table-sub">{e.grup}</span></td>
                     <td data-label="Ayrıntı"><span className="crm-table-sub" title={e.not}>{e.not}</span></td>
                     <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
                     <MobilSatir baslik={e.ad} durum={durum} alt={[e.not]} />
@@ -312,12 +325,24 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
       {bolum === "kayitlar" ? (
         !admin ? bos("Kayıtlar okunamıyor", "Sunucu anahtarı tanımlı olmadığı için kayıtlar okunamıyor — kayıt yok demek değil.") : <>
           {okumaHatalari.length ? <KNot ton="tehlike">Bazı kayıtlar okunamadı: {okumaHatalari.join(" · ")}</KNot> : null}
-          {kayitlar.length ? (
+          {/* Tür süzgeci (?tur=, 29.10.2026): altmış kaydın içinde "son ödeme
+              kararlarını kim verdi" sorusu kaydırarak aranıyordu. */}
+          <div className="ekip-suzgec talep-suzgec ek-arac sy-tur">
+            <nav className="ek-segment" aria-label="Kayıt türü">
+              {[["", "Tümü"], ...KAYIT_TURLERI.map((t) => [t, t])].map(([kod, ad]) => (
+                <Link key={kod || "tumu"} href={`/panel/platform/ayarlar?bolum=kayitlar${kod ? `&tur=${encodeURIComponent(kod)}` : ""}`}
+                  className={seciliTur === kod ? "is-active" : undefined} aria-current={seciliTur === kod ? "page" : undefined}>
+                  {ad} <small>{kod ? kayitlar.filter((k) => k.tur === kod).length : kayitlar.length}</small>
+                </Link>
+              ))}
+            </nav>
+          </div>
+          {gorunenKayitlar.length ? (
             <div className="talep-tablo">
               <table className="crm-data-table" data-cols="sy-kayit">
                 <thead><tr><th>İşlem</th><th>Tür</th><th>Kim</th><th className="crm-col-date">Zaman</th></tr></thead>
                 <tbody>
-                  {kayitlar.map((k) => (
+                  {gorunenKayitlar.map((k) => (
                     <tr key={k.anahtar}>
                       <td data-label="İşlem"><span className="crm-table-title" title={k.ne}>{k.ne}</span></td>
                       <td data-label="Tür"><span className="status-pill" data-tone={k.ton}>{k.tur}</span></td>
@@ -329,7 +354,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
                 </tbody>
               </table>
             </div>
-          ) : bos("Henüz kurucu işlemi kaydı yok", "Konsoldan yapılan kurum, lisans ve ödeme işlemleri burada tarihiyle birikir.")}
+          ) : bos(seciliTur ? `“${seciliTur}” türünde kayıt yok` : "Henüz kurucu işlemi kaydı yok", "Konsoldan yapılan kurum, lisans ve ödeme işlemleri burada tarihiyle birikir.")}
           <KNot>
             Lisans, modül ve deneme düzenlemeleri bugün ayrı bir kayıt bırakmıyor (yalnızca son düzenleyen
             tutuluyor); genel işlem günlüğü sonraki adım.
@@ -337,5 +362,42 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
         </>
       ) : null}
     </section>
+
+    {/*
+      Sağ sütun (29.10.2026): dört bölümün DİKKAT İSTEYEN satırları tek
+      listede, her biri kendi bölümüne bağlı. Eskiden eksik bir ayarı
+      görmek için dört bölümü tek tek açmak gerekiyordu; şerit yalnızca
+      "1 eksik ayar" diyordu, hangisi olduğunu söylemiyordu.
+    */}
+    <div className="liste-sag">
+      <TalepAkis kimlik="ayar-sag" sinif="ek-sag" etiket="Dikkat ve istatistik"
+        sekmeler={[dikkat.length ? `Dikkat · ${dikkat.length}` : "Dikkat", "İstatistikler"]}>
+        <section className="ek-panel" aria-label="Dikkat isteyenler">
+          {dikkat.length ? (
+            <ul className="pu-liste">
+              {dikkat.map((d) => (
+                <li key={d.ad}>
+                  <Link href={`/panel/platform/ayarlar?bolum=${d.bolum}`}>
+                    <span className="pu-govde"><b>{d.ad}</b><small title={d.not}>{d.not}</small></span>
+                    <span className="status-pill" data-tone={d.ton}>{d.etiket}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="ek-bos-kucuk">Eksik ayar yok: bağlantılar ve sunucu sırları tamam.</p>}
+        </section>
+        <IstatistikKarti
+          kapsam="kurucu konsolu"
+          kutular={[
+            { ad: "Kurucu", deger: String(kurucular.length), alt: "konsola girebilen" },
+            { ad: "Bağlı entegrasyon", deger: `${entegrasyonlar.filter((e) => e.durum === "bagli").length} / ${entegrasyonlar.length}`, alt: eksikEntegrasyon ? `${eksikEntegrasyon} eksik` : "eksik yok" },
+            { ad: "Sunucu sırrı", deger: `${sirlar.filter((x) => x.var).length} / ${sirlar.length}`, alt: eksikSir ? "eksik var" : "hepsi tanımlı", ton: eksikSir ? "uyari" : undefined },
+            { ad: "İşlem kaydı", deger: String(kayitlar.length), alt: "en yeni altmış" },
+          ]}
+          gruplar={[{ baslik: "Kayıt türüne göre", satirlar: KAYIT_TURLERI.map((t) => ({ ad: t, adet: kayitlar.filter((k) => k.tur === t).length })).filter((x) => x.adet) }]}
+        />
+      </TalepAkis>
+    </div>
+    </div>
   </main>;
 }
