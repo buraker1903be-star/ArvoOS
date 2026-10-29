@@ -3,16 +3,14 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ikincil } from "../konsol-oku";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMemberDirectory, type DirectoryRow } from "@/lib/member-directory";
-import { productName } from "@/lib/products";
-import { formatPersonName } from "@/lib/format-name";
+import { getMemberDirectory } from "@/lib/member-directory";
+import { kisilereTopla, kisininRolu, rolAdi, type Kisi } from "./kisiler";
 import { KNot } from "../konsol-ui";
 import { basHarfleri, sayi, tarih, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
-import { roleNames } from "../../hr/role-names";
 import "../platform.css";
 import "../../hr/hr.css";
 import "../../crm/crm.css";
@@ -48,22 +46,6 @@ const EVRELER: { kod: Evre; ad: string }[] = [
   { kod: "davet", ad: "Davet bekleyen" },
 ];
 
-/*
-  Pasifliğin sebebi. Sıra önemli: en DAR açıklama kazanıyor. Kurumu
-  pasife aldıysa lisans da askıda olabilir; kurucuya söylenmesi gereken
-  ilk şey kişiye özel olanıdır.
-*/
-function pasiflikSebebi(satir: DirectoryRow): string {
-  if (satir.membershipActive === false) return "Kurum pasife aldı";
-  const durum = (satir.status ?? "").toLocaleLowerCase("tr-TR");
-  if (durum.includes("suspend") || durum.includes("askı")) return "Lisans askıya alındı";
-  if (durum.includes("past_due") || durum.includes("gecik")) return "Ödeme gecikti";
-  if (durum.includes("cancel") || durum.includes("iptal")) return "Abonelik iptal edildi";
-  if (durum.includes("lisans yok") || durum.includes("abonelik yok")) return "Lisans/abonelik yok";
-  if (satir.periodEnd && Date.parse(satir.periodEnd) < Date.now()) return "Dönem doldu";
-  return "Erişim kapalı";
-}
-
 type Davet = {
   id: string; email: string; role: string | null; status: string;
   created_at: string; sent_at: string | null; expires_at: string | null; organization_id: string;
@@ -77,108 +59,6 @@ const davetleriIsaretle = (davetler: Davet[]) => {
     ...davet,
     suresiGecti: Boolean(davet.expires_at && Date.parse(davet.expires_at) < simdi),
   }));
-};
-
-/*
-  KİŞİ BAŞINA TEK SATIR (14.10.2026, "tablo çok kötü gözüküyor"). Eskiden
-  satır kişi × kurumdu: üç kurumda olan kurucu üç ayrı satırda, sağda üç
-  ayrı ham rol koduyla ("owner", "system_admin") görünüyordu. Şimdi kişi
-  bir kez; kurumları satırın altında rozet (kurum · ürünler), erişimi açık
-  olan kurum yeşil, kapalı olan soluk. Sağda kişinin EN YETKİLİ rolü
-  Türkçe adıyla ve kaç kurumda olduğu.
-
-  Kişi e-postaya göre birleşiyor: ArvoLab'ın kullanıcı kimliği ArvoOS'unkiyle
-  aynı değil (lib/member-directory'deki kuralın aynısı).
-*/
-/** rol: kurumdaki ArvoOS rolü; yoksa (yalnızca ArvoLab'daysa) ArvoLab rolü — rolUrunu hangisi olduğunu söyler. */
-type Uyelik = { kapsam: string; urunler: string[]; rol: string | null; rolUrunu: string | null; acik: boolean; sebep: string | null; bireysel: boolean };
-type Kisi = {
-  anahtar: string;
-  ad: string;
-  email: string | null;
-  telefon: string | null;
-  unvan: string | null;
-  uyelikler: Uyelik[];
-  /** Bir kurumda bile girebiliyorsa AKTİF; pasif = hiçbir yere giremiyor. */
-  acik: boolean;
-  sebep: string | null;
-  bireysel: boolean;
-};
-
-/*
-  ROL = KURUMDAKİ ArvoOS ROLÜ, panelin kendi adıyla (app/panel/hr/role-names).
-  İlk sürümde (14.10.2026) "en yetkili rol" ArvoOS ve ArvoLab rolleri
-  arasından seçiliyordu: ArvoLab'da teknik olarak "system_admin" olan
-  Gizem Atar, panelde Operasyon Personeli iken "Sistem yöneticisi"
-  görünüyordu (kurum sahibi düzeltti). İki ürünün rolleri aynı şeyi
-  anlatmıyor; kişinin kurumdaki görevi ArvoOS rolü. ArvoLab rolü yalnızca
-  kişinin hiç ArvoOS üyeliği yoksa yazılıyor, kendi adlarıyla.
-*/
-const ARVOOS_ROL_SIRASI = ["owner", "admin", "manager", "operasyoncu", "member"];
-const ARVOLAB_ROL_ADI: Record<string, string> = {
-  founder: "Kurucu", system_admin: "Sistem yöneticisi", academic_manager: "Akademik yönetici",
-  controller: "Kontrolör", expert: "Uzman", client: "Üye / öğrenci",
-};
-const rolAdi = (rol: string | null, urun: string | null) => {
-  if (!rol) return "—";
-  const ad = urun === "arvoos" ? roleNames[rol] : ARVOLAB_ROL_ADI[rol];
-  return ad ?? rol.replace(/_/g, " ").replace(/^./, (h) => h.toLocaleUpperCase("tr-TR"));
-};
-const arvoosSirasi = (rol: string | null) => {
-  const i = ARVOOS_ROL_SIRASI.indexOf(rol ?? "");
-  return i < 0 ? ARVOOS_ROL_SIRASI.length : i;
-};
-
-function kisilereTopla(satirlar: DirectoryRow[]): Kisi[] {
-  const harita = new Map<string, Kisi>();
-  for (const satir of satirlar) {
-    const anahtar = satir.email?.toLocaleLowerCase("tr-TR") ?? `uid:${satir.userId}`;
-    const urun = productName(satir.product as Parameters<typeof productName>[0]);
-    let kisi = harita.get(anahtar);
-    if (!kisi) {
-      kisi = {
-        anahtar,
-        ad: formatPersonName(satir.name) || satir.email || "Adsız kullanıcı",
-        email: satir.email, telefon: satir.phone, unvan: satir.title,
-        uyelikler: [], acik: false, sebep: null, bireysel: false,
-      };
-      harita.set(anahtar, kisi);
-    }
-    // Adı olan kayıt adsız olanı ezer (ArvoLab satırında ad boş olabiliyor).
-    if (kisi.ad === kisi.email && satir.name) kisi.ad = formatPersonName(satir.name) || kisi.ad;
-    kisi.telefon ??= satir.phone;
-    kisi.unvan ??= satir.title;
-
-    const kapsam = satir.individual ? "Bireysel" : satir.scope;
-    let uyelik = kisi.uyelikler.find((u) => u.kapsam === kapsam);
-    if (!uyelik) {
-      uyelik = { kapsam, urunler: [], rol: null, rolUrunu: null, acik: false, sebep: null, bireysel: satir.individual };
-      kisi.uyelikler.push(uyelik);
-    }
-    if (!uyelik.urunler.includes(urun)) uyelik.urunler.push(urun);
-    /* ArvoOS rolü her zaman kazanır; öteki ürünün rolü yalnızca boşluğu doldurur. */
-    if (satir.role && (satir.product === "arvoos" || (uyelik.rolUrunu !== "arvoos" && !uyelik.rol))) {
-      uyelik.rol = satir.role;
-      uyelik.rolUrunu = satir.product;
-    }
-    /* Bir üründe bile girebiliyorsa o kurumda açık. */
-    if (satir.access) { uyelik.acik = true; uyelik.sebep = null; }
-    else if (!uyelik.acik) uyelik.sebep = pasiflikSebebi(satir);
-  }
-  for (const kisi of harita.values()) {
-    kisi.acik = kisi.uyelikler.some((u) => u.acik);
-    kisi.sebep = kisi.acik ? null : kisi.uyelikler.find((u) => u.sebep)?.sebep ?? "Erişim kapalı";
-    kisi.bireysel = kisi.uyelikler.every((u) => u.bireysel);
-    kisi.uyelikler.sort((a, b) => Number(b.acik) - Number(a.acik) || a.kapsam.localeCompare(b.kapsam, "tr-TR"));
-  }
-  return [...harita.values()].sort((a, b) => a.ad.localeCompare(b.ad, "tr-TR"));
-}
-
-/** Kişinin rolü: ArvoOS üyeliği varsa kurumları arasındaki en yetkili ArvoOS rolü, yoksa ilk ürün rolü. */
-const kisininRolu = (kisi: Kisi) => {
-  const arvoos = kisi.uyelikler.filter((u) => u.rolUrunu === "arvoos").sort((a, b) => arvoosSirasi(a.rol) - arvoosSirasi(b.rol))[0];
-  const secilen = arvoos ?? kisi.uyelikler.find((u) => u.rol) ?? null;
-  return rolAdi(secilen?.rol ?? null, secilen?.rolUrunu ?? null);
 };
 
 export default async function KullanicilarPage({ searchParams }: {
@@ -253,8 +133,9 @@ export default async function KullanicilarPage({ searchParams }: {
     Artık Ekip ve Müşteriler listesiyle aynı tablo: kişi, kurumlar,
     telefon, rol ve durum ayrı sütunlarda. Evre seçimi segment.
 
-    Kişi satırının açılacak bir ekranı yok: ok bilerek konmadı; e-posta
-    ve telefon yine tıklanır bağlantı.
+    Kişi satırı kişi sayfasını açıyor (29.10.2026'dan beri; o güne kadar
+    açılacak bir ekranı yoktu ve ok bilerek konmamıştı). E-posta ve
+    telefon satırda yine tıklanır bağlantı.
   */
   return <main className="plt talep cari ekip talepler teklifler liste-sayfa kisi-sayfa">
     <header className="talep-bas">
@@ -359,20 +240,21 @@ export default async function KullanicilarPage({ searchParams }: {
         ) : gosterilen.length ? (
           <div className="talep-tablo">
             <table className="crm-data-table" data-cols="ku-kisi">
-              <thead><tr><th>Kişi</th><th>Kurumlar</th><th>Telefon</th><th>Rol</th><th>Durum</th></tr></thead>
+              <thead><tr><th>Kişi</th><th>Kurumlar</th><th>Telefon</th><th>Rol</th><th>Durum</th><th></th></tr></thead>
               <tbody>
                 {gosterilen.map((kisi) => {
                   const kurumSayisi = kisi.uyelikler.filter((u) => !u.bireysel).length;
                   const rol = kisininRolu(kisi);
                   const durum = kisi.acik ? { etiket: "Aktif", ton: "success" } : { etiket: kisi.sebep ?? "Erişim kapalı", ton: "danger" };
                   const alt = kisiYazisi(kisi);
+                  const kisiAdresi = `/panel/platform/kullanicilar/${kisi.kimlik}`;
                   return (
                     <tr key={kisi.anahtar} className={kisi.acik ? undefined : "is-pasif"}>
                       <td data-label="Kişi">
                         <span className="ek-kisi">
                           <span className="ek-avatar" data-tur="bireysel" aria-hidden="true">{basHarfleri(kisi.ad)}</span>
                           <span className="ek-kisi-metin">
-                            <span className="crm-table-title" title={kisi.ad}>{kisi.ad}</span>
+                            <Link className="crm-row-link crm-table-title" href={kisiAdresi} title={kisi.ad}>{kisi.ad}</Link>
                             {kisi.email && kisi.email !== kisi.ad
                               ? <a className="crm-table-sub" href={`mailto:${kisi.email}`} title={alt}>{alt}</a>
                               : alt ? <span className="crm-table-sub">{alt}</span> : null}
@@ -393,13 +275,15 @@ export default async function KullanicilarPage({ searchParams }: {
                       <td data-label="Telefon">{kisi.telefon ? <a className="crm-table-title" href={`tel:${kisi.telefon}`}>{kisi.telefon}</a> : <span className="crm-table-sub">—</span>}</td>
                       <td data-label="Rol"><span className="crm-table-title">{rol}</span>{kurumSayisi > 1 ? <small>{kurumSayisi} kurumda</small> : kisi.bireysel ? <small>bireysel</small> : null}</td>
                       <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
-                      <MobilSatir baslik={kisi.ad} durum={durum}
+                      <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                      <MobilSatir href={kisiAdresi} baslik={kisi.ad} durum={durum}
                         alt={[kisi.email !== kisi.ad ? kisi.email : null, rol, kisi.uyelikler.map((u) => u.kapsam).join(", ")]} />
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+            <SatirTiklama />
           </div>
         ) : bos(aranan ? `“${aranan}” ile eşleşen kullanıcı yok` : "Bu evrede kullanıcı yok", "Aramayı ya da evreyi değiştirip yeniden deneyin.")}
       </section>
