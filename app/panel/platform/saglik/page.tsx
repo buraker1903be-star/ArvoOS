@@ -75,7 +75,8 @@ type Kiraci = {
   user_limit: number | null; storage_limit_mb: number | null; aktif_uye: number;
 };
 
-export default async function SistemSagligiPage() {
+export default async function SistemSagligiPage({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
+  const { sekme: istenenSekme } = await searchParams;
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   const admin = createAdminClient();
@@ -303,8 +304,10 @@ export default async function SistemSagligiPage() {
     Artık beş sekme (Zamanlanmış işler · Köprü ve kopyalar · Kota ve
     limitler · Kurulum · Ödeme ve kredi), her birinin adında açık sorun
     sayısı; sayfa ilk sorunlu sekmeyle açılıyor. Sağda sorun özeti.
-    Sekmeler istemci tarafında: bütün veri zaten sunucuda okunuyor,
-    sekme değişince yeniden okumaya gerek yok.
+    Sekmeler BAĞLANTI (?sekme=, 29.10.2026 ikinci geçiş): sağdaki sorun
+    özetinin satırları ve şeridin sayıları doğrudan ilgili sekmeyi
+    açabilsin diye. İstemci sekmesindeyken özet satırı yalnızca "Kota ve
+    limitler" yazıyordu; kurucu sekmeyi kendisi arayıp buluyordu.
 
     Satırlar iOS satırı yerine Finans ve Müşteriler'deki hizalı tablo.
   */
@@ -313,14 +316,17 @@ export default async function SistemSagligiPage() {
   const kotaSorunu = kotalar.length + limitSapanlar.length;
   const kurulumSorunu = kurulumHatalari.length;
   const odemeSorunu = krediSonucu.veri.length + odemeOlaylari.length + (krediSonucu.hata ? 1 : 0);
-  const sekmeler: [string, number][] = [
-    ["Zamanlanmış işler", cronSorunAdedi],
-    ["Köprü ve kopyalar", kopruSorunu],
-    ["Kota ve limitler", kotaSorunu],
-    ["Kurulum", kurulumSorunu],
-    ["Ödeme ve kredi", odemeSorunu],
-  ];
-  const ilkSorunlu = Math.max(0, sekmeler.findIndex(([, adet]) => adet > 0));
+  const sekmeler = [
+    { kod: "isler", ad: "Zamanlanmış işler", adet: cronSorunAdedi },
+    { kod: "kopru", ad: "Köprü ve kopyalar", adet: kopruSorunu },
+    { kod: "kota", ad: "Kota ve limitler", adet: kotaSorunu },
+    { kod: "kurulum", ad: "Kurulum", adet: kurulumSorunu },
+    { kod: "odeme", ad: "Ödeme ve kredi", adet: odemeSorunu },
+  ] as const;
+  type SekmeKodu = (typeof sekmeler)[number]["kod"];
+  /* Adres sekme söylemiyorsa sorunlu ilk sekme: kurucu boş bir sekmeye inip doluyu aramasın. */
+  const sekme: SekmeKodu = sekmeler.find((x) => x.kod === istenenSekme)?.kod ?? sekmeler.find((x) => x.adet > 0)?.kod ?? "isler";
+  const sekmeAdresi = (kod: SekmeKodu) => `/panel/platform/saglik?sekme=${kod}`;
 
   return <main className="plt talep cari ekip sistem-sayfa">
     <header className="talep-bas">
@@ -330,9 +336,15 @@ export default async function SistemSagligiPage() {
         <p className="ek-alt">Zamanlanmış işler, ürün köprüleri, kota, kurulum ve ödeme; açık sorunlar sekmelerin adında.</p>
       </div>
       <div className="talep-bas-eylem">
+        {/* Sayfa her açılışta canlı okuyor; düğme aynı sekmeyi yeniden çiziyor. */}
+        <Link className="panel-secondary" href={sekmeAdresi(sekme)} prefetch={false}>Yenile</Link>
         <Link className="panel-secondary" href="/panel/platform/kurulumlar">Kurulumlar</Link>
       </div>
     </header>
+
+    {!okunamayan.length && !toplamSorun ? (
+      <KNot ton="basari"><b>Her şey yolunda.</b> Zamanlanmış işler zamanında, köprüler yanıt veriyor, kota, kurulum ve ödeme tarafında açık sorun yok.</KNot>
+    ) : null}
 
     <nav className="kayit-serit talep-serit" aria-label="Sağlık özeti">
       <dl>
@@ -348,13 +360,13 @@ export default async function SistemSagligiPage() {
         </div>
         <div>
           <dt>Köprü</dt>
-          <dd className={kopukKopru ? "talep-uyari" : "cari-arti"}>{sayi(kopruler.length - kopukKopru)} / {sayi(kopruler.length)}</dd>
+          <dd className={kopukKopru ? "talep-uyari" : "cari-arti"}><Link href={sekmeAdresi("kopru")}>{sayi(kopruler.length - kopukKopru)} / {sayi(kopruler.length)}</Link></dd>
           <small>{kopukKopru ? `${sayi(kopukKopru)} köprü yanıt vermiyor` : "Üçü de yanıt veriyor"}</small>
         </div>
         <div>
           <dt>Zamanlanmış iş</dt>
           <dd className={cronSorun.length || cronHatasi ? "talep-uyari" : cronBekleyen ? undefined : "cari-arti"}>
-            {cronHatasi ? "—" : <>{sayi(cronSaglikli)} / {sayi(cronDurum.length)}</>}
+            {cronHatasi ? "—" : <Link href={sekmeAdresi("isler")}>{sayi(cronSaglikli)} / {sayi(cronDurum.length)}</Link>}
           </dd>
           <small>{cronHatasi ? "Kayıtlar okunamadı"
             : cronSorun.length ? `${sayi(cronSorun.length)} iş gecikti ya da düştü`
@@ -364,7 +376,7 @@ export default async function SistemSagligiPage() {
         <div>
           <dt>Kota</dt>
           <dd className={kiraciHatasi || kotalar.length ? "talep-uyari" : undefined}>
-            {kiraciHatasi ? "—" : sayi(kotalar.length)}
+            {kiraciHatasi ? "—" : <Link href={sekmeAdresi("kota")}>{sayi(kotalar.length)}</Link>}
           </dd>
           <small>{kiraciHatasi ? "Kiracı listesi okunamadı"
             : kotalar.length ? "Limite yaklaşan ya da aşan kiracı"
@@ -372,8 +384,13 @@ export default async function SistemSagligiPage() {
         </div>
         <div>
           <dt>Kurulum</dt>
-          <dd className={kurulumHatalari.length ? "talep-uyari" : undefined}>{sayi(kurulumHatalari.length)}</dd>
+          <dd className={kurulumHatalari.length ? "talep-uyari" : undefined}><Link href={sekmeAdresi("kurulum")}>{sayi(kurulumHatalari.length)}</Link></dd>
           <small>{kurulumBekleyen ? `${sayi(kurulumBekleyen)} kurulum sürüyor` : "Son hatalı kurulum kaydı"}</small>
+        </div>
+        <div>
+          <dt>Ödeme ve kredi</dt>
+          <dd className={odemeSorunu ? "talep-uyari" : undefined}><Link href={sekmeAdresi("odeme")}>{krediSonucu.hata ? "—" : sayi(odemeSorunu)}</Link></dd>
+          <small>{odemeSorunu ? "İşlenemeyen ödeme ya da yüklenemeyen kredi" : "Ödeme tarafı temiz"}</small>
         </div>
       </dl>
     </nav>
@@ -388,12 +405,20 @@ export default async function SistemSagligiPage() {
     ) : null}
 
     <div className="talep-izgara personel-iki ekip-izgara">
-      <TalepAkis kimlik="saglik" sinif="sy-kart" etiket="Sistem sağlığı" baslangic={ilkSorunlu}
-        sekmeler={sekmeler.map(([ad, adet]) => (adet ? `${ad} · ${adet}` : ad))}>
+      <section className="talep-akis panel-card sy-kart" aria-label="Sistem sağlığı">
+        <nav className="talep-akis-sekmeler sy-sekmeler" aria-label="Sağlık bölümleri">
+          {sekmeler.map((x) => (
+            <Link key={x.kod} href={sekmeAdresi(x.kod)} scroll={false} replace
+              className={sekme === x.kod ? "is-active" : undefined} aria-current={sekme === x.kod ? "page" : undefined}>
+              {x.ad}{x.adet ? <span className="pu-sayi" data-tone="warning">{x.adet}</span> : null}
+            </Link>
+          ))}
+        </nav>
+        <div className="talep-akis-panel">
         {/* ZAMANLANMIŞ İŞLER İLK SEKME: öteki sekmelerin çoğu bunların
             BELİRTİSİ. Posta eşitlemesi durduğunda kullanıcı "postalar
             gelmiyor" diyor, köprü işi durduğunda "ürün kopyası bayat". */}
-        <section>
+        {sekme === "isler" ? <section>
           {bolumBasi("Zamanlanmış işler", "Her iş koştuğunu kaydediyor; beklenen aralık vercel.json'dan.")}
           {cronHatasi ? (
             <KNot ton="tehlike">Koşma kayıtları okunamadı ({cronHatasi.message}) — &quot;sorun yok&quot; demek değil.</KNot>
@@ -421,9 +446,9 @@ export default async function SistemSagligiPage() {
               </table>
             </div>
           )}
-        </section>
+        </section> : null}
 
-        <section>
+        {sekme === "kopru" ? <section>
           {bolumBasi("Ürün köprüleri", "Köprü koptuğunda hata yalnızca karşı taraftaki günlükte kalıyor; kurucu aylar sonra fark ediyordu.")}
           <div className="talep-tablo fn-ic-tablo">
             <table className="crm-data-table" data-cols="sy-kopru">
@@ -468,9 +493,9 @@ export default async function SistemSagligiPage() {
               <SatirTiklama />
             </div>
           ) : bos("Bayat kopya yok", "Kopyası konsoldan farklı erişim veren kiracı yok.")}
-        </section>
+        </section> : null}
 
-        <section>
+        {sekme === "kota" ? <section>
           {bolumBasi("Kota", "Limitini aşan ya da %85'ine gelen kiracılar. Kullanıcı üyeliklerden, depolama dosya deposundan, canlı.")}
           {kotalar.length ? (
             <div className="talep-tablo fn-ic-tablo">
@@ -522,9 +547,9 @@ export default async function SistemSagligiPage() {
               <SatirTiklama />
             </div>
           ) : bos("Limitler paketleriyle uyumlu", "Hiçbir kiracıya paketinin üstünde hak tanımlanmamış.")}
-        </section>
+        </section> : null}
 
-        <section>
+        {sekme === "kurulum" ? <section>
           {bolumBasi("Kurulum hataları", "Kurulumu hatada kalmış kiracılar. Sonradan tamamlanan eski hatalar burada sayılmıyor; onlar ana sayfadaki kurulum hareketlerinde.")}
           {admin ? (
             kurulumHatalari.length ? (
@@ -550,9 +575,9 @@ export default async function SistemSagligiPage() {
               </div>
             ) : bos("Kurulum hatası yok", "Kurulumu hatada kalmış kiracı yok.")
           ) : bos("Kurulum günlüğü okunamıyor", "Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hata yok” demek değil.")}
-        </section>
+        </section> : null}
 
-        <section>
+        {sekme === "odeme" ? <section>
           {bolumBasi("Yüklenemeyen AI kredisi", "Müşteri krediyi ödedi ama ArvoLab'a yüklenemedi: ödediği hâlde asistanda durdurulur. On dakikada bir yeniden deneniyor.")}
           {krediSonucu.hata ? (
             <KNot ton="tehlike">Kredi siparişleri okunamadı ({krediSonucu.hata}) — &quot;bekleyen yok&quot; demek değil.</KNot>
@@ -605,8 +630,9 @@ export default async function SistemSagligiPage() {
               </table>
             </div>
           ) : bos("İşlenemeyen ödeme yok", "İşlenemeyen ödeme bildirimi yok.")}
-        </section>
-      </TalepAkis>
+        </section> : null}
+        </div>
+      </section>
 
       {/* Sağ sütun: açık sorunların bölüm bölüm özeti. Satır sekmeyi
           söylüyor; sekme kartın kendisinde. */}
@@ -615,20 +641,20 @@ export default async function SistemSagligiPage() {
           <section className="ek-panel" aria-label="Sorun özeti">
             <ul className="pu-liste">
               {[
-                ["Gecikti ya da düştü", cronHatasi ? null : cronSorun.length, "Zamanlanmış işler"],
-                ["Kopuk köprü", kopukKopru, "Köprü ve kopyalar"],
-                ["Bayat ürün kopyası", bayatKopyalar.length, "Köprü ve kopyalar"],
-                ["Kota sorunu", kiraciHatasi ? null : kotalar.length, "Kota ve limitler"],
-                ["Paketinden fazla limit", kiraciHatasi ? null : limitSapanlar.length, "Kota ve limitler"],
-                ["Kurulum hatası", kurulumHatalari.length, "Kurulum"],
-                ["Yüklenemeyen AI kredisi", krediSonucu.hata ? null : krediSonucu.veri.length, "Ödeme ve kredi"],
-                ["İşlenemeyen ödeme", odemeOlaylari.length, "Ödeme ve kredi"],
-              ].map(([ad, adet, sekme]) => (
-                <li key={ad as string}>
-                  <span className="sy-ozet">
-                    <span className="pu-govde"><b>{ad}</b><small>{sekme}</small></span>
-                    <span className="status-pill" data-tone={adet === null ? "danger" : adet ? "warning" : "success"}>{adet === null ? "okunamadı" : adet ? sayi(adet as number) : "yok"}</span>
-                  </span>
+                { ad: "Gecikti ya da düştü", adet: cronHatasi ? null : cronSorun.length, kod: "isler" },
+                { ad: "Kopuk köprü", adet: kopukKopru, kod: "kopru" },
+                { ad: "Bayat ürün kopyası", adet: bayatKopyalar.length, kod: "kopru" },
+                { ad: "Kota sorunu", adet: kiraciHatasi ? null : kotalar.length, kod: "kota" },
+                { ad: "Paketinden fazla limit", adet: kiraciHatasi ? null : limitSapanlar.length, kod: "kota" },
+                { ad: "Kurulum hatası", adet: kurulumHatalari.length, kod: "kurulum" },
+                { ad: "Yüklenemeyen AI kredisi", adet: krediSonucu.hata ? null : krediSonucu.veri.length, kod: "odeme" },
+                { ad: "İşlenemeyen ödeme", adet: odemeOlaylari.length, kod: "odeme" },
+              ].map((satir) => (
+                <li key={satir.ad}>
+                  <Link href={sekmeAdresi(satir.kod as SekmeKodu)} scroll={false} replace aria-current={sekme === satir.kod ? "true" : undefined}>
+                    <span className="pu-govde"><b>{satir.ad}</b><small>{sekmeler.find((x) => x.kod === satir.kod)?.ad}</small></span>
+                    <span className="status-pill" data-tone={satir.adet === null ? "danger" : satir.adet ? "warning" : "success"}>{satir.adet === null ? "okunamadı" : satir.adet ? sayi(satir.adet) : "yok"}</span>
+                  </Link>
                 </li>
               ))}
             </ul>
