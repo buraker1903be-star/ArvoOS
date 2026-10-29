@@ -1,0 +1,11 @@
+/* Yenileme takvimi (yenilemeler/page.tsx): gün başlığı satırı ve dikkat isteyen satır. */
+.os-root .yenileme-sayfa .yt-gun th{padding:14px 12px 6px;text-align:left;background:var(--surface);border-bottom:1px solid var(--line)}
+.os-root .yenileme-sayfa .yt-gun th b{font-size:var(--fs-base);color:var(--ink)}
+.os-root .yenileme-sayfa .yt-gun th small{margin-left:8px;font-size:var(--fs-sm);font-weight:400;color:var(--muted)}
+.os-root .yenileme-sayfa tr.yt-dikkat td:first-child{box-shadow:inset 3px 0 0 var(--warning)}
+.os-root .yenileme-sayfa .yt-alt{display:block;max-width:260px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.os-root .yenileme-sayfa a.status-pill{text-decoration:none}
+@media (max-width:760px){
+  .os-root .yenileme-sayfa .yt-gun th{display:block;padding:12px 4px 4px}
+  .os-root .yenileme-sayfa .yt-gun th small{display:block;margin:2px 0 0}
+}
