@@ -53,6 +53,14 @@ export function proformaToplami(kalemler: ProformaKalemi[], kdvOrani: number): P
   Tutar `kurus` ile okunur (çağıran kurusOku'yu verir) — "1.500" bin beş
   yüz liradır, bir buçuk değil.
 */
+/*
+  Formun gönderebileceği en çok kalem (29.10.2026). Form üç sabit satırdı
+  ve sunucu da yalnızca 0-2'yi okuyordu; dördüncü bir hizmeti yazmanın
+  yolu yoktu. Artık satır eklenebiliyor; sınır hem formda hem sunucuda
+  bu sabitten — biri artıp öteki kalırsa fazla kalem sessizce düşerdi.
+*/
+export const PROFORMA_KALEM_SINIRI = 10;
+
 export function kalemleriOku(
   satirlar: { aciklama: string; miktar: string; birimFiyat: string }[],
   kurus: (deger: string) => number,

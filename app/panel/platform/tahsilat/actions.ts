@@ -7,7 +7,7 @@ import { runPanelAction } from "@/lib/panel-action";
 import { kurusOku } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { ibanHatasi, ibanTemizle } from "@/lib/iban";
-import { aliciAdi, aliciOku, kalemleriOku, kdvDahilProforma, PROFORMA_URUNLERI, proformaToplami, VARSAYILAN_KDV_ORANI } from "@/lib/proforma";
+import { aliciAdi, aliciOku, kalemleriOku, kdvDahilProforma, PROFORMA_KALEM_SINIRI, PROFORMA_URUNLERI, proformaToplami, VARSAYILAN_KDV_ORANI } from "@/lib/proforma";
 
 /*
   PLATFORM FATURASI YÜKLEME (26.10.2026, migration 20261026191235).
@@ -145,7 +145,7 @@ async function proformaOlustur__impl(formData: FormData) {
     eposta: String(formData.get("alici_eposta") ?? ""),
   }, tur);
 
-  const satirlar = [0, 1, 2].map((i) => ({
+  const satirlar = Array.from({ length: PROFORMA_KALEM_SINIRI }, (_, i) => ({
     aciklama: String(formData.get(`aciklama_${i}`) ?? ""),
     miktar: String(formData.get(`miktar_${i}`) ?? ""),
     birimFiyat: String(formData.get(`birim_fiyat_${i}`) ?? ""),

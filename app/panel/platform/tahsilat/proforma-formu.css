@@ -1,0 +1,60 @@
+/*
+  Yeni proforma formu (29.10.2026): dört numaralı bölüm, satır eklenip
+  silinen kalem tablosu ve belgedeki gibi toplam kutusu. Alan görünümü
+  kayit-formu.css'ten, seçenek düğmeleri personel formundan (hr.css
+  .pf-secenek); burada yalnızca bölüm düzeni ve kalem tablosu.
+*/
+.panel-root .pfo{gap:var(--sp-4)}
+.panel-root .pfo-bolum{display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4);border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--surface)}
+.panel-root .pfo-bolum h3{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin:0;color:var(--ink);font-size:var(--fs-base);font-weight:var(--fw-semibold)}
+.panel-root .pfo-bolum h3 i{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--primary);color:var(--surface);font-size:var(--fs-micro);font-style:normal;font-weight:var(--fw-bold)}
+.panel-root .pfo-bolum h3 small{flex-basis:100%;margin-left:30px;color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.panel-root .pfo-izgara{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3)}
+.panel-root .pfo-izgara>.pfo-genis{grid-column:1/-1}
+.panel-root .pfo-alan{display:flex;flex-direction:column;gap:6px;min-width:0}
+.panel-root .pfo-etiket{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.panel-root .pfo-urun{grid-template-columns:repeat(3,minmax(0,1fr))}
+.panel-root .pfo-kdv{grid-template-columns:repeat(2,minmax(0,1fr))}
+.panel-root .pfo .pf-secenek input:disabled+span{opacity:.45;cursor:not-allowed}
+
+.panel-root .pfo-kisayol{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.panel-root .pfo-kisayol>.pfo-etiket{flex-basis:100%}
+.panel-root .pfo-cip{display:inline-flex;align-items:center;min-height:32px;padding:0 var(--sp-3);border:1px dashed var(--line);border-radius:999px;background:var(--surface-2);color:var(--ink-soft);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer}
+.panel-root .pfo-cip:hover:not(:disabled){border-color:var(--primary);color:var(--primary-strong)}
+.panel-root .pfo-cip:disabled{opacity:.5;cursor:not-allowed}
+.panel-root .pfo-ekle{align-self:flex-start}
+
+.panel-root .pfo-kalemler{display:flex;flex-direction:column;border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
+.panel-root .pfo-kalem{display:grid;grid-template-columns:28px minmax(0,1fr) 72px 150px 110px 32px;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft)}
+.panel-root .pfo-kalem:first-child{border-top:0}
+.panel-root .pfo-kalem-bas{background:var(--surface-2);color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-semibold);text-transform:uppercase;letter-spacing:.03em}
+.panel-root .pfo-kalem input{width:100%;min-width:0;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}
+.panel-root .pfo-kalem input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--focus)}
+.panel-root .pfo-sira{color:var(--muted);font-size:var(--fs-sm);font-variant-numeric:tabular-nums;text-align:center}
+.panel-root .pfo-sag{text-align:right}
+.panel-root .pfo-tutar{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+.panel-root .pfo-tutar[data-hata="evet"]{color:var(--danger)}
+.panel-root .pfo-sil{display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
+.panel-root .pfo-sil:hover{background:var(--danger-soft);color:var(--danger)}
+
+.panel-root .pfo-son{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:var(--sp-4);align-items:start}
+.panel-root .pfo-toplam{display:flex;flex-direction:column;margin:0;border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
+.panel-root .pfo-toplam>div{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft)}
+.panel-root .pfo-toplam>div:first-child{border-top:0}
+.panel-root .pfo-toplam dt{color:var(--ink-soft);font-size:var(--fs-sm)}
+.panel-root .pfo-toplam dt small{color:var(--muted);font-size:var(--fs-micro)}
+.panel-root .pfo-toplam dd{margin:0;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+.panel-root .pfo-toplam .pfo-genel{background:var(--primary);}
+.panel-root .pfo-toplam .pfo-genel :is(dt,dd){color:var(--surface);font-size:var(--fs-base);font-weight:var(--fw-bold)}
+
+@media (max-width:760px){
+  .panel-root .pfo-izgara,.panel-root .pfo-son{grid-template-columns:minmax(0,1fr)}
+  .panel-root .pfo-kalem{grid-template-columns:24px minmax(0,1fr) 32px;grid-template-areas:"s a x" ". m m" ". f f" ". t t"}
+  .panel-root .pfo-kalem-bas{display:none}
+  .panel-root .pfo-kalem>:nth-child(1){grid-area:s}
+  .panel-root .pfo-kalem>:nth-child(2){grid-area:a}
+  .panel-root .pfo-kalem>:nth-child(3){grid-area:m}
+  .panel-root .pfo-kalem>:nth-child(4){grid-area:f}
+  .panel-root .pfo-kalem>:nth-child(5){grid-area:t}
+  .panel-root .pfo-kalem>:nth-child(6){grid-area:x}
+}
