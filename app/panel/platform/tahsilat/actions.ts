@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runPanelAction } from "@/lib/panel-action";
 import { kurusOku } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { ibanHatasi, ibanTemizle } from "@/lib/iban";
 import { aliciAdi, aliciOku, kalemleriOku, kdvDahilProforma, PROFORMA_URUNLERI, proformaToplami, VARSAYILAN_KDV_ORANI } from "@/lib/proforma";
 
 /*
@@ -255,4 +256,63 @@ async function proformaEsle__impl(formData: FormData) {
 
 export async function proformaEsle(...args: Parameters<typeof proformaEsle__impl>) {
   return runPanelAction(() => proformaEsle__impl(...args), "Proforma ödemeyle eşlendi; müşteri ödendi olarak görür.");
+}
+
+/*
+  BANKA HESAPLARI (29.10.2026). Proformada ve Abonelik sayfasının
+  Havale / EFT sekmesinde müşteriye giden hesaplar platform_bank_accounts
+  tablosundan geliyor; ama tabloyu düzenleyen bir ekran yoktu — tek
+  satır 02.08.2026'daki migration'la girilmişti ve hesap sahibi adı boştu.
+  Yazma kurucunun oturumuyla (RLS: founder_manage_bank_accounts).
+
+  IBAN denetim hanesinden geçiyor (lib/iban): biçimi tutan ama tek hanesi
+  yanlış bir IBAN müşterinin parasını başka hesaba gönderir. Hesap
+  SİLİNMİYOR, pasife alınıyor: geçmiş havale bildirimleri hangi hesaba
+  yatırıldığını bu satırdan okuyor.
+*/
+const PARA_BIRIMLERI = ["TRY", "USD", "EUR", "GBP"];
+
+async function bankaHesabiKaydet__impl(formData: FormData) {
+  const { isPlatformOwner, supabase } = await getPanelContext();
+  if (!isPlatformOwner) throw new Error("Banka hesaplarını yalnızca platform kurucusu düzenleyebilir.");
+  const id = String(formData.get("id") ?? "").trim();
+  const bankName = String(formData.get("bank_name") ?? "").trim().slice(0, 120);
+  const holder = String(formData.get("account_holder") ?? "").trim().slice(0, 160);
+  const ibanHam = String(formData.get("iban") ?? "");
+  const currency = String(formData.get("currency") ?? "TRY").trim().toUpperCase();
+  const sira = Number.parseInt(String(formData.get("sort_order") ?? "10"), 10);
+  if (id && !UUID.test(id)) throw new Error("Hesap bulunamadı.");
+  if (bankName.length < 2) throw new Error("Banka adını yazın.");
+  if (holder.length < 2) throw new Error("Hesap sahibinin adını yazın; müşteri havalede alıcı adını buradan yazıyor.");
+  const ibanHata = ibanHatasi(ibanHam);
+  if (ibanHata) throw new Error(ibanHata);
+  if (!PARA_BIRIMLERI.includes(currency)) throw new Error("Para birimi tanınmadı.");
+  const satir = { bank_name: bankName, account_holder: holder, iban: ibanTemizle(ibanHam), currency, sort_order: Number.isFinite(sira) ? sira : 10, updated_at: new Date().toISOString() };
+  const { data, error } = id
+    ? await supabase.from("platform_bank_accounts").update(satir).eq("id", id).select("id").maybeSingle()
+    : await supabase.from("platform_bank_accounts").insert({ ...satir, is_active: true }).select("id").maybeSingle();
+  if (error) throw new Error(error.code === "23505" ? "Bu IBAN zaten kayıtlı." : "Banka hesabı kaydedilemedi: " + error.message);
+  if (!data) throw new Error("Banka hesabı kaydedilemedi; yetkiniz olmayabilir.");
+  revalidatePath("/panel/platform/tahsilat");
+  revalidatePath("/panel/billing", "layout");
+}
+
+async function bankaHesabiDurumu__impl(formData: FormData) {
+  const { isPlatformOwner, supabase } = await getPanelContext();
+  if (!isPlatformOwner) throw new Error("Banka hesaplarını yalnızca platform kurucusu düzenleyebilir.");
+  const id = String(formData.get("id") ?? "").trim();
+  if (!UUID.test(id)) throw new Error("Hesap bulunamadı.");
+  const aktif = formData.get("aktif") === "1";
+  const { data, error } = await supabase.from("platform_bank_accounts").update({ is_active: aktif, updated_at: new Date().toISOString() }).eq("id", id).select("id").maybeSingle();
+  if (error) throw new Error("Banka hesabı güncellenemedi: " + error.message);
+  if (!data) throw new Error("Banka hesabı güncellenemedi; yetkiniz olmayabilir.");
+  revalidatePath("/panel/platform/tahsilat");
+  revalidatePath("/panel/billing", "layout");
+}
+
+export async function bankaHesabiKaydet(...args: Parameters<typeof bankaHesabiKaydet__impl>) {
+  return runPanelAction(() => bankaHesabiKaydet__impl(...args), "Banka hesabı kaydedildi");
+}
+export async function bankaHesabiDurumu(...args: Parameters<typeof bankaHesabiDurumu__impl>) {
+  return runPanelAction(() => bankaHesabiDurumu__impl(...args), "Banka hesabı güncellendi");
 }

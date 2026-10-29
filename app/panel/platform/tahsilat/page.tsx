@@ -8,7 +8,8 @@ import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PanelModal } from "../../components/panel-modal";
-import { faturaYukle, proformaEsle, proformaIptal, proformaOlustur } from "./actions";
+import { bankaHesabiDurumu, bankaHesabiKaydet, faturaYukle, proformaEsle, proformaIptal, proformaOlustur } from "./actions";
+import { ibanYazisi } from "@/lib/iban";
 import { eslesmeSirasi, kalemleriCoz, PROFORMA_DURUM_ADI, proformaGorunumu, VARSAYILAN_KDV_ORANI, type ProformaAlici } from "@/lib/proforma";
 import { productName } from "@/lib/products";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
@@ -57,6 +58,8 @@ const KANALLAR = [
   { kod: "fatura", ad: "Faturalar" },
   { kod: "proforma", ad: "Proformalar" },
   { kod: "otomatik", ad: "Kartla ve otomatik" },
+  // Proformada ve müşterinin Havale / EFT sekmesinde görünen hesaplar (29.10.2026'ya kadar düzenlenemiyordu).
+  { kod: "banka", ad: "Banka hesapları" },
 ] as const;
 
 /* Kartla ödeme denemeleri (PayTR Direkt API, 28.10.2026). */
@@ -202,6 +205,27 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
     elli proforma; bekleyenlerin her biri için AYNI müşterinin henüz bir
     proformaya bağlanmamış ödemeleri eşleştirme seçeneği olarak geliyor.
   */
+  type BankaHesabi = { id: string; bank_name: string; account_holder: string | null; iban: string; currency: string; is_active: boolean; sort_order: number };
+  let bankaHesaplari: BankaHesabi[] = [];
+  if (secili === "banka") {
+    // Kurucu pasifleri de görür (RLS: authenticated_read_active_bank_accounts).
+    const { data, error } = await supabase.from("platform_bank_accounts").select("id,bank_name,account_holder,iban,currency,is_active,sort_order").order("sort_order").order("created_at");
+    if (error) throw new Error("Banka hesapları okunamadı: " + error.message);
+    bankaHesaplari = (data ?? []) as BankaHesabi[];
+  }
+  const bankaFormu = (h?: BankaHesabi) => (
+    <form className="panel-form kayit-formu" action={bankaHesabiKaydet}>
+      {h ? <input type="hidden" name="id" value={h.id} /> : null}
+      <label><span>Banka<b className="req" aria-hidden="true">*</b></span><input name="bank_name" required minLength={2} maxLength={120} defaultValue={h?.bank_name ?? ""} placeholder="Örn. T. Garanti Bankası" /></label>
+      <label><span>Hesap sahibi<b className="req" aria-hidden="true">*</b></span><input name="account_holder" required minLength={2} maxLength={160} defaultValue={h?.account_holder ?? ""} placeholder="Ticari unvan, örn. Arvo Yazılım A.Ş." /></label>
+      <label className="wide"><span>IBAN<b className="req" aria-hidden="true">*</b></span><input name="iban" required maxLength={42} defaultValue={h ? ibanYazisi(h.iban) : ""} placeholder="TR00 0000 0000 0000 0000 0000 00" autoComplete="off" spellCheck={false} /></label>
+      <label>Para birimi<select name="currency" defaultValue={h?.currency ?? "TRY"}><option value="TRY">TRY</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select></label>
+      <label>Sıra<input name="sort_order" type="number" min="0" max="999" step="1" defaultValue={h?.sort_order ?? 10} /></label>
+      <p className="wide kayit-formu-not">IBAN denetim hanesinden geçer; tek hanesi yanlış yazılmış IBAN kaydedilmez. Hesap proformada ve müşterinin Havale / EFT sekmesinde bu sırayla görünür.</p>
+      <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">{h ? "Değişiklikleri kaydet" : "Hesabı ekle"}</button></div>
+    </form>
+  );
+
   let proformalar: Proforma[] = [];
   let proformaMusterileri: ProformaMusterisi[] = [];
   let kisayollar: ProformaFiyatKisayolu[] = [];
@@ -355,7 +379,35 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
 
       {birimKarisik ? <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</KNot> : null}
 
-      {secili === "proforma" ? (
+      {secili === "banka" ? (
+        <>
+          <div className="talep-bas-eylem">
+            <PanelModal triggerLabel="Yeni banka hesabı" triggerClassName="panel-primary" kicker="Banka hesapları" title="Yeni banka hesabı" basaridaKapan
+              description="Proformada ve müşterinin Havale / EFT sekmesinde görünür.">{bankaFormu()}</PanelModal>
+          </div>
+          {bankaHesaplari.some((h) => h.is_active && !h.account_holder) ? <KNot ton="uyari">Hesap sahibi adı boş olan etkin hesap var: müşteri havalede alıcı adını yazamıyor ve proformada yalnızca banka adı görünüyor. Düzenle ile ekleyin.</KNot> : null}
+          {bankaHesaplari.length ? (
+            <KListe>
+              {bankaHesaplari.map((h) => (
+                <KOge key={h.id} simge={h.bank_name}
+                  baslik={`${h.bank_name} · ${h.currency}`}
+                  alt={<><code>{ibanYazisi(h.iban)}</code>{` · ${h.account_holder || "hesap sahibi yazılmamış"} · sıra ${h.sort_order}`}</>}
+                  durum={h.is_active ? (h.account_holder ? { etiket: "Etkin", ton: "success" } : { etiket: "Hesap sahibi eksik", ton: "warning" }) : { etiket: "Pasif", ton: "neutral" }}
+                  sonu={<span className="k-proforma-eylem">
+                    <PanelModal triggerLabel="Düzenle" kicker="Banka hesapları" title={`${h.bank_name} hesabını düzenle`} basaridaKapan
+                      description="Değişiklik bundan sonra açılan proformalarda ve Havale / EFT sekmesinde görünür.">{bankaFormu(h)}</PanelModal>
+                    <form action={bankaHesabiDurumu}>
+                      <input type="hidden" name="id" value={h.id} />
+                      <input type="hidden" name="aktif" value={h.is_active ? "0" : "1"} />
+                      <button className="panel-secondary" type="submit">{h.is_active ? "Pasife al" : "Etkinleştir"}</button>
+                    </form>
+                  </span>}
+                />
+              ))}
+            </KListe>
+          ) : <KBos baslik="Banka hesabı yok" aciklama="Havaleyle ödeyecek müşteriler için en az bir hesap ekleyin; proformada ödeme bilgileri bölümü buradan dolar." />}
+        </>
+      ) : secili === "proforma" ? (
         <>
           <div className="talep-bas-eylem">
             <PanelModal triggerLabel="Yeni proforma" triggerClassName="panel-primary" kicker="Proforma" title="Yeni proforma" boy="genis"
@@ -380,7 +432,11 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
                     durum={{ etiket: PROFORMA_DURUM_ADI[gorunum], ton: DURUM_TONU[gorunum] }}
                     deger={para(Number(p.toplam), p.para_birimi)}
                     degerAlt={`KDV %${Number(p.kdv_orani)} dahil`}
-                    sonu={p.durum === "bekliyor" ? (
+                    /* Bekleyende eşleştirme düğmesi de var; satırın tamamı bağlantı olamıyor
+                       (KOge sonu verilince satırı bağlantı yapmıyor), belge düğmesi yanında. */
+                    href={`/panel/platform/tahsilat/proforma/${p.id}`}
+                    sonu={p.durum === "bekliyor" ? (<span className="k-proforma-eylem">
+                      <Link className="panel-secondary" href={`/panel/platform/tahsilat/proforma/${p.id}`}>Belge</Link>
                       <PanelModal triggerLabel="Ödemeyle eşleştir" kicker={p.proforma_no} title={`${p.musteri_adi} · ${para(Number(p.toplam), p.para_birimi)}`}
                         description="Müşterinin bu proforma için yaptığı ödemeyi seçin. Tutarı tutan ödemeler başta; ödeme makbuzunda proforma numarası görünür." basaridaKapan>
                         {secenekler.length ? (
@@ -404,7 +460,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
                           <div className="wide panel-form-actions kayit-formu-eylem"><p>Müşteri ödemeyecekse proformayı iptal edin; numara korunur.</p><button className="panel-secondary" type="submit">Proformayı iptal et</button></div>
                         </form>
                       </PanelModal>
-                    ) : null}
+                    </span>) : null}
                   />
                 );
               })}

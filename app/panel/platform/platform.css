@@ -1208,3 +1208,6 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
 .musteri-yukleniyor { min-height: 160px; display: grid; place-items: center; margin: 0 }
 .panel-root .proforma-kisayol{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
 .panel-root .proforma-kisayol > .kayit-formu-bolum{flex-basis:100%;margin-top:0}
+/* Tahsilat → Proformalar ve Banka hesapları: satır sonundaki iki düğme yan yana. */
+.k-proforma-eylem{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.k-proforma-eylem form{margin:0}
