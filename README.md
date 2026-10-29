@@ -37,7 +37,9 @@ değişken uygulamayı düşürmez, o özelliği kapalı gösterir.
 | Komut | Ne yapar |
 | --- | --- |
 | `npm run dev` | Geliştirme sunucusu |
+| `npm test` | Birim + veritabanı testleri |
 | `npm run test:unit` | Saf mantık birim testleri (derleme gerekmez) |
+| `npm run test:db` | Canlı şema PGlite'a kurulur, akışlar gerçek fonksiyonlarla koşar |
 | `npx tsc --noEmit` | Tip denetimi |
 | `npm run lint` | ESLint |
 | `npm run build` | Üretim derlemesi (`next build`) |
