@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { kartOnayi } from "../../kart-actions";
+import { ROUTES, absoluteUrl } from "@/lib/site/routes";
 
 /*
   Kart formu. action PayTR'nin adresi: form gönderildiğinde kart
@@ -80,6 +81,23 @@ export function KartFormu({ odemeAdresi, merchantOid, tutar, alanlar, utoken, va
       <label className="wide kart-onay">
         <input type="checkbox" checked={otomatik} onChange={(e) => setOtomatik(e.target.checked)} />
         <span><b>Kartımı kaydet, aboneliğim otomatik yenilensin.</b> {onayMetni}</span>
+      </label>
+
+      {/*
+        Sözleşme onayı (29.10.2026). Eskiden form tutarı ve kart alanlarını
+        gösterip doğrudan ödemeye gidiyordu; mesafeli satış sözleşmesine ve
+        iptal-iade koşullarına hiç bağlantı yoktu. Mevzuat bu metinlerin
+        ödemeden ÖNCE gösterilip onaylatılmasını istiyor. Zorunlu, kart
+        kaydetme onayından ayrı; ADSIZ, çünkü form PayTR'ye gidiyor ve ödeme
+        isteğine fazladan alan eklenmemeli. Adres MUTLAK: pazarlama sayfaları
+        yalnızca arvo-os.com'da, panel başka alan adında açılabiliyor.
+      */}
+      <label className="wide kart-onay">
+        <input type="checkbox" required />
+        <span>
+          <a href={absoluteUrl(ROUTES["distance-sales"].tr)} target="_blank" rel="noreferrer">Mesafeli satış sözleşmesini</a> ve{" "}
+          <a href={absoluteUrl(ROUTES.refund.tr)} target="_blank" rel="noreferrer">iptal ve iade koşullarını</a> okudum, kabul ediyorum.
+        </span>
       </label>
 
       <div className="wide panel-form-actions kayit-formu-eylem">
