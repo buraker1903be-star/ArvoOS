@@ -3,6 +3,14 @@ import { arvolabClient } from "@/lib/arvolab";
 import { PLANS, YILLIK_ODENEN_AY } from "@/lib/site/pricing";
 import { planTutari, ekKalemTutari, type Fiyatlar } from "@/lib/site/fiyat-kaynagi";
 import type { ProformaAlici } from "@/lib/proforma";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
+
+/** Proforma alıcısı için okunan kurum sütunları. */
+type KurumSatiri = {
+  id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null;
+  legal_name: string | null; legal_address: string | null; legal_district: string | null; legal_city: string | null;
+  tax_office: string | null; tax_number: string | null; contact_email: string | null;
+};
 import type { ProformaFiyatKisayolu } from "./proforma-formu";
 
 /*
@@ -20,10 +28,19 @@ export type KurumAlicisi = { id: string; ad: string; kind: string | null; grup_m
   kurumun iletişim adresi.
 */
 export async function kurumAlicilari(admin: Admin): Promise<KurumAlicisi[]> {
+  /*
+    İKİSİ DE SAYFALI. Bu liste proformanın ALICI seçiciSİ: 1.000 satır
+    tavanında kesilen bir kurum, kurucunun ona proforma kesememesi
+    demek — hem de eksik olduğu hiçbir yerde yazmadan (lib/rapor-okuma).
+  */
   const [{ data: kurumlar, error }, { data: sahipler, error: sahipHatasi }] = await Promise.all([
-    admin.from("organizations")
-      .select("id,name,display_name,kind,grup_markasi,legal_name,legal_address,legal_district,legal_city,tax_office,tax_number,contact_email"),
-    admin.from("organization_memberships").select("organization_id,user_id").eq("role", "owner").eq("is_active", true),
+    sayfaliSonuc<KurumSatiri>("kurumlar", (bas, son) =>
+      admin.from("organizations")
+        .select("id,name,display_name,kind,grup_markasi,legal_name,legal_address,legal_district,legal_city,tax_office,tax_number,contact_email")
+        .order("id").range(bas, son)),
+    sayfaliSonuc<{ organization_id: string; user_id: string }>("kurum sahipleri", (bas, son) =>
+      admin.from("organization_memberships").select("organization_id,user_id").eq("role", "owner").eq("is_active", true)
+        .order("organization_id").range(bas, son)),
   ]);
   if (error) throw new Error("Kurumlar okunamadı: " + error.message);
   /* Sahip adı yalnızca ön doldurma: okunamazsa alan boş gelir, kurucu

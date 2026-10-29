@@ -22,7 +22,8 @@
     "db:new": "node scripts/new-migration.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "check:css": "node scripts/check-css-tokens.mjs && node scripts/check-css-import.mjs"
+    "check:css": "node scripts/check-css-tokens.mjs && node scripts/check-css-import.mjs",
+    "check:satir-tavani": "node scripts/check-satir-tavani.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",

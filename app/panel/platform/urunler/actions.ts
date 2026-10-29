@@ -125,6 +125,7 @@ async function koddakiDegerleriTaslagaAl__impl() {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
 
+  /* sınırsız-tamam: fiyat kataloğu: ürün × paket, elle yönetilen onlarca satır */
   const { data, error } = await supabase.from("platform_fiyat_listesi").select("kod,yayimlandi_at,taslak_bekliyor");
   if (error) throw new Error("Fiyat listesi okunamadı: " + error.message);
   const mevcut = new Map(((data ?? []) as { kod: string; yayimlandi_at: string | null; taslak_bekliyor: boolean | null }[])
@@ -164,6 +165,7 @@ async function fiyatlariYayimla__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
 
+  /* sınırsız-tamam: fiyat kataloğu: ürün × paket, elle yönetilen onlarca satır */
   const { data, error: okumaHatasi } = await supabase.from("platform_fiyat_listesi").select("*");
   if (okumaHatasi) throw new Error("Fiyat listesi okunamadı: " + okumaHatasi.message);
   const kayitlar = (data ?? []).map(fiyatKaydi);

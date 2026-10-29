@@ -235,6 +235,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
   let bankaHesaplari: BankaHesabi[] = [];
   if (secili === "banka") {
     // Kurucu pasifleri de görür (RLS: authenticated_read_active_bank_accounts).
+    /* sınırsız-tamam: Arvo'nun kendi banka hesapları, elle girilen birkaç satır. */
     const { data, error } = await supabase.from("platform_bank_accounts").select("id,bank_name,account_holder,iban,currency,is_active,sort_order").order("sort_order").order("created_at");
     if (error) throw new Error("Banka hesapları okunamadı: " + error.message);
     bankaHesaplari = (data ?? []) as BankaHesabi[];

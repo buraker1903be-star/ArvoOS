@@ -64,6 +64,12 @@ jobs:
       # çalışıyor, sayı yazılıyor, yalnızca yanlış oluyor.
       - name: Rakam denetimi
         run: npm run check:rakamlar
+      # Konsolun sayfalanmamış okumaları (scripts/check-satir-tavani.mjs):
+      # PostgREST yanıtı 1.000 satırda kesiyor ve söylemiyor. Kurucu
+      # ekosistemi konsoldan yönetiyor; tavana çarpılan gün aylık gelir,
+      # lisans sayıları ve yenileme takvimi sessizce eksilir.
+      - name: Satır tavanı denetimi
+        run: npm run check:satir-tavani
       # Özet ekranlarında hatası alınmayan sorgu (scripts/check-okunamayan.mjs):
       # Supabase hata FIRLATMIYOR, error alanına yazıyor; alınmazsa sayfa
       # null veriyi "kayıt yok" diye çiziyor. 15.10.2026'da beş ekranda

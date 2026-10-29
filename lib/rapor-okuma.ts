@@ -23,7 +23,7 @@
 */
 const SAYFA = 1000;
 
-export type SayfaliSonuc<T> = { data: T[] | null; error: { message: string } | null };
+export type SayfaliSonuc<T> = { data: T[] | null; error: { message: string; code?: string } | null };
 
 export async function tumSatirlar<T>(
   /** Hata metninde görünecek ad ("sözleşmeler"). */
@@ -79,4 +79,38 @@ export async function kimliklerle<T>(
     if (data) toplanan.push(...data);
   }
   return toplanan;
+}
+
+/**
+ * `tumSatirlar`ın Supabase sonucu biçiminde dönen hâli.
+ *
+ * Konsol ekranları okuma hatasını YUTMUYOR, o bölümü "okunamadı" diye
+ * gösterip gerisini çiziyor (`{ data, error }` ikilisiyle). `tumSatirlar`
+ * ise fırlatıyor: sayfalamayı eklemek için fırlatmayı olduğu gibi
+ * bırakmak, tek bir okuma yüzünden kurucunun bütün ekranını hata
+ * sayfasına çevirirdi.
+ *
+ * Fırlatma yutulmuyor, ÇEVRİLİYOR: satır tavanına çarpıldığında ekranda
+ * görünür bir "okunamadı" çıkıyor — sessizce eksilen bir toplam değil.
+ *
+ * Sarmalayıcı burada çünkü aynı üç satır konsolda on beş yerde
+ * tekrarlanacaktı; biri sapınca o ekran sessizce eski davranışa dönerdi.
+ */
+export function sayfaliSonuc<T>(
+  ad: string,
+  sayfala: (bas: number, son: number) => PromiseLike<SayfaliSonuc<T>>,
+  secenekler?: { tavan?: number; sayfaBoyu?: number },
+): Promise<SayfaliSonuc<T>> {
+  return tumSatirlar<T>(ad, sayfala, secenekler)
+    .then((data) => ({ data, error: null }))
+    .catch((hata: unknown) => {
+      /* PostgREST kodu korunuyor: çağıranların bir kısmı koda bakıp
+         karar veriyor (42703 "sütun yok" → eski şemayla yeniden dene).
+         Yalnızca metni taşımak o kararı öldürürdü. */
+      const sebep = hata instanceof Error ? (hata.cause as { code?: string } | undefined) : undefined;
+      return {
+        data: null,
+        error: { message: hata instanceof Error ? hata.message : String(hata), code: sebep?.code },
+      };
+    });
 }

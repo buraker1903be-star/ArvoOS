@@ -5,6 +5,7 @@ import { paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
 import { zorunlu } from "../konsol-oku";
 import { aramaDeseni } from "@/lib/liste-arama";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { PRODUCTS } from "@/lib/products";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
@@ -238,18 +239,25 @@ export default async function MusterilerPage({ searchParams }: {
      yazılmadı. */
   const sunucuDeseni = aranan ? aramaDeseni(aranan) : null;
   const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu, aramaSonucu] = await Promise.all([
-    supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi,davet_eposta")
-      .order("name"),
+    sayfaliSonuc<Kurum>("kiracılar", (bas, son) =>
+      supabase.from("platform_kiraci_liste")
+        .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi,davet_eposta")
+        .order("name").range(bas, son)),
     // Kuruma geçmiş abone (kurum_id) bireysel değil: kurum lisansını kullanıyor.
     supabase.from("product_subscribers")
       .select("id,product,email,full_name,status,trial_ends_at,current_period_end,created_at", { count: "exact" })
       .is("kurum_id", null)
       .order("created_at", { ascending: false }).limit(LISTE_SINIRI),
-    // Ek ürün lisansları: kiracı başına birkaç satır, bilerek sınırsız (rozet ve aylık toplam).
-    supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),
-    // Kayıt tarihi görünümde yok; kiracı sayısı kadar küçük bir okuma.
-    supabase.from("organizations").select("id,created_at,slug"),
+    /* Ek ürün lisansları SAYFALI: tablo kiracı × ürün büyüyor ve
+       PostgREST 1.000 satırda kesip söylemiyor — yaklaşık 250
+       müşteride rozetler ve aylık toplam sessizce eksilirdi. */
+    sayfaliSonuc<UrunLisansi>("ürün lisansları", (bas, son) =>
+      supabase.from("organization_product_licenses")
+        .select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at")
+        .order("organization_id").range(bas, son)),
+    // Kayıt tarihi görünümde yok; kiracı sayısı kadar, yine de sayfalı.
+    sayfaliSonuc<{ id: string; created_at: string; slug: string | null }>("kurumlar", (bas, son) =>
+      supabase.from("organizations").select("id,created_at,slug").order("id").range(bas, son)),
     // ArvoARC'ın bireysel fiyatı listede değil, ürün planında.
     supabase.from("product_plans").select("product,individual_monthly_fee"),
     yayimlananFiyatlar(),

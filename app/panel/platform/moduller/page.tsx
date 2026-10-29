@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
@@ -58,9 +59,15 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
   const { suzgec } = await searchParams;
 
   const [{ data: kurumlar, error }, { data: urunLisanslari, error: urunHatasi }, { data: cekirdek, error: cekirdekHatasi }] = await Promise.all([
-    supabase.from("organizations").select("id,name,display_name,kind,grup_markasi").order("name"),
-    supabase.from("organization_product_licenses").select("organization_id,product,status,integrated"),
-    supabase.from("organization_licenses").select("organization_id,license_status"),
+    /* SAYFALI: kiracı (× ürün) büyüyen tablolar; PostgREST 1.000
+       satırda kesip söylemiyor ve bu ekranın sayıları o gün sessizce
+       eksilirdi (lib/rapor-okuma). */
+    sayfaliSonuc<{ id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null }>("kurumlar", (bas, son) =>
+      supabase.from("organizations").select("id,name,display_name,kind,grup_markasi").order("name").range(bas, son)),
+    sayfaliSonuc<{ organization_id: string; product: string; status: string; integrated: boolean | null }>("ürün lisansları", (bas, son) =>
+      supabase.from("organization_product_licenses").select("organization_id,product,status,integrated").order("organization_id").range(bas, son)),
+    sayfaliSonuc<{ organization_id: string; license_status: string }>("çekirdek lisanslar", (bas, son) =>
+      supabase.from("organization_licenses").select("organization_id,license_status").order("organization_id").range(bas, son)),
   ]);
   if (error) throw new Error("Kurum listesi okunamadı.");
   /* Lisanslar okunamazsa matristeki her hücre "Kapalı" çıkar: kurucu

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPanelContext } from "@/lib/panel-context";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { zorunlu } from "../konsol-oku";
 import { basHarfleri, PAKET_ADI, para, sayi, tarih } from "../bicim";
 import { productName } from "@/lib/products";
@@ -82,11 +83,20 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     odemeOlaylari,
     { count: bekleyenSozlesme },
   ] = await Promise.all([
-    supabase.from("organizations").select("id").eq("kind", "internal"),
-    supabase.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due", "suspended", "canceled"]),
-    supabase.from("organizations").select("id,name,display_name,contact_phone,kind,grup_markasi"),
+    /* SAYFALI: kiracı (× ürün) büyüyen tablolar; PostgREST 1.000
+       satırda kesip söylemiyor ve bu ekranın sayıları o gün sessizce
+       eksilirdi (lib/rapor-okuma). */
+    sayfaliSonuc<{ id: string }>("iç kurumlar", (bas, son) =>
+      supabase.from("organizations").select("id").eq("kind", "internal").order("id").range(bas, son)),
+    sayfaliSonuc<{ organization_id: string; product: string; status: string; plan_code: string | null; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }>("ürün lisansları", (bas, son) =>
+      supabase.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end,trial_ends_at")
+        .in("status", ["active", "trialing", "past_due", "suspended", "canceled"]).order("organization_id").range(bas, son)),
+    sayfaliSonuc<{ id: string; name: string; display_name: string | null; contact_phone: string | null; kind: string | null; grup_markasi: boolean | null }>("kurumlar", (bas, son) =>
+      supabase.from("organizations").select("id,name,display_name,contact_phone,kind,grup_markasi").order("id").range(bas, son)),
     // ArvoOS çekirdek lisansının aylık ücreti; ek ürünler ayrı tabloda.
-    supabase.from("organization_licenses").select("organization_id,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at"),
+    sayfaliSonuc<{ organization_id: string; license_status: string; plan_code: string | null; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }>("çekirdek lisanslar", (bas, son) =>
+      supabase.from("organization_licenses").select("organization_id,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at")
+        .order("organization_id").range(bas, son)),
     /* Tahsilat listesi Faturalama ve Tahsilat'a taşındı (14.10.2026);
        burada yalnızca şeridin "bu ay tahsil edilen" sayısı için özet. */
     supabase.rpc("platform_tahsilat_ozeti"),

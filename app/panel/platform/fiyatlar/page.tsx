@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi } from "@/lib/site/pricing";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
 import { fiyatlariYayimla, koddakiDegerleriTaslagaAl, taslagiGeriAl, taslagiKaydet, yayindanKaldir } from "../urunler/actions";
@@ -145,10 +146,15 @@ export default async function FiyatlarPage({ searchParams }: {
   const seciliUrun = (LISTE_URUNLERI as readonly string[]).includes(urun ?? "") ? urun! : "arvoos";
 
   const [{ data: kiraciSatirlari, error: kiraciHatasi }, { data: fiyatSatirlari, error: fiyatHatasi }] = await Promise.all([
-    supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye"),
+    /* SAYFALI: paket dağılımı ve "kaç kurum bu pakette" sayıları
+       1.000 kiracı tavanında sessizce eksilirdi (lib/rapor-okuma). */
+    sayfaliSonuc<Kiraci>("kiracılar", (bas, son) =>
+      supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye")
+        .order("id").range(bas, son)),
     /* Kurucu taslağı da görüyor (RLS: kurucu_fiyati_okur); site yalnızca
        yayımlanmış satırı okuyor. "*": taslak_bekliyor sütunu
        20261014064505 ile geldi; uygulanmadan önce de sayfa açılsın. */
+    /* sınırsız-tamam: fiyat kataloğu: ürün × paket, elle yönetilen onlarca satır */
     supabase.from("platform_fiyat_listesi").select("*"),
   ]);
   /* Kiracı listesi düşerse "kaç kurum bu tutarı ödüyor" sayıları sıfıra

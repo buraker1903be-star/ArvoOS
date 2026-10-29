@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { zorunlu } from "../konsol-oku";
 import { PRODUCTS, SUBSCRIBER_PRODUCTS, urunSimgesi } from "@/lib/products";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
@@ -63,10 +64,20 @@ export default async function UrunlerPage({ searchParams }: {
   if (bolum === "fiyat") redirect("/panel/platform/fiyatlar");
 
   const [kiraciSonucu, urunLisansSonucu, aboneSonucu, arvolab, arc, randevu] = await Promise.all([
-    supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye,grup_markasi"),
-    supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee"),
+    /* ÜÇÜ DE SAYFALI. Üçü de müşteri sayısıyla büyüyor ve PostgREST
+       1.000 satırda kesip söylemiyor: ürün kartlarındaki kurum sayısı,
+       aylık gelir ve bireysel abone sayısı tavana çarpıldığı gün
+       sessizce eksilirdi (lib/rapor-okuma). */
+    sayfaliSonuc<Kiraci>("kiracılar", (bas, son) =>
+      supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye,grup_markasi")
+        .order("id").range(bas, son)),
+    sayfaliSonuc<{ organization_id: string; product: string; status: string; monthly_fee: number | null }>("ürün lisansları", (bas, son) =>
+      supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee")
+        .order("organization_id").range(bas, son)),
     // Kuruma geçmiş abone (kurum_id) bireysel değil: kurum lisansını kullanıyor.
-    supabase.from("product_subscribers").select("product,status").is("kurum_id", null),
+    sayfaliSonuc<{ product: string; status: string }>("bireysel aboneler", (bas, son) =>
+      supabase.from("product_subscribers").select("product,status").is("kurum_id", null)
+        .order("id").range(bas, son)),
     getArvolabBridgeHealth(),
     getArcBridgeHealth(),
     getRandevuBridgeHealth(),

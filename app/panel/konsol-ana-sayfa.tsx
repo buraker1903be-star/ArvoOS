@@ -197,6 +197,7 @@ export async function KonsolAnaSayfa() {
           sayısı küçük. Geçerliliği en yakın olan başta — kurucunun
           aradığı "hangisinin süresi dolmak üzere".
         */
+        /* sınırsız-tamam: bekleyen proforma kuyruğu — kurucunun temizlediği iş listesi, sayısı küçük. */
         admin.from("platform_proformalari").select("id,proforma_no,musteri_adi,product,toplam,para_birimi,gecerlilik_tarihi")
           .eq("durum", "bekliyor").order("gecerlilik_tarihi", { ascending: true }),
       ])
@@ -234,6 +235,7 @@ export async function KonsolAnaSayfa() {
   */
   const seriBasi = seriBaslangici();
   const [{ data: havaleler, error: havaleHatasi }, { data: bireyselOdemeler, error: bireyselHatasi }] = await Promise.all([
+    /* sınırsız-tamam: 14 günlük grafik penceresi; okuma tarihle sınırlı. */
     supabase.from("organization_payment_requests").select("id,organization_id,product,amount,payment_method,reviewed_at")
       .eq("status", "approved").gte("reviewed_at", seriBasi),
     supabase.from("subscriber_payments").select("id,amount,paid_at").gte("paid_at", seriBasi),

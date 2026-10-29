@@ -12,6 +12,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { turkiyeGunu } from "@/lib/otomatik-proforma";
 import { dikkatIster, takvimiKur, type ProformaHali, type TakvimAboneligi, type TakvimProformasi, type TakvimSatiri } from "@/lib/yenileme-takvimi";
 import { zorunlu } from "../konsol-oku";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { KNot } from "../konsol-ui";
 import { basHarfleri, para, sayi, tarih, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
@@ -78,18 +79,35 @@ export default async function YenilemelerPage({ searchParams }: { searchParams: 
   const doksanGunOnce = new Date(Date.parse(`${bugun}T00:00:00Z`) - 90 * 86_400_000).toISOString().slice(0, 10);
 
   const [kurumSonucu, cekirdekSonucu, urunSonucu, aboneSonucu, uyeSonucu, proformaSonucu, bireysel] = await Promise.all([
-    supabase.from("organizations").select("id,name,display_name,kind,grup_markasi"),
-    supabase.from("organization_licenses").select("organization_id,license_status,monthly_fee,user_limit,extra_user_fee,current_period_end,trial_ends_at")
-      .in("license_status", ["active", "trialing", "past_due"]),
-    supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at")
-      .in("status", ["active", "trialing", "past_due"]),
-    admin.from("product_subscribers").select("id,product,email,full_name,status,current_period_end,trial_ends_at").is("kurum_id", null)
-      .in("status", ["active", "trialing", "past_due"]),
-    // ArvoOS ek kullanıcı bedeli için etkin üye sayısı (kurum başına sayılıyor; sınırsız, tutar buna bağlı).
-    admin.from("organization_memberships").select("organization_id").eq("is_active", true),
-    admin.from("platform_proformalari")
-      .select("id,proforma_no,organization_id,subscriber_id,product,durum,otomatik,donem_sonu,duzenleme_tarihi,toplam,gonderildi_at,bildirildi_at,gonderim_hatasi")
-      .gte("duzenleme_tarihi", doksanGunOnce).limit(2000),
+    /*
+      ALTI OKUMA DA SAYFALI (29.10.2026). Takvimin bir aboneliği
+      atlaması, o gün hiç yenileme yokmuş gibi görünmesi demek.
+      PostgREST yanıtı 1.000 satırda kesiyor ve SÖYLEMİYOR; üye
+      tablosu (kiracı × personel) ve proformalar en hızlı büyüyenler.
+
+      `.limit(2000)` YANLIŞ GÜVEN veriyordu: tavanın üstünde bir sınır
+      yazmak onu yükseltmiyor, yanıt yine 1.000'de kesiliyordu
+      (lib/rapor-okuma başlığı).
+    */
+    sayfaliSonuc<{ id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null }>("kurumlar", (bas, son) =>
+      supabase.from("organizations").select("id,name,display_name,kind,grup_markasi").order("id").range(bas, son)),
+    sayfaliSonuc<{ organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number | null; extra_user_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }>("çekirdek lisanslar", (bas, son) =>
+      supabase.from("organization_licenses").select("organization_id,license_status,monthly_fee,user_limit,extra_user_fee,current_period_end,trial_ends_at")
+        .in("license_status", ["active", "trialing", "past_due"]).order("organization_id").range(bas, son)),
+    sayfaliSonuc<{ organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }>("ürün lisansları", (bas, son) =>
+      supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at")
+        .in("status", ["active", "trialing", "past_due"]).order("organization_id").range(bas, son)),
+    sayfaliSonuc<{ id: string; product: string; email: string | null; full_name: string | null; status: string; current_period_end: string | null; trial_ends_at: string | null }>("bireysel aboneler", (bas, son) =>
+      admin.from("product_subscribers").select("id,product,email,full_name,status,current_period_end,trial_ends_at").is("kurum_id", null)
+        .in("status", ["active", "trialing", "past_due"]).order("id").range(bas, son)),
+    // ArvoOS ek kullanıcı bedeli için etkin üye sayısı (kurum başına sayılıyor; tutar buna bağlı).
+    sayfaliSonuc<{ organization_id: string }>("kurum üyeleri", (bas, son) =>
+      admin.from("organization_memberships").select("organization_id").eq("is_active", true)
+        .order("organization_id").range(bas, son)),
+    sayfaliSonuc<TakvimProformasi>("proformalar", (bas, son) =>
+      admin.from("platform_proformalari")
+        .select("id,proforma_no,organization_id,subscriber_id,product,durum,otomatik,donem_sonu,duzenleme_tarihi,toplam,gonderildi_at,bildirildi_at,gonderim_hatasi")
+        .gte("duzenleme_tarihi", doksanGunOnce).order("id").range(bas, son)),
     bireyselAylikUcret(admin, "arvolab"),
   ]);
   const kurumlar = zorunlu(kurumSonucu, "Kurumlar") ?? [];

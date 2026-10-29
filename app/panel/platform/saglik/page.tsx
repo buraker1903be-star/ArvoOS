@@ -114,6 +114,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
       .catch((hata: unknown) => ({ data: null, error: { message: hata instanceof Error ? hata.message : String(hata) } })),
     /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
     depolamaKullanimi().then((data) => ({ data: data as { organization_id: string; bytes: number }[], error: null })),
+    /* sınırsız-tamam: zamanlanmış iş sayısı kadar satır (vercel.json). */
     supabase.from("platform_cron_durumu").select("is_adi,son_calisma,son_basarili,sonuc,sure_ms,ayrinti"),
     /* Kayıt tutmanın başlangıcı: hiç koşmamış bir işin "henüz" mü yoksa
        zamanlayıcıya hiç kaydolmamış mı olduğunu bu ayırıyor. */

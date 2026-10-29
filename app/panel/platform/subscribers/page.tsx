@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { KNot } from "../konsol-ui";
@@ -61,11 +62,14 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
       .is("kurum_id", null)
       .order("created_at", { ascending: false }).limit(LISTE_SINIRI),
     yayimlananFiyatlar(),
-    /* Kurum lisansına geçenler: kurum anlaşmasıyla gelen kişi sayısı kadar,
-       bilerek sınırsız (toplam ya da gelir hesaplanmıyor, yalnızca liste). */
-    supabase.from("product_subscribers").select("id,product,email,full_name,kurum_id,kuruma_gecti_at")
-      .not("kurum_id", "is", null).order("kuruma_gecti_at", { ascending: false }),
-    supabase.from("organizations").select("id,name,display_name").order("name"),
+    /* Kurum lisansına geçenler SAYFALI: liste kişi sayısıyla büyüyor
+       ve 1.000 satır tavanında kuyruğu sessizce kesilirdi — "taşıdığım
+       abone listede yok" demek. */
+    sayfaliSonuc<{ id: string; product: string; email: string | null; full_name: string | null; kurum_id: string | null; kuruma_gecti_at: string | null }>("taşınan aboneler", (bas, son) =>
+      supabase.from("product_subscribers").select("id,product,email,full_name,kurum_id,kuruma_gecti_at")
+        .not("kurum_id", "is", null).order("kuruma_gecti_at", { ascending: false }).order("id").range(bas, son)),
+    sayfaliSonuc<{ id: string; name: string; display_name: string | null }>("kurumlar", (bas, son) =>
+      supabase.from("organizations").select("id,name,display_name").order("name").range(bas, son)),
     // Taşıma seçeneği: yalnızca o ürünün lisansı olan kurumlar.
     supabase.from("organization_product_licenses").select("organization_id,product"),
   ]);

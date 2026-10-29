@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 // Paket adı tek kaynaktan, sitedeki adla aynı (plans.name eski adı taşıyabilir).
 import { paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { zorunlu } from "../konsol-oku";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ucretSapmasi } from "@/lib/paket-ucreti";
@@ -76,9 +77,14 @@ export default async function KurulumlarPage({ searchParams }: {
   const secili = ASAMALAR.some((a) => a.kod === asama) ? asama! : "devam";
 
   const [kiraciSonucu, planSonucu, fiyatlar] = await Promise.all([
-    supabase.from("platform_kiraci_liste")
-      .select("id,name,slug,display_name,kind,grup_markasi,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye,davet_eposta,davet_durumu,davet_gonderildi,davet_hatasi,davet_kabul")
-      .order("name"),
+    /* SAYFALI: kurulum ekranı bütün kiracıları aşamalara ayırıyor;
+       1.000 satır tavanında kesilen bir kiracı "kurulumu bitmiş" gibi
+       kaybolurdu (lib/rapor-okuma). */
+    sayfaliSonuc<Kiraci>("kiracılar", (bas, son) =>
+      supabase.from("platform_kiraci_liste")
+        .select("id,name,slug,display_name,kind,grup_markasi,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye,davet_eposta,davet_durumu,davet_gonderildi,davet_hatasi,davet_kabul")
+        .order("name").range(bas, son)),
+    /* sınırsız-tamam: paket kataloğu — onlarca satır, kiracıyla büyümüyor. */
     supabase.from("plans").select("code,name").eq("is_active", true).order("code"),
     // Liste fiyatı konsolda yayımlanan tablodan (sitedekiyle aynı).
     yayimlananFiyatlar(),
