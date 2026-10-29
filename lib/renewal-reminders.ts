@@ -47,7 +47,7 @@ export const REMINDER_WINDOW_DAYS = 7;
 const OVERDUE_DAYS = 30;
 
 const PAY_URLS: Record<string, string> = {
-  randevu: "https://randevu.arvo-os.com/panel/ayarlar",
+  randevu: "https://cal.arvo-os.com/panel/ayarlar",
 };
 const DEFAULT_PAY_URL = "https://app.arvo-os.com/panel/billing";
 

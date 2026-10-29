@@ -145,7 +145,12 @@ export const LEGACY_REDIRECTS: { from: string; to: string }[] = [
 export const PRODUCT_APPS = {
   arvoos: { name: "ArvoOS", url: "https://app.arvo-os.com/login", host: "app.arvo-os.com" },
   arvolab: { name: "ArvoLab", url: "https://lab.arvo-os.com", host: "lab.arvo-os.com" },
-  randevu: { name: "ArvoCal", url: "https://randevu.arvo-os.com", host: "randevu.arvo-os.com" },
+  /* ArvoCal'ın adresi 29.10.2026'da randevu.arvo-os.com'dan cal.arvo-os.com'a
+     geçti (ad 28.10'da ArvoCal olmuştu, adres eski kalmıştı). Eski adres
+     KAPATILMIYOR: salonların müşterilerine verdiği randevu bağlantıları ve
+     gönderilmiş iptal bağlantıları onunla dolaşıyor, Vercel'de yenisine
+     yönleniyor. Ürün kodu 'randevu' — lisans, köprü ve fiyat satırları bu adla. */
+  randevu: { name: "ArvoCal", url: "https://cal.arvo-os.com", host: "cal.arvo-os.com" },
 } as const;
 
 /*

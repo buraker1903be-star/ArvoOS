@@ -38,7 +38,7 @@ export function BookMock({ locale }: { locale: Locale }) {
   return (
     <figure className="mock mock-book" aria-label={t.label}>
       <div className="mock-win" aria-hidden="true">
-        <div className="mock-chrome"><i /><i /><i /><span className="mock-url">randevu.arvo-os.com</span></div>
+        <div className="mock-chrome"><i /><i /><i /><span className="mock-url">cal.arvo-os.com</span></div>
         <div className="mb-head">
           <span className="mb-day">{t.gun}</span><span className="mb-today">{t.bugun}</span>
         </div>

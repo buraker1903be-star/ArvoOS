@@ -1,5 +1,5 @@
 // Arapça: contact-en.ts'in çevirisi. Yapı ve veriler aynı; yalnızca metin çevrildi.
-import { COMPANY, ROUTES } from "@/lib/site/routes";
+import { COMPANY, PRODUCT_APPS, ROUTES } from "@/lib/site/routes";
 import type { ContactContent } from "../contact";
 
 export const CONTACT_AR: ContactContent = {
@@ -18,7 +18,7 @@ export const CONTACT_AR: ContactContent = {
     items: [
       { q: "كيف أطلب عرضًا توضيحيًا؟", a: "اختر المنتج الذي يهمّك في النموذج الموجود في هذه الصفحة وصِف احتياجاتك؛ وسيتواصل معك فريقنا." },
       { q: "كيف يمكنني التواصل معكم بطريقة أخرى؟", a: `أرسل رسالة بريد إلكتروني إلى ${COMPANY.email}.` },
-      { q: "مؤسستي تستخدم لوحة تحكم بالفعل — أين أسجّل الدخول؟", a: "يعمل ArvoOS على app.arvo-os.com، وArvoLab على lab.arvo-os.com، وArvoCal على randevu.arvo-os.com؛ وإذا كان لمؤسستك نطاق خاص بها، فيمكنك تسجيل الدخول عليه أيضًا." },
+      { q: "مؤسستي تستخدم لوحة تحكم بالفعل — أين أسجّل الدخول؟", a: `يعمل ArvoOS على ${PRODUCT_APPS.arvoos.host}، وArvoLab على ${PRODUCT_APPS.arvolab.host}، وArvoCal على ${PRODUCT_APPS.randevu.host}؛ وإذا كان لمؤسستك نطاق خاص بها، فيمكنك تسجيل الدخول عليه أيضًا.` },
       { q: "كيف تُستخدم بيانات النموذج الخاصة بي؟", a: `فقط للردّ على طلبك. التفاصيل متاحة في إشعار الخصوصية (${ROUTES.privacy.ar}).` },
     ],
   },
