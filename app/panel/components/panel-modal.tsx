@@ -80,6 +80,20 @@ export function PanelModal({
      hidrasyonu kaydırmaz. */
   const [open, setAcik] = useState(() =>
     baslangicAcik && (!yalnizcaTelefonda || (typeof window !== "undefined" && window.matchMedia("(max-width:760px)").matches)));
+  /*
+    Adres sayfa açıkken değişirse (aynı sayfadaki bir bağlantı
+    ?pencere=prim'e gider) bileşen yeniden kurulmuyor ve useState'in ilk
+    değeri bir daha okunmuyor. Eskiden bu yüzden personel kartındaki
+    "Prim bakiyesi" ve "Yetkileri düzenle" bağlantıları adresi değiştirip
+    pencereyi AÇMIYORDU (29.10.2026). Derin bağlantı kapalıdan açığa
+    geçtiğinde pencere de açılır; açıktan kapalıya geçiş (kapanınca
+    adrese dönüş) pencereye dokunmaz, o zaten kapanmış oluyor.
+  */
+  const [oncekiBaslangic, setOncekiBaslangic] = useState(baslangicAcik);
+  if (baslangicAcik !== oncekiBaslangic) {
+    setOncekiBaslangic(baslangicAcik);
+    if (baslangicAcik && (!yalnizcaTelefonda || window.matchMedia("(max-width:760px)").matches)) setAcik(true);
+  }
   const router = useRouter();
   const setOpen = useCallback((deger: boolean) => {
     setAcik(deger);
