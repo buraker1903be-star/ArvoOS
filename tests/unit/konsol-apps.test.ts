@@ -25,29 +25,31 @@ describe("kurucu konsolu uygulamaları", () => {
        sen Finans'tayken bile Kurulumlar'ı vurgular. etkinUygulama en
        UZUN eşleşeni seçtiği için alt sayfalar kendi uygulamasını
        buluyor; bu test onu sabitliyor. */
-    assert.equal(etkin("/panel/platform/kurulumlar"), "kurulumlar");
+    assert.equal(etkin("/panel/platform/kurulumlar"), "sistem");
     /* Kiracı dosyaları kaldırıldı (14.10.2026): /panel/platform yalnızca
        Müşteriler'e yönlendiriyor; dosya müşteri detayının penceresi. */
     assert.equal(etkin("/panel/platform/musteriler/8f0e1c2a-0000-4000-8000-000000000000"), "musteriler");
 
     assert.equal(etkin("/panel/platform/musteriler"), "musteriler");
     assert.equal(etkin("/panel/platform/kullanicilar"), "musteriler");
+    /* 29.10.2026: bireysel abone bir müşteri, ürünün ayarı değil. */
+    assert.equal(etkin("/panel/platform/subscribers"), "musteriler");
 
     assert.equal(etkin("/panel/platform/urunler"), "urunler");
     assert.equal(etkin("/panel/platform/urunler/arc"), "urunler");
     assert.equal(etkin("/panel/platform/moduller"), "urunler");
-    assert.equal(etkin("/panel/platform/subscribers"), "urunler");
+    assert.equal(etkin("/panel/platform/fiyatlar"), "urunler");
 
-    assert.equal(etkin("/panel/platform/fiyatlar"), "fiyatlar");
+    /* Abonelik, sözleşme onayı, tahsilat ve ödeme onayı aynı paranın
+       halkaları: tek uygulama (29.10.2026). */
+    assert.equal(etkin("/panel/platform/billing"), "finans");
+    assert.equal(etkin("/panel/platform/sozlesmeler"), "finans");
+    assert.equal(etkin("/panel/platform/tahsilat"), "finans");
+    assert.equal(etkin("/panel/platform/tahsilat/proforma/8f0e1c2a-0000-4000-8000-000000000000"), "finans");
+    assert.equal(etkin("/panel/platform/payments"), "finans");
 
-    assert.equal(etkin("/panel/platform/billing"), "abonelikler");
-    assert.equal(etkin("/panel/platform/sozlesmeler"), "abonelikler");
-
-    assert.equal(etkin("/panel/platform/tahsilat"), "tahsilat");
-    assert.equal(etkin("/panel/platform/payments"), "tahsilat");
-
-    assert.equal(etkin("/panel/platform/ayarlar"), "ayarlar");
-    assert.equal(etkin("/panel/platform/saglik"), "ayarlar");
+    assert.equal(etkin("/panel/platform/ayarlar"), "sistem");
+    assert.equal(etkin("/panel/platform/saglik"), "sistem");
   });
 
   test("her bölüm gerçek bir adrese gidiyor ve uygulamasının yolunda", () => {
@@ -84,15 +86,15 @@ describe("kurucu konsolu uygulamaları", () => {
     }
   });
 
-  test("dock kurum sahibinin tarif ettiği sekiz ana menü", () => {
-    /* İlk sürümde konsolun dokuz ekranı dokuz dock girdisiydi ve dock
-       bir başlatıcıya dönüşmüştü. Girdiler EKRAN değil iş alanı
-       (14.10.2026, sekiz ana menü); yeni bir ekran eklenince dock'a
-       girdi eklemek yerine ilgili menünün bölümlerine inmeli. Sayı
+  test("dock beş iş alanı", () => {
+    /* İlk sürümde konsolun dokuz ekranı dokuz dock girdisiydi, sonra
+       sekiz ana menü oldu (14.10.2026) ve 29.10.2026'da beşe indi.
+       Girdiler EKRAN değil iş alanı; yeni bir ekran eklenince dock'a
+       girdi eklemek yerine ilgili uygulamanın bölümlerine inmeli. Sayı
        büyümeye başlarsa bu test söyler. */
     assert.deepEqual(
       uygulamalar.filter((u) => !u.yalnizBaslatici).map((u) => u.label),
-      ["Genel Bakış", "Ürünler", "Müşteriler", "Kurulum", "Ücret ve Paketler", "Abonelikler", "Faturalama ve Tahsilat", "Sistem Ayarları"],
+      ["Genel Bakış", "Müşteriler", "Finans", "Ürünler ve Fiyatlar", "Sistem"],
     );
   });
 });
@@ -133,19 +135,21 @@ describe("konsol dock rozetleri", () => {
     assert.deepEqual(rozet({ odeme: 0, sozlesme: 0 }), {});
   });
 
-  test("dekont kuyruğu Faturalama'da, sözleşme kuyruğu Abonelikler'de", () => {
-    assert.deepEqual(rozet({ odeme: 3, sozlesme: 2 }), { abonelikler: 2, tahsilat: 3 });
+  test("iki kuyruk da Finans'ta, rozet toplamı", () => {
+    /* Abonelikler ile Faturalama 29.10.2026'da Finans'ta birleşti; iki
+       ayrı rozet tek uygulamada toplanıyor. */
+    assert.deepEqual(rozet({ odeme: 3, sozlesme: 2 }), { finans: 5 });
   });
 
-  test("yalnızca biri doluysa yalnızca o rozetleniyor", () => {
-    assert.deepEqual(rozet({ odeme: 1 }), { tahsilat: 1 });
-    assert.deepEqual(rozet({ sozlesme: 4 }), { abonelikler: 4 });
+  test("yalnızca biri doluysa rozet onun sayısı", () => {
+    assert.deepEqual(rozet({ odeme: 1 }), { finans: 1 });
+    assert.deepEqual(rozet({ sozlesme: 4 }), { finans: 4 });
   });
 
   test("eksi ve küsuratlı sayı rozete sızmıyor", () => {
     /* Okuma düşerse çağıran 0 geçiyor; yine de uydurma bir değer
        gelirse rozet negatif ya da "2,4" yazmamalı. */
     assert.deepEqual(rozet({ odeme: -5 }), {});
-    assert.deepEqual(rozet({ odeme: 2.6 }), { tahsilat: 3 });
+    assert.deepEqual(rozet({ odeme: 2.6 }), { finans: 3 });
   });
 });

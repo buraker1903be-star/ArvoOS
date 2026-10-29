@@ -126,7 +126,7 @@ export default async function UrunlerPage({ searchParams }: {
         <h1>Ürünler</h1>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform/fiyatlar">Ücret ve Paketler</Link>
+        <Link className="panel-secondary" href="/panel/platform/fiyatlar">Fiyat listesi</Link>
         <Link className="panel-secondary" href="/panel/platform/moduller">Modül matrisi</Link>
         <Link className="panel-secondary" href="/panel/platform/subscribers">Bireysel abone planları</Link>
         <Link className="panel-secondary" href="/panel/platform/saglik">Sistem sağlığı</Link>
@@ -143,7 +143,7 @@ export default async function UrunlerPage({ searchParams }: {
         <div>
           <dt>Fiyat listesi</dt>
           <dd><Link href="/panel/platform/fiyatlar">{sayi(PLANS.length + ADD_ONS.length)}</Link></dd>
-          <small>Ücret ve Paketler&apos;de</small>
+          <small>Fiyat listesinde</small>
         </div>
         <div>
           <dt>Lisanslı kurum</dt>
