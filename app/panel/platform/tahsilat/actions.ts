@@ -7,6 +7,7 @@ import { runPanelAction } from "@/lib/panel-action";
 import { kurusOku } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { ibanHatasi, ibanTemizle } from "@/lib/iban";
+import { proformayiUlastir } from "@/lib/otomatik-proforma-isi";
 import { aliciAdi, aliciOku, kalemleriOku, kdvDahilProforma, PROFORMA_KALEM_SINIRI, PROFORMA_URUNLERI, proformaToplami, VARSAYILAN_KDV_ORANI } from "@/lib/proforma";
 
 /*
@@ -256,6 +257,31 @@ async function proformaEsle__impl(formData: FormData) {
 
 export async function proformaEsle(...args: Parameters<typeof proformaEsle__impl>) {
   return runPanelAction(() => proformaEsle__impl(...args), "Proforma ödemeyle eşlendi; müşteri ödendi olarak görür.");
+}
+
+/*
+  MÜŞTERİYE GÖNDER (29.10.2026). Otomatik işin kullandığı yol
+  (lib/otomatik-proforma-isi proformayiUlastir): e-posta kurumun Kurum
+  Sahiplerine ya da bireysel aboneye, uygulama içi bildirim aynı
+  kişilere. Elle kesilen proforma da böylece müşteriye gidiyor; otomatik
+  olan gönderilemediyse kurucu buradan yeniden deniyor.
+
+  Hata fırlatılıyor ama proforma geri alınmıyor: gönderimin düşmesi
+  belgeyi geçersiz kılmaz, müşteri panelinde zaten görüyor.
+*/
+async function proformaGonder__impl(formData: FormData) {
+  const { admin } = await kurucuYoneticisi();
+  const id = String(formData.get("id") ?? "");
+  if (!UUID.test(id)) throw new Error("Proforma bulunamadı.");
+  const sonuc = await proformayiUlastir(admin, id);
+  revalidatePath(`/panel/platform/tahsilat/proforma/${id}`);
+  revalidatePath("/panel/platform/tahsilat");
+  const hatalar = [sonuc.eposta && !sonuc.eposta.ok ? sonuc.eposta.hata : null, sonuc.bildirim && !sonuc.bildirim.ok ? sonuc.bildirim.hata : null].filter(Boolean);
+  if (hatalar.length) throw new Error(hatalar.join(" · "));
+}
+
+export async function proformaGonder(...args: Parameters<typeof proformaGonder__impl>) {
+  return runPanelAction(() => proformaGonder__impl(...args), "Proforma müşteriye gönderildi: e-posta ve bildirim.");
 }
 
 /*
