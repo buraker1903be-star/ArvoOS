@@ -241,7 +241,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
     ) : null}
 
     <div className="talep-izgara personel-iki ekip-izgara">
-      <section className="talep-akis panel-card mu-kart" aria-label="Müşteri kartı">
+      <section className="talep-akis panel-card" aria-label="Müşteri kartı">
         <nav className="talep-akis-sekmeler" aria-label="Müşteri bölümleri">
           {SEKMELER.map((x) => (
             <Link key={x.kod} href={sekmeAdresi(x.kod)} scroll={false} replace

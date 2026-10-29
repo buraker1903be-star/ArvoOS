@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
+import { tumSatirlar } from "@/lib/rapor-okuma";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arvolabKopyalari, getArvolabBridgeHealth } from "@/lib/arvolab";
@@ -89,10 +90,28 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     { data: cronSatirlari, error: cronHatasi },
     { data: cronIlk, error: cronIlkHatasi },
   ] = await Promise.all([
-    supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,grup_markasi,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
-      .order("name"),
-    supabase.from("organization_product_licenses").select("organization_id,product,status"),
+    /* Sayfalı: kiracı başına tek satır ama 1.000 müşteride tavan
+       sessizce vurur (konsol ana sayfasındaki kuralın aynısı). */
+    tumSatirlar<Kiraci>("kiracılar", (bas, son) =>
+      supabase.from("platform_kiraci_liste")
+        .select("id,name,display_name,kind,grup_markasi,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
+        .order("name")
+        .range(bas, son))
+      .then((data) => ({ data, error: null as { message: string } | null }))
+      .catch((hata: unknown) => ({ data: null, error: { message: hata instanceof Error ? hata.message : String(hata) } })),
+    /* Kiracı × ürün büyüyen tablo; sayfalanmazsa 1.000 satır tavanında
+       "kaç kurumda hangi ürün açık" sessizce eksilirdi (konsol ana
+       sayfasındaki kuralın aynısı, lib/rapor-okuma). */
+    tumSatirlar<{ organization_id: string; product: string; status: string }>("ürün lisansları", (bas, son) =>
+      supabase.from("organization_product_licenses")
+        .select("organization_id,product,status")
+        .order("organization_id")
+        .range(bas, son))
+      /* Hata yutulmuyor, çevriliyor: sayfa okunamayan bölümü
+         "okunamadı" gösteriyor (konsol ana sayfasındaki kuralın
+         aynısı); fırlatma bütün sağlık ekranını kapatırdı. */
+      .then((data) => ({ data, error: null as { message: string } | null }))
+      .catch((hata: unknown) => ({ data: null, error: { message: hata instanceof Error ? hata.message : String(hata) } })),
     /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
     depolamaKullanimi().then((data) => ({ data: data as { organization_id: string; bytes: number }[], error: null })),
     supabase.from("platform_cron_durumu").select("is_adi,son_calisma,son_basarili,sonuc,sure_ms,ayrinti"),

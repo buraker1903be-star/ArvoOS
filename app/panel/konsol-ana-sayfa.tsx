@@ -16,6 +16,7 @@ import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
 import { gunFarki } from "@/lib/is-adimlari";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunlukSeri } from "@/lib/gunluk-seri";
+import { tumSatirlar } from "@/lib/rapor-okuma";
 import Link from "next/link";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { TalepAkis } from "./crm/kayit-detay/kayit-akis";
@@ -131,10 +132,41 @@ export async function KonsolAnaSayfa() {
       aşılmadı" derdi. platform_kiraci_liste kiracı başına tek satır
       veriyor, sayım yan sorguda.
     */
-    supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,provisioning_state,contact_phone,license_status,monthly_fee,user_limit,storage_limit_mb,aktif_uye,grup_markasi")
-      .order("name"),
-    supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),
+    /* Kiracı başına tek satır, yine de sayfalı: 1.000 müşteride tavan
+       sessizce vurur ve konsolun bütün sayıları o gün eksilirdi. */
+    tumSatirlar<Kurum & { license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number; aktif_uye: number }>(
+      "kiracılar",
+      (bas, son) => supabase.from("platform_kiraci_liste")
+        .select("id,name,display_name,kind,provisioning_state,contact_phone,license_status,monthly_fee,user_limit,storage_limit_mb,aktif_uye,grup_markasi")
+        .order("name")
+        .range(bas, son))
+      .then((data) => ({ data, error: null as { message: string } | null }))
+      .catch((hata: unknown) => ({ data: null, error: { message: hata instanceof Error ? hata.message : String(hata) } })),
+    /*
+      ÜRÜN LİSANSLARI SAYFA SAYFA. Bu tablo kiracı × ürün büyüyor
+      (bugün dört ürün) ve PostgREST yanıtı 1.000 satırda kesip bunu
+      SÖYLEMİYOR (lib/rapor-okuma). Tavana çarpıldığı gün konsolun
+      aylık geliri, lisans sayıları ve yenileme hatırlatmaları
+      sessizce EKSİLİRDİ — hem de kurucunun "bugün neye bakmalı"
+      dediği ekranda. Yaklaşık 250 müşteride çarpılıyor.
+
+      `tumSatirlar` sınıra ulaşınca fırlatıyor: eksik bir toplam
+      göstermektense ekranı hatayla açmak doğrusu.
+    */
+    tumSatirlar<UrunLisansi>("ürün lisansları", (bas, son) =>
+      supabase.from("organization_product_licenses")
+        .select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at")
+        .order("organization_id")
+        .range(bas, son))
+      /*
+        Hata YUTULMUYOR, ÇEVRİLİYOR: `tumSatirlar` sınıra ulaşınca ya
+        da sorgu düşünce fırlatıyor; bu sayfa ise okunamayan bölümü
+        "okunamadı" diye gösterip gerisini çiziyor. Fırlatmayı olduğu
+        gibi bırakmak, tek bir okuma yüzünden kurucunun bütün ana
+        sayfasını hata ekranına çevirirdi.
+      */
+      .then((data) => ({ data, error: null as { message: string } | null }))
+      .catch((hata: unknown) => ({ data: null, error: { message: hata instanceof Error ? hata.message : String(hata) } })),
     /* Bekleyenlerin TAMAMI, sınırsız: kuyruk kurucunun bugünkü işi ve
        satır satır gösteriliyor (Ödeme onayları ekranındaki kuralın aynısı). */
     supabase.from("organization_payment_requests").select("id,organization_id,product,amount,currency,payment_method,created_at")

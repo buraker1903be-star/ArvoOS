@@ -187,14 +187,12 @@ const BILINEN_BORC = new Set([
   "login-card-logo", // app/auth/dogrula/page.tsx
   "maliyet-pencere", // app/panel/finance/costs/maliyet-detayi.tsx
   "ml-side", // app/(site)/_components/mock-lab.tsx
-  "mu-kart", // app/panel/platform/musteriler/[id]/page.tsx
   "ntf-card", // app/panel/notifications/page.tsx
   "opd-mesaj", // app/panel/operations/[id]/page.tsx
   "opd-pf", // app/panel/operations/[id]/portal-files.tsx
   "panel-form-error", // app/panel/crm/contract-addendum-form.tsx
   "panel-form-success", // app/panel/crm/contract-addendum-form.tsx
   "panel-ghost", // app/panel/operations/sablon/page.tsx
-  "panel-muted", // app/panel/billing/kart/[oid]/page.tsx
   "panel-page", // app/panel/sozlesmelerim/page.tsx
   "personel-sayfalar", // app/panel/hr/personel-hareketleri.tsx
   "pillars", // app/(site)/_views/home.tsx

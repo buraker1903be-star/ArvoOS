@@ -181,3 +181,15 @@ html[data-theme="dark"] .os-root .panel-content :is(input:not([type="checkbox"])
 .os-root .os-menu-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 .os-root .os-menu-item.is-danger{color:var(--danger)}
 .os-root .os-menu-item.is-danger:hover{background:var(--danger-soft)}
+
+/*
+  AÇIKLAMA PARAGRAFI. `.panel-muted` dört ekranda kullanılıyordu ama
+  hiçbir CSS'te tanımı yoktu (29.10.2026, tanımsız sınıf denetimi):
+  konsolda kiracı dosyasının davet açıklaması, bireysel abone
+  listesinin uyarısı, abone taşıma notu ve ödeme kartındaki Türkçe
+  karakter uyarısı GÖVDE YAZISI boyunda, tam renkte çıkıyordu — yani
+  sayfanın asıl metniyle aynı ağırlıkta. Açıklamanın işi sönük
+  durmaktır; okunurluk için --ink-soft, boyut panelin öteki
+  açıklamalarıyla aynı.
+*/
+.panel-root .panel-muted{margin:0;color:var(--ink-soft);font-size:13px;line-height:1.45}
