@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import type { PaymentScheduleItem } from "@/lib/payment-schedule";
 
 const money = (value: number) =>
@@ -42,13 +43,12 @@ export function ScheduleDateRows({
                 {item.label}
                 <small>{lockNote ?? (item.trigger ? `${item.trigger} · tarih isteğe bağlı` : "Vade tarihi zorunlu")}</small>
               </span>
-              <input
-                type="date"
+              <TarihSecici className="tsc-kucuk"
                 value={dates[item.sequence] ?? ""}
                 required={required}
                 disabled={Boolean(lockNote)}
                 aria-label={`${item.label} vade tarihi`}
-                onChange={(event) => onChange(item.sequence, event.target.value)}
+                onChange={(deger) => onChange(item.sequence, deger)}
               />
               <span className="custom-plan-amount">{money(item.amount)}</span>
             </label>

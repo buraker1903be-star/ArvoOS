@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { kimlikMi } from "@/lib/kimlik";
 import { Suspense } from "react";
@@ -257,8 +258,8 @@ export default async function ContractDetailPage({ params }: Props) {
                     <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
                     <label><span>Sözleşme tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(data.amount)} required /></label>
                     <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
-                    <label>Başlangıç tarihi<input name="start_date" type="date" defaultValue={data.start_date ?? ""} /></label>
-                    <label>Teslim tarihi<input name="due_date" type="date" defaultValue={data.due_date ?? ""} /></label>
+                    <label>Başlangıç tarihi<TarihSecici name="start_date" defaultValue={data.start_date ?? ""} /></label>
+                    <label>Teslim tarihi<TarihSecici name="due_date" defaultValue={data.due_date ?? ""} /></label>
                     <p className="wide kayit-formu-not">Taksitler ve vade tarihleri “⋯ → Ödeme planı”ndan değişir; tutar değişirse taksitler yeni toplama göre ölçeklenir.</p>
 
                     <p className="wide kayit-formu-bolum">Müşteri</p>

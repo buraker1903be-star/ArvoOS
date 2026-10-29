@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KBos, KListe, KOge } from "../konsol-ui";
@@ -264,11 +265,11 @@ function AboneFormu({ abone, kaydet, onBitti }: { abone: Abone; kaydet: (formDat
       </label>
       <label>
         Deneme bitişi
-        <input type="date" name="trial_ends_at" value={deger.trialEndsAt} onChange={(o) => setDeger({ ...deger, trialEndsAt: o.target.value })} />
+        <TarihSecici name="trial_ends_at" value={deger.trialEndsAt} onChange={(gun) => setDeger({ ...deger, trialEndsAt: gun })} />
       </label>
       <label>
         Dönem sonu
-        <input type="date" name="current_period_end" value={deger.currentPeriodEnd} onChange={(o) => setDeger({ ...deger, currentPeriodEnd: o.target.value })} />
+        <TarihSecici name="current_period_end" value={deger.currentPeriodEnd} onChange={(gun) => setDeger({ ...deger, currentPeriodEnd: gun })} />
       </label>
 
       {/* Askı nedeni yalnızca askıya alınırken; eskiden her abonede duruyor

@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -485,7 +486,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
                       <input type="hidden" name="tur" value={t.tur} />
                       <input type="hidden" name="odeme_id" value={t.id} />
                       <label><span>Fatura numarası<b className="req" aria-hidden="true">*</b></span><input name="fatura_no" maxLength={60} required autoComplete="off" /></label>
-                      <label><span>Fatura tarihi<b className="req" aria-hidden="true">*</b></span><input name="fatura_tarihi" type="date" required /></label>
+                      <label><span>Fatura tarihi<b className="req" aria-hidden="true">*</b></span><TarihSecici name="fatura_tarihi" required /></label>
                       <label className="wide"><span>Fatura PDF<b className="req" aria-hidden="true">*</b></span><input name="dosya" type="file" accept="application/pdf" required /></label>
                       <div className="wide panel-form-actions kayit-formu-eylem"><p>Yeniden yüklemek bu ödemenin faturasını değiştirir.</p><button className="panel-primary" type="submit">Faturayı yükle</button></div>
                     </form>

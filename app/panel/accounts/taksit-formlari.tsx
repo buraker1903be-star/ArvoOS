@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useState } from "react";
 import { ekHizmetiDagit, tutarDegistir, yenidenBol, type PlanTaksidi } from "@/lib/taksit-plani";
 import { gecerliGun, gunFarki, gunKaydir } from "@/lib/taksit-vadesi";
@@ -78,7 +79,7 @@ export function TaksitPlaniFormu({ planId, taksitler, toplam, ilkVade, acikAdet,
           <option value="6">Altı ayda bir</option>
         </select>
       </label>
-      <label className="wide"><span>İlk taksitin vadesi{req}</span><input name="ilk_vade" type="date" required value={vade} onChange={(o) => setVade(o.target.value)} /></label>
+      <label className="wide"><span>İlk taksitin vadesi{req}</span><TarihSecici name="ilk_vade" required value={vade} onChange={(deger) => setVade(deger)} /></label>
       <p className="wide kayit-formu-not">Ödenen {para(odenen)} olduğu gibi kalır; kalan {para(toplam - odenen)} seçilen sayıda taksite eşit bölünür, artan kuruş baştaki taksitlere eklenir.</p>
       <PlanOnizleme satirlar={"hata" in sonuc ? [] : sonuc} eski={eski} toplam={toplam} hata={"hata" in sonuc ? sonuc.hata : null} />
       <div className="wide panel-form-actions kayit-formu-eylem">
@@ -124,7 +125,7 @@ export function TaksitDuzenleFormu({ taksitId, plan, hedefNo, eylem }: {
   return (
     <form className="panel-form fin-form kayit-formu" action={eylem}>
       <input type="hidden" name="installment_id" value={taksitId} />
-      <label><span>Vade tarihi{req}</span><input name="due_date" type="date" required value={vade} onChange={(o) => setVade(o.target.value)} /></label>
+      <label><span>Vade tarihi{req}</span><TarihSecici name="due_date" required value={vade} onChange={(deger) => setVade(deger)} /></label>
       <label><span>Tutar (₺){req}</span><input name="amount" inputMode="decimal" required value={tutar} onChange={(o) => setTutar(o.target.value)} /></label>
       <label className="wide cari-kaydir">
         <input name="sonrakiler" type="checkbox" checked={kaydir} onChange={(o) => setKaydir(o.target.checked)} />

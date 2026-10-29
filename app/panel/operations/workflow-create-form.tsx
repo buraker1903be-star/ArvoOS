@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { getPanelContext } from "@/lib/panel-context";
 import { createWorkflow } from "./actions";
 import "./operations.css";
@@ -23,7 +24,7 @@ export async function WorkflowCreateForm() {
       <p className="wide kayit-formu-bolum">Plan</p>
       <label>Öncelik<select name="priority" defaultValue="normal"><option value="low">Düşük</option><option value="normal">Normal</option><option value="high">Yüksek</option><option value="urgent">Acil</option></select></label>
       <label>Başlangıç durumu<select name="status" defaultValue="planned"><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option></select></label>
-      <label>Termin<input name="due_date" type="date" /></label>
+      <label>Termin<TarihSecici name="due_date" /></label>
       <label>Operasyon sorumlusu<select name="assigned_employee_id" defaultValue=""><option value="">Atanmamış</option>{employees.map((employee) => <option value={employee.id} key={employee.id}>{employee.full_name}</option>)}</select></label>
       {/* Tür, işin görev listesini belirliyor. Kurum tür tanımlamadıysa seçim
           gösterilmiyor: tek seçenekli bir açılır liste karar değil, gürültü. */}

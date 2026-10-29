@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createContractDirectly } from "./contract-actions";
@@ -213,8 +214,8 @@ export function ProposalBuilderForm({
         <ScheduleDateRows schedule={schedule} dates={dueDates} onChange={(sequence, value) => setDueDates((current) => ({ ...current, [sequence]: value }))} />
 
         <p className="wide kayit-formu-bolum">Tarihler</p>
-        <label><span>Tahmini teslim tarihi<b className="req" aria-hidden="true">*</b></span><input name="estimated_delivery_date" type="date" min={today()} required /></label>
-        <label>{mode === "contract" ? "Son geçerlilik tarihi" : "Teklifin geçerlilik tarihi"}<input name="valid_until" type="date" min={today()} /></label>
+        <label><span>Tahmini teslim tarihi<b className="req" aria-hidden="true">*</b></span><TarihSecici name="estimated_delivery_date" min={today()} required /></label>
+        <label>{mode === "contract" ? "Son geçerlilik tarihi" : "Teklifin geçerlilik tarihi"}<TarihSecici name="valid_until" min={today()} /></label>
 
         <section className="proposal-live-summary wide" aria-live="polite">
           <header><span>{mode === "contract" ? "SÖZLEŞME ÖZETİ" : "TEKLİF ÖZETİ"}</span><strong>{money(calculation.gross)}</strong></header>

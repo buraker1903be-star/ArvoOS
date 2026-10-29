@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useState } from "react";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
@@ -168,7 +169,7 @@ export function LisansFormu({
         <div className="panel-form kayit-formu">
           <label>
             Deneme bitişi
-            <input type="date" name="trial_ends_at" value={deger.trialEndsAt} onChange={(o) => yaz("trialEndsAt", o.target.value)} />
+            <TarihSecici name="trial_ends_at" value={deger.trialEndsAt} onChange={(gun) => yaz("trialEndsAt", gun)} />
             {/* Deneme tarihi yalnızca durum "Deneme" iken bir şey yapıyor;
                 başka durumlarda kayıtta duruyor ama kimseyi etkilemiyor. */}
             <small className="plt-field-note">
@@ -177,7 +178,7 @@ export function LisansFormu({
           </label>
           <label>
             Dönem bitişi
-            <input type="date" name="current_period_end" value={deger.currentPeriodEnd} onChange={(o) => yaz("currentPeriodEnd", o.target.value)} />
+            <TarihSecici name="current_period_end" value={deger.currentPeriodEnd} onChange={(gun) => yaz("currentPeriodEnd", gun)} />
             <span className="plt-hizli">
               {[{ ad: "+1 ay", ay: 1 }, { ad: "+3 ay", ay: 3 }, { ad: "+1 yıl", ay: 12 }].map((secim) => (
                 <button key={secim.ad} type="button" onClick={() => yaz("currentPeriodEnd", ayEkle(deger.currentPeriodEnd, secim.ay))}>

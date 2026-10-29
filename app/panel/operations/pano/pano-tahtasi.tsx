@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -351,7 +352,7 @@ function HizliBakis({
                     {yetkili ? (
                       <form action={setStepDueDate} className="ops-tarih-form">
                         <input type="hidden" name="step_id" value={adim.id} />
-                        <input type="date" name="due_date" defaultValue={adim.due_date ?? ""} aria-label={`${adim.title} teslim tarihi`} />
+                        <TarihSecici className="tsc-kucuk" name="due_date" defaultValue={adim.due_date ?? ""} aria-label={`${adim.title} teslim tarihi`} />
                         <button type="submit" title="Tarihi kaydet" aria-label="Tarihi kaydet">✓</button>
                       </form>
                     ) : (

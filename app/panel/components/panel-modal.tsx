@@ -125,7 +125,8 @@ export function PanelModal({
        ayrıntılar); Escape yalnızca EN ÜSTTEKİNİ kapatır. Eskiden iki
        pencere de dinliyordu ve bir Escape ikisini birden kapatıyordu. */
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      // Açık bir tarih seçicinin Escape'i yalnızca onu kapatır (tarih-secici.tsx).
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       const acikPencereler = document.querySelectorAll(".panel-modal-root");
       if (acikPencereler[acikPencereler.length - 1] !== kokRef.current) return;
       setOpen(false);
