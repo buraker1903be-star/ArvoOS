@@ -2,8 +2,6 @@ import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel
 import { getPaytrStatus, getPlatformOrganizationId } from "@/lib/paytr-status";
 import { paketAdi } from "@/lib/paket-adlari";
 import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
-import { KREDI_PAKETLERI, binKrediFiyati } from "@/lib/ai-kredi-paketleri";
-import { arvolabKrediDurumu } from "@/lib/arvolab";
 import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
 import { istanbulDateTime } from "@/lib/istanbul-date";
 import { submitBankTransferPayment } from "./actions";
@@ -18,8 +16,9 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 /* Ödeme bildiriminin durumu kurumun dilinde (eskiden ham kod: "pending"). */
 const ODEME_DURUMU: Record<string, string> = { pending: "İnceleniyor", approved: "Onaylandı", rejected: "Reddedildi", canceled: "İptal" };
 const ODEME_TONU: Record<string, string> = { pending: "warning", approved: "success", rejected: "danger", canceled: "neutral" };
-import { buyAiCredit, payLicenseWithCard } from "./paytr-actions";
+import { payLicenseWithCard } from "./paytr-actions";
 import "../team.css";
+import "./abonelik.css";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
 import "../components/kayit-formu.css";
 
@@ -100,14 +99,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   }).filter((product) => product.visible);
 
   /*
-    AI kredisi yalnızca ArvoLab aboneliği AÇIK kuruma satılıyor: kapalıyken
-    yüklenen kredi kullanılamaz, yani müşteriden kullanamayacağı bir şeyin
-    parası alınmış olur. Aynı kural satın alma tarafında da var
-    (lib/ai-kredi-checkout.ts) — ekran kuralı hatırlatır, sunucu uygular.
+    ArvoLab asistan kredisi bu sayfada YOK (28.10.2026, kurum sahibinin
+    kararı): ArvoOS'ta yalnızca abonelik ve faturalama. Kurumun kredisini
+    ArvoLab'daki kurum yöneticisi ArvoLab'ın "Abonelik ve kredi" ekranından
+    alıyor (köprü: org_credit_checkout). Kredi ödemeleri yine buradaki
+    ödeme geçmişinde ve faturalarda görünür — para ArvoOS'un mağazasından geçiyor.
   */
-  const arvolabAcik = ["active", "trialing", "past_due"].includes(productRows.get("arvolab")?.status ?? "inactive");
-  // Bakiye ArvoLab'ın veritabanında; ulaşılamazsa null döner ve "0" yazılmaz.
-  const kredi = canSubmit && arvolabAcik ? await arvolabKrediDurumu(organization.id) : null;
 
   /*
     PROFORMA VE FATURALAR (28.10.2026). Tablolar istemciye kapalı (RLS
@@ -146,169 +143,133 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   }
   const bugun = todayInIstanbul();
 
+  /*
+    ABONELİK VE FATURALAMA DÜZENİ (28.10.2026, kurum sahibinin isteği):
+    ArvoLab'ın "Abonelik ve kredi" ekranının düzeni, kredisiz. Solda
+    kurumun abonelikleri ve ödeme düğmeleri; sağda faturalama (kayıtlı
+    kart, proforma ve faturalar, ödeme geçmişi). Havale ve dekont, kartla
+    ödeyemeyenler için altta. Eskiden aynı bilgi ayrı ayrı kutulara
+    dağılmıştı: "ne ödüyorum, ne zaman bitiyor" sorusu üç kutuya bakmayı
+    gerektiriyordu.
+  */
+  const aktifYenilemeler = yenilemeler.filter((y) => y.aktif);
+  const disari = platformId === organization.id;
+
   return <>
     <div className="panel-pagehead">
-      <div><small className="panel-kicker">FİNANS VE ABONELİK</small><h1>Ödeme ve Lisans</h1><p>Havale/EFT bilgilerini görüntüleyin, dekont gönderin ve ödeme durumunu takip edin.</p></div>
-      <span className="status-pill">{license?.license_status ?? "trialing"}</span>
+      <div><small className="panel-kicker">FİNANS VE ABONELİK</small><h1>Abonelik ve faturalama</h1><p>Aboneliklerinizi, ödemelerinizi, kayıtlı kartınızı ve faturalarınızı tek yerden yönetin.</p></div>
+      <span className="status-pill">{productLicenseLabels[license?.license_status ?? "trialing"] ?? license?.license_status}</span>
     </div>
 
     {params.kart === "tamam" ? <div className="team-notice">{sonDeneme?.durum === "basarili" ? "Ödemeniz alındı; lisansınız uzatıldı." : "Ödemeniz işleniyor. Banka onayı geldiğinde lisansınız otomatik olarak uzar; bu sayfayı birkaç saniye sonra yenileyebilirsiniz."}</div> : null}
     {params.kart === "hata" ? <div className="team-notice" data-tone="danger">Ödeme tamamlanamadı{sonDeneme?.hata_mesaji ? `: ${sonDeneme.hata_mesaji}` : ". Kart bilgilerinizi kontrol edip yeniden deneyin ya da havale/EFT ile ödeyin."}</div> : null}
     {params.submitted === "1" ? <div className="team-notice">Dekontunuz alındı. Kurucu onayından sonra lisansınız otomatik etkinleştirilecek.</div> : null}
 
+    <section className="abk-sutunlar" aria-label="Abonelik ve faturalama">
+      <article className="panel-card abk-kart">
+        <header className="abk-bas">
+          <div><h2>Aboneliklerim</h2><p>{organization.name} · {kartAcik ? "kartla ya da havaleyle; otomatik yenileme isteğe bağlı" : "kartla ya da havaleyle"}</p></div>
+        </header>
+        <ul className="abk-urunler">
+          {subscriptions.map((product) => {
+            const yenileme = aktifYenilemeler.find((y) => y.product === product.code);
+            const yenilemeKarti = yenileme ? kartlar.find((k) => k.id === yenileme.kart_id) : null;
+            const acik = ["active", "trialing"].includes(product.status);
+            return <li key={product.code} className="abk-urun">
+              <div className="abk-urun-bas">
+                <div><b>{product.name}</b><small>{product.code === "arvoos" ? `${paketAdi(license?.plan_code ?? organization.plan_code)} paketi` : product.description}</small></div>
+                <span className="status-pill" data-tone={acik ? "success" : product.status === "past_due" ? "warning" : "neutral"}>{productLicenseLabels[product.status] ?? product.status}</span>
+              </div>
+              <dl className="abk-ozet">
+                <div><dt>Aylık</dt><dd>{product.fee > 0 ? formatTry(product.fee) : "Belirlenmedi"}</dd></div>
+                <div><dt>Dönem sonu</dt><dd>{product.periodEnd ? istanbulDateTime(product.periodEnd, { dateStyle: "medium" }) : "—"}</dd></div>
+                {product.code === "arvoos" ? <div><dt>Kullanıcı</dt><dd>{dahilLimit ? `${sayi(uyeSayisi)} / ${sayi(dahilLimit)} dahil` : sayi(uyeSayisi)}</dd></div> : null}
+                {product.code === "arvoos" && ekKoltuk > 0 ? <div><dt>Ek kullanıcı</dt><dd>{sayi(ekKoltuk)} × {formatTry(Number(license?.extra_user_fee ?? 0))}</dd></div> : null}
+              </dl>
+              {yenileme ? <p className="abk-not" data-tone={yenileme.son_hata ? "warning" : "success"}>
+                Otomatik yenileme açık · {yenilemeKarti ? `•••• ${yenilemeKarti.son4}` : "kayıtlı kart"}{yenileme.son_hata ? ` · son deneme başarısız: ${yenileme.son_hata}` : " · her çekimden 3 gün önce bildirim gelir"}
+              </p> : null}
+              {canSubmit && !disari ? (
+                kartAcik && storeReady && product.fee > 0 && product.code !== "arc" ? (
+                  <form action={kartlaOdemeyeBasla} className="abk-eylem">
+                    <input type="hidden" name="product" value={product.code} />
+                    <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>
+                    <small>{yenileme ? "Şimdi öderseniz dönem uzar; otomatik yenileme sonraki dönemde devam eder." : "Dilerseniz kartınızı kaydedip otomatik yenilemeyi seçebilirsiniz."}</small>
+                  </form>
+                ) : storeReady && product.fee > 0 ? (
+                  <form action={payLicenseWithCard} className="abk-eylem">
+                    <input type="hidden" name="product" value={product.code} />
+                    <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>
+                    <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz; ödeme onaylanınca lisans 1 ay uzar.</small>
+                  </form>
+                ) : <p className="panel-muted">{product.fee > 0 ? "Kartla ödeme şu an kullanılamıyor; aşağıdan havale/EFT ile ödeyebilirsiniz." : "Aylık ücret henüz belirlenmedi. ArvoOS ile iletişime geçin."}</p>
+              ) : null}
+            </li>;
+          })}
+        </ul>
+        {dahilLimit && ekKoltuk === 0 && uyeSayisi >= dahilLimit ? (
+          <p className="panel-muted">Dahil kullanıcı hakkınız dolu. Yeni kullanıcı davet edebilirsiniz; her biri aylık {formatTry(Number(license?.extra_user_fee ?? 0))} olarak faturanıza eklenir (en çok {sayi(Number(license?.extra_user_cap ?? 0))} ek kullanıcı).</p>
+        ) : null}
+        {subscriptions.some((p) => p.code === "arvolab") ? <p className="panel-muted">ArvoLab asistan kredisi ArvoLab&apos;daki Abonelik ve kredi ekranından alınır; kredi ödemeleri burada, ödeme geçmişinde görünür.</p> : null}
+      </article>
+
+      <article className="panel-card abk-kart">
+        <header className="abk-bas">
+          <div><h2>Faturalama</h2><p>Kayıtlı kart, proforma ve faturalar, ödeme geçmişi</p></div>
+        </header>
+
+        {kartAcik && canSubmit ? <>
+          <h3 className="abk-alt">Kayıtlı kart ve otomatik yenileme</h3>
+          {aktifYenilemeler.length || kartlar.length ? <ul className="abk-liste">
+            {aktifYenilemeler.map((y) => {
+              const kart = kartlar.find((k) => k.id === y.kart_id);
+              return <li key={y.product} className="abk-satir">
+                <span><b>{productName(y.product)} · {kart ? `•••• ${kart.son4}` : "kart"} ile otomatik yenileniyor</b>
+                  <small>Onay {istanbulDateTime(y.onay_at, { dateStyle: "short", timeStyle: "short" })}{y.son_hata ? ` · Son deneme başarısız: ${y.son_hata}` : ""}</small></span>
+                <form action={otomatikYenilemeyiKapat}><input type="hidden" name="product" value={y.product} /><button className="panel-secondary" type="submit">Kapat</button></form>
+              </li>;
+            })}
+            {kartlar.map((k) => <li key={k.id} className="abk-satir">
+              <span><b>{k.sema ?? "Kart"} •••• {k.son4}</b><small>{[k.banka, k.son_kullanma_ay && k.son_kullanma_yil ? `son kullanma ${k.son_kullanma_ay.padStart(2, "0")}/${k.son_kullanma_yil}` : null].filter(Boolean).join(" · ")}</small></span>
+              <form action={kayitliKartiKaldir}><input type="hidden" name="kart_id" value={k.id} /><button className="panel-secondary" type="submit">Kartı sil</button></form>
+            </li>)}
+          </ul> : <p className="panel-muted">Kayıtlı kartınız yok. Kartla öderken &quot;Kartımı kaydet&quot; seçeneğini işaretlerseniz aboneliğiniz her dönem otomatik yenilenir; istediğiniz zaman buradan kapatabilirsiniz.</p>}
+        </> : null}
+
+        {belgeler ? <>
+          <h3 className="abk-alt">Proformalar ve faturalar</h3>
+          {belgeler.proformalar.length || belgeler.faturalar.length ? <ul className="abk-liste">
+            {belgeler.proformalar.map((p) => {
+              const durum = proformaGorunumu(p.durum, p.gecerlilikTarihi, bugun);
+              return <li key={p.id} className="abk-satir">
+                <span><b>Proforma {p.no} · {productName(p.urun)} · {formatTry(p.toplam)}</b><small>{PROFORMA_DURUM_ADI[durum]} · geçerlilik {istanbulDateTime(`${p.gecerlilikTarihi}T12:00:00Z`, { dateStyle: "short" })}</small></span>
+                <Link className="panel-secondary" href={`/panel/billing/proforma/${p.id}`}>Görüntüle</Link>
+              </li>;
+            })}
+            {belgeler.faturalar.map((f) => <li key={`${f.no}-${f.tarih}`} className="abk-satir">
+              <span><b>Fatura {f.no} · {productName(f.urun)} · {formatTry(f.tutar)}</b><small>{istanbulDateTime(`${f.tarih}T12:00:00Z`, { dateStyle: "short" })}</small></span>
+              {f.url ? <a className="panel-secondary" href={f.url} target="_blank" rel="noreferrer">PDF</a> : <small className="panel-muted">bağlantı üretilemedi</small>}
+            </li>)}
+          </ul> : <p className="panel-muted">Henüz proforma ya da fatura yok. Kesilen belgeler burada görünür.</p>}
+        </> : null}
+
+        <h3 className="abk-alt">Ödeme geçmişi</h3>
+        {payments?.length ? <ul className="abk-liste">
+          {payments.map((payment) => <li key={payment.id} className="abk-satir">
+            <span><b>{productName(payment.product ?? "arvoos")} · {formatTry(payment.amount)}</b><small>{istanbulDateTime(payment.created_at)}{payment.reference_no ? ` · ${payment.reference_no}` : ""}{payment.review_note ? ` · ${payment.review_note}` : ""}</small></span>
+            <span className="status-pill" data-tone={ODEME_TONU[payment.status] ?? "neutral"}>{ODEME_DURUMU[payment.status] ?? payment.status}</span>
+          </li>)}
+        </ul> : <p className="panel-muted">Henüz ödeme bulunmuyor.</p>}
+      </article>
+    </section>
+
     <section className="management-grid">
       <article className="panel-card management-card">
         <div className="management-heading"><div><small>BANKA HESABI</small><h2>Havale / EFT</h2></div><span className="status-pill">TRY</span></div>
         {(bankAccounts ?? []).map((account) => <div className="platform-note" key={account.id}><span>₺</span><p><b>{account.bank_name}</b>{account.account_holder ? ` · ${account.account_holder}` : ""}<br />IBAN: <strong>{formatIban(account.iban)}</strong></p></div>)}
-        <p className="panel-muted">Açıklama alanına kurum adınızı ve seçtiğiniz paket adını yazın. Ödeme sonrasında dekontu aşağıdaki formdan gönderin.</p>
+        <p className="panel-muted">Açıklama alanına kurum adınızı ve ürün adını (ya da proforma numarasını) yazın. Ödeme sonrasında dekontu yandaki formdan gönderin.</p>
       </article>
-
-      <article className="panel-card management-card">
-        <div className="management-heading"><div><small>MEVCUT LİSANS</small><h2>{organization.name}</h2></div><span className="status-pill">{paketAdi(license?.plan_code ?? organization.plan_code)}</span></div>
-        <dl className="billing-summary">
-          <div><dt>Durum</dt><dd>{productLicenseLabels[license?.license_status ?? "trialing"] ?? license?.license_status}</dd></div>
-          <div><dt>Paket</dt><dd>{paketAdi(license?.plan_code ?? organization.plan_code)}</dd></div>
-          <div><dt>Dönem sonu</dt><dd>{license?.current_period_end ? istanbulDateTime(license.current_period_end, { dateStyle: "short" }) : "—"}</dd></div>
-          <div><dt>Kullanıcı</dt><dd>{dahilLimit ? `${sayi(uyeSayisi)} / ${sayi(dahilLimit)} dahil` : sayi(uyeSayisi)}</dd></div>
-          {ekKoltuk > 0 ? (
-            <div><dt>Ek kullanıcı</dt><dd>{sayi(ekKoltuk)} × {formatTry(Number(license?.extra_user_fee ?? 0))} = {formatTry(ekUcret)} / ay</dd></div>
-          ) : null}
-        </dl>
-        {dahilLimit && ekKoltuk === 0 && uyeSayisi >= dahilLimit ? (
-          <p className="panel-muted">
-            Dahil kullanıcı hakkınız dolu. Yeni kullanıcı davet edebilirsiniz; her biri
-            aylık {formatTry(Number(license?.extra_user_fee ?? 0))} olarak faturanıza eklenir
-            (en çok {sayi(Number(license?.extra_user_cap ?? 0))} ek kullanıcı).
-          </p>
-        ) : null}
-      </article>
-    </section>
-
-    {canSubmit && platformId !== organization.id ? <section className="management-grid">
-      {subscriptions.map((product) => <article className="panel-card management-card" key={product.code}>
-        <div className="management-heading">
-          <div><small>KARTLA ÖDEME</small><h2>{product.name}</h2></div>
-          <span className="status-pill">{product.fee > 0 ? `${formatTry(product.fee)} / ay` : "Ücret belirlenmedi"}</span>
-        </div>
-        <dl className="billing-summary">
-          <div><dt>Durum</dt><dd>{productLicenseLabels[product.status] ?? product.status}</dd></div>
-          <div><dt>Dönem sonu</dt><dd>{product.periodEnd ? istanbulDateTime(product.periodEnd, { dateStyle: "short" }) : "—"}</dd></div>
-        </dl>
-        {kartAcik && storeReady && product.fee > 0 && product.code !== "arc" ? (
-          <form action={kartlaOdemeyeBasla} className="management-submit">
-            <input type="hidden" name="product" value={product.code} />
-            <small>Kart bilgilerinizi bu sayfada girersiniz; dilerseniz kartınızı kaydedip aboneliğinizin her dönem otomatik yenilenmesini seçebilirsiniz.</small>
-            <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>
-          </form>
-        ) : storeReady && product.fee > 0 ? (
-          <form action={payLicenseWithCard} className="management-submit">
-            <input type="hidden" name="product" value={product.code} />
-            <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz. Ödeme onaylanınca {product.name} lisansınız 1 ay uzar; süresi dolmadıysa mevcut dönem sonuna eklenir. Dekont gerekmez.</small>
-            <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>
-          </form>
-        ) : (
-          <p className="panel-muted">{product.fee > 0 ? "Kartla ödeme şu an kullanılamıyor; aşağıdan havale/EFT ile ödeyip dekont gönderebilirsiniz." : `${product.name} için aylık ücret henüz belirlenmedi. ArvoOS ile iletişime geçin ya da havale/EFT ile ödeyin.`}</p>
-        )}
-      </article>)}
-    </section> : null}
-
-    {canSubmit && arvolabAcik && platformId !== organization.id ? <section className="panel-card management-card">
-      <div className="management-heading">
-        <div><small>ARVOLAB ASİSTANI</small><h2>AI kredisi</h2></div>
-        <span className="status-pill">1 kredi = 1.000 karakter</span>
-      </div>
-
-      <dl className="billing-summary">
-        {/*
-          Bakiye okunamadığında "0" YAZILMIYOR: hiç kullanmamış kurumla
-          köprüsü kopmuş kurumu aynı göstermek, ikincisine ihtiyacı yokken
-          kredi aldırırdı.
-        */}
-        {/*
-          Üç ayrı bilinmezlik, üç ayrı metin:
-            kredi === null        → köprü okunamadı
-            aylikLimit === null   → hak henüz bildirilmedi (0 DEĞİL)
-            sayı                  → gerçek değer
-          İkincisini "0" yazmak, yansıtması gecikmiş kuruma "hiç AI
-          hakkınız yok" demekti; AkademikMerkez'de tam bu oldu.
-        */}
-        <div><dt>Bu ayki hak</dt><dd>{
-          !kredi ? "okunamadı"
-            : kredi.aylikLimit === null || kredi.aylikKalan === null ? "henüz bildirilmedi"
-            : `${sayi(kredi.aylikKalan)} / ${sayi(kredi.aylikLimit)} kredi`
-        }</dd></div>
-        <div><dt>Satın alınan bakiye</dt><dd>{kredi ? `${sayi(kredi.ekBakiye)} kredi` : "okunamadı"}</dd></div>
-        <div><dt>Kullanılabilir</dt><dd>{
-          !kredi ? "okunamadı"
-            : kredi.aylikKalan === null ? `${sayi(kredi.ekBakiye)} kredi + bildirilmemiş aylık hak`
-            : `${sayi(kredi.aylikKalan + kredi.ekBakiye)} kredi`
-        }</dd></div>
-      </dl>
-
-      {kredi && kredi.aylikLimit === null ? <div className="platform-note"><span>i</span><p>
-        Aylık AI hakkınız ArvoLab&apos;a henüz bildirilmemiş. Satın alacağınız kredi yine de
-        yüklenir ve kullanılır; aylık hakkınızın görünmesi için ArvoOS ile iletişime geçin.
-      </p></div> : null}
-
-      <p className="panel-muted">
-        Aylık hak her ayın başında yenilenir ve kullanılmayan kısmı devretmez.
-        Satın alınan bakiye yanmaz; önce aylık hak, o bitince bakiye harcanır.
-      </p>
-
-      {storeReady ? <div className="management-grid">
-        {KREDI_PAKETLERI.map((paket) => <article className="panel-card management-card" key={paket.kod}>
-          <div className="management-heading">
-            <div><small>{sayi(binKrediFiyati(paket) / 100)} ₺ / 1.000 kredi</small><h2>{paket.ad}</h2></div>
-            <span className="status-pill">{formatTry(paket.fiyat)}</span>
-          </div>
-          <form action={buyAiCredit} className="management-submit">
-            <input type="hidden" name="paket" value={paket.kod} />
-            <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz. Ödeme onaylanınca {sayi(paket.kredi)} kredi bakiyenize eklenir.</small>
-            <button className="panel-primary" type="submit">Satın al · {formatTry(paket.fiyat)}</button>
-          </form>
-        </article>)}
-      </div> : <p className="panel-muted">Kredi satın alma şu an kullanılamıyor. ArvoOS ile iletişime geçin.</p>}
-    </section> : null}
-
-    {kartAcik && canSubmit ? <section className="panel-card management-card">
-      <div className="management-heading"><div><small>KAYITLI KART</small><h2>Otomatik yenileme</h2></div><span className="status-pill">{yenilemeler.filter((y) => y.aktif).length ? "Açık" : "Kapalı"}</span></div>
-      <div className="module-control-list">
-        {yenilemeler.filter((y) => y.aktif).map((y) => {
-          const kart = kartlar.find((k) => k.id === y.kart_id);
-          return <div className="module-control" key={y.product}>
-            <div><b>{productName(y.product)} · {kart ? `•••• ${kart.son4}` : "kart"} kartından otomatik yenileniyor</b>
-              <small>Onay {istanbulDateTime(y.onay_at, { dateStyle: "short", timeStyle: "short" })}{y.son_hata ? ` · Son deneme başarısız: ${y.son_hata}` : ""} · Her çekimden 3 gün önce e-posta gönderilir.</small></div>
-            <form action={otomatikYenilemeyiKapat}><input type="hidden" name="product" value={y.product} /><button className="panel-secondary" type="submit">Kapat</button></form>
-          </div>;
-        })}
-        {kartlar.map((k) => <div className="module-control" key={k.id}>
-          <div><b>{k.sema ?? "Kart"} •••• {k.son4}</b><small>{[k.banka, k.son_kullanma_ay && k.son_kullanma_yil ? `son kullanma ${k.son_kullanma_ay.padStart(2, "0")}/${k.son_kullanma_yil}` : null].filter(Boolean).join(" · ")}</small></div>
-          <form action={kayitliKartiKaldir}><input type="hidden" name="kart_id" value={k.id} /><button className="panel-secondary" type="submit">Kartı sil</button></form>
-        </div>)}
-        {!kartlar.length ? <p className="panel-muted">Kayıtlı kartınız yok. Kartla öderken &quot;Kartımı kaydet&quot; seçeneğini işaretlerseniz aboneliğiniz her dönem otomatik yenilenir; istediğiniz zaman buradan kapatabilirsiniz.</p> : null}
-      </div>
-    </section> : null}
-
-    {belgeler ? <section className="panel-card management-card">
-      <div className="management-heading"><div><small>BELGELER</small><h2>Proformalar ve faturalar</h2></div><span className="status-pill">{belgeler.proformalar.length + belgeler.faturalar.length} belge</span></div>
-      <div className="module-control-list">
-        {belgeler.proformalar.map((p) => {
-          const durum = proformaGorunumu(p.durum, p.gecerlilikTarihi, bugun);
-          return <div className="module-control" key={p.id}>
-            <div><b>Proforma {p.no} · {productName(p.urun)} · {formatTry(p.toplam)}</b><small>{p.kalemler.map((k) => k.aciklama).join(", ")} · geçerlilik {istanbulDateTime(`${p.gecerlilikTarihi}T12:00:00Z`, { dateStyle: "short" })}</small></div>
-            <span className="status-pill" data-tone={durum === "odendi" ? "success" : durum === "suresi_doldu" ? "neutral" : "warning"}>{PROFORMA_DURUM_ADI[durum]}</span>
-            <Link className="panel-secondary" href={`/panel/billing/proforma/${p.id}`}>Görüntüle / yazdır</Link>
-          </div>;
-        })}
-        {belgeler.faturalar.map((f) => <div className="module-control" key={`${f.no}-${f.tarih}`}>
-          <div><b>Fatura {f.no} · {productName(f.urun)} · {formatTry(f.tutar)}</b><small>{istanbulDateTime(`${f.tarih}T12:00:00Z`, { dateStyle: "short" })}</small></div>
-          {f.url ? <a className="panel-secondary" href={f.url} target="_blank" rel="noreferrer">PDF&apos;i aç</a> : <span className="panel-muted">Bağlantı şu an üretilemedi</span>}
-        </div>)}
-        {!belgeler.proformalar.length && !belgeler.faturalar.length ? <p className="panel-muted">Henüz proforma ya da fatura yok. Kesilen belgeler burada görünür.</p> : null}
-      </div>
-    </section> : null}
-
-    {canSubmit ? <section className="panel-card management-card">
+    {canSubmit ? <article className="panel-card management-card">
       <div className="management-heading"><div><small>ÖDEME BİLDİRİMİ</small><h2>Dekont gönder</h2></div><span className="status-pill">Manuel onay</span></div>
       <form className="panel-form kayit-formu" action={submitBankTransferPayment}>
         {/* Önceden ürün gönderilmiyordu (varsayılan ArvoOS); ArvoARC/Randevu için
@@ -322,14 +283,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <label className="wide">Not<textarea name="customer_note" maxLength={1000} rows={3} placeholder="Ödemeyle ilgili açıklama" /></label>
         <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> zorunlu · dekont PDF, JPG, PNG veya WEBP, en fazla 10 MB</p><button className="panel-primary" type="submit">Dekontu gönder</button></div>
       </form>
-    </section> : <div className="platform-note"><span>i</span><p>Dekont gönderimi yalnızca kurum sahibi veya yöneticisi tarafından yapılabilir.</p></div>}
+    </article> : <div className="platform-note"><span>i</span><p>Dekont gönderimi yalnızca kurum sahibi veya yöneticisi tarafından yapılabilir.</p></div>}
 
-    <section className="panel-card management-card">
-      <div className="management-heading"><div><small>ÖDEME GEÇMİŞİ</small><h2>Bildirimler</h2></div><span className="status-pill">{payments?.length ?? 0} kayıt</span></div>
-      <div className="module-control-list">
-        {(payments ?? []).map((payment) => <div className="module-control" key={payment.id}><div><b>{productName(payment.product ?? "arvoos")} · {paketAdi(payment.plan_code)} · {formatTry(payment.amount)}</b><small>{istanbulDateTime(payment.created_at)}{payment.reference_no ? ` · ${payment.reference_no}` : ""}{payment.review_note ? ` · ${payment.review_note}` : ""}</small></div><span className="status-pill" data-tone={ODEME_TONU[payment.status] ?? "neutral"}>{ODEME_DURUMU[payment.status] ?? payment.status}</span></div>)}
-        {!payments?.length ? <p className="panel-muted">Henüz ödeme bildirimi bulunmuyor.</p> : null}
-      </div>
     </section>
   </>;
 }

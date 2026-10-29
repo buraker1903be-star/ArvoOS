@@ -9,7 +9,7 @@ import { isSubscriberProduct, productName } from "@/lib/products";
 import { bireyselAylikUcret } from "@/lib/bireysel-ucret";
 import { kurumLisansiAcik } from "@/lib/kurum-lisansi-erisim";
 import { KREDI_PAKETLERI } from "@/lib/ai-kredi-paketleri";
-import { createBireyselKrediCheckout } from "@/lib/ai-kredi-checkout";
+import { createAiKrediCheckout, createBireyselKrediCheckout } from "@/lib/ai-kredi-checkout";
 import { CheckoutError } from "@/lib/license-checkout";
 import { aboneFaturalamasi, BOS_FATURALAMA, kurumFaturalamasi } from "@/lib/faturalama-koprusu";
 import { aboneKartOdemesiAc, kartOnayiniKaydet, kartSaklamaAcik, OTOMATIK_YENILEME_ONAY_METNI, platformKimligi } from "@/lib/paytr-kart-akisi";
@@ -110,10 +110,48 @@ export async function POST(request: Request) {
     const yonetici = createAdminClient();
     if (!yonetici) return json(503, { error: "unavailable" });
     try {
-      return json(200, await kurumFaturalamasi(yonetici, organizationId, product));
+      /* Kredi paketleri de burada (28.10.2026): kurumun kredisi artık ArvoLab'dan
+         alınıyor, liste ArvoLab'a kopyalanmıyor — fiyat değiştiği gün iki taraf
+         ayrı fiyat göstermesin (bireysel abonenin ensure yanıtındakiyle aynı). */
+      return json(200, { ...(await kurumFaturalamasi(yonetici, organizationId, product)), ...(product === "arvolab" ? { creditPackages: KREDI_PAKETLERI } : {}) });
     } catch (error) {
       console.error("[bridge] kurum faturalaması okunamadı", error instanceof Error ? error.message : error);
       return json(503, { error: "unavailable" });
+    }
+  }
+
+  /*
+    org_credit_checkout (28.10.2026): kurumun ArvoLab asistan kredisi artık
+    ArvoLab'daki kurum yöneticisi tarafından alınıyor (kurum sahibinin
+    kararı: ArvoOS'ta yalnızca abonelik ve faturalama). Yetki ArvoLab'da:
+    çağıranın o kurumun yöneticisi olduğunu ArvoLab doğruluyor (org_billing
+    ile aynı sözleşme); burası paylaşılan anahtarla korunuyor.
+
+    Sipariş, kurumun ArvoOS'taki SAHİBİ adına açılıyor: payment_links ve
+    ai_credit_orders satın alanı bir ArvoOS kullanıcısı olarak istiyor, ArvoLab
+    yöneticisinin ArvoOS'ta hesabı olmayabilir. Kimin aldığı ArvoLab'da kayıtlı.
+  */
+  if (action === "org_credit_checkout") {
+    if (product !== "arvolab") return json(400, { error: "invalid_action" });
+    const organizationId = String(body.organizationId ?? "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(organizationId)) return json(400, { error: "missing_organization" });
+    const yonetici = createAdminClient();
+    if (!yonetici) return json(503, { error: "unavailable" });
+    const { data: sahip, error: sahipHatasi } = await yonetici.from("organization_memberships").select("user_id")
+      .eq("organization_id", organizationId).eq("role", "owner").eq("is_active", true).limit(1).maybeSingle();
+    if (sahipHatasi) return json(503, { error: "unavailable" });
+    if (!sahip) return json(409, { error: "no_owner" });
+    try {
+      const { url } = await createAiKrediCheckout(yonetici, { organizationId, paketKodu: String(body.paket ?? "").trim(), actorId: sahip.user_id });
+      return json(200, { checkoutUrl: url });
+    } catch (error) {
+      if (error instanceof CheckoutError) {
+        const status = error.code === "not_found" ? 400 : error.code === "fee_not_set" ? 409 : error.code === "link_failed" ? 502 : 503;
+        console.error("[bridge] kurum kredi bağlantısı açılamadı", error.code, error.message);
+        return json(status, { error: error.code });
+      }
+      console.error("[bridge] kurum kredi bağlantısı açılamadı", error instanceof Error ? error.message : error);
+      return json(500, { error: "credit_checkout_failed" });
     }
   }
 
