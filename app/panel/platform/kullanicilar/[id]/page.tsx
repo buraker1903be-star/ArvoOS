@@ -14,6 +14,9 @@ import { relativeTime } from "../../../crm/last-contact";
 import { MobilSatir } from "../../../crm/table-cells";
 import { SatirTiklama } from "../../../crm/satir-tiklama";
 import { kisilereTopla, kisininRolu, pasiflikSebebi, rolAdi } from "../kisiler";
+import { ONAY_SECIMI, type SozlesmeOnayi } from "@/lib/sozlesme/onay-durumu";
+import { cihazOzeti, konumYazisi } from "@/lib/sozlesme/delil";
+import { SOZLESME_SURUMU } from "@/lib/sozlesme/kullanim-sozlesmesi";
 import "../../platform.css";
 import "../../konsol-ui.css";
 import "../../../hr/hr.css";
@@ -70,7 +73,7 @@ export default async function KisiSayfasi({ params }: { params: Promise<{ id: st
   const hesaplar = [...new Set(kisi.satirlar.filter((s) => ARVOOS_HESABI.has(s.product)).map((s) => s.userId))];
   const kurumAdi = new Map(rows.filter((r) => r.organizationId).map((r) => [r.organizationId!, r.scope]));
 
-  const [oturumSonucu, varlikSonucu, davetSonucu] = admin ? await Promise.all([
+  const [oturumSonucu, varlikSonucu, davetSonucu, onaySonucu] = admin ? await Promise.all([
     hesaplar.length
       ? admin.from("user_session_logs").select("id,organization_id,login_at,last_seen_at,logout_at,logout_reason,current_path")
           .in("user_id", hesaplar).order("login_at", { ascending: false }).limit(OTURUM)
@@ -84,11 +87,19 @@ export default async function KisiSayfasi({ params }: { params: Promise<{ id: st
       ? admin.from("organization_invitations").select("id,organization_id,role,status,expires_at,sent_at,created_at")
           .ilike("email", kisi.email.replace(/[\\%_]/g, (h) => `\\${h}`)).is("accepted_at", null).order("created_at", { ascending: false }).limit(20)
       : Promise.resolve({ data: [], error: null }),
-  ]) : [null, null, null];
+    /* Kullanım Sözleşmesi onayları (20261029162437): tablo istemciye yalnızca
+       kişinin kendi satırını veriyor, kurucu sunucu anahtarıyla okuyor. */
+    hesaplar.length
+      ? admin.from("sozlesme_onaylari").select(ONAY_SECIMI).in("user_id", hesaplar).order("onaylandi", { ascending: false }).limit(5)
+      : Promise.resolve({ data: [], error: null }),
+  ]) : [null, null, null, null];
 
   const oturumOkumasi = oturumSonucu ? ikincil(oturumSonucu as { data: Oturum[] | null; error: { message: string } | null }, "Oturumlar") : { veri: null, okunamadi: true };
   const varlikOkumasi = varlikSonucu ? ikincil(varlikSonucu as { data: { last_seen_at: string; organization_id: string }[] | null; error: { message: string } | null }, "Son görülme") : { veri: null, okunamadi: true };
   const davetOkumasi = davetSonucu ? ikincil(davetSonucu as { data: Davet[] | null; error: { message: string } | null }, "Davetler") : { veri: null, okunamadi: true };
+  const onayOkumasi = onaySonucu ? ikincil(onaySonucu as { data: SozlesmeOnayi[] | null; error: { message: string } | null }, "Sözleşme onayları") : { veri: null, okunamadi: true };
+  const onaylar = onayOkumasi.veri ?? [];
+  const yururlukteOnay = onaylar.find((o) => o.surum === SOZLESME_SURUMU) ?? null;
   const oturumlar = oturumOkumasi.veri ?? [];
   const sonGorulme = varlikOkumasi.veri?.[0] ?? null;
   const su = simdi();
@@ -211,6 +222,22 @@ export default async function KisiSayfasi({ params }: { params: Promise<{ id: st
             <KOge baslik="Unvan" deger={kisi.unvan ?? <span className="k-ios-eksik">Girilmedi</span>} />
           </KListe>
           {/* Telefon yalnızca ArvoOS profilinde var; ArvoLab ayrı veritabanında ve orada tutulmuyor. */}
+        </KKart>
+
+        {/* Onay kaydı delil: zaman, IP, yaklaşık konum, cihaz (lib/sozlesme). */}
+        <KKart baslik="Kullanım Sözleşmesi" aciklama={`ArvoOS panelinin yürürlükteki sürümü ${SOZLESME_SURUMU}.`}
+          sag={onayOkumasi.okunamadi ? null : <span className="status-pill" data-tone={yururlukteOnay ? "success" : "warning"}>{yururlukteOnay ? "Onaylandı" : "Onay bekliyor"}</span>}>
+          {!hesaplar.length ? <KBos baslik="ArvoOS hesabı yok" aciklama="Kişi yalnızca ArvoLab'da; onayı ArvoLab'ın kendi kaydında." />
+            : onayOkumasi.okunamadi ? <KBos baslik="Onaylar okunamadı" aciklama={admin ? "Sorgu yanıt vermedi ya da migration (20261029162437) henüz uygulanmadı." : "Sunucu anahtarı tanımlı değil."} />
+            : onaylar.length ? (
+              <KListe>
+                {onaylar.map((o) => (
+                  <KOge key={o.id} baslik={`Sürüm ${o.surum} · ${tarihSaat(o.onaylandi)}`}
+                    alt={[o.ip, konumYazisi(o), cihazOzeti(o.kullanici_araci), o.kurum_adi].filter(Boolean).join(" · ")}
+                    durum={o.surum === SOZLESME_SURUMU ? { etiket: "Yürürlükte", ton: "success" } : { etiket: "Eski sürüm", ton: "neutral" }} />
+                ))}
+              </KListe>
+            ) : <KBos baslik="Henüz onaylamadı" aciklama="Kişi panele bir sonraki girişinde sözleşmeyi okuyup onaylamadan devam edemez." />}
         </KKart>
 
         <KKart baslik="Bekleyen davetler" aciklama="Bu e-postaya gönderilmiş, henüz kabul edilmemiş davetler; yeniden gönderme kurumun Kurulum sekmesinde.">

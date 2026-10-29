@@ -71,6 +71,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261029112549_departman_yonetim_adi_korumasi.sql",
   "20261029152535_platform_tahsilat_aylik.sql",
   "20261029160309_otomatik_proforma.sql",
+  "20261029162437_sozlesme_onaylari.sql",
 ];
 
 /*
