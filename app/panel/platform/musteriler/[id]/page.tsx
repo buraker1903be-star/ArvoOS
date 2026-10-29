@@ -16,6 +16,7 @@ import { KiraciDosyasi } from "../../kiraci-dosyasi";
 import { kiraciDosyasiVerisi } from "../../kiraci-dosyasi-verisi";
 import { OdemeBolumu, type Odeme, type UrunSatiri } from "./bolumler";
 import { BelgeBolumu } from "./belgeler";
+import { HareketBolumu } from "./hareketler";
 import "../../platform.css";
 import "../../../hr/hr.css";
 import "../../../crm/kayit-detay/kayit-detay.css";
@@ -68,6 +69,8 @@ const SEKMELER = [
   { kod: "urunler", ad: "Ürünler ve lisans" },
   { kod: "kullanicilar", ad: "Kullanıcılar" },
   { kod: "odemeler", ad: "Ödemeler ve proformalar" },
+  /* Bütün kayıtlar tek zaman çizelgesinde (lib/musteri-hareketleri). */
+  { kod: "hareketler", ad: "Hareketler" },
   /* Kiracı dosyası: kurum ayarları formu, modüller, kurulum adımları ve
      sahibe giriş bağlantısı. */
   { kod: "kurulum", ad: "Kurulum" },
@@ -89,11 +92,11 @@ const ODEME_SECIMI = "id,organization_id,amount,currency,status,product,plan_cod
 
 export default async function MusteriDetayi({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ pencere?: string; provisioned?: string }>;
+  searchParams: Promise<{ pencere?: string; provisioned?: string; tur?: string }>;
 }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
-  const [{ id }, { pencere: pencereParametresi, provisioned }] = await Promise.all([params, searchParams]);
+  const [{ id }, { pencere: pencereParametresi, provisioned, tur: hareketTuru }] = await Promise.all([params, searchParams]);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const sekme: SekmeKodu = SEKMELER.find((x) => x.kod === pencereParametresi)?.kod ?? ESKI_SEKME[pencereParametresi ?? ""] ?? "bilgiler";
 
@@ -168,6 +171,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
       <OdemeBolumu supabase={supabase} odemeler={odemeler} kurumAdi={ad} urunler={urunler} grup={grup} />
       <BelgeBolumu organizationId={id} />
     </>;
+    if (kod === "hareketler") return <HareketBolumu admin={admin} organizationId={id} odemeler={odemeler} kayitAcildi={olusma} tur={hareketTuru} adres={adres} />;
     if (kod === "kurulum") {
       const veri = await kiraciDosyasiVerisi(supabase, id);
       return veri ? <KiraciDosyasi supabase={supabase} {...veri} pencerede /> : <KBos baslik="Kurum bulunamadı" />;

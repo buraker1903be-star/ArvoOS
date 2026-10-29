@@ -93,3 +93,5 @@
 .sy-sekmeler .pu-sayi[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
 .os-root .ek-sag .pu-liste li>a[aria-current="true"]{background:var(--surface-2)}
 .os-root .sistem-sayfa .sy-tur{flex:none;align-self:flex-start;margin:0 0 var(--sp-3)}
+/* Kişi sayfası (kullanicilar/[id]): sol sütun iki kart alt alta. */
+.os-root .kisi-sayfa .kisi-govde{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
