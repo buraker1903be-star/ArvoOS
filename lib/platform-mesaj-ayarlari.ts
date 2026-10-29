@@ -43,14 +43,27 @@ export function mesajAyarlari(
       bedel: "Dört ürünün WhatsApp mesajları gönderilemez.",
     },
     {
-      /* Platformun kendi postası: otomatik proforma, sözleşme postası ve
-         müşterilere toplu hatırlatma (lib/eposta-gonder çağıranları). */
+      /*
+        AYNI ADI TAŞIYAN İKİ AYRI ANAHTAR VAR ve bu karışıklığa yol
+        açtı (29.10.2026): "Resend zaten aktif" denildi, ekran yine
+        "eksik" diyordu. İkisi de doğruydu —
+
+          - Supabase kenar fonksiyonu (supabase/functions/send-auth-email,
+            `Deno.env.get`): davet, şifre sıfırlama, giriş postaları.
+            Supabase'in sır kasasında ve ÇALIŞIYOR.
+          - Vercel ortam değişkeni (`process.env`, lib/eposta-gonder):
+            otomatik proforma, sözleşme postası, toplu hatırlatma.
+
+        Ekran "RESEND_API_KEY eksik" deyip NEREDE eksik olduğunu
+        söylemiyordu; kurucu haklı olarak yanlış yere baktı. Not artık
+        yeri de, etkilenmeyeni de yazıyor.
+      */
       ad: "E-posta (Resend)",
       bagli: resend,
       not: resend
         ? "Proforma e-postaları noreply@arvo-os.com adresinden gidiyor"
-        : "RESEND_API_KEY eksik: proformalar kesilip bildirilir ama e-postayla gitmez",
-      bedel: "Otomatik proforma, sözleşme postası ve toplu hatırlatma e-postayla gitmez.",
+        : "Vercel'de RESEND_API_KEY tanımlı değil: proformalar kesilip bildirilir ama e-postayla gitmez. Supabase'teki anahtar ayrıdır, davet ve şifre postaları ondan gider.",
+      bedel: "Otomatik proforma, sözleşme postası ve toplu hatırlatma e-postayla gitmez. Davet ve şifre postaları etkilenmez: onlar Supabase kenar fonksiyonundaki ayrı anahtarla gider.",
     },
     {
       ad: "Anlık bildirim (web push)",

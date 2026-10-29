@@ -29,6 +29,20 @@ test("eksik anahtar listeye düşüyor ve bedeli yazılı", () => {
   assert.match(eksik[0].bedel, /proforma/i);
 });
 
+/*
+  AYNI ADI TAŞIYAN İKİ ANAHTAR karışıklığa yol açtı (29.10.2026):
+  Supabase kenar fonksiyonundaki RESEND_API_KEY aktifti (davet ve
+  şifre postaları gidiyordu), Vercel'deki tanımsızdı. Ekran yalnızca
+  "RESEND_API_KEY eksik" diyordu ve kurucu haklı olarak yanlış yere
+  baktı.
+*/
+test("eksik e-posta notu ANAHTARIN YERİNİ ve etkilenmeyeni söylüyor", () => {
+  const eksik = eksikMesajAyarlari(mesajAyarlari((ad) => ad !== "RESEND_API_KEY", true))[0];
+  assert.match(eksik.not, /Vercel/, "hangi ortamda eksik olduğu yazılmalı");
+  assert.match(eksik.not, /Supabase/, "öteki anahtarın ayrı olduğu yazılmalı");
+  assert.match(eksik.bedel, /[Dd]avet/, "neyin ETKİLENMEDİĞİ de yazılmalı");
+});
+
 /* WhatsApp İKİ anahtar istiyor; biri eksikken "bağlı" demek,
    gönderimin çalıştığını sanmak olurdu. */
 test("WhatsApp'ta tek anahtar yetmiyor", () => {
