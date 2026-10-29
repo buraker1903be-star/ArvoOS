@@ -1,5 +1,5 @@
 // Contact — English.
-import { COMPANY, ROUTES } from "@/lib/site/routes";
+import { COMPANY, PRODUCT_APPS, ROUTES } from "@/lib/site/routes";
 import type { ContactContent } from "./contact";
 
 export const CONTACT_EN: ContactContent = {
@@ -18,7 +18,7 @@ export const CONTACT_EN: ContactContent = {
     items: [
       { q: "How do I request a demo?", a: "Pick the product you’re interested in on this page’s form and describe your needs; our team will get back to you." },
       { q: "How else can I reach you?", a: `Send an email to ${COMPANY.email}.` },
-      { q: "My organization already uses a panel — where do I sign in?", a: "ArvoOS runs at app.arvo-os.com, ArvoLab at lab.arvo-os.com and ArvoCal at randevu.arvo-os.com; if your organization has its own domain, you can sign in there too." },
+      { q: "My organization already uses a panel — where do I sign in?", a: `ArvoOS runs at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host} and ArvoCal at ${PRODUCT_APPS.randevu.host}; if your organization has its own domain, you can sign in there too.` },
       { q: "How is my form data used?", a: `Only to respond to your request. Details are in the Privacy Notice (${ROUTES.privacy.en}).` },
     ],
   },

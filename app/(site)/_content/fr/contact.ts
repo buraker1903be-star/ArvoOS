@@ -1,5 +1,5 @@
 // Fransızca: contact-en.ts'in çevirisi. Yapı ve veriler aynı; yalnızca metin çevrildi.
-import { COMPANY, ROUTES } from "@/lib/site/routes";
+import { COMPANY, PRODUCT_APPS, ROUTES } from "@/lib/site/routes";
 import type { ContactContent } from "../contact";
 
 export const CONTACT_FR: ContactContent = {
@@ -18,7 +18,7 @@ export const CONTACT_FR: ContactContent = {
     items: [
       { q: "Comment demander une démo ?", a: "Choisissez le produit qui vous intéresse dans le formulaire de cette page et décrivez votre besoin ; notre équipe reviendra vers vous." },
       { q: "Comment vous joindre autrement ?", a: `Envoyez un e-mail à ${COMPANY.email}.` },
-      { q: "Mon organisation utilise déjà un panneau — où me connecter ?", a: "ArvoOS fonctionne sur app.arvo-os.com, ArvoLab sur lab.arvo-os.com et ArvoCal sur randevu.arvo-os.com ; si votre organisation dispose de son propre domaine, vous pouvez aussi vous y connecter." },
+      { q: "Mon organisation utilise déjà un panneau — où me connecter ?", a: `ArvoOS fonctionne sur ${PRODUCT_APPS.arvoos.host}, ArvoLab sur ${PRODUCT_APPS.arvolab.host} et ArvoCal sur ${PRODUCT_APPS.randevu.host} ; si votre organisation dispose de son propre domaine, vous pouvez aussi vous y connecter.` },
       { q: "Comment mes données de formulaire sont-elles utilisées ?", a: `Uniquement pour répondre à votre demande. Le détail figure dans la Politique de confidentialité (${ROUTES.privacy.fr}).` },
     ],
   },

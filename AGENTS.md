@@ -254,11 +254,20 @@ listelerle aynı yapıya geçti:
 
 ## Ürün köprüleri
 
-ArvoARC, ArvoLab ve ArvoRandevu kendi Supabase projelerinde; lisansı,
+ArvoARC, ArvoLab ve ArvoCal kendi Supabase projelerinde; lisansı,
 modül erişimini ve personeli oradaki kopyadan okuyorlar, kopyayı
 ArvoOS yazıyor (`lib/arc-bridge.ts`, `lib/arvolab.ts`,
 `lib/randevu-bridge.ts`). Köprü durursa ürün son bilinen durumla
 çalışmaya devam eder — ama yeni lisans ulaşmaz.
+
+**Ürünün adı ArvoCal, kodu `randevu`.** Ürün 28.10.2026'da
+ArvoRandevu → ArvoBook → ArvoCal oldu, adresi 29.10.2026'da
+cal.arvo-os.com'a geçti; kod adı bilerek değişmedi. `product = 'randevu'`
+lisans, abonelik, ödeme isteği, proforma ve WhatsApp mesaj satırlarının
+check kısıtlarında; dosya adı `lib/randevu-bridge.ts`, ortam değişkeni
+`RANDEVU_BRIDGE_SECRET`, demo formunun `interest` değeri `'randevu'`. Yani
+**metinde ArvoCal, kodda `randevu`** — ikisini eşitlemeye çalışmak çalışan
+aboneliği ve köprüyü kırar. Adres `PRODUCT_APPS.randevu`'da, tek yerde.
 
 **Yansıtma tek yerden:** `lib/urun-yansitma.ts`. Lisans formu, modül
 erişim anahtarı ve "yeniden yansıt" düğmesi onu çağırır. Sonucu hata
@@ -267,7 +276,7 @@ metnine çeviren karar da tek ve saf: `lib/yansitma-hatasi.ts`
 
 Bu yapı 17.10.2026'da kuruldu, çünkü karar üç ayrı yerde elle
 yazılıydı ve sapmıştı: "köprü kapalı" (`not_configured`) hâli ArvoLab
-ile Randevu'da hata sayılıyor, **ArvoARC'ta sayılmıyordu**. Ortam
+ile ArvoCal'da hata sayılıyor, **ArvoARC'ta sayılmıyordu**. Ortam
 değişkenleri girilmemiş ya da girilip yeniden dağıtılmamış bir
 kurulumda ArvoARC lisansı yansımıyor, kurucu ekranında işlem BAŞARILI
 görünüyordu — mağaza hiç açılmıyor ve sebebi hiçbir yerde yazmıyordu.
