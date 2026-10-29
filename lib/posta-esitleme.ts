@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
-import { degisimleriTopla, gmailAramaSorgusu, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
+import { degisimleriTopla, mesajAtlanir, gmailAramaSorgusu, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
 import { yeniPostaBildirimleri } from "./posta-bildirim";
 import { alintiliGovde, base64UrlKodla, imzaliGovde, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya, type GomuluGorsel } from "@/lib/posta-gonderim";
 import { LOGO_CID, gorselOlculeri, htmlGovdesi, logoAdresiUygunMu } from "@/lib/posta-imza";
@@ -47,15 +47,17 @@ export type EsitlemeSonucu = {
   hatalar: string[];
 };
 
-type GmailCevabi = { govde: unknown } | { hata: string };
+/* Durum kodu da taşınıyor: "bu mesaj yok" (404) ile "yetki yok" (401)
+   ayrı kararlar gerektiriyor, metne bakarak ayırmak kırılgan. */
+type GmailCevabi = { govde: unknown } | { hata: string; durum: number };
 
 async function gmailGetir(yol: string, belirtec: string): Promise<GmailCevabi> {
   const yanit = await fetch(`${GMAIL}${yol}`, { headers: { authorization: `Bearer ${belirtec}` } }).catch(() => null);
-  if (!yanit) return { hata: "Gmail'e ulaşılamadı." };
+  if (!yanit) return { hata: "Gmail'e ulaşılamadı.", durum: 0 };
   const govde: unknown = await yanit.json().catch(() => ({}));
   if (!yanit.ok) {
     const sebep = (govde as { error?: { message?: string } })?.error?.message ?? `HTTP ${yanit.status}`;
-    return { hata: sebep };
+    return { hata: sebep, durum: yanit.status };
   }
   return { govde };
 }
@@ -84,7 +86,17 @@ async function mesajlariIsle(
       belirtec,
     )));
     for (const sonuc of sonuclar) {
-      if ("hata" in sonuc) return { hata: sonuc.hata };
+      if ("hata" in sonuc) {
+        /* Tek mesajın yokluğu turu düşürmez; karar ve gerekçesi
+           lib/posta-ayristirma · mesajAtlanir. Düşürseydi geçmiş
+           imleci ilerlemez, kutu aynı mesaja sonsuza kadar
+           takılırdı — canlıda böyle oldu. */
+        if (mesajAtlanir(sonuc.durum)) {
+          console.warn(`[posta] mesaj atlandı (${sonuc.durum}): ${sonuc.hata}`);
+          continue;
+        }
+        return { hata: sonuc.hata };
+      }
       const ham = sonuc.govde as GmailMesaji;
       // Taslak/spam/çöp elenir (lib/posta-ayristirma.ts · kutudaGorunurMu).
       if (!kutudaGorunurMu(ham.labelIds)) continue;
@@ -298,8 +310,10 @@ async function degisenMesajlar(
     );
     if ("hata" in yanit) {
       /* İmleç çok eskiyse Gmail 404 veriyor. Hata değil: tam pencereye
-         dönülecek, bu yüzden null. */
-      if (/not found|404/i.test(yanit.hata)) return null;
+         dönülecek, bu yüzden null. Karar artık DURUM KODUNDAN: hata
+         metnine bakmak, Gmail cümlesini değiştirdiği gün sessizce
+         bozulurdu. */
+      if (yanit.durum === 404) return null;
       return { hata: yanit.hata };
     }
     const govde = yanit.govde as DegisimSayfasi;

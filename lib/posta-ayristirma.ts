@@ -470,3 +470,29 @@ export function postaAramaDeseni(ham: string): string | null {
   if (sade.length < 2) return null;
   return sade.slice(0, 80);
 }
+
+/*
+  GMAIL HATASI TURU DÜŞÜRMELİ Mİ, MESAJ ATLANMALI MI (29.10.2026).
+
+  Tek bir mesajın hatası bütün eşitleme turunu düşürüyordu ve bu,
+  kutuyu SONSUZA KADAR kilitleyen bir döngü kuruyordu: tur düşünce
+  geçmiş imleci ilerlemiyor, sonraki tur aynı geçmiş sayfasını okuyor,
+  aynı mesajı istiyor, aynı hatayı alıyor. Canlıda böyle oldu —
+  bir kutu iki dakikada bir "Requested entity was not found" verip
+  günlerce hiç eşitlenmedi.
+
+  404: mesaj kalıcı olarak silinmiş. Geçmiş kaydı duruyor ama mesaj
+  yok; kutunun olağan hâli, atlanır.
+  403: o mesaja erişim yok (ör. gizlilik kuralı). Beklemekle
+  geçmeyecek, atlanır.
+
+  Geri kalan her şey turu düşürür: 401 izin düştü (kutuyu yeniden
+  bağlamak gerekiyor), 429 hız sınırı, 5xx Gmail arızası, 0 ağ
+  hatası. Bunları atlamak kutuyu SESSİZCE eksik eşitlemek olurdu —
+  eşitlenmeyen posta, hiç gelmemiş postadır.
+
+  Saf: durum kodundan ibaret, testi tests/unit/posta-ayristirma.test.ts.
+*/
+export function mesajAtlanir(durum: number): boolean {
+  return durum === 404 || durum === 403;
+}

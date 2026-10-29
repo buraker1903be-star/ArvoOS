@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   baslik,
   gondereniAyristir,
+  mesajAtlanir,
   gmailAramaSorgusu,
   kullaniciEtiketleri,
   htmlDenMetin,
@@ -335,4 +336,24 @@ test("tablo hücreleri ve liste maddeleri birbirine yapışmıyor", () => {
     "Ürün Adet Tutar",
   );
   assert.equal(htmlDenMetin("<ul><li>Bir</li><li>İki</li></ul>"), "• Bir\n• İki");
+});
+
+/*
+  CANLIDA YAŞANDI (29.10.2026): bir ortak kutu iki dakikada bir
+  "Requested entity was not found" verip günlerce hiç eşitlenmedi.
+  Sebep, TEK bir mesajın hatasının bütün turu düşürmesiydi; tur
+  düşünce geçmiş imleci ilerlemiyor ve sonraki tur aynı silinmiş
+  mesaja yeniden takılıyordu.
+*/
+test("kalıcı silinmiş (404) ve erişilemeyen (403) mesaj atlanıyor", () => {
+  assert.equal(mesajAtlanir(404), true);
+  assert.equal(mesajAtlanir(403), true);
+});
+
+/* Bunları atlamak kutuyu SESSİZCE eksik eşitlemek olurdu: eşitlenmeyen
+   posta, hiç gelmemiş postadır. */
+test("izin, hız sınırı, sunucu ve ağ hatası turu düşürüyor", () => {
+  for (const durum of [0, 401, 429, 500, 502, 503]) {
+    assert.equal(mesajAtlanir(durum), false, `${durum} atlanmamalı`);
+  }
 });
