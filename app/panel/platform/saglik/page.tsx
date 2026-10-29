@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
+import { eksikMesajAyarlari, mesajAyarlari } from "@/lib/platform-mesaj-ayarlari";
+import { pushYapilandi } from "@/lib/anlik-bildirim-gonder";
 import { tumSatirlar } from "@/lib/rapor-okuma";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -301,7 +303,23 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   const kopukKopru = kopruler.filter((k) => k.bozuk).length;
   /* Limit sapması da sayılıyor: şeritteki "açık sorun" ile aşağıdaki
      bölümlerin toplamı ayrışırsa rozet yanıltıcı olur. */
-  const toplamSorun = krediSonucu.veri.length + cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length;
+  /*
+    EKSİK PLATFORM AYARI DA AÇIK SORUN (29.10.2026).
+
+    Mesaj ve bildirim anahtarlarının eksikliği hiçbir şeyi
+    DÜŞÜRMÜYOR (AGENTS.md kuralı) ama sessizce bir akışı kapatıyor:
+    anahtar yokken otomatik proforma kesiliyor, bildiriliyor ve
+    e-postayla GİTMİYOR. Bu, yalnızca Sistem ayarları → Entegrasyonlar
+    sekmesinde yazıyordu; kurucunun her gün baktığı bu ekran
+    "Açık sorun 0" diyordu. Canlıda tam bu durumdaydı ve otomatik
+    proformanın ilk koşmasına birkaç saat vardı.
+
+    Liste ortak (lib/platform-mesaj-ayarlari), iki ekran aynı kaynaktan
+    okuyor.
+  */
+  const mesajAyarListesi = mesajAyarlari((ad) => Boolean(process.env[ad]), pushYapilandi());
+  const eksikAyarlar = eksikMesajAyarlari(mesajAyarListesi);
+  const toplamSorun = krediSonucu.veri.length + cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length + eksikAyarlar.length;
 
   const kisi = (ad: string, alt: string, href: string | null) => {
     const ic = <>
@@ -342,6 +360,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     { kod: "kota", ad: "Kota ve limitler", adet: kotaSorunu },
     { kod: "kurulum", ad: "Kurulum", adet: kurulumSorunu },
     { kod: "odeme", ad: "Ödeme ve kredi", adet: odemeSorunu },
+    { kod: "ayar", ad: "Platform ayarları", adet: eksikAyarlar.length },
   ] as const;
   type SekmeKodu = (typeof sekmeler)[number]["kod"];
   /* Adres sekme söylemiyorsa sorunlu ilk sekme: kurucu boş bir sekmeye inip doluyu aramasın. */
@@ -650,6 +669,33 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
               </table>
             </div>
           ) : bos("İşlenemeyen ödeme yok", "İşlenemeyen ödeme bildirimi yok.")}
+        </section> : null}
+
+        {sekme === "ayar" ? <section>
+          {bolumBasi(
+            "Platform ayarları",
+            "Mesaj ve bildirim anahtarları. Eksik olmaları hiçbir akışı DÜŞÜRMÜYOR (AGENTS.md) ama sessizce kapatıyor: aşağıdaki satır neyin gitmeyeceğini yazıyor.",
+          )}
+          <div className="talep-tablo fn-ic-tablo">
+            <table className="crm-data-table" data-cols="sy-ayar">
+              <thead><tr><th>Ayar</th><th>Durum</th><th>Eksikse ne olmuyor</th></tr></thead>
+              <tbody>
+                {mesajAyarListesi.map((ayar) => (
+                  <tr key={ayar.ad}>
+                    <td data-label="Ayar">{kisi(ayar.ad, ayar.not, "/panel/platform/ayarlar?sekme=entegrasyon")}</td>
+                    <td data-label="Durum">
+                      <span className="status-pill" data-tone={ayar.bagli ? "success" : "warning"}>{ayar.bagli ? "Bağlı" : "Eksik"}</span>
+                    </td>
+                    {/* Bedel BAĞLIYKEN DE yazılıyor: "bu anahtar ne işe
+                        yarıyor" sorusunun cevabı, onu kaldırmayı düşünen
+                        kişinin görmesi gereken şey. */}
+                    <td data-label="Eksikse ne olmuyor"><small>{ayar.bedel}</small></td>
+                    <MobilSatir baslik={ayar.ad} durum={{ etiket: ayar.bagli ? "Bağlı" : "Eksik", ton: ayar.bagli ? "success" : "warning" }} alt={[ayar.not]} />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section> : null}
         </div>
       </section>
