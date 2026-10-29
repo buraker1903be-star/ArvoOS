@@ -346,37 +346,52 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
       </section>
 
       <div className={canManageTeam || gizlilikGorur ? "talep-izgara" : "talep-izgara personel-iki"}>
-        <section className="panel-card talep-musteri" aria-label="Personel">
-          <div className="talep-musteri-kimlik">
-            <span className="talep-avatar" aria-hidden="true">{initials(employee.full_name)}</span>
-            <div>
-              <h2>{employee.full_name}</h2>
-              <small>{employee.job_title || "Pozisyon belirtilmedi"}{departmentName ? ` · ${departmentName}` : ""}</small>
+        {/*
+          Sol sütun (29.10.2026, kurum sahibinin isteği): orta ve sağ sütun
+          gibi sekmeli kart. Eskiden kimlik, iletişim ve prim bilgisi tek
+          uzun kartta alt alta duruyordu; prim bakiyesi en altta kalıyor,
+          telefon ve e-posta tıklanamıyordu. Prim oranları ve bakiye
+          artık şerit hâlinde, orta sütunun performans şeridiyle aynı.
+        */}
+        <TalepAkis kimlik="personel-sol" sinif="personel-sol" etiket="Personel bilgileri" sekmeler={["Bilgiler", "Prim ve satış"]}>
+          <div className="ps-panel">
+            <div className="pk-kimlik">
+              <span className="talep-avatar" aria-hidden="true">{initials(employee.full_name)}</span>
+              <div>
+                <h2>{employee.full_name}</h2>
+                <small>{employee.job_title || "Pozisyon belirtilmedi"}{departmentName ? ` · ${departmentName}` : ""}</small>
+              </div>
             </div>
-          </div>
-          {employee.phone || employee.email ? (
-            <div className="talep-iletisim">
-              {employee.phone ? <a className="panel-secondary" href={`tel:${employee.phone.replace(/\s+/g, "")}`}>Ara</a> : null}
-              {employee.email ? <a className="panel-secondary" href={`mailto:${employee.email}`}>E-posta</a> : null}
-            </div>
-          ) : null}
-          <dl className="talep-liste">
-            <div><dt>Telefon</dt><dd>{formatPhone(employee.phone) || <em>Yok</em>}</dd></div>
-            <div><dt>E-posta</dt><dd>{employee.email || <em>Yok</em>}</dd></div>
-            <div><dt>Departman</dt><dd>{departmentName || <em>Yok</em>}</dd></div>
-            <div><dt>Personel no</dt><dd>{employee.employee_no || <em>Yok</em>}</dd></div>
-            <div><dt>İşe giriş</dt><dd>{employee.start_date ? shortDate(employee.start_date) : <em>Belirtilmedi</em>}</dd></div>
-          </dl>
-          <div className="talep-gecmis">
-            <h3>Prim ve satış</h3>
-            <dl className="talep-liste">
-              <div><dt>Satış talepleri</dt><dd>{employee.can_receive_sales_requests ? "Atanabilir" : <em>Atanmaz</em>}</dd></div>
-              <div><dt>Satış primi</dt><dd>%{percent(employee.commission_rate)}</dd></div>
-              <div><dt>Operasyon primi</dt><dd>%{percent(employee.operation_commission_rate)}</dd></div>
-              {primToplami ? <div><dt>Prim bakiyesi</dt><dd><Link href={`${temelAdres}?pencere=prim`} scroll={false}>{money(primToplami.balance)}</Link></dd></div> : null}
+            {employee.phone || employee.email ? (
+              <div className="pk-iletisim">
+                {employee.phone ? <a className="panel-secondary" href={`tel:${employee.phone.replace(/\s+/g, "")}`}>Ara</a> : null}
+                {employee.email ? <a className="panel-secondary" href={`mailto:${employee.email}`}>E-posta</a> : null}
+              </div>
+            ) : null}
+            <dl className="pk-liste">
+              <div><dt>Telefon</dt><dd>{employee.phone ? <a href={`tel:${employee.phone.replace(/\s+/g, "")}`}>{formatPhone(employee.phone)}</a> : <em>Yok</em>}</dd></div>
+              <div><dt>E-posta</dt><dd>{employee.email ? <a href={`mailto:${employee.email}`}>{employee.email}</a> : <em>Yok</em>}</dd></div>
+              <div><dt>Departman</dt><dd>{departmentName || <em>Yok</em>}</dd></div>
+              <div><dt>Personel no</dt><dd>{employee.employee_no || <em>Yok</em>}</dd></div>
+              <div><dt>İşe giriş</dt><dd>{employee.start_date ? shortDate(employee.start_date) : <em>Belirtilmedi</em>}</dd></div>
             </dl>
           </div>
-        </section>
+          <div className="ps-panel">
+            <dl className="pu-serit pk-serit">
+              <div><dt>Satış primi</dt><dd>%{percent(employee.commission_rate)}</dd></div>
+              <div><dt>Operasyon primi</dt><dd>%{percent(employee.operation_commission_rate)}</dd></div>
+            </dl>
+            {primToplami ? (
+              <Link className="pk-bakiye" href={`${temelAdres}?pencere=prim`} scroll={false} data-tone={primToplami.balance < 0 ? "danger" : undefined}>
+                <span><small>Prim bakiyesi</small><b>{money(primToplami.balance)}</b></span>
+                <span className="pk-bakiye-git">Prim hareketleri →</span>
+              </Link>
+            ) : null}
+            <dl className="pk-liste">
+              <div><dt>Satış talepleri</dt><dd><span className="status-pill" data-tone={employee.can_receive_sales_requests ? "success" : "neutral"}>{employee.can_receive_sales_requests ? "Atanabilir" : "Atanmaz"}</span></dd></div>
+            </dl>
+          </div>
+        </TalepAkis>
 
         {/* Orta sütun sekmeli (2026-10): üstündekiler (performans, talepler,
             işler), WhatsApp ve posta. Eskiden yalnızca üstündekiler vardı. */}
