@@ -39,44 +39,59 @@ export type CronIsi = {
   zamanlama: string;
   /** Beklenen aralık, dakika. Zamanlama ayrıştırılamazsa null. */
   aralikDk: number | null;
+  /** İşin depoya girdiği gün (YYYY-AA-GG); bilinmiyorsa null. */
+  eklendi: string | null;
 };
 
 /*
   İnsan okunur ad ve "durursa ne olur" cümlesi. Ekranda gecikme uyarısının
   yanında duruyor: kurucu işin adından değil sonucundan karar veriyor.
 */
-const TANIM: Record<string, { ad: string; aciklama: string }> = {
+/*
+  `eklendi`: işin depoya GİRDİĞİ gün (ilk commit). Hiç koşmamış bir işin
+  "henüz" mü yoksa "arıza" mı olduğuna bu tarih karar veriyor; ayrıntı
+  aşağıda, cronDurumlari içinde.
+*/
+const TANIM: Record<string, { ad: string; aciklama: string; eklendi: string }> = {
   "/api/cron/posta-esitleme": {
     ad: "Posta eşitlemesi",
     aciklama: "Durursa ortak kutulara gelen e-posta panele düşmez.",
+    eklendi: "2026-10-06",
   },
   "/api/cron/arc-sync": {
     ad: "ArvoARC köprüsü",
     aciklama: "Durursa ARC'taki kurum, lisans ve personel kopyası eskir.",
+    eklendi: "2026-09-19",
   },
   "/api/cron/randevu-sync": {
     ad: "ArvoCal köprüsü",
     aciklama: "Durursa Randevu'daki salon ve lisans kopyası eskir.",
+    eklendi: "2026-09-19",
   },
   "/api/cron/adim-terminleri": {
     ad: "İş adımı terminleri",
     aciklama: "Durursa yaklaşan ve geçen adım terminleri bildirilmez.",
+    eklendi: "2026-09-25",
   },
   "/api/cron/arvolab-sync": {
     ad: "ArvoLab eşitlemesi",
     aciklama: "Durursa ArvoLab'ın lisans kopyası sapmış kalır ve ödenen kredi yüklenmez; müşteri ödediği hâlde asistanda durdurulur.",
+    eklendi: "2026-10-14",
   },
   "/api/cron/otomatik-yenileme": {
     ad: "Otomatik yenileme",
     aciklama: "Durursa kartını kaydedip otomatik yenilemeyi seçen kurumlardan çekim yapılmaz ve hatırlatma gitmez; dönemleri dolar ve ödemeleri gecikmiş görünür.",
+    eklendi: "2026-10-28",
   },
   "/api/cron/otomatik-proforma": {
     ad: "Otomatik proforma",
     aciklama: "Durursa dönemi dolan müşteriye proforma kesilmez ve e-postayla gitmez; ödeme belgesi kurucunun elle kesmesine kalır.",
+    eklendi: "2026-10-29",
   },
   "/api/cron/abonelik-hatirlatma": {
     ad: "Abonelik hatırlatması",
     aciklama: "Durursa dönemi dolan kiracıya hatırlatma gitmez ve gecikenler işaretlenmez.",
+    eklendi: "2026-10-13",
   },
 };
 
@@ -110,6 +125,7 @@ export function cronIsleri(): CronIsi[] {
     aciklama: TANIM[c.path]?.aciklama ?? "",
     zamanlama: c.schedule,
     aralikDk: cronAraligiDk(c.schedule),
+    eklendi: TANIM[c.path]?.eklendi ?? null,
   }));
 }
 
@@ -178,14 +194,33 @@ export function cronDurumlari(kayitlar: CronKaydi[], simdi: Date, kayitBaslangic
 
         Ayıraç sistemin KENDİ GEÇMİŞİ: kayıt tutma bu işin gecikme
         eşiğinden daha uzun süredir sürüyorsa ve bu iş hâlâ hiç
-        koşmadıysa, o bir "henüz" değil bir arıza. Dışarıdan bir
-        kurulum zamanı bilgisine gerek yok.
+        koşmadıysa, o bir "henüz" değil bir arıza.
+
+        AMA İŞİN KENDİ YAŞI DA SAYILIYOR (29.10.2026). Yalnızca kayıt
+        tutmanın yaşına bakmak YENİ eklenen her işi ilk koşmasına kadar
+        kırmızı gösteriyordu: otomatik proforma 29.10'da eklendi, günde
+        bir 05:40'ta koşuyor ve o gün akşam konsol "2 iş gecikti ya da
+        düştü" diyordu — ikisinden biri yoktu. Yanlış alarm, gerçek
+        alarmı da öldürür: kurucu rozete bakmayı bırakır.
+
+        Ölçü ikisinin KÜÇÜĞÜ: iş dünden beri varsa, kayıt tutma iki
+        aydır sürüyor olsa bile henüz gecikmiş sayılmaz.
       */
-      const hicKosmadi = is.aralikDk !== null && kayitYasiDk !== null && kayitYasiDk > gecikmeEsigiDk(is.aralikDk);
+      const isYasiDk = is.eklendi
+        ? Math.floor((simdi.getTime() - Date.parse(`${is.eklendi}T00:00:00Z`)) / 60000)
+        : null;
+      /* İşin yaşı yalnızca YUMUŞATIYOR, sertleştirmiyor: kayıt
+         başlangıcı bilinmiyorsa (hiç kayıt yok) karar yine nötr —
+         orada "iş iki aydır var ama hiç koşmamış" demek, kayıt
+         tutmanın yeni başladığı ilk günü arıza ilan etmek olurdu. */
+      const yas = kayitYasiDk === null ? null
+        : isYasiDk === null ? kayitYasiDk
+        : Math.min(kayitYasiDk, isYasiDk);
+      const hicKosmadi = is.aralikDk !== null && yas !== null && yas > gecikmeEsigiDk(is.aralikDk);
       return {
         ...is, durum: hicKosmadi ? ("gecikti" as const) : ("hic" as const),
         sonCalisma: null, sonBasarili: null, sonSonuc: null, sureMs: null,
-        gecikmeDk: hicKosmadi ? kayitYasiDk : null, ayrinti: null,
+        gecikmeDk: hicKosmadi ? yas : null, ayrinti: null,
       };
     }
     const sonCalisma = new Date(kayit.son_calisma);

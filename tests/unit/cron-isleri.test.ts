@@ -200,6 +200,36 @@ test("kayıt başlangıcı bilinmiyorsa eski davranış: hepsi nötr", () => {
   assert.ok(cronDurumlari([], SIMDI, null).every((d) => d.durum === "hic"));
 });
 
+/*
+  YENİ EKLENEN İŞ, İLK KOŞMASINA KADAR KIRMIZI DEĞİL (29.10.2026).
+
+  Kaydı olmayan iş yalnızca KAYIT TUTMANIN yaşına göre ölçülüyordu:
+  otomatik proforma 29.10'da eklendi, günde bir 05:40'ta koşuyor ve o
+  gün akşam konsol "2 iş gecikti ya da düştü" diyordu — ikisinden biri
+  yoktu. Yanlış alarm gerçek alarmı da öldürür.
+*/
+test("dün eklenmiş günlük iş, kayıt tutma eski olsa bile henüz gecikmiş değil", () => {
+  const proforma = "/api/cron/otomatik-proforma";
+  const is = cronIsleri().find((i) => i.yol === proforma)!;
+  assert.equal(is.eklendi, "2026-10-29", "iş tanımında eklenme günü yazılı olmalı");
+
+  /* İş eklendikten 3 saat sonra, kayıt tutma iki aydır sürüyor. */
+  const simdi = new Date("2026-10-29T03:00:00Z");
+  const kayitBasi = new Date("2026-08-29T00:00:00Z");
+  const d = cronDurumlari([], simdi, kayitBasi).find((x) => x.yol === proforma)!;
+  assert.equal(d.durum, "hic", "ilk koşmasını bekleyen iş sorun sayılmamalı");
+  assert.equal(cronSorunlari(cronDurumlari([], simdi, kayitBasi)).some((s) => s.yol === proforma), false);
+});
+
+test("eşik geçince yeni iş de gecikmiş sayılıyor", () => {
+  const proforma = "/api/cron/otomatik-proforma";
+  /* Günlük işin eşiği 25 saat; eklenmesinin üstünden üç gün geçti. */
+  const simdi = new Date("2026-11-01T12:00:00Z");
+  const kayitBasi = new Date("2026-08-29T00:00:00Z");
+  const d = cronDurumlari([], simdi, kayitBasi).find((x) => x.yol === proforma)!;
+  assert.equal(d.durum, "gecikti", "zamanlayıcıya kaydolmamış iş sonsuza kadar nötr kalmamalı");
+});
+
 test("hiç çağrılmamış iş için uyarı zamanlayıcıyı işaret ediyor", () => {
   const posta = "/api/cron/posta-esitleme";
   const d = cronDurumlari([], SIMDI, new Date(SIMDI.getTime() - 120 * 60000)).find((x) => x.yol === posta)!;
