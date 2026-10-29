@@ -548,11 +548,13 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     />}
     <OsUygulamaKabugu />
     {/* Ctrl+K kiracı adıyla da arıyor: konsolda en çok tekrarlanan
-        gezinme "şu kurumun dosyasını aç" ve menüde karşılığı yok. */}
+        gezinme "şu kurumun dosyasını aç" ve menüde karşılığı yok.
+        29.10.2026'dan beri müşteri listesi değil konsol araması
+        (platform/ara): kurum, kullanıcı, abone ve proforma numarası. */}
     {sozlesmeGerekli ? null : <OsKomutPaleti
       uygulamalar={konsolUygulamalariListesi}
       cikis={logout}
-      kayitAramasi={{ etiket: "için kiracı ara", ipucu: "Müşteriler", adresOneki: "/panel/platform/musteriler?ara=" }}
+      kayitAramasi={{ etiket: "için konsolda ara", ipucu: "Müşteri · kullanıcı · proforma", adresOneki: "/panel/platform/ara?q=" }}
     />}
   </main></div>;
 }
