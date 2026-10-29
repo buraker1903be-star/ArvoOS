@@ -5,6 +5,21 @@
 .panel-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:800;cursor:pointer;transition:.18s ease}
 .panel-secondary:hover{border-color:color-mix(in srgb, var(--primary) 45%, var(--line));background:var(--surface-2)}
 
+/*
+  SESSİZ DÜĞME. `.panel-ghost` iki yerde kullanılıyordu ama hiçbir
+  CSS'te tanımı yoktu (29.10.2026, tanımsız sınıf denetimi): operasyon
+  şablon ekranındaki "Adı kaydet" ve "Öntanımlı yap" düğmeleri çıplak
+  tarayıcı düğmesi olarak çiziliyordu — panelin ortasında gri bir
+  sistem düğmesi.
+
+  İkincil düğmenin ölçüleriyle aynı, yalnızca çerçevesi ve zemini yok:
+  satır içinde, asıl eylemin yanında duran ikinci dereceden işler için.
+*/
+.panel-ghost{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 12px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--primary);font-size:13px;font-weight:800;white-space:nowrap;cursor:pointer;transition:.18s ease}
+.panel-ghost:hover{border-color:color-mix(in srgb, var(--primary) 35%, var(--line));background:var(--primary-soft)}
+.panel-ghost:active{transform:scale(.96);filter:brightness(.97)}
+.panel-ghost:disabled,.panel-ghost[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+
 .metric-strip-five{grid-template-columns:repeat(5,minmax(0,1fr));margin-top:0}
 .metric-strip-five article{min-width:0}
 

@@ -166,50 +166,56 @@ console.log(`✓ CSS import denetimi: ${sayfalar.filter((s) => s.endsWith("page.
 /* ---------- Tanımsız sınıf denetimi ---------- */
 
 /*
-  BUGÜNÜN BORCU. Her satır bir sınıf ve ilk görüldüğü dosya. Bunlar
-  ekranda hiçbir şey yapmıyor: ya stilleri silinmiş, ya adı değişmiş,
-  ya da hiç yazılmamış. Liste kısaldıkça silinir; uzamasına denetim
-  izin vermiyor.
+  BUGÜNÜN BORCU, SINIFLANDIRILMIŞ (29.10.2026). Her satır bir sınıf,
+  ne olduğu ve ilk görüldüğü dosya:
+
+   - "kanca (…)": öğenin yanında TANIMLI sınıflar var, görünümü onlar
+     veriyor. Zararsız ama ölü ad; temizlenecek.
+   - "yalnız": öğenin hiç stili yok. Asıl şüpheliler bunlar — biri
+     gerçek çıktı (`.panel-ghost`, operasyon şablon ekranında iki
+     düğme çıplak tarayıcı düğmesi olarak çiziliyordu) ve düzeltildi.
+     Kalanlar kapsayıcı `div`'ler: görünümü üst öğe veriyor.
+
+  Liste kısaldıkça silinir; uzamasına denetim izin vermiyor.
 */
 const BILINEN_BORC = new Set([
-  "abk", // app/panel/billing/page.tsx
-  "abk-belgeler", // app/panel/billing/page.tsx
-  "an-dagilim", // app/panel/analitik/page.tsx
-  "appointment-form", // app/panel/crm/takvim/appointment-form.tsx
-  "bm-cikar", // app/panel/settings/belge-metinleri.tsx
-  "crm-birakma-sebebi", // app/panel/crm/page.tsx
-  "dp", // app/panel/hr/departmanlar/page.tsx
-  "flowx", // app/(site)/_components/story-stage.tsx
-  "flowx-copy", // app/(site)/_components/story-stage.tsx
-  "is-disabled", // app/panel/crm/contracts/page.tsx
-  "kisi-yetki-ozet", // app/panel/settings/permissions/kisi-yetkileri.tsx
-  "kisi-yetkileri", // app/panel/settings/permissions/kisi-yetkileri.tsx
-  "login-card-logo", // app/auth/dogrula/page.tsx
-  "maliyet-pencere", // app/panel/finance/costs/maliyet-detayi.tsx
-  "ml-side", // app/(site)/_components/mock-lab.tsx
-  "ntf-card", // app/panel/notifications/page.tsx
-  "opd-mesaj", // app/panel/operations/[id]/page.tsx
-  "opd-pf", // app/panel/operations/[id]/portal-files.tsx
-  "panel-form-error", // app/panel/crm/contract-addendum-form.tsx
-  "panel-form-success", // app/panel/crm/contract-addendum-form.tsx
-  "panel-ghost", // app/panel/operations/sablon/page.tsx
-  "panel-page", // app/panel/sozlesmelerim/page.tsx
-  "personel-sayfalar", // app/panel/hr/personel-hareketleri.tsx
-  "pillars", // app/(site)/_views/home.tsx
-  "posta-govde-metin", // app/panel/posta/posta-govde.tsx
-  "posta-konusma", // app/panel/posta/[threadId]/page.tsx
-  "pp-isler", // app/panel/hr/prim-penceresi.tsx
-  "rpt-range-pill", // app/panel/finance/raporlar/page.tsx
-  "schedule-dates", // app/panel/crm/schedule-date-rows.tsx
-  "status-lookup", // app/durum/[slug]/lookup-form.tsx
-  "suite", // app/(site)/_views/home.tsx
-  "talep-menu", // app/panel/accounts/cari-hesap.tsx
-  "trio-phone", // app/(site)/_components/trio.tsx
-  "trio-win", // app/(site)/_components/trio.tsx
-  "trk-offer-card", // app/takip/takip-form.tsx
-  "trk-plan-card", // app/takip/takip-form.tsx
-  "trk-sign-card", // app/takip/takip-form.tsx
-  "work-plan-editor", // app/panel/crm/work-plan-editor.tsx
+  "abk", // kanca (talep cari liste-sayfa) — app/panel/billing/page.tsx
+  "abk-belgeler", // kanca (pu-liste) — app/panel/billing/page.tsx
+  "an-dagilim", // kanca (dash-card dash-col) — app/panel/analitik/page.tsx
+  "appointment-form", // kanca (panel-form kayit-formu) — app/panel/crm/takvim/appointment-form.tsx
+  "bm-cikar", // kanca (panel-secondary) — app/panel/settings/belge-metinleri.tsx
+  "crm-birakma-sebebi", // kanca (crm-liste-sebep) — app/panel/crm/page.tsx
+  "dp", // kanca (talep cari liste-sayfa) — app/panel/hr/departmanlar/page.tsx
+  "flowx", // kanca (section) — app/(site)/_components/story-stage.tsx
+  "flowx-copy", // yalnız: öğenin hiç stili yok — app/(site)/_components/story-stage.tsx
+  "is-disabled", // kanca (panel-secondary) — app/panel/crm/contracts/page.tsx
+  "kisi-yetki-ozet", // kanca (stg-muted) — app/panel/settings/permissions/kisi-yetkileri.tsx
+  "kisi-yetkileri", // kanca (stg) — app/panel/settings/permissions/kisi-yetkileri.tsx
+  "login-card-logo", // yalnız: öğenin hiç stili yok — app/auth/dogrula/page.tsx
+  "maliyet-pencere", // yalnız: öğenin hiç stili yok — app/panel/finance/costs/maliyet-detayi.tsx
+  "ml-side", // kanca (ml-col) — app/(site)/_components/mock-lab.tsx
+  "ntf-card", // kanca (panel-card talep-bilgi) — app/panel/notifications/page.tsx
+  "opd-mesaj", // yalnız: öğenin hiç stili yok — app/panel/operations/[id]/page.tsx
+  "opd-pf", // kanca (opd-card) — app/panel/operations/[id]/portal-files.tsx
+  "panel-form-error", // kanca (wide kayit-formu-hata) — app/panel/crm/contract-addendum-form.tsx
+  "panel-form-success", // kanca (wide kayit-formu-basari) — app/panel/crm/contract-addendum-form.tsx
+  "panel-page", // kanca (sozlesmelerim) — app/panel/sozlesmelerim/page.tsx
+  "personel-sayfalar", // kanca (hr-act-sayfalar) — app/panel/hr/personel-hareketleri.tsx
+  "pillars", // kanca (section) — app/(site)/_views/home.tsx
+  "posta-govde-metin", // yalnız: öğenin hiç stili yok — app/panel/posta/posta-govde.tsx
+  "posta-konusma", // kanca (talep cari) — app/panel/posta/[threadId]/page.tsx
+  "pp-isler", // kanca (pp-liste) — app/panel/hr/prim-penceresi.tsx
+  "rpt-range-pill", // kanca (status-pill) — app/panel/finance/raporlar/page.tsx
+  "schedule-dates", // kanca (wide custom-plan-editor) — app/panel/crm/schedule-date-rows.tsx
+  "status-lookup", // yalnız: öğenin hiç stili yok — app/durum/[slug]/lookup-form.tsx
+  "suite", // kanca (section) — app/(site)/_views/home.tsx
+  "talep-menu", // kanca (os-menu) — app/panel/accounts/cari-hesap.tsx
+  "trio-phone", // yalnız: öğenin hiç stili yok — app/(site)/_components/trio.tsx
+  "trio-win", // kanca (mock-win) — app/(site)/_components/trio.tsx
+  "trk-offer-card", // kanca (trk-card) — app/takip/takip-form.tsx
+  "trk-plan-card", // kanca (trk-card) — app/takip/takip-form.tsx
+  "trk-sign-card", // kanca (trk-card) — app/takip/takip-form.tsx
+  "work-plan-editor", // kanca (wide custom-plan-editor) — app/panel/crm/work-plan-editor.tsx
 ]);
 
 const gomuluCssTopla = (metin) => {
