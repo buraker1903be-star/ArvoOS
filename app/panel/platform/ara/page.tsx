@@ -70,14 +70,35 @@ export default async function AraPage({ searchParams }: { searchParams: Promise<
   const kisiler = desen && rehber ? ara(kisilereTopla(rehber.rows), sorgu, (k) => ({ ad: k.ad, diger: [k.email, k.telefon, k.unvan, ...k.uyelikler.map((u) => u.kapsam)] }), SINIR) : [];
   const proformalar = proformaOkumasi.veri ?? [];
   const bugun = todayInIstanbul();
-  const toplam = kurumlar.length + aboneler.length + kisiler.length + proformalar.length;
+  /*
+    SAYI VE "NEREDE ARANDI" CÜMLESİ AYNI LİSTEDEN (30.10.2026).
+
+    İkisi ayrı yazılıydı ve saptılar: toplam DÖRT koleksiyonu sayıyor,
+    cümle ÜÇÜNÜ söylüyordu ("müşteri, kullanıcı ve proforma").
+    "agca" araması "2 sonuç" diyordu; biri bireysel aboneydi ve
+    kullanıcı cümlede geçmediği için sayı ile liste birbirini
+    tutmuyor görünüyordu.
+
+    Kutudaki sayıyla ekranın anlattığı yerin ayrı yazılması, bu depoda
+    tekrar eden bir kusur; burada ikisi tek kaynaktan türüyor.
+  */
+  const bolumler = [
+    { tur: "müşteri", adet: kurumlar.length },
+    { tur: "kullanıcı", adet: kisiler.length },
+    { tur: "proforma", adet: proformalar.length },
+    { tur: "bireysel abone", adet: aboneler.length },
+  ];
+  const toplam = bolumler.reduce((t, b) => t + b.adet, 0);
+  /* "a, b, c ve d": son öğeden önce virgül değil "ve". */
+  const nerede = bolumler.map((b) => b.tur).reduce((cumle, tur, sira, hepsi) =>
+    sira === 0 ? tur : sira === hepsi.length - 1 ? `${cumle} ve ${tur}` : `${cumle}, ${tur}`, "");
 
   return <main className="plt talep cari ekip finans-sayfa konsol-ara">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">KONSOL</small>
         <h1>{sorgu ? `“${sorgu}”` : "Konsolda ara"}</h1>
-        <p className="ek-alt">{desen ? `${sayi(toplam)} sonuç · müşteri, kullanıcı ve proforma` : "Müşteri adı, e-posta, telefon, kullanıcı ya da proforma numarası yazın."}</p>
+        <p className="ek-alt">{desen ? `${sayi(toplam)} sonuç · ${nerede}` : "Müşteri adı, e-posta, telefon, kullanıcı, bireysel abone ya da proforma numarası yazın."}</p>
       </div>
     </header>
 
