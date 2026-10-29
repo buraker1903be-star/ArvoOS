@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { kimlikMi } from "@/lib/kimlik";
 import { Suspense } from "react";
@@ -274,7 +275,7 @@ export default async function ProposalDetailPage({ params }: Props) {
                       </label>
                     ) : null}
                     <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
-                    <label>Geçerlilik tarihi<input name="valid_until" type="date" defaultValue={data.valid_until ?? ""} /></label>
+                    <label>Geçerlilik tarihi<TarihSecici name="valid_until" defaultValue={data.valid_until ?? ""} /></label>
 
                     <p className="wide kayit-formu-bolum">Müşteri</p>
                     <label className="wide"><span>Müşteri / kurum<b className="req" aria-hidden="true">*</b></span><input name="customer_name" defaultValue={customer?.customer_name ?? ""} required minLength={2} maxLength={180} /></label>

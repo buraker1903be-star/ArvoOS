@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { MobilSatir } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
@@ -175,7 +176,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
     <p className="wide kayit-formu-bolum">Kimlik</p>
     <label className="wide"><span>Ad soyad<b className="req" aria-hidden="true">*</b></span><input name="full_name" required minLength={2} placeholder="Örn. Ayşe Yılmaz" /></label>
     <label>Personel numarası<input name="employee_no" placeholder="İsteğe bağlı" /></label>
-    <label>İşe giriş tarihi<input name="start_date" type="date" /></label>
+    <label>İşe giriş tarihi<TarihSecici name="start_date" /></label>
     <p className="wide kayit-formu-bolum">Görev</p>
     <label>Pozisyon<input name="job_title" placeholder="Örn. Satış Uzmanı" /></label>
     <label>Departman<select name="department_id" defaultValue=""><option value="">Departman seçin</option>{departments.filter((item) => item.is_active).map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>

@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { getPanelContext } from "@/lib/panel-context";
@@ -234,7 +235,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
             </label>
             <label>
               Tarih
-              <input name="transaction_date" type="date" />
+              <TarihSecici name="transaction_date" />
             </label>
             <label>
               Referans / dekont no
@@ -264,11 +265,11 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                 </label>
                 <label>
                   İşlem tarihi
-                  <input name="transaction_date" type="date" />
+                  <TarihSecici name="transaction_date" />
                 </label>
                 <label>
                   Vade tarihi
-                  <input name="due_date" type="date" />
+                  <TarihSecici name="due_date" />
                 </label>
                 <label>
                   Referans
@@ -292,7 +293,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                 </label>
                 <label>
                   Tarih
-                  <input name="transaction_date" type="date" />
+                  <TarihSecici name="transaction_date" />
                 </label>
                 <label>
                   Referans / dekont no
@@ -402,7 +403,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                             </label>
                             <label>
                               <span>İşlem tarihi<b className="req" aria-hidden="true">*</b></span>
-                              <input name="transaction_date" type="date" required defaultValue={e.transaction_date} />
+                              <TarihSecici name="transaction_date" required defaultValue={e.transaction_date} />
                             </label>
                             <label className="wide">
                               <span>{elleTur === "iade" ? "İade nedeni" : elleTur === "ek-hizmet" ? "Hizmet açıklaması" : "Açıklama"}<b className="req" aria-hidden="true">*</b></span>

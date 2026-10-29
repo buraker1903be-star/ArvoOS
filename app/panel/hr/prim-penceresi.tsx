@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -110,9 +111,9 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
         <input type="hidden" name="pencere" value="prim" />
         <input type="hidden" name="prim" value="ozel" />
         {kartta ? <input type="hidden" name="prim_kart" value={kartta} /> : null}
-        <input type="date" name="prim_bas" defaultValue={donem?.kod === "ozel" ? donem.startKey : ""} aria-label="Başlangıç" required />
+        <TarihSecici className="tsc-kucuk" name="prim_bas" defaultValue={donem?.kod === "ozel" ? donem.startKey : ""} aria-label="Başlangıç" required />
         <span aria-hidden="true">–</span>
-        <input type="date" name="prim_bit" defaultValue={donem?.kod === "ozel" ? bitis : ""} aria-label="Bitiş" required />
+        <TarihSecici className="tsc-kucuk" name="prim_bit" defaultValue={donem?.kod === "ozel" ? bitis : ""} aria-label="Bitiş" required />
         <button className={seciliKod === "ozel" ? "panel-primary" : "panel-secondary"}>Göster</button>
       </form>
     </div>

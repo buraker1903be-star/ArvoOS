@@ -46,7 +46,8 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      // Açık bir tarih seçicinin Escape'i yalnızca onu kapatır (tarih-secici.tsx).
+      if (event.key === "Escape" && !event.defaultPrevented) setOpen(false);
     };
     document.addEventListener("keydown", onKeyDown);
     document.body.style.overflow = "hidden";

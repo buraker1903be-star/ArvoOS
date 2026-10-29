@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
@@ -272,7 +273,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
       <p className="wide kayit-formu-bolum">Kimlik</p>
       <label className="wide"><span>Ad soyad<b className="req" aria-hidden="true">*</b></span><input name="full_name" required minLength={2} defaultValue={employee.full_name} /></label>
       <label>Personel no<input name="employee_no" maxLength={50} defaultValue={employee.employee_no ?? ""} placeholder="Örn. P1004" /></label>
-      <label>İşe giriş tarihi<input name="start_date" type="date" defaultValue={employee.start_date ?? ""} /></label>
+      <label>İşe giriş tarihi<TarihSecici name="start_date" defaultValue={employee.start_date ?? ""} /></label>
 
       <p className="wide kayit-formu-bolum">Görev</p>
       <label>Pozisyon<input name="job_title" defaultValue={employee.job_title ?? ""} placeholder="Örn. Satış Uzmanı" /></label>

@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { createAppointment } from "./actions";
 // Ortak kayıt formu düzeni; bileşen stilini kendisi alıyor (AGENTS.md).
 import "../../components/kayit-formu.css";
@@ -31,7 +32,7 @@ export function AppointmentForm({
       <label>Kiminle<input name="contact_name" placeholder="Müşteri / kişi adı" /></label>
       <label>Telefon<input name="contact_phone" type="tel" inputMode="tel" placeholder="05xx xxx xx xx" /></label>
       <p className="wide kayit-formu-bolum">Zaman</p>
-      <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="starts_date" type="date" required defaultValue={defaultDate} /></label>
+      <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><TarihSecici name="starts_date" required defaultValue={defaultDate} /></label>
       <label><span>Başlangıç saati<b className="req" aria-hidden="true">*</b></span><input name="starts_time" type="time" required defaultValue="09:00" /></label>
       <label className="wide">Bitiş saati (isteğe bağlı)<input name="ends_time" type="time" /></label>
       <label className="wide">Not<textarea name="note" placeholder="Görüşme konusu, hazırlık notu…" /></label>

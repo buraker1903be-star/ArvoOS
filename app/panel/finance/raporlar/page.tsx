@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { canSeeFinanceReports } from "../finance-navigation";
@@ -156,9 +157,9 @@ export default async function ReportingPage({
         <input type="hidden" name="aralik" value="ozel"/>
         {params.rapor ? <input type="hidden" name="rapor" value={params.rapor}/> : null}
         <span className="rpt-range-label">Özel aralık</span>
-        <input name="baslangic" type="date" defaultValue={key === "ozel" ? startKey : undefined} required aria-label="Başlangıç tarihi"/>
+        <TarihSecici className="tsc-kucuk" name="baslangic" defaultValue={key === "ozel" ? startKey : undefined} required aria-label="Başlangıç tarihi"/>
         <span className="rpt-range-sep" aria-hidden="true">–</span>
-        <input name="bitis" type="date" defaultValue={key === "ozel" ? endKey : undefined} required aria-label="Bitiş tarihi"/>
+        <TarihSecici className="tsc-kucuk" name="bitis" defaultValue={key === "ozel" ? endKey : undefined} required aria-label="Bitiş tarihi"/>
         <button className="panel-secondary" type="submit">Uygula</button>
       </form>
     </section>

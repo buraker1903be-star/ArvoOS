@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useState } from "react";
 import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
@@ -139,9 +140,9 @@ export function UrunFormu({
 
       <label>
         Dönem bitişi
-        <input
-          name="current_period_end" type="date" value={deger.currentPeriodEnd}
-          onChange={(o) => setDeger({ ...deger, currentPeriodEnd: o.target.value })}
+        <TarihSecici
+          name="current_period_end" value={deger.currentPeriodEnd}
+          onChange={(gun) => setDeger({ ...deger, currentPeriodEnd: gun })}
         />
         <span className="plt-hizli">
           {[{ ad: "+1 ay", ay: 1 }, { ad: "+1 yıl", ay: 12 }].map((secim) => (

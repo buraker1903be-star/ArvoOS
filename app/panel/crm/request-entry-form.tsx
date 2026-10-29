@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useEffect, useRef, useState } from "react";
 import { createOpportunity } from "./actions";
 import { CustomerHistoryNotice } from "./customer-history";
@@ -140,7 +141,7 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
 
     <p className="wide kayit-formu-bolum">Kapsam ve plan</p>
     {academicMode ? <label className="wide"><span>Beklenen kapsam ve teslimler<b className="req" aria-hidden="true">*</b></span><textarea name="scope" required placeholder="Hangi bölümler, hangi teslimler, özel istekler…" /></label> : null}
-    <label>Planlanan teslim tarihi<input name="expected_close_date" type="date" /></label>
+    <label>Planlanan teslim tarihi<TarihSecici name="expected_close_date" /></label>
     <label>Talep kaynağı<input name="source" list="talep-kaynagi" placeholder="Seçin ya da yazın" /></label>
     <datalist id="talep-kaynagi"><option value="WhatsApp" /><option value="Telefon" /><option value="Instagram" /><option value="Web sitesi" /><option value="E-posta" /><option value="Referans" /></datalist>
     {canAssign

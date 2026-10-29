@@ -1,0 +1,63 @@
+/*
+  Tarih seçici (tarih-secici.tsx). Kutu, kayıt formunun alanlarıyla aynı
+  ölçüde (42px, 12px köşe); takvim panelin köküne çiziliyor.
+*/
+.panel-root .tsc{position:relative;display:flex;align-items:center;width:100%;min-width:150px}
+.panel-root .tsc .tsc-kutu{width:100%;height:42px;min-height:42px;margin:0;padding:0 40px 0 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:.02em;box-shadow:none;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease}
+.panel-root .tsc .tsc-kutu::placeholder{color:var(--muted);font-weight:400;letter-spacing:0}
+.panel-root .tsc .tsc-kutu:focus,.panel-root .tsc[data-acik="evet"] .tsc-kutu{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent);cursor:text}
+.panel-root .tsc[data-kapali="evet"] .tsc-kutu{background:var(--surface-2);color:var(--muted);cursor:not-allowed}
+.panel-root .tsc-ek{position:absolute;right:40px;max-width:45%;overflow:hidden;color:var(--muted);font-size:12px;white-space:nowrap;text-overflow:ellipsis;pointer-events:none}
+.panel-root .tsc .tsc-dugme{position:absolute;right:5px;display:grid;place-items:center;width:32px;height:32px;margin:0;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.panel-root .tsc .tsc-dugme:hover{background:var(--surface-2);color:var(--ink)}
+.panel-root .tsc[data-acik="evet"] .tsc-dugme{background:var(--primary-soft);color:var(--primary-strong)}
+/* Formun asıl alanı: görünmez ama yerinde — zorunlu alan uyarısı kutunun üstünde çıksın. */
+.panel-root .tsc .tsc-yerel{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;pointer-events:none}
+/* Dar yerlerde (tablo satırı, süzgeç çubuğu) kısa kutu. */
+.panel-root .tsc.tsc-kucuk{min-width:132px}
+.panel-root .tsc.tsc-kucuk .tsc-kutu{height:34px;min-height:34px;border-radius:10px;font-size:13px}
+.panel-root .tsc.tsc-kucuk .tsc-ek{display:none}
+.panel-root .tsc.tsc-kucuk .tsc-dugme{width:28px;height:28px}
+
+.panel-root .tsc-takvim{position:fixed;z-index:1200;width:312px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:0 24px 60px -18px rgb(15 23 42 / .35),0 4px 14px -6px rgb(15 23 42 / .18);color:var(--ink);animation:tsc-ac .14s ease-out}
+.panel-root .tsc-takvim[data-yukari="evet"]{animation-name:tsc-ac-yukari}
+@keyframes tsc-ac{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes tsc-ac-yukari{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.panel-root .tsc-takvim{animation:none}}
+.panel-root .tsc-takvim button{font:inherit;cursor:pointer}
+.panel-root .tsc-bas{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.panel-root .tsc-baslik{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--ink);font-size:15px !important;font-weight:700}
+.panel-root .tsc-baslik span{color:var(--muted);font-weight:600}
+.panel-root .tsc-baslik:hover{background:var(--surface-2)}
+.panel-root .tsc-oklar{display:flex;gap:4px}
+.panel-root .tsc-oklar button{display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--line-soft);border-radius:10px;background:var(--surface);color:var(--ink-soft)}
+.panel-root .tsc-oklar button:hover{border-color:var(--line);background:var(--surface-2);color:var(--ink)}
+
+.panel-root .tsc-izgara{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.panel-root .tsc-gun-adi{display:grid;place-items:center;height:28px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.panel-root .tsc-gun-adi[data-hafta-sonu="evet"]{color:color-mix(in srgb,var(--muted) 70%,var(--danger))}
+.panel-root .tsc-gun{position:relative;display:grid;place-items:center;height:38px;padding:0;border:0;border-radius:11px;background:transparent;color:var(--ink);font-size:14px !important;font-weight:500;font-variant-numeric:tabular-nums;transition:background .12s,color .12s}
+.panel-root .tsc-gun[data-hafta-sonu="evet"]{color:var(--ink-soft)}
+.panel-root .tsc-gun[data-disari="evet"]{color:var(--muted);opacity:.55}
+.panel-root .tsc-gun:hover:not(:disabled){background:var(--surface-2)}
+.panel-root .tsc-gun:focus-visible{outline:none;box-shadow:0 0 0 2px var(--focus)}
+.panel-root .tsc-gun[data-bugun="evet"]{color:var(--primary-strong);font-weight:700;box-shadow:inset 0 0 0 1.5px var(--primary)}
+.panel-root .tsc-gun[data-bugun="evet"]::after{content:"";position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:var(--primary)}
+.panel-root .tsc-gun[data-secili="evet"],.panel-root .tsc-gun[data-secili="evet"]:hover{background:var(--primary);color:var(--surface);font-weight:700;opacity:1;box-shadow:0 6px 14px -6px var(--primary)}
+.panel-root .tsc-gun[data-secili="evet"]::after{background:var(--surface)}
+.panel-root .tsc-gun:disabled{color:var(--muted);opacity:.35;cursor:not-allowed;text-decoration:line-through}
+
+.panel-root .tsc-secim-izgara{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 0}
+.panel-root .tsc-secim-izgara button{height:46px;border:1px solid var(--line-soft);border-radius:12px;background:var(--surface);color:var(--ink);font-size:14px !important;font-weight:600}
+.panel-root .tsc-secim-izgara button:hover{border-color:var(--line);background:var(--surface-2)}
+.panel-root .tsc-secim-izgara button[data-bugun="evet"]{border-color:var(--primary);color:var(--primary-strong)}
+.panel-root .tsc-secim-izgara button[data-secili="evet"]{border-color:var(--primary);background:var(--primary);color:var(--surface)}
+
+.panel-root .tsc-kisayol{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.panel-root .tsc-kisayol button{height:32px;padding:0 4px;border:1px solid var(--line-soft);border-radius:999px;background:var(--surface-2);color:var(--ink-soft);font-size:12px !important;font-weight:600;white-space:nowrap}
+.panel-root .tsc-kisayol button:hover:not(:disabled){border-color:var(--line);background:var(--surface);color:var(--ink)}
+.panel-root .tsc-kisayol button[data-secili="evet"]{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-strong)}
+.panel-root .tsc-kisayol button:disabled{opacity:.4;cursor:not-allowed}
+.panel-root .tsc-alt{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:24px;margin-top:10px;color:var(--muted);font-size:12px}
+.panel-root .tsc-alt button{padding:4px 8px;border:0;border-radius:8px;background:transparent;color:var(--danger);font-size:12px !important;font-weight:600}
+.panel-root .tsc-alt button:hover{background:var(--danger-soft)}

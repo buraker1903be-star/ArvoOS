@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { MobilSatir } from "../../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -71,7 +72,7 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
           <label className="fin-span-2"><span>Açıklama<b className="req" aria-hidden="true">*</b></span><input name="description" minLength={2} maxLength={300} required placeholder="Örn. çeviri hizmeti"/></label>
           <label>Hizmet sağlayıcı<input name="supplier" maxLength={180}/></label>
           <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" required placeholder="0,00" /></label>
-          <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="cost_date" type="date" defaultValue={todayIso()} required/></label>
+          <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><TarihSecici name="cost_date" defaultValue={todayIso()} required/></label>
           <label>Durum<select name="status"><option value="planned">Planlandı</option><option value="paid">Ödendi</option></select></label>
           <label>Belge / Referans<input name="reference_no" maxLength={120} placeholder="İsteğe bağlı" /></label>
           <div className="wide fin-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary">Maliyet kalemi ekle</button></div>
@@ -117,7 +118,7 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
                         <label><span>Açıklama<b className="req" aria-hidden="true">*</b></span><input name="description" defaultValue={item.description} required/></label>
                         <label>Sağlayıcı<input name="supplier" defaultValue={item.supplier||""}/></label>
                         <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(Number(item.amount))} required/></label>
-                        <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="cost_date" type="date" defaultValue={item.cost_date} required/></label>
+                        <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><TarihSecici name="cost_date" defaultValue={item.cost_date} required/></label>
                         <label>Durum<select name="status" defaultValue={item.status}><option value="planned">Planlandı</option><option value="paid">Ödendi</option></select></label>
                         <label className="wide">Referans<input name="reference_no" defaultValue={item.reference_no||""}/></label>
                         <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary">Değişiklikleri kaydet</button></div>

@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { MobilSatir } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
@@ -245,7 +246,7 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                       </label>
                       <label>
                         Tarih
-                        <input name="transaction_date" type="date" />
+                        <TarihSecici name="transaction_date" />
                       </label>
                       <label>
                         Referans / dekont no

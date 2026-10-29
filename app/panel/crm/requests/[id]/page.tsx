@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { kimlikMi } from "@/lib/kimlik";
 import { formatPhone } from "@/lib/format-phone";
@@ -293,7 +294,7 @@ export default async function RequestDetailPage({
 
       <p className="wide kayit-formu-bolum">Kapsam ve plan</p>
       <label className="wide">Beklenen kapsam ve teslimler<textarea name="scope" defaultValue={d.scope || ""} placeholder="Hangi bölümler, hangi teslimler, özel istekler…" /></label>
-      <label>Planlanan teslim tarihi<input name="expected_close_date" type="date" defaultValue={item.expected_close_date ?? ""} /></label>
+      <label>Planlanan teslim tarihi<TarihSecici name="expected_close_date" defaultValue={item.expected_close_date ?? ""} /></label>
       <label>Talep kaynağı<input name="source" list="talep-duzenle-kaynak" defaultValue={item.source ?? ""} placeholder="Seçin ya da yazın" /></label>
       <datalist id="talep-duzenle-kaynak"><option value="WhatsApp" /><option value="Telefon" /><option value="Instagram" /><option value="Web sitesi" /><option value="E-posta" /><option value="Referans" /></datalist>
       {canManage ? (

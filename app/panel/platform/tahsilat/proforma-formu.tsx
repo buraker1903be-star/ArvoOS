@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { Fragment, useMemo, useState } from "react";
 import { aliciAdi, kdvDahilProforma, proformaToplami, type ProformaAlici, type ProformaKalemi } from "@/lib/proforma";
 import { kurusOku, liraYazisi } from "@/lib/turkish-amount";
@@ -123,7 +124,7 @@ export function ProformaFormu({ musteriler, kisayollar, bugun, gecerlilik, kdvOr
         </select>
       </label>
       <label><span>Geçerlilik tarihi<b className="req" aria-hidden="true">*</b></span>
-        <input name="gecerlilik_tarihi" type="date" min={bugun} defaultValue={gecerlilik} required /></label>
+        <TarihSecici name="gecerlilik_tarihi" min={bugun} defaultValue={gecerlilik} required /></label>
 
       <p className="wide kayit-formu-bolum">Alıcı bilgileri · {musteri ? "müşteri kaydından dolduruldu, belgeye bu hâliyle yazılır" : "önce müşteriyi seçin"}</p>
         <label><span>Ticari unvan{kurumMu ? <b className="req" aria-hidden="true">*</b> : null}</span>

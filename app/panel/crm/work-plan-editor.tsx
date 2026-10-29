@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useState } from "react";
 import { WORK_PLAN_LIMIT, type WorkPlanItem } from "@/lib/work-plan";
 
@@ -49,12 +50,11 @@ export function WorkPlanEditor({ initial, name = "work_plan", hint }: { initial:
               aria-label={`${index + 1}. teslimin içeriği`}
               onChange={(event) => update(row.key, { title: event.target.value })}
             />
-            <input
-              type="date"
+            <TarihSecici className="tsc-kucuk"
               value={row.due_date}
               required={Boolean(row.title.trim())}
               aria-label={`${index + 1}. teslimin tarihi`}
-              onChange={(event) => update(row.key, { due_date: event.target.value })}
+              onChange={(deger) => update(row.key, { due_date: deger })}
             />
             <button type="button" className="work-plan-remove" onClick={() => remove(row.key)} aria-label={`${index + 1}. teslimi sil`}>×</button>
           </div>

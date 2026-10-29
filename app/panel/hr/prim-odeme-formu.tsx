@@ -1,5 +1,6 @@
 "use client";
 
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useState } from "react";
 import { liraYazisi, parseTurkishAmount } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -101,7 +102,7 @@ export function PrimOdemeFormu({ eylem, personelId, odeme, isler, mevcut = {}, d
 
       <p className="wide kayit-formu-bolum">Ödeme</p>
       <label><span>Tutar (₺){req}</span><input name="amount" inputMode="decimal" required value={gosterilenTutar} placeholder={oneri} autoComplete="off" onChange={(o) => { setTutarElle(true); setTutarYazisi(o.target.value); }} /></label>
-      <label><span>Tarih{req}</span><input name="paid_on" type="date" required defaultValue={odeme?.paidOn ?? todayInIstanbul()} /></label>
+      <label><span>Tarih{req}</span><TarihSecici name="paid_on" required defaultValue={odeme?.paidOn ?? todayInIstanbul()} /></label>
       <label>Yöntem
         <select name="method" defaultValue={odeme?.method ?? "havale"}>
           <option value="havale">Havale / EFT</option>

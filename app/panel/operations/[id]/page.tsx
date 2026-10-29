@@ -1,3 +1,4 @@
+import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { kimlikMi } from "@/lib/kimlik";
 import { Fragment, Suspense, type CSSProperties } from "react";
@@ -627,7 +628,7 @@ export default async function OperationDetailPage({
             {canEditDue ? (
               <form className="opd-due-form" action={setWorkflowDueDate}>
                 <input type="hidden" name="workflow_id" value={workflow.id} />
-                <input key={workflow.due_date ?? "yok"} type="date" name="due_date" defaultValue={workflow.due_date ?? ""} min={workflow.start_date ?? undefined} required aria-label="Termin tarihi" />
+                <TarihSecici className="tsc-kucuk" key={workflow.due_date ?? "yok"} name="due_date" defaultValue={workflow.due_date ?? ""} min={workflow.start_date ?? undefined} required aria-label="Termin tarihi" />
                 <button className={workflow.due_date ? "panel-secondary" : "panel-primary"} type="submit">{workflow.due_date ? "Güncelle" : "Termin belirle"}</button>
               </form>
             ) : !workflow.due_date ? <p className="talep-bos">Termini yönetici ya da işin sorumlusu belirleyebilir.</p> : null}
@@ -895,7 +896,7 @@ export default async function OperationDetailPage({
                       {canEditDue ? (
                         <AnindaForm action={setStepDueDate} className="opd-ff">
                           <input type="hidden" name="step_id" value={step.id} />
-                          <input key={step.due_date ?? "yok"} type="date" name="due_date" defaultValue={step.due_date ?? ""} aria-label={`${step.title} teslim tarihi`} />
+                          <TarihSecici className="tsc-kucuk" key={step.due_date ?? "yok"} name="due_date" defaultValue={step.due_date ?? ""} aria-label={`${step.title} teslim tarihi`} />
                         </AnindaForm>
                       ) : null}
                       {canAssign ? (
@@ -929,7 +930,7 @@ export default async function OperationDetailPage({
           <form className="opd-add" action={addWorkflowStep}>
             <input type="hidden" name="workflow_id" value={workflow.id} />
             <input name="title" required minLength={2} maxLength={180} placeholder="Yeni görev ekle" aria-label="Yeni görev" />
-            <input type="date" name="due_date" aria-label="Yeni görevin teslim tarihi" />
+            <TarihSecici className="tsc-kucuk" name="due_date" aria-label="Yeni görevin teslim tarihi" />
             <button className="panel-primary" type="submit">Ekle</button>
           </form>
         </section>
