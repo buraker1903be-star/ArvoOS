@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
+import { panelSayfaAdi } from "@/lib/panel-sayfa-adi";
 
 /*
   PERSONEL HAREKETLERİ SEKMESİ (2026-10): personel detayının orta
@@ -12,6 +13,14 @@ import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
   açık ve yer kaybolmadan kalsın. Varsayılan son 7 gün, sayfa başına
   SAYFA_BOYU kayıt; toplam ayrı ve sınırsız sayım sorgusundan (sayfadaki
   satırları saymak sayfa boyunu toplam sanmak olurdu).
+
+  Görünüm (29.10.2026, kurum sahibinin isteği: "panel kalitesinde"):
+  sekmenin içi kartın kenarına yapışıktı, son sayfa ham adres ve uzun
+  kimlikle yazılıyordu, her satırda büyük "Bağlantı kapandı" rozeti
+  vardı. Artık üstte durum kartı, oturumlar gün gün zaman çizelgesi;
+  sayfa adı lib/panel-sayfa-adi'den ve kayıtsa tıklanıyor. Olağan
+  kapanış (bağlantı koptu) rozet değil sessiz bir not: rozet yalnızca
+  dikkat isteyen hâlde (aktif, zaman aşımı) dikkat çekmeli.
 */
 
 const TZ = "Europe/Istanbul";
@@ -91,53 +100,84 @@ export async function PersonelHareketleri({ supabase, orgId, userId, temelAdres,
     else gruplar.push({ anahtar, oturumlar: [o] });
   }
 
+  const sayfaBaglantisi = (yol: string | null) => {
+    const ad = panelSayfaAdi(yol);
+    if (!ad) return null;
+    return ad.kayit ? <Link href={ad.kayit}>{ad.ad}</Link> : <span>{ad.ad}</span>;
+  };
+  const simdiki = sayfaBaglantisi(acik?.current_path ?? null);
+  const enSon = oturumlar[0] ?? null;
+
   return (
     <div className="personel-hareket">
-      <div className="cari-baslik">
-        <h2>Anlık durum</h2>
-        {cevrimici ? <span className="status-pill" data-tone="success">Çevrimiçi</span> : <small>{sonGorulme ? `Son görülme ${tarihSaat(sonGorulme)}` : "Henüz giriş yapmadı"}</small>}
-      </div>
-      {acik?.current_path ? <p className="talep-bos cari-not">Şu an: <code>{acik.current_path}</code></p> : null}
+      <section className="phr-durum" data-cevrimici={cevrimici ? "evet" : "hayir"} aria-label="Anlık durum">
+        <span className="phr-nokta" aria-hidden="true" />
+        <div className="phr-durum-metin">
+          <b>{cevrimici ? "Çevrimiçi" : "Çevrimdışı"}</b>
+          <small>
+            {cevrimici
+              ? simdiki ? <>Şu an {simdiki} sayfasında</> : "Panelde"
+              : sonGorulme ? `Son görülme ${tarihSaat(sonGorulme)}` : "Henüz giriş yapmadı"}
+          </small>
+        </div>
+        <dl className="phr-ozet">
+          <div><dt>{secilen.label}</dt><dd>{toplam} oturum</dd></div>
+          <div><dt>Son giriş</dt><dd>{enSon ? tarihSaat(enSon.login_at) : "—"}</dd></div>
+        </dl>
+      </section>
 
-      <div className="talep-not">
-        <div className="cari-baslik"><h2>Giriş ve çıkış kayıtları</h2><small>{secilen.label} · {toplam} kayıt</small></div>
-        <nav className="ekip-suzgec talep-suzgec" aria-label="Tarih aralığı">
+      <header className="phr-bas">
+        <h2>Giriş ve çıkış kayıtları</h2>
+        <nav className="phr-aralik" aria-label="Tarih aralığı">
           {HAREKET_ARALIKLARI.map((item) => (
             <Link key={item.value} href={adres({ hareket: item.value })} scroll={false} className={secilen.value === item.value ? "is-active" : undefined} aria-current={secilen.value === item.value ? "page" : undefined}>{item.label}</Link>
           ))}
         </nav>
-        {gruplar.length ? (
-          gruplar.map((grup) => (
-            <div key={grup.anahtar} className="personel-hareket-gun">
-              <h3>{gunYazisi(grup.anahtar, bugun, dun)} <small>{grup.oturumlar.length} oturum</small></h3>
-              <ul className="cari-hareketler">
-                {grup.oturumlar.map((o) => {
-                  const aktif = !o.logout_at && Date.parse(o.last_seen_at) >= cevrimiciSiniri;
-                  const son = o.logout_at ?? o.last_seen_at;
-                  return (
-                    <li key={o.id}>
-                      <span className="cari-hareket-metin">
-                        <b>{saat(o.login_at)} – {aktif ? "şimdi" : gunAnahtari(son) === grup.anahtar ? saat(son) : tarihSaat(son)}</b>
-                        <small>{sure(o.login_at, son)}{o.current_path ? ` · son sayfa ${o.current_path}` : ""}</small>
-                      </span>
-                      <span className="status-pill" data-tone={aktif ? "success" : NEDEN_TONU[o.logout_reason ?? ""] ?? "neutral"}>{aktif ? "Aktif" : o.logout_reason ? NEDEN[o.logout_reason] ?? "Çıkış" : "Bağlantı kapandı"}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))
-        ) : (
-          <p className="talep-bos cari-not">{secilen.gun ? "Bu aralıkta oturum yok; aralığı genişletmeyi deneyin." : "Henüz oturum kaydı yok."}</p>
-        )}
-        {sonSayfa > 1 ? (
-          <nav className="hr-act-sayfalar personel-sayfalar" aria-label="Sayfalar">
-            {sayfaNo > 1 ? <Link href={adres({ hsayfa: sayfaNo - 1 })} scroll={false}>← Önceki</Link> : <span aria-hidden="true">← Önceki</span>}
-            <b>{sayfaNo} / {sonSayfa}</b>
-            {sayfaNo < sonSayfa ? <Link href={adres({ hsayfa: sayfaNo + 1 })} scroll={false}>Sonraki →</Link> : <span aria-hidden="true">Sonraki →</span>}
-          </nav>
-        ) : null}
-      </div>
+      </header>
+
+      {gruplar.length ? (
+        gruplar.map((grup) => (
+          <section key={grup.anahtar} className="phr-gun" aria-label={gunYazisi(grup.anahtar, bugun, dun)}>
+            <h3>{gunYazisi(grup.anahtar, bugun, dun)} <small>{grup.oturumlar.length} oturum</small></h3>
+            <ol className="phr-zaman">
+              {grup.oturumlar.map((o) => {
+                const aktif = !o.logout_at && Date.parse(o.last_seen_at) >= cevrimiciSiniri;
+                const son = o.logout_at ?? o.last_seen_at;
+                const sonSayfaAdi = sayfaBaglantisi(o.current_path);
+                const neden = o.logout_reason ? NEDEN[o.logout_reason] ?? "Çıkış" : null;
+                return (
+                  <li key={o.id} data-aktif={aktif ? "evet" : undefined}>
+                    <span className="phr-saat">
+                      <b>{saat(o.login_at)}</b>
+                      <small>{aktif ? "şimdi" : gunAnahtari(son) === grup.anahtar ? saat(son) : tarihSaat(son)}</small>
+                    </span>
+                    <span className="phr-govde">
+                      <span className="phr-sure">{sure(o.login_at, son)}</span>
+                      {sonSayfaAdi ? <small>Son sayfa · {sonSayfaAdi}</small> : null}
+                    </span>
+                    {aktif ? (
+                      <span className="status-pill" data-tone="success">Aktif</span>
+                    ) : neden ? (
+                      <span className="status-pill" data-tone={NEDEN_TONU[o.logout_reason ?? ""] ?? "neutral"}>{neden}</span>
+                    ) : (
+                      <small className="phr-kapandi">Bağlantı kapandı</small>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))
+      ) : (
+        <p className="ic-akis-bos">{secilen.gun ? "Bu aralıkta oturum yok; aralığı genişletmeyi deneyin." : "Henüz oturum kaydı yok."}</p>
+      )}
+      {sonSayfa > 1 ? (
+        <nav className="hr-act-sayfalar personel-sayfalar" aria-label="Sayfalar">
+          {sayfaNo > 1 ? <Link href={adres({ hsayfa: sayfaNo - 1 })} scroll={false}>← Önceki</Link> : <span aria-hidden="true">← Önceki</span>}
+          <b>{sayfaNo} / {sonSayfa}</b>
+          {sayfaNo < sonSayfa ? <Link href={adres({ hsayfa: sayfaNo + 1 })} scroll={false}>Sonraki →</Link> : <span aria-hidden="true">Sonraki →</span>}
+        </nav>
+      ) : null}
     </div>
   );
 }

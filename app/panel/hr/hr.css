@@ -276,8 +276,49 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .hr-act-sayfalar a:hover{border-color:var(--primary);background:var(--surface-2)}
 .hr-act-sayfalar span{padding:5px 12px;color:var(--muted);opacity:.55}
 .hr-act-sayfalar b{color:var(--muted)}
-.personel-hareket-gun h3{display:flex;align-items:baseline;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
-.personel-hareket-gun h3 small{color:var(--muted);font-weight:var(--fw-medium)}
+/*
+  Personel detayı → Hareketler sekmesi (29.10.2026). Sekme paneli
+  kenarsız (.talep-akis padding:0); iç boşluğu sekme kendisi veriyor,
+  yoksa başlıklar kartın kenarına yapışıyordu.
+*/
+.personel-hareket{display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-4)}
+.phr-durum{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
+.phr-nokta{flex:none;width:10px;height:10px;border-radius:50%;background:var(--n-300)}
+.phr-durum[data-cevrimici="evet"] .phr-nokta{background:var(--success);box-shadow:0 0 0 4px var(--success-soft)}
+.phr-durum-metin{flex:1 1 200px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.phr-durum-metin b{font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--ink)}
+.phr-durum-metin small{font-size:var(--fs-sm);color:var(--muted)}
+.phr-durum-metin a,.phr-govde a{color:var(--primary);font-weight:var(--fw-medium);text-decoration:none}
+.phr-durum-metin a:hover,.phr-govde a:hover{text-decoration:underline}
+.phr-ozet{display:flex;gap:var(--sp-5);margin:0}
+.phr-ozet div{display:flex;flex-direction:column;gap:2px}
+.phr-ozet dt{font-size:var(--fs-micro);color:var(--muted)}
+.phr-ozet dd{margin:0;font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.phr-bas{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--sp-2)}
+.phr-bas h2{margin:0;font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--ink)}
+.phr-aralik{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
+.phr-aralik a{padding:4px var(--sp-3);border-radius:var(--r-sm);color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap}
+.phr-aralik a:hover{color:var(--ink)}
+.phr-aralik a.is-active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px var(--line)}
+.phr-gun h3{display:flex;align-items:baseline;gap:var(--sp-2);margin:0 0 var(--sp-2);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.phr-gun h3 small{font-weight:var(--fw-medium);letter-spacing:0;text-transform:none}
+.phr-zaman{list-style:none;margin:0;padding:0;border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
+.phr-zaman li{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line-soft)}
+.phr-zaman li:first-child{border-top:0}
+.phr-zaman li[data-aktif="evet"]{background:var(--success-soft)}
+.phr-saat{flex:none;width:96px;display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
+.phr-saat b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.phr-saat small{font-size:var(--fs-micro);color:var(--muted)}
+.phr-govde{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.phr-sure{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--ink)}
+.phr-govde small{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phr-kapandi{flex:none;font-size:var(--fs-micro);color:var(--muted)}
+.phr-zaman .status-pill{flex:none}
+@media (max-width:760px){
+  .personel-hareket{padding:var(--sp-3)}
+  .phr-ozet{width:100%;justify-content:space-between}
+  .phr-zaman li{gap:var(--sp-3);padding:var(--sp-3)}
+}
 .personel-ozluk{margin-top:var(--sp-3)}
 .prim-donem{margin:var(--sp-2) 0}
 .prim-ozel{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center;margin:0 0 var(--sp-3)}
