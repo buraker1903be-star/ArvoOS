@@ -1,0 +1,14 @@
+/*
+  Konsolun proforma sayfası (29.10.2026): müşteri kartı gibi bir kayıt
+  sayfası. Solda kâğıt (proforma-belge.css, müşterinin gördüğüyle aynı),
+  sağda işlemler. Yazdırırken yalnızca kâğıt çıkıyor; ayıklama belge
+  dosyasının kendi @media print kuralında (body:has(.doc-proforma)).
+*/
+.os-root .proforma-kayit .talep-izgara.ekip-izgara{grid-template-columns:minmax(0,1fr) minmax(300px,360px)}
+.proforma-kagit{min-width:0}
+.os-root .proforma-sag .k-kart .kayit-formu{margin:0}
+.os-root .proforma-sag .proforma-iptal{width:100%}
+.os-root .proforma-sag .ek-not{margin:0}
+@media (max-width:1100px){
+  .os-root .proforma-kayit .talep-izgara.ekip-izgara{grid-template-columns:minmax(0,1fr)}
+}
