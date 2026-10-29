@@ -1,0 +1,30 @@
+/*
+  Konsolun Müşteriler listesi (29.10.2026): Ekip ve personel listesinin
+  tablosu (hr.css: ek-arac, ek-segment, ek-avatar, ek-sag). Burada
+  yalnızca o tablonun müşteriye özgü iki parçası var: ürün rozetleri ve
+  türe göre baş harf rengi.
+*/
+/* Liste tablosu ilk hücredeki bağlantıyı display:block yapıyor
+   (kayit-detay.css); simge metnin üstüne düşüyordu. Personel
+   tablosundaki kuralın aynısı, Müşteri hücresi için. */
+.os-root .talep-tablo .crm-data-table td[data-label="Müşteri"] .crm-row-link.ek-kisi{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--sp-3);text-align:left}
+.os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] thead th:first-child{width:auto}
+.os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] td[data-label="Müşteri"]{min-width:200px}
+/* Kurum yuvarlak değil köşeli: bir bakışta kişi (bireysel) ile kurum ayrılsın. */
+.konsol-musteriler .ek-avatar:not([data-tur="bireysel"]){border-radius:var(--r-md)}
+.konsol-musteriler .ek-avatar:is([data-tur="grup"],[data-tur="arvo"]){background:var(--surface-2);color:var(--ink)}
+
+.mu-urunler{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
+.mu-urunler>span[data-tone]{padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-semibold);white-space:nowrap}
+.mu-urunler>span[data-tone="success"]{background:var(--success-soft);color:var(--success)}
+.mu-urunler>span[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
+.mu-urunler>span[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
+.mu-urunler>span[data-tone="info"]{background:var(--primary-soft);color:var(--primary-strong)}
+.os-root .talep-tablo .crm-data-table td.crm-col-amount small{display:block;color:var(--muted);font-size:var(--fs-micro)}
+
+.mu-grup-tutar{flex:none;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+.os-root .ek-sag .mu-toplam{margin:0;text-align:right}
+
+@media (max-width:1360px) and (min-width:761px){
+  .os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] :is(th,td):nth-child(3){display:none}
+}

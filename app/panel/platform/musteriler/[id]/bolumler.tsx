@@ -7,8 +7,8 @@ import { KararFormu } from "../../payments/karar-formu";
 import { reviewBankTransferPayment } from "../../payments/actions";
 
 /*
-  Müşteri detayının Ödemeler penceresi (14.10.2026). Yalnızca penceresi
-  açıkken çiziliyor (page.tsx → ?pencere=). Lisanslar, Kullanıcılar ve
+  Müşteri kartının Ödemeler sekmesi (14.10.2026; 29.10.2026'ya kadar
+  pencereydi). Yalnızca sekmesi açıkken çiziliyor (page.tsx → ?pencere=). Lisanslar, Kullanıcılar ve
   Kurum Ayarları burada değil: onlar konsoldaki asıl bileşenleri
   (LisansBolumu, KiraciUyeleri, KiraciDosyasi) olduğu gibi kullanıyor.
 */
@@ -154,8 +154,8 @@ export async function OdemeBolumu({ supabase, odemeler, kurumAdi, urunler, grup 
         </KListe>
       ) : <KBos baslik="Henüz ödeme yok" aciklama="Kurum dekont bildirdiğinde ya da kartla ödediğinde hareketler burada toplanır." />}
     </KKart>
-    {/* Platform faturası bugün YOK (Tahsilat → Faturalar'daki açıklamanın
-        aynısı); çalışmayan özelliği çalışıyormuş gibi göstermiyoruz. */}
-    <KNot>Faturalar: platform henüz fatura kesmiyor, faturalar elle kesiliyor. Paraşüt (e-fatura / e-arşiv) bağlanınca bu müşteriye kesilenler burada listelenecek.</KNot>
+    {/* Faturalar ve proformalar 29.10.2026'dan beri yanındaki BelgeBolumu'nda
+        (belgeler.tsx). Burada "platform henüz fatura kesmiyor" yazıyordu;
+        fatura yükleme geldiğinden beri yanlıştı. */}
   </>;
 }
