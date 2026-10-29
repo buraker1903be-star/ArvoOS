@@ -262,7 +262,9 @@ ArvoOS yazıyor (`lib/arc-bridge.ts`, `lib/arvolab.ts`,
 
 **Ürünün adı ArvoCal, kodu `randevu`.** Ürün 28.10.2026'da
 ArvoRandevu → ArvoBook → ArvoCal oldu, adresi 29.10.2026'da
-cal.arvo-os.com'a geçti; kod adı bilerek değişmedi. `product = 'randevu'`
+cal.arvo-os.com'a geçti; kod adı bilerek değişmedi. Eski adres
+(randevu.arvo-os.com) aynı gün yönlendirme bırakılmadan kaldırıldı,
+artık açılmıyor — hiçbir metne geri yazmayın. `product = 'randevu'`
 lisans, abonelik, ödeme isteği, proforma ve WhatsApp mesaj satırlarının
 check kısıtlarında; dosya adı `lib/randevu-bridge.ts`, ortam değişkeni
 `RANDEVU_BRIDGE_SECRET`, demo formunun `interest` değeri `'randevu'`. Yani
