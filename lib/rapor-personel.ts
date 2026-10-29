@@ -1,18 +1,25 @@
 import { AYLAR, aralikYuklemi, gunAnahtari, type Donem } from "@/lib/rapor-donemi";
 import { monthStartKey } from "@/lib/istanbul-date";
 import { kazanildi } from "@/lib/talep-asamalari";
+import { ayEtiketi, donemAylari, gerceklesme, hedefHaritasi, type HedefKaydi } from "@/lib/personel-hedefi";
 import type { Hucre } from "@/lib/xlsx";
 
 /*
   PERSONEL PERFORMANSI — KARAR (RPR-05).
 
-  HEDEF TABLOSU YOK ve uydurulmuyor (docs/RAPORLAMA-ASAMA-1.md §2.1):
-  `hedef`, `target`, `kota`, `budget` adında hiçbir tablo yok, yani
-  "hedef gerçekleşmesi" HESAPLANAMAZ. Rapor o bölümü boş durum
-  mesajıyla gösteriyor. Ortalamayı hedef yerine koymak en kolay
-  yoldu ve en yanıltıcısı: kimsenin koymadığı bir hedefe göre
-  "hedefin %60'ı" yazmak, yöneticiye var olmayan bir karar
-  zemini verirdi.
+  HEDEF ARTIK VAR (29.10.2026, `hr_personel_hedefleri`). Eskiden
+  `hedef`, `target`, `kota`, `budget` adında hiçbir tablo yoktu;
+  rapor "hedef gerçekleşmesi" bölümünü boş durum mesajıyla
+  gösteriyordu ve hedefi girecek bir yer de yoktu — söylenen eksik
+  kapatılamıyordu (docs/RAPORLAMA-ASAMA-1.md §2.1).
+
+  UYDURMA HEDEF YİNE YOK. Hedefi konmamış kişinin satırında hedef
+  sütunu BOŞ kalıyor, sıfır değil: sıfır yazmak "hedefi sıfır"
+  demekti ve kişi %0 gerçekleşmeyle görünürdü. Ortalamayı hedef
+  yerine koymak da yapılmıyor — kimsenin koymadığı bir hedefe göre
+  "hedefin %60'ı" yazmak, yöneticiye var olmayan bir karar zemini
+  verirdi. Dönem tam aylara oturmuyorsa hedef hiç hesaplanmıyor
+  (lib/personel-hedefi.ts).
 
   OPERASYON PERSONELİ SATIŞ RAKAMIYLA DEĞERLENDİRİLMİYOR ve bu
   kendiliğinden oluyor: kişi iki tabloda da yalnızca KENDİSİNE ATANAN
@@ -90,6 +97,10 @@ export type SatisSatiri = {
   sozlesmeTutari: number;
   primTahakkuk: number;
   primOdenen: number;
+  /** Dönemin aylarına konmuş hedef (kuruş); konmamışsa null. */
+  hedef: number | null;
+  /** Sözleşme tutarının hedefe oranı (%); hedef yoksa null. */
+  hedefGerceklesme: number | null;
 };
 
 export type OperasyonSatiri = {
@@ -118,8 +129,31 @@ export type PersonelModeli = {
   /** Üzerine kayıt atanmamış aktif personel sayısı. */
   atamasizPersonel: number;
   aylik: AyPersoneli[];
-  /** Hedef verisi var mı — yoksa ekran boş durum gösteriyor. */
-  hedefVerisiVar: false;
+  /** Dönemde en az bir kişiye hedef konmuş mu — yoksa ekran boş durum gösteriyor. */
+  hedefVerisiVar: boolean;
+  /*
+    Dönem tam aylara oturuyor mu. Hedef AYLIK konuyor; yarım aya
+    bölmek kimsenin koymadığı bir günlük hedef üretirdi
+    (lib/personel-hedefi.ts). Oturmuyorsa hedef sütunu hiç çizilmiyor
+    ve ekran sebebini yazıyor.
+  */
+  hedefDonemUygun: boolean;
+  /** Ölçülen son ay henüz dolmadı: gerçekleşme doğal olarak düşük. */
+  hedefSurenAy: boolean;
+  /** Dönemin toplam hedefi (kuruş). */
+  hedefToplam: number;
+  /*
+    Hedefin hangi ay(lar)a konduğu: "Ekim 2026" ya da
+    "Ocak 2026 – Aralık 2026". Ekran bunu kendi hesaplasaydı dönemi
+    ikinci kez ayrıştırırdı; iki ayrıştırma sapmanın en kolay yolu.
+  */
+  hedefAyEtiketi: string;
+  /*
+    Hedefi OLAN kişilerin sözleşme tutarı. Kurumun bütün satışını
+    hedef toplamına bölmek, hedefi konmamış kişilerin satışını da
+    paya katardı ve "hedefin %140'ı" gibi bir sayı üretirdi.
+  */
+  hedefGerceklesenToplam: number;
 };
 
 const payi = (deger: number, taban: number) => (taban ? (deger / taban) * 100 : null);
@@ -140,6 +174,7 @@ export function personelModeli({
   satisPrimleri,
   operasyonPrimleri,
   departmanAdi,
+  hedefler = [],
 }: {
   donem: Donem;
   bugun: string;
@@ -151,8 +186,12 @@ export function personelModeli({
   operasyonPrimleri: readonly PersonelPrimi[];
   /** Talep kimliği → o talebe atanmış personel kimliği. */
   departmanAdi: ReadonlyMap<string, string>;
+  /** Aylık satış hedefleri (hr_personel_hedefleri). */
+  hedefler?: readonly HedefKaydi[];
 }): PersonelModeli {
   const aralikta = aralikYuklemi(donem);
+  const hedefKapsami = donemAylari(donem, bugun);
+  const hedefHarita = hedefKapsami ? hedefHaritasi(hedefler, hedefKapsami) : new Map<string, number>();
   const kisi = new Map(personel.map((p) => [p.id, p]));
   const aktifler = personel.filter((p) => p.employment_status === "active");
 
@@ -222,10 +261,20 @@ export function personelModeli({
     isSahibi.set(i.assigned_employee_id, mevcut);
   }
 
-  const satis: SatisSatiri[] = [...talepSahibi.entries()]
-    .map(([id, v]) => {
+  /*
+    HEDEFİ OLAN KİŞİ, HİÇ SATIŞI OLMASA DA TABLODA. Satırlar yalnızca
+    talep atanmış kişilerden kuruluyordu ve alttaki süzgeç hareketsiz
+    olanı eliyordu: hedefi konmuş ama dönemde hiçbir şey satmamış
+    kişi tablodan düşerdi — hedef raporunda görülmesi en gereken kişi
+    o. Hedef kimlikleri bu yüzden kümeye katılıyor.
+  */
+  const satisKimlikleri = new Set<string>([...talepSahibi.keys(), ...hedefHarita.keys()]);
+  const satis: SatisSatiri[] = [...satisKimlikleri]
+    .map((id) => {
+      const v = talepSahibi.get(id) ?? { talep: 0, kazanilan: 0 };
       const sozlesme = sozlesmeSahibi.get(id) ?? { adet: 0, tutar: 0 };
       const prim = satisPrim.get(id) ?? { tahakkuk: 0, odenen: 0 };
+      const hedef = hedefHarita.get(id) ?? null;
       return {
         id, ...kimlik(id),
         talep: v.talep,
@@ -235,9 +284,11 @@ export function personelModeli({
         sozlesmeTutari: sozlesme.tutar,
         primTahakkuk: prim.tahakkuk,
         primOdenen: prim.odenen,
+        hedef,
+        hedefGerceklesme: gerceklesme(sozlesme.tutar, hedef),
       };
     })
-    .filter((s) => s.talep || s.kazanilan || s.sozlesmeTutari || s.primTahakkuk)
+    .filter((s) => s.talep || s.kazanilan || s.sozlesmeTutari || s.primTahakkuk || s.hedef !== null)
     .sort((a, b) => b.sozlesmeTutari - a.sozlesmeTutari || b.kazanilan - a.kazanilan || a.ad.localeCompare(b.ad, "tr"));
 
   const operasyon: OperasyonSatiri[] = [...isSahibi.entries()]
@@ -287,7 +338,14 @@ export function personelModeli({
     primOdenen: topla(satisPrim, "odenen") + topla(operasyonPrim, "odenen"),
     atamasizPersonel: aktifler.filter((p) => !olculenler.has(p.id)).length,
     aylik: [...aylar.values()],
-    hedefVerisiVar: false,
+    hedefVerisiVar: hedefHarita.size > 0,
+    hedefDonemUygun: hedefKapsami !== null,
+    hedefSurenAy: hedefKapsami?.surenAy ?? false,
+    hedefToplam: [...hedefHarita.values()].reduce((t, d) => t + d, 0),
+    hedefAyEtiketi: !hedefKapsami || hedefKapsami.aylar.length === 0 ? ""
+      : hedefKapsami.aylar.length === 1 ? ayEtiketi(hedefKapsami.aylar[0])
+      : `${ayEtiketi(hedefKapsami.aylar[0])} – ${ayEtiketi(hedefKapsami.aylar[hedefKapsami.aylar.length - 1])}`,
+    hedefGerceklesenToplam: satis.reduce((t, s) => t + (s.hedef !== null ? s.sozlesmeTutari : 0), 0),
   };
 }
 
@@ -341,9 +399,22 @@ export function personelSayfalari({ model, donemEtiket }: { model: PersonelModel
         ["Üzerine kayıt atanmamış aktif personel", sayi(model.atamasizPersonel)],
         ["Dönemde tahakkuk eden prim", para(model.primTahakkuk)],
         ["Dönemde ödenen prim", para(model.primOdenen)],
-        /* Hedef verisi yok; hücre boş bırakılıyor ve ekranda da
-           neden boş olduğu yazıyor. */
-        ["Hedef gerçekleşmesi", "Hedef tablosu tanımlı değil"],
+        /*
+          HEDEF SATIRI EKRANLA AYNI CÜMLEYİ KURUYOR. Üç hâl var ve
+          üçü de ayrı yazılıyor: dönem aylara oturmuyor, hedef
+          konmamış, hedef var. Dosyada boş bir hücre bırakmak,
+          "hedef tutturulmadı" ile "hedef konmamış"ı aynı gösterirdi.
+        */
+        ...(!model.hedefDonemUygun
+          ? [["Hedef gerçekleşmesi", "Dönem tam aylara oturmuyor"]]
+          : !model.hedefVerisiVar
+            ? [["Hedef gerçekleşmesi", "Bu döneme hedef konmamış"]]
+            : [
+                ["Dönemin toplam hedefi", para(model.hedefToplam)],
+                ["Hedefi olan personelin satışı", para(model.hedefGerceklesenToplam)],
+                ["Hedef gerçekleşmesi", { deger: (gerceklesme(model.hedefGerceklesenToplam, model.hedefToplam) ?? 0) / 100, bicim: "yuzde" as const }],
+                ...(model.hedefSurenAy ? [["Not", "Ölçülen ay henüz dolmadı"]] : []),
+              ]),
       ] as Hucre[][],
     },
     {
@@ -357,13 +428,26 @@ export function personelSayfalari({ model, donemEtiket }: { model: PersonelModel
         { baslik: "Dönüşüm", bicim: "yuzde" as const, genislik: 11 },
         { baslik: "Sözleşme", bicim: "sayi" as const, genislik: 11 },
         { baslik: "Sözleşme tutarı", bicim: "para" as const, genislik: 18 },
+        /* Hedef sütunları yalnızca hedef hesaplanabilen dönemde var:
+           boş bir sütun, hedefin konmadığını değil tutturulmadığını
+           düşündürürdü. */
+        ...(model.hedefDonemUygun
+          ? [
+              { baslik: "Hedef", bicim: "para" as const, genislik: 16 },
+              { baslik: "Gerçekleşme", bicim: "yuzde" as const, genislik: 14 },
+            ]
+          : []),
         { baslik: "Prim (tahakkuk)", bicim: "para" as const, genislik: 17 },
         { baslik: "Prim (ödenen)", bicim: "para" as const, genislik: 16 },
       ],
       satirlar: model.satis.map((s) => [
         s.ad, s.unvan, s.departman, s.talep, s.kazanilan,
         s.donusum === null ? null : s.donusum / 100,
-        s.sozlesmeAdet, lira(s.sozlesmeTutari), lira(s.primTahakkuk), lira(s.primOdenen),
+        s.sozlesmeAdet, lira(s.sozlesmeTutari),
+        ...(model.hedefDonemUygun
+          ? [s.hedef === null ? null : lira(s.hedef), s.hedefGerceklesme === null ? null : s.hedefGerceklesme / 100]
+          : []),
+        lira(s.primTahakkuk), lira(s.primOdenen),
       ]),
     },
     {

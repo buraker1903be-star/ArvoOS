@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { IkonAdi } from "@/lib/rapor-ikonlari";
 import type { Tutarsizlik } from "@/lib/rapor-tutarlilik";
 import { money, percent } from "@/lib/rapor-bicim";
@@ -25,7 +25,9 @@ export { money, percent } from "@/lib/rapor-bicim";
 // Sunum yardımcıları (yalnızca görünüm; veri mantığına dokunmaz)
 // ---------------------------------------------------------------
 /** Satır içi CSS değişkeni (ör. --w, --h). CSS tarafında her zaman fallback'li okunur. */
-export const cssVar = (name: string, value: string) => ({ [name]: value }) as CSSProperties;
+/* Tanımı lib/css-var.ts dosyasında; rapor dosyaları buradan almaya devam ediyor. */
+import { cssVar } from "@/lib/css-var";
+export { cssVar };
 export const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
 /** Düşülen kalemler için "−₺1.250"; sıfırsa işaretsiz "₺0". */
 export const deduction = (amount: number) => (amount ? `−${money(amount)}` : money(0));

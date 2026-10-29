@@ -5,6 +5,7 @@ import {
   type PersonelIsi, type PersonelKaydi, type PersonelPrimi, type PersonelSozlesmesi, type PersonelTalebi,
 } from "../../lib/rapor-personel";
 import type { Donem } from "../../lib/rapor-donemi";
+import type { HedefKaydi } from "../../lib/personel-hedefi";
 
 const EKIM: Donem = { startKey: "2026-10-01", endKey: "2026-10-31", key: "bu_ay" };
 const BUGUN = "2026-10-24";
@@ -40,6 +41,7 @@ const calistir = (girdi: {
   operasyonPrimleri?: PersonelPrimi[];
   donem?: Donem;
   departmanlar?: [string, string][];
+  hedefler?: HedefKaydi[];
 }) => personelModeli({
   donem: girdi.donem ?? EKIM,
   bugun: BUGUN,
@@ -50,20 +52,96 @@ const calistir = (girdi: {
   satisPrimleri: girdi.satisPrimleri ?? [],
   operasyonPrimleri: girdi.operasyonPrimleri ?? [],
   departmanAdi: new Map(girdi.departmanlar ?? [["d1", "Satış"], ["d2", "Operasyon"]]),
+  hedefler: girdi.hedefler ?? [],
 });
 
-describe("personel raporu — hedef verisi", () => {
-  it("hedef verisi YOK der, uydurma hedef üretmez", () => {
-    /*
-      `hedef`/`target`/`kota` adında hiçbir tablo yok
-      (docs/RAPORLAMA-ASAMA-1.md §2.1). Ortalamayı hedef yerine
-      koymak, kimsenin koymadığı bir hedefe göre "hedefin %60'ı"
-      yazmak olurdu.
-    */
-    assert.equal(calistir({}).hedefVerisiVar, false);
-    const sayfalar = personelSayfalari({ model: calistir({}), donemEtiket: "Bu ay" });
+describe("personel raporu — hedef", () => {
+  const hedef = (o: Partial<HedefKaydi> = {}): HedefKaydi => ({ employee_id: "e1", donem: "2026-10-01", tutar: 500_000, ...o });
+
+  it("hedef konmamışsa uydurma hedef üretmez", () => {
+    const m = calistir({});
+    assert.equal(m.hedefVerisiVar, false);
+    assert.equal(m.hedefToplam, 0);
+    const sayfalar = personelSayfalari({ model: m, donemEtiket: "Bu ay" });
     const satir = sayfalar[0].satirlar.find((r) => String(r[0]) === "Hedef gerçekleşmesi");
-    assert.equal(satir?.[1], "Hedef tablosu tanımlı değil");
+    assert.equal(satir?.[1], "Bu döneme hedef konmamış");
+  });
+
+  it("hedef konmuşsa gerçekleşme hesaplanıyor", () => {
+    const m = calistir({
+      talepler: [talep({})],
+      sozlesmeler: [sozlesme({ amount: 250_000 })],
+      hedefler: [hedef({ tutar: 500_000 })],
+    });
+    assert.equal(m.hedefVerisiVar, true);
+    assert.equal(m.hedefToplam, 500_000);
+    assert.equal(m.satis[0].hedef, 500_000);
+    assert.equal(m.satis[0].hedefGerceklesme, 50);
+  });
+
+  /*
+    Hedefi olup hiç satmayan kişi tablodan DÜŞÜYORDU: satırlar
+    yalnızca talep atanmış kişilerden kuruluyor ve hareketsiz olan
+    süzülüyordu. Hedef raporunda görülmesi en gereken kişi o.
+  */
+  it("hedefi olup hiç hareketi olmayan kişi tabloda kalıyor", () => {
+    const m = calistir({ hedefler: [hedef({ employee_id: "e1", tutar: 400_000 })] });
+    assert.equal(m.satis.length, 1);
+    assert.equal(m.satis[0].id, "e1");
+    assert.equal(m.satis[0].sozlesmeTutari, 0);
+    assert.equal(m.satis[0].hedefGerceklesme, 0);
+  });
+
+  it("hedefi olmayan kişinin hedefi boş, sıfır değil", () => {
+    const m = calistir({ talepler: [talep({})], sozlesmeler: [sozlesme({})], hedefler: [] });
+    assert.equal(m.satis[0].hedef, null);
+    assert.equal(m.satis[0].hedefGerceklesme, null);
+  });
+
+  /*
+    Hedefi konmamış kişinin satışı paya girseydi "hedefin %140'ı"
+    gibi bir sayı çıkardı: payda yalnızca hedefi olanların hedefi.
+  */
+  it("gerçekleşme payına yalnızca hedefi olanların satışı giriyor", () => {
+    const m = calistir({
+      personel: [kisi({}), kisi({ id: "e2", full_name: "Mehmet Kaya" })],
+      talepler: [talep({ id: "t1", assigned_employee_id: "e1" }), talep({ id: "t2", assigned_employee_id: "e2" })],
+      sozlesmeler: [sozlesme({ opportunity_id: "t1", amount: 100_000 }), sozlesme({ opportunity_id: "t2", amount: 900_000 })],
+      hedefler: [hedef({ employee_id: "e1", tutar: 200_000 })],
+    });
+    assert.equal(m.hedefToplam, 200_000);
+    assert.equal(m.hedefGerceklesenToplam, 100_000);
+  });
+
+  /* Aylık hedef yarım aya bölünmüyor; dönem oturmuyorsa hiç hesaplanmıyor. */
+  it("dönem tam aylara oturmuyorsa hedef hesaplanmıyor", () => {
+    const m = calistir({
+      donem: { startKey: "2026-10-05", endKey: "2026-10-20", key: "ozel" },
+      talepler: [talep({})],
+      hedefler: [hedef({})],
+    });
+    assert.equal(m.hedefDonemUygun, false);
+    assert.equal(m.hedefVerisiVar, false);
+    assert.equal(m.satis[0].hedef, null);
+    const sayfalar = personelSayfalari({ model: m, donemEtiket: "5–20 Ekim" });
+    const satir = sayfalar[0].satirlar.find((r) => String(r[0]) === "Hedef gerçekleşmesi");
+    assert.equal(satir?.[1], "Dönem tam aylara oturmuyor");
+  });
+
+  it("süren ay işaretleniyor", () => {
+    assert.equal(calistir({ hedefler: [hedef({})] }).hedefSurenAy, true);
+  });
+
+  /* Excel ile ekran aynı sayıyı göstermek zorunda: hedef sütunu
+     dosyada da var ve dönem uygun değilse iki taraf da çizmiyor. */
+  it("Excel satış sayfasında hedef sütunları ekranla aynı koşulda", () => {
+    const uygun = personelSayfalari({ model: calistir({ hedefler: [hedef({})] }), donemEtiket: "Bu ay" })[1];
+    assert.ok(uygun.sutunlar.some((c) => c.baslik === "Hedef"));
+    const uygunsuz = personelSayfalari({
+      model: calistir({ donem: { startKey: "2026-10-05", endKey: "2026-10-20", key: "ozel" }, talepler: [talep({})] }),
+      donemEtiket: "özel",
+    })[1];
+    assert.equal(uygunsuz.sutunlar.some((c) => c.baslik === "Hedef"), false);
   });
 });
 

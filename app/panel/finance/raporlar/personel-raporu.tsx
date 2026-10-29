@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import { tumSatirlar } from "@/lib/rapor-okuma";
+import { donemAylari, gerceklesme, type HedefKaydi } from "@/lib/personel-hedefi";
 import {
   personelModeli,
   type PersonelIsi, type PersonelKaydi, type PersonelModeli, type PersonelPrimi,
@@ -31,7 +32,18 @@ export async function personelVerisi({ supabase, organizationId, donem }: RaporG
   const pencereGunu = donem.startKey < seriBasi ? donem.startKey : seriBasi;
   const pencereBasi = istanbulMidnight(pencereGunu).toISOString();
 
-  const [personel, departmanlar, talepler, sozlesmeler, isler, satisPrimleri, operasyonPrimleri] = await Promise.all([
+  /*
+    HEDEFLER YALNIZCA DÖNEMİN AYLARI İÇİN okunuyor. Tablo kişi × ay
+    büyüyor; tamamını çekip bellekte süzmek PostgREST'in satır
+    tavanına çarptığı gün hedefleri SESSİZCE eksiltirdi
+    (AGENTS.md "Süzme, sayma ve sayfalama SUNUCUDA").
+
+    Dönem tam aylara oturmuyorsa hiç okunmuyor: model zaten hedef
+    hesaplamayacak, sorgu boşuna işlerdi.
+  */
+  const hedefKapsami = donemAylari(donem, bugun);
+
+  const [personel, departmanlar, talepler, sozlesmeler, isler, satisPrimleri, operasyonPrimleri, hedefler] = await Promise.all([
     /* Kadro TÜM personel: "ataması olmayan aktif personel" sayısı
        ancak tam kadroyla bilinir. Tablo kurum ölçeğinde küçük. */
     tumSatirlar<PersonelKaydi>("personel", (bas, son) =>
@@ -87,10 +99,20 @@ export async function personelVerisi({ supabase, organizationId, donem }: RaporG
         .or(`accrued_at.gte.${pencereBasi},paid_at.gte.${pencereBasi}`)
         .order("id")
         .range(bas, son)),
+    hedefKapsami
+      ? tumSatirlar<HedefKaydi>("hedefler", (bas, son) =>
+          supabase.from("hr_personel_hedefleri")
+            .select("employee_id,donem,tutar")
+            .eq("organization_id", organizationId)
+            .gte("donem", hedefKapsami.aylar[0])
+            .lte("donem", hedefKapsami.aylar[hedefKapsami.aylar.length - 1])
+            .order("id")
+            .range(bas, son))
+      : Promise.resolve([] as HedefKaydi[]),
   ]);
 
   return personelModeli({
-    donem, bugun, personel, talepler, sozlesmeler, isler, satisPrimleri, operasyonPrimleri,
+    donem, bugun, personel, talepler, sozlesmeler, isler, satisPrimleri, operasyonPrimleri, hedefler,
     departmanAdi: new Map(departmanlar.map((d) => [d.id, d.name])),
   });
 }
@@ -104,6 +126,14 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
   const enYuksekIs = Math.max(1, ...m.operasyon.map((o) => o.aktifIs));
   const enYuksekAy = Math.max(1, ...m.aylik.map((a) => Math.max(a.kazanilan, a.tamamlanan)));
   const toplamSatis = m.satis.reduce((t, s) => t + s.sozlesmeTutari, 0);
+  /* Kurumun toplam gerçekleşmesi: payda yalnızca hedefi OLANLARIN
+     hedefi, pay da yalnızca onların satışı (lib/rapor-personel). */
+  const hedefOrani = gerceklesme(m.hedefGerceklesenToplam, m.hedefToplam);
+  /* Hedef bölümünde yalnızca hedefi OLANLAR; hedefsiz kişiyi boş
+     çubukla listelemek "hedefini tutturamadı" gibi okunurdu. */
+  const hedefliler = m.satis.filter((s) => s.hedef !== null)
+    .sort((a, b) => (b.hedefGerceklesme ?? 0) - (a.hedefGerceklesme ?? 0));
+
   /*
     DİLİMLER AYRIK OLMAK ZORUNDA. Yığın "Satış / Operasyon /
     Atamasız" diye çiziliyordu ve iki işi de yapan kişi İKİ dilimde
@@ -148,10 +178,18 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
       ] },
     },
     {
-      label: "Hedef gerçekleşmesi", value: "—",
-      note: "Hedef tablosu tanımlı değil",
-      icon: "alert", tone: "info",
-      grafik: { tur: "durum", noktalar: [{ ad: "Veri yok", ton: "info" }] },
+      label: "Hedef gerçekleşmesi",
+      value: hedefOrani === null ? "—" : percent(hedefOrani),
+      note: !m.hedefDonemUygun
+        ? "Dönem tam aylara oturmuyor"
+        : !m.hedefVerisiVar
+          ? "Bu döneme hedef konmamış"
+          : `${money(m.hedefGerceklesenToplam)} / ${money(m.hedefToplam)}${m.hedefSurenAy ? " · ay sürüyor" : ""}`,
+      icon: hedefOrani === null ? "alert" : "seal",
+      tone: hedefOrani === null ? "info" : hedefOrani >= 100 ? "success" : hedefOrani >= 70 ? "gold" : "warning",
+      grafik: hedefOrani === null
+        ? { tur: "durum", noktalar: [{ ad: "Veri yok", ton: "info" }] }
+        : { tur: "gosterge", oran: Math.min(100, hedefOrani) },
     },
   ];
 
@@ -164,7 +202,8 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
         Satış ve operasyon <b>ayrı tablolar</b>: kişi yalnızca kendisine atanan kayıtlarla görünür,
         iki taraf tek bir puanda toplanmaz. Sözleşme, personele <b>talep üzerinden</b> bağlanır —
         sözleşmede personel alanı yok ve onu yazan kişi satışı yapan kişi olmak zorunda değil.
-        <b> Hedef verisi yok</b>: panelde hedef tablosu tanımlı değil, bu yüzden hedef bölümü boş.
+        <b> Hedef</b> aylık konur (İK → Hedefler): dönem tam aylara oturmuyorsa hesaplanmaz,
+        hedefi konmamış kişinin hücresi boş kalır — sıfır değil.
       </span>
     </p>
 
@@ -182,7 +221,11 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
               Dönüşüm, kişiye bu dönemde atanan talepten kazanıma geçiştir. Sözleşme tutarı,
               talebi o kişiye atanmış ve bu dönemde imzalanmış sözleşmelerin toplamıdır.
             </caption>
-            <thead><tr><th>Personel</th><th className="rpt-money">Talep</th><th className="rpt-money">Kazanılan</th><th>Dönüşüm</th><th className="rpt-money">Sözleşme</th><th className="rpt-money">Prim</th></tr></thead>
+            {/* Hedef sütunu yalnızca hesaplanabilen dönemde: boş bir
+                sütun, hedefin konmadığını değil tutturulmadığını
+                düşündürürdü. Excel çıktısı da aynı koşula bakıyor
+                (lib/rapor-personel, personelSayfalari). */}
+            <thead><tr><th>Personel</th><th className="rpt-money">Talep</th><th className="rpt-money">Kazanılan</th><th>Dönüşüm</th><th className="rpt-money">Sözleşme</th>{m.hedefDonemUygun ? <th className="rpt-money">Hedef</th> : null}<th className="rpt-money">Prim</th></tr></thead>
             <tbody>
               {m.satis.map((s) => <tr key={s.id}>
                 <th scope="row">
@@ -205,6 +248,14 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
                   </div>
                   {s.sozlesmeAdet ? <small className="rapor-alt-not">{s.sozlesmeAdet} sözleşme</small> : null}
                 </td>
+                {m.hedefDonemUygun ? (
+                  <td className="rpt-money">
+                    {s.hedef === null ? <span className="rapor-alt-not">Hedef konmamış</span> : <>
+                      {money(s.hedef)}
+                      <small className="rapor-alt-not">{s.hedefGerceklesme === null ? "—" : percent(s.hedefGerceklesme)}</small>
+                    </>}
+                  </td>
+                ) : null}
                 <td className="rpt-money">
                   {money(s.primTahakkuk)}
                   {s.primOdenen ? <small className="rapor-alt-not">{money(s.primOdenen)} ödendi</small> : null}
@@ -274,22 +325,64 @@ export async function PersonelRaporu({ supabase, organizationId, donem }: RaporG
       </section>
 
       <section className="rapor-blok">
-        <div className="rapor-blok-bas"><h3>Hedef gerçekleşmesi</h3><span>Hedef tablosu tanımlı değil</span></div>
-        {/*
-          BOŞ DURUM, UYDURMA HEDEF DEĞİL. Ortalamayı hedef yerine
-          koymak, kimsenin koymadığı bir hedefe göre "hedefin %60'ı"
-          yazmak olurdu — yöneticiye var olmayan bir karar zemini.
-        */}
-        <div className="rpt-empty" data-tone="info">
-          <span className="rpt-insight-icon"><Icon name="alert" size={20} /></span>
-          <b>Hedef verisi bulunmuyor</b>
-          <p>
-            Panelde kişi ya da dönem bazlı hedef tanımlanacak bir alan yok, bu yüzden
-            “hedefin yüzde kaçı” hesaplanamıyor. Buraya ortalamayı hedef gibi yazmak
-            yanıltıcı olurdu. Hedef takibi istenirse kişi ve döneme bağlı bir hedef
-            kaydı eklenmesi gerekiyor; rapor o veriyi gördüğü anda bu bölümü doldurur.
-          </p>
+        <div className="rapor-blok-bas">
+          <h3>Hedef gerçekleşmesi</h3>
+          <span>{m.hedefDonemUygun && m.hedefVerisiVar ? `${m.hedefAyEtiketi} · aylık satış hedefi` : "Aylık satış hedefi"}</span>
         </div>
+        {/*
+          ÜÇ HÂL AYRI YAZILIYOR. "Dönem oturmuyor", "hedef konmamış"
+          ve "hedef var" aynı boş kutuyla gösterilseydi yönetici
+          hedefi koyduğu hâlde raporu boş görür ve nedenini
+          bilemezdi. İlk ikisi ÇIKMAZ DEĞİL: ikisinde de ne
+          yapılacağı yazıyor.
+        */}
+        {!m.hedefDonemUygun ? (
+          <div className="rpt-empty" data-tone="info">
+            <span className="rpt-insight-icon"><Icon name="alert" size={20} /></span>
+            <b>Dönem tam aylara oturmuyor</b>
+            <p>
+              Hedef aylık konuyor; seçtiğiniz aralık bir ayın ortasında başlıyor ya da bitiyor.
+              Aylık hedefi güne bölüp oran yazmak, kimsenin koymadığı bir günlük hedefe
+              dayanırdı. “Bu ay”, “Geçen ay” ya da “Bu yıl” aralıklarında hedef gerçekleşmesi
+              görünür.
+            </p>
+          </div>
+        ) : !m.hedefVerisiVar ? (
+          <div className="rpt-empty" data-tone="info">
+            <span className="rpt-insight-icon"><Icon name="alert" size={20} /></span>
+            <b>Bu döneme hedef konmamış</b>
+            <p>
+              Hedef kişi ve ay bazında giriliyor. {m.hedefAyEtiketi} için hedef girildiğinde bu bölüm
+              kendiliğinden dolar; girilmediği sürece buraya ortalama ya da tahmin yazılmıyor.
+            </p>
+            <Link href="/panel/hr/hedefler" className="rapor-kayit-link"><b>Hedef gir</b></Link>
+          </div>
+        ) : (
+          <>
+            <ul className="rpt-hedef">
+              {hedefliler.map((s) => (
+                <li key={s.id}>
+                  <div className="rpt-hedef-top">
+                    <Link href={`/panel/hr/${s.id}`} className="rapor-kayit-link"><b>{s.ad}</b></Link>
+                    <span>{s.hedefGerceklesme === null ? "—" : percent(s.hedefGerceklesme)}</span>
+                  </div>
+                  {/* Çubuk %100'de duruyor ama yazı gerçeği söylüyor:
+                      hedefi iki katı aşan satırı ekranın dışına taşan
+                      bir çubukla çizmek listeyi okunmaz yapardı. */}
+                  <div className="rpt-hedef-track" data-tuttu={(s.hedefGerceklesme ?? 0) >= 100 ? "evet" : undefined}>
+                    <i style={cssVar("--w", `${Math.max(2, Math.min(100, s.hedefGerceklesme ?? 0))}%`)} />
+                  </div>
+                  <div className="rpt-hedef-alt">{money(s.sozlesmeTutari)} / {money(s.hedef ?? 0)}</div>
+                </li>
+              ))}
+            </ul>
+            {m.hedefSurenAy ? (
+              <p className="rpt-empty-note">
+                Ölçülen ay henüz dolmadı; gerçekleşme ay sonuna kadar yükselmeye devam eder.
+              </p>
+            ) : null}
+          </>
+        )}
       </section>
     </div>
   </>;

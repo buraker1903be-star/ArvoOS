@@ -168,6 +168,10 @@ export const YETKI_GRUPLARI: readonly { id: string; modul: string | null; baslik
       { key: "hr.ekip.yonet", modul: "hr", label: "Ekip yönetimi", aciklama: "Personel davet eder, rol atar, erişimi açıp kapatır", varsayilan: YONETIM },
       { key: "hr.personel.yonet", modul: "hr", label: "Personel kayıtları", aciklama: "Personel ve departman kayıtlarını düzenler", varsayilan: YONETIM, rlsBagli: true },
       { key: "hr.ozluk.yonet", modul: "hr", label: "Özlük dosyaları", aciklama: "Özlük belgelerini yükler, indirir, siler", varsayilan: YONETIM, rlsBagli: true },
+      /* Hedef yazma RLS'te de owner/admin (20261029181748); yetenek
+         varsayılanı YONETIM onunla AYNI kümeye bakmak zorunda, yoksa
+         düğme görünür ama satır sessizce elenirdi. */
+      { key: "hr.hedef.yonet", modul: "hr", label: "Satış hedefleri", aciklama: "Personelin aylık satış hedefini koyar ve değiştirir", varsayilan: YONETIM, rlsBagli: true },
       { key: "hr.prim.gor", modul: "hr", label: "Prim hesaplarını görme", aciklama: "Personel prim hesaplarını görüntüler", varsayilan: YONETIM_VE_SEF },
       { key: "hr.prim.yonet", modul: "hr", label: "Prim ödemesi", aciklama: "Prim ödemesi kaydeder", varsayilan: YONETIM, rlsBagli: true },
       { key: "hr.hareket.gor", modul: "hr", label: "Personel hareketleri", aciklama: "Personelin panel hareket geçmişini görür", varsayilan: YONETIM_VE_SEF },

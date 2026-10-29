@@ -32,11 +32,25 @@ yabancı anahtarlarla kurulabiliyor.
 
 ## 2. EKSİK VERİ — bunlar uydurulamaz
 
-### 2.1 Hedefler yok
-`hedef`, `target`, `kota`, `budget` adında **hiçbir tablo yok**.
-"Hedef gerçekleşmeleri" hesaplanamaz. Şartname bunu koşullu yazmış
-("hedefler tanımlanmışsa"); rapor o bölümü boş durum mesajıyla
-göstermeli, uydurma bir hedef üretmemeli.
+### 2.1 Hedefler yok — **YAPILDI (29.10.2026)**
+Bu maddenin yazıldığı gün `hedef`, `target`, `kota`, `budget` adında
+hiçbir tablo yoktu ve rapor "hedef verisi yok" diyordu; hedefi girecek
+bir yer de yoktu, yani program eksiği söyleyip kapatmanın yolunu
+vermiyordu.
+
+Kurulan: `hr_personel_hedefleri` (kurum, personel, ay, tutar — kuruş;
+migration 20261029181748), giriş ekranı **İK → Hedefler**
+(`/panel/hr/hedefler`, yetki `hr.hedef.yonet`) ve raporun hedef
+bölümü.
+
+Uydurma hedef yine yok, üç kural kodda sabit:
+- Hedefi konmamış kişinin hücresi **boş**, sıfır değil — sıfır yazmak
+  o kişiyi %0 gerçekleşmeyle gösterirdi.
+- Dönem **tam aylara oturmuyorsa** hedef hiç hesaplanmaz: aylık hedefi
+  güne bölmek kimsenin koymadığı bir günlük hedef üretir
+  (`lib/personel-hedefi.ts`).
+- Gerçekleşme paydası yalnızca **hedefi olanların** hedefi, payı da
+  yalnızca onların satışı.
 
 **Gerekirse:** `hr_employee_targets` (organization_id, employee_id,
 donem, tutar) gibi küçük bir tablo + panelde giriş ekranı. Ayrı iş.

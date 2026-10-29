@@ -748,3 +748,18 @@ body.rapor-kilit{overflow:hidden}
 .rapor-tanim.is-hata svg{color:var(--danger)}
 .rapor-tutarsizlik{margin:6px 0 0;padding-left:18px}
 .rapor-tutarsizlik li{margin-top:3px;font-variant-numeric:tabular-nums}
+
+/*
+  HEDEF GERÇEKLEŞMESİ listesi. Yapısı kayıp sebepleri listesiyle aynı
+  (.rpt-lost) ama rengi ayrı: oradaki çubuk `--danger` ile çiziliyor,
+  "hedefin %80'i" kırmızı bir çubukla gösterilseydi tutturulmuş bir
+  hedef bile kayıp gibi okunurdu. Hedefi geçen satır yeşile dönüyor.
+*/
+.rpt-hedef{display:flex;flex-direction:column;gap:14px;margin:0;padding:0;list-style:none}
+.rpt-hedef-top{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:13.5px}
+.rpt-hedef-top b{min-width:0;color:var(--ink);font-weight:600;overflow-wrap:anywhere}
+.rpt-hedef-top span{flex:none;color:var(--muted);font-variant-numeric:tabular-nums}
+.rpt-hedef-track{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.rpt-hedef-track i{display:block;width:var(--w,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--brand-400),var(--brand-500));transform-origin:left;animation:rpt-fill .9s var(--rpt-ease) both}
+.rpt-hedef-track[data-tuttu="evet"] i{background:linear-gradient(90deg,color-mix(in srgb,var(--success) 62%,var(--surface)),var(--success))}
+.rpt-hedef-alt{margin-top:5px;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}

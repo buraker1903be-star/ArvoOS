@@ -1,0 +1,45 @@
+/*
+  Satış hedefleri ekranı. Yapı panelin kayıt kartlarıyla aynı
+  (kayit-detay.css); buradaki yalnızca tablo ve ay şeridi.
+*/
+.hedefler-sayfa{display:flex;flex-direction:column;gap:16px}
+.hedefler-rapor-link{flex:none;align-self:flex-start}
+
+.hedefler-aylar{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.hedefler-ay{flex:none;padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+.hedefler-ay:hover{border-color:var(--brand-400);color:var(--ink)}
+.hedefler-ay.is-active{border-color:var(--brand-500);background:var(--brand-500);color:#fff}
+
+.hedefler-kart{display:flex;flex-direction:column;gap:14px}
+.hedefler-ozet{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hedefler-ozet div{display:flex;flex-direction:column;gap:2px}
+.hedefler-ozet b{color:var(--ink);font-size:15px}
+.hedefler-ozet span{color:var(--muted);font-size:13px}
+.hedefler-bos{margin:0;color:var(--muted);font-size:13.5px}
+
+.hedefler-form{display:flex;flex-direction:column;gap:14px}
+.hedefler-tablo{width:100%;border-collapse:collapse;font-size:14px}
+.hedefler-tablo caption{margin-bottom:10px;color:var(--muted);font-size:12.5px;line-height:1.5;text-align:left}
+.hedefler-tablo th,.hedefler-tablo td{padding:9px 10px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:middle}
+.hedefler-tablo thead th{color:var(--muted);font-size:12.5px;font-weight:600}
+.hedefler-tablo tbody th{font-weight:500}
+.hedefler-tablo tbody th b{display:block;color:var(--ink);font-weight:600}
+.hedefler-tablo tbody th small{display:block;margin-top:1px;color:var(--muted);font-size:12.5px}
+.hedefler-tablo tbody th a{color:inherit;text-decoration:none}
+.hedefler-tablo tbody th a:hover b{text-decoration:underline}
+.hedefler-tutar-bas{text-align:right}
+.hedefler-tutar{text-align:right}
+.hedefler-tutar input{width:min(100%,170px);padding:8px 11px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+.hedefler-tutar input:focus-visible{outline:2px solid var(--brand-400);outline-offset:1px}
+.hedefler-tutar input:disabled{background:var(--surface-2);color:var(--muted)}
+
+.hedefler-dagilim{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.hedefler-dagilim-bas{display:flex;justify-content:space-between;gap:10px;margin-bottom:5px;font-size:13.5px}
+.hedefler-dagilim-bas b{color:var(--ink);font-weight:600}
+.hedefler-dagilim-bas span{flex:none;color:var(--muted);font-variant-numeric:tabular-nums}
+.hedefler-dagilim-iz{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.hedefler-dagilim-iz i{display:block;width:var(--w,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--brand-400),var(--brand-500))}
+
+@media (max-width:760px){
+  .hedefler-tablo td:nth-child(2),.hedefler-tablo th:nth-child(2){display:none}
+}

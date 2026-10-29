@@ -9,6 +9,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { CONFIDENTIALITY_AGREEMENT_TEXT, CONFIDENTIALITY_AGREEMENT_VERSION, confidentialityAgreementNumber } from "@/lib/confidentiality-agreement";
 import { assertYetki } from "@/lib/yetkiler";
+import { kurusOku } from "@/lib/turkish-amount";
 
 const text=(formData:FormData,key:string,max=300)=>String(formData.get(key)??"").trim().slice(0,max);
 const CALISMA_TIPLERI=["full_time","part_time","contractor","intern"];
@@ -276,4 +277,66 @@ async function personelSil__impl(formData: FormData) {
 
 export async function personelSil(...args: Parameters<typeof personelSil__impl>) {
   return runPanelAction(() => personelSil__impl(...args), "Personel kaydı silindi");
+}
+
+/*
+  AYLIK SATIŞ HEDEFLERİ (29.10.2026).
+
+  Personel Performansı raporu "hedef verisi yok" diyordu ve hedefi
+  girecek hiçbir yer yoktu (docs/RAPORLAMA-ASAMA-1.md §2.1). Hedef
+  kişi × ay başına bir satır; form bütün kadroyu tek seferde yazıyor
+  çünkü hedef tek tek değil, ay başında toplu konur.
+
+  BOŞ BIRAKILAN KUTU "SIFIR HEDEF" DEĞİL, "hedef yok": satır
+  siliniyor. Sıfır yazmak kişiyi raporda %0 gerçekleşmeyle
+  gösterirdi. Sıfırı bilerek yazmak isteyen "0" yazar — o satır
+  kalır.
+*/
+async function hedefleriKaydet__impl(formData: FormData) {
+  const context = await getPanelContext();
+  if (!context.modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
+  assertYetki(context.yetkiler, "hr.hedef.yonet");
+  assertModuleKeyAccess(context.membership.role, "hr", context.hiddenModuleKeys);
+  const { supabase, membership } = context;
+
+  const ay = text(formData, "ay", 10);
+  if (!/^\d{4}-\d{2}-01$/.test(ay)) throw new Error("Hedef ayı okunamadı.");
+
+  /*
+    Kadro sunucudan okunuyor, formdan GELEN kimliklere güvenilmiyor:
+    gönderilen alan adı başka kurumun personel kimliğini taşıyabilir.
+    Tetikleyici de aynı kuralı veritabanında uyguluyor, bu okuma
+    kullanıcıya anlaşılır hata vermek için.
+  */
+  const { data: kadro, error: kadroHatasi } = await supabase
+    .from("hr_employees").select("id").eq("organization_id", membership.organization_id);
+  if (kadroHatasi) throw new Error("Personel listesi okunamadı: " + kadroHatasi.message);
+
+  const yazilacak: { organization_id: string; employee_id: string; donem: string; tutar: number; olusturan: string }[] = [];
+  const silinecek: string[] = [];
+  for (const { id } of kadro ?? []) {
+    const deger = String(formData.get(`hedef_${id}`) ?? "").trim();
+    if (!deger) { silinecek.push(id); continue; }
+    const tutar = kurusOku(deger);
+    if (!Number.isFinite(tutar) || tutar < 0) throw new Error("Hedef tutarı geçersiz: " + deger);
+    yazilacak.push({ organization_id: membership.organization_id, employee_id: id, donem: ay, tutar, olusturan: context.userId });
+  }
+
+  if (yazilacak.length) {
+    const { error } = await supabase.from("hr_personel_hedefleri")
+      .upsert(yazilacak, { onConflict: "organization_id,employee_id,donem" });
+    if (error) throw new Error("Hedefler kaydedilemedi: " + error.message);
+  }
+  if (silinecek.length) {
+    const { error } = await supabase.from("hr_personel_hedefleri").delete()
+      .eq("organization_id", membership.organization_id).eq("donem", ay).in("employee_id", silinecek);
+    if (error) throw new Error("Boşaltılan hedefler kaldırılamadı: " + error.message);
+  }
+
+  revalidatePath("/panel/hr/hedefler");
+  revalidatePath("/panel/finance/raporlar");
+}
+
+export async function hedefleriKaydet(...args: Parameters<typeof hedefleriKaydet__impl>) {
+  return runPanelAction(() => hedefleriKaydet__impl(...args), "Hedefler kaydedildi");
 }

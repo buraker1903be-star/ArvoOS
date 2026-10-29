@@ -91,6 +91,9 @@ export function ikBolumleri(): Bolum[] {
     { key: "personel", href: "/panel/hr", label: "Personel" },
     // Departmanlar 29.10.2026'da kendi sayfasına çıktı (eskiden yalnızca "⋯" menüsünden açılabiliyordu).
     { key: "departmanlar", href: "/panel/hr/departmanlar", label: "Departmanlar" },
+    /* Hedefler 29.10.2026'da eklendi: Personel Performansı raporu
+       "hedef verisi yok" diyordu ve hedefi girecek hiçbir yer yoktu. */
+    { key: "hedefler", href: "/panel/hr/hedefler", label: "Hedefler" },
   ];
 }
 
