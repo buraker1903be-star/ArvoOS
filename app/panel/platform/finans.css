@@ -92,3 +92,4 @@
 .sy-sekmeler .pu-sayi{margin-left:0}
 .sy-sekmeler .pu-sayi[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
 .os-root .ek-sag .pu-liste li>a[aria-current="true"]{background:var(--surface-2)}
+.os-root .sistem-sayfa .sy-tur{flex:none;align-self:flex-start;margin:0 0 var(--sp-3)}
