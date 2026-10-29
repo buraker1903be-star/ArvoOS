@@ -123,6 +123,28 @@ const telefonYazisi = (n: string) => n.replace(/^90(\d{3})(\d{3})(\d{2})(\d{2})$
 const bas = (ad: string) => ad.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr-TR") ?? "").join("") || "?";
 
 /*
+  Boş durum: simge, ne olmadığı ve neden. Eskiden tek satırlık soluk bir
+  metindi; sekme boşken kartın ortasında yalnız bir cümle kalıyordu ve
+  yönetici bunun "yazışma yok" mu "okunamadı" mı olduğunu ayırt
+  edemiyordu (29.10.2026).
+*/
+function Bos({ simge, baslik, aciklama }: { simge: "mesaj" | "posta"; baslik: string; aciklama: string }) {
+  return (
+    <div className="yz-bos">
+      <span className="yz-bos-simge" aria-hidden="true">
+        {simge === "mesaj" ? (
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z" /></svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+        )}
+      </span>
+      <b>{baslik}</b>
+      <small>{aciklama}</small>
+    </div>
+  );
+}
+
+/*
   Görünüm (29.10.2026, kurum sahibinin isteği: personel sayfasının
   Hareketler sekmesiyle "aynı kalitede"). Bileşen bütün kayıt
   sayfalarında ortak; düzen de ortak. Eskiden iki sekme de düz satır
@@ -161,7 +183,11 @@ export function WhatsappAkisi({ mesajlar, numara, musteri, kisi = "musteri" }: {
           </section>
         ))
       ) : (
-        <p className="yz-bos">{numara ? "Bu numarayla WhatsApp yazışması yok." : `${KISI[kisi].iyelik} cep telefonu kayıtlı değil ya da biçimi tanınmıyor.`}</p>
+        numara ? (
+          <Bos simge="mesaj" baslik="Henüz WhatsApp yazışması yok" aciklama="Bu numarayla gelen ya da giden mesaj olduğunda burada gün gün görünür." />
+        ) : (
+          <Bos simge="mesaj" baslik="Cep telefonu yok" aciklama={`${KISI[kisi].iyelik} cep telefonu kayıtlı değil ya da biçimi tanınmıyor; kartta numarayı düzenleyin.`} />
+        )
       )}
     </div>
   );
@@ -208,7 +234,11 @@ export function PostaAkisi({ postalar, epostaVar, eylem, kisi = "musteri" }: { p
           })}
         </ul>
       ) : (
-        <p className="yz-bos">{epostaVar ? `${KISI[kisi].ile} posta yazışması yok.` : `${KISI[kisi].iyelik} e-posta adresi kayıtlı değil; ${KISI[kisi].baglanti}.`}</p>
+        epostaVar ? (
+          <Bos simge="posta" baslik="Henüz posta yazışması yok" aciklama={`${KISI[kisi].ile} yazışma olduğunda burada görünür.`} />
+        ) : (
+          <Bos simge="posta" baslik="E-posta adresi yok" aciklama={`${KISI[kisi].iyelik} e-posta adresi kayıtlı değil; ${KISI[kisi].baglanti}.`} />
+        )
       )}
     </div>
   );
