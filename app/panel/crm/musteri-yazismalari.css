@@ -5,13 +5,19 @@
   sınıfın CSS'ini import etmezse yenilemede düzen dağılır).
 */
 .yz{display:flex;flex-direction:column;gap:var(--sp-4)}
-.os-root .talep-akis-panel>.musteri-mesajlar.yz{padding:var(--sp-4)}
+/* Sayfalar bileşeni sekme panelinin içinde bir <div> ile sarıyor; doğrudan
+   çocuk seçicisi (>) eşleşmiyor ve içerik kartın kenarına yapışıyordu. */
+.os-root .talep-akis-panel .musteri-mesajlar.yz{padding:var(--sp-4)}
 .yz-bas{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--sp-2) var(--sp-3)}
+.yz-bas{padding-bottom:var(--sp-3);border-bottom:1px solid var(--line-soft)}
 .yz-bas h2{margin:0;font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--ink)}
 .yz-bas small{display:block;margin-top:2px;color:var(--muted);font-size:var(--fs-sm)}
 .yz-arac{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
 .os-root .yz-git{min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
-.yz-bos{margin:0;padding:var(--sp-5) var(--sp-4);border:1px dashed var(--line);border-radius:var(--r-md);text-align:center;color:var(--muted);font-size:var(--fs-sm)}
+.yz-bos{display:flex;flex-direction:column;align-items:center;gap:var(--sp-1);padding:var(--sp-8) var(--sp-4);text-align:center}
+.yz-bos-simge{display:grid;place-items:center;width:44px;height:44px;margin-bottom:var(--sp-2);border-radius:50%;background:var(--surface-2);color:var(--muted)}
+.yz-bos b{color:var(--ink);font-size:var(--fs-base);font-weight:var(--fw-semibold)}
+.yz-bos small{max-width:360px;color:var(--muted);font-size:var(--fs-sm);line-height:var(--lh-base)}
 
 /* WhatsApp: gün ayracı ve yöne göre baloncuk. */
 .yz-gun h3{display:flex;align-items:center;gap:var(--sp-3);margin:0 0 var(--sp-3);color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-semibold)}
@@ -44,7 +50,7 @@
 .yz-posta-alt .status-pill{flex:none}
 .yz-yeni{position:absolute;top:calc(var(--sp-3) + 12px);left:6px;width:6px;height:6px;border-radius:50%;background:var(--primary)}
 @media (max-width:760px){
-  .os-root .talep-akis-panel>.musteri-mesajlar.yz{padding:var(--sp-3)}
+  .os-root .talep-akis-panel .musteri-mesajlar.yz{padding:var(--sp-3)}
   .yz-baloncuklar li{max-width:92%}
   .yz-postalar a{padding:var(--sp-3)}
 }
