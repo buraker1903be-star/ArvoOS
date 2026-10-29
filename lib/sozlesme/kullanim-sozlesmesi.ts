@@ -36,7 +36,10 @@
 */
 import { absoluteUrl, COMPANY, pathFor } from "@/lib/site/routes";
 
-export const SOZLESME_SURUMU = "2026-10-29";
+/* 2026-10-29.2 (aynı gün): 5. madde otomatik yenilemeyi anlatıyordu; otomatik
+   çekim aynı gün kapatıldı, her kartlı ödeme 3D Secure (lib/paytr-kart-akisi
+   otomatikYenilemeAcik). ArvoLab'daki sürüm adlandırmasıyla aynı biçim. */
+export const SOZLESME_SURUMU = "2026-10-29.2";
 
 export type SozlesmeBolumu = { baslik: string; paragraflar: string[] };
 export type SozlesmeMetni = { baslik: string; giris: string; bolumler: SozlesmeBolumu[] };
@@ -85,7 +88,7 @@ export function kullanimSozlesmesi(): SozlesmeMetni {
         baslik: "5. Lisans, ücret ve ödeme",
         paragraflar: [
           "Platform, Kurum'un seçtiği paket ve ek kalemler (ör. paket sınırını aşan kullanıcılar) için aylık ya da yıllık lisans bedeli karşılığında sunulur. Bedel, dönem başında proforma ile bildirilir ve havale/EFT ya da Şirket'in anlaşmalı ödeme kuruluşu aracılığıyla kartla ödenir. Kart bilgileri Şirket tarafından saklanmaz.",
-          "Varsayılan olarak karttan otomatik çekim yapılmaz. Kurum kartını kaydedip otomatik yenilemeyi açıkça seçerse dönem bedeli dönem sonunda kayıtlı karttan tahsil edilir; otomatik yenileme dilendiği zaman kapatılabilir.",
+          "Kartla yapılan her ödeme 3D Secure ile, kartı çıkaran bankanın doğrulamasıyla alınır. Karttan otomatik çekim yapılmaz; her dönemin bedeli Kurum'un kendi onayıyla ödenir.",
           "Dönem bedeli ödenmezse Şirket önce hatırlatır; ödeme yapılmadıkça Panel'in kullanımı kısıtlanabilir. Kısıtlama Kurum Verisi'ni silmez; ödeme, giriş ve destek yolları açık kalır.",
         ],
       },
