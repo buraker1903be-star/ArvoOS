@@ -6,11 +6,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMemberDirectory, type DirectoryRow } from "@/lib/member-directory";
 import { productName } from "@/lib/products";
 import { formatPersonName } from "@/lib/format-name";
-import { Fragment, type ReactNode } from "react";
-import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
-import { sayi, tarih, tarihSaat } from "../bicim";
+import { KNot } from "../konsol-ui";
+import { basHarfleri, sayi, tarih, tarihSaat } from "../bicim";
+import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { roleNames } from "../../hr/role-names";
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /*
   KULLANICILAR (14.10.2026, kurum sahibinin tarifi).
@@ -233,11 +240,28 @@ export default async function KullanicilarPage({ searchParams }: {
   const urunDagilimi = dagilim(aktifler.flatMap((k) => [...new Set(k.uyelikler.filter((u) => u.acik).flatMap((u) => u.urunler))]));
   const suresiGecenDavet = davetler.filter((d) => d.suresiGecti).length;
 
-  return <main className="plt talep cari ekip liste-sayfa">
+  const bos = (baslik: string, aciklama: string) => (
+    <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
+  );
+  const kisiYazisi = (kisi: Kisi) => [kisi.email && kisi.email !== kisi.ad ? kisi.email : null, kisi.unvan].filter(Boolean).join(" · ");
+
+  /*
+    PANELİN TABLOSU (29.10.2026, konsol yeniden kurulurken). Kişi satırı
+    iOS satırıydı: e-posta, telefon, unvan, kurum rozetleri ve rol aynı
+    satırın altına ve sonuna dağılıyordu; kalabalık bir kişide kurum
+    rozetleri ikinci, üçüncü satıra taşıp listeyi okunmaz yapıyordu.
+    Artık Ekip ve Müşteriler listesiyle aynı tablo: kişi, kurumlar,
+    telefon, rol ve durum ayrı sütunlarda. Evre seçimi segment.
+
+    Kişi satırının açılacak bir ekranı yok: ok bilerek konmadı; e-posta
+    ve telefon yine tıklanır bağlantı.
+  */
+  return <main className="plt talep cari ekip talepler teklifler liste-sayfa kisi-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · KULLANICILAR</small>
+        <small className="panel-kicker"><Link href="/panel/platform/musteriler">MÜŞTERİLER</Link></small>
         <h1>Kullanıcılar</h1>
+        <p className="ek-alt">{sayi(kisiler.length)} kişi · {sayi(aktifler.length)} aktif · {sayi(kisiler.filter((k) => k.bireysel).length)} bireysel · ArvoOS ve ArvoLab birlikte</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/musteriler">Müşteriler</Link>
@@ -264,16 +288,14 @@ export default async function KullanicilarPage({ searchParams }: {
 
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label={EVRELER.find((e) => e.kod === secili)!.ad}>
-        <div className="ekip-suzgec talep-suzgec">
-          {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
-              masaüstünde sarmalayıcı display:contents ile görünmez. */}
-          <div className="suzgec-ray">
+        <div className="ekip-suzgec talep-suzgec ek-arac">
+          <nav className="ek-segment" aria-label="Evre">
             {EVRELER.map((e) => (
               <Link key={e.kod} href={adres(e.kod)} className={secili === e.kod ? "is-active" : undefined} aria-current={secili === e.kod ? "page" : undefined}>
                 {e.ad} <small>{sayi(sayim[e.kod])}</small>
               </Link>
             ))}
-          </div>
+          </nav>
           {secili !== "davet" ? (
             <form action="/panel/platform/kullanicilar" className="talep-ara" role="search">
               <input type="hidden" name="evre" value={secili} />
@@ -282,9 +304,7 @@ export default async function KullanicilarPage({ searchParams }: {
           ) : null}
         </div>
 
-        {/* Eksik veriyle dolu bir liste, dolu bir liste gibi görünür.
-            (Eskiden sayfanın üstünde renkli bir şeritti; şimdi listenin
-            kendi kartında, okunduğu yerde.) */}
+        {/* Eksik veriyle dolu bir liste, dolu bir liste gibi görünür. */}
         {!arvolabReachable || !kullanicilarTam ? (
           <KNot ton="uyari">
             <b>Liste eksik olabilir.</b>
@@ -296,105 +316,111 @@ export default async function KullanicilarPage({ searchParams }: {
         {secili === "davet" ? (
           admin ? (
             davetOkumasi.okunamadi ? (
-              <KBos baslik="Davetler okunamadı" aciklama="Sorgu yanıt vermedi; “bekleyen davet yok” demek değil. Sayfayı yenileyin." />
+              bos("Davetler okunamadı", "Sorgu yanıt vermedi; “bekleyen davet yok” demek değil. Sayfayı yenileyin.")
             ) : davetler.length ? (
-              /* iOS LİSTESİ (14.10.2026): eskiden yedi sütunlu tabloydu
-                 (E-posta, Kurum, Rol, Durum, Davet, Geçerlilik). Şimdi
-                 kurum · rol · davet tarihi tek satırda; sağda durum ve son
-                 geçerlilik. */
-              <KListe>
-                {davetler.map((davet) => {
-                  const { suresiGecti } = davet;
-                  const kurumAdi = kurumAdlari.get(davet.organization_id) ?? "Kurum";
-                  const kurumAdresi = `/panel/platform/musteriler/${davet.organization_id}?pencere=ayarlar`;
-                  const durum = {
-                    etiket: suresiGecti ? "Süresi geçti" : davet.status === "failed" ? "Gönderilemedi" : "Bekliyor",
-                    ton: suresiGecti ? "danger" : davet.status === "failed" ? "danger" : "warning",
-                  };
+              <div className="talep-tablo">
+                <table className="crm-data-table" data-cols="ku-davet">
+                  <thead><tr><th>E-posta</th><th>Kurum</th><th>Rol</th><th className="crm-col-date">Davet</th><th className="crm-col-date">Son geçerlilik</th><th>Durum</th><th></th></tr></thead>
+                  <tbody>
+                    {davetler.map((davet) => {
+                      const { suresiGecti } = davet;
+                      const kurumAdi = kurumAdlari.get(davet.organization_id) ?? "Kurum";
+                      /* Satır kurumun Kurulum sekmesine gider: davet orada yeniden gönderilir. */
+                      const kurumAdresi = `/panel/platform/musteriler/${davet.organization_id}?pencere=ayarlar`;
+                      const durum = {
+                        etiket: suresiGecti ? "Süresi geçti" : davet.status === "failed" ? "Gönderilemedi" : "Bekliyor",
+                        ton: suresiGecti ? "danger" : davet.status === "failed" ? "danger" : "warning",
+                      };
+                      return (
+                        <tr key={davet.id}>
+                          <td data-label="E-posta">
+                            <Link className="crm-row-link ek-kisi" href={kurumAdresi}>
+                              <span className="ek-avatar" data-tur="bireysel" aria-hidden="true">{basHarfleri(davet.email)}</span>
+                              <span className="ek-kisi-metin"><span className="crm-table-title" title={davet.email}>{davet.email}</span><span className="crm-table-sub">davet edildi</span></span>
+                            </Link>
+                          </td>
+                          <td data-label="Kurum"><span className="crm-table-title">{kurumAdi}</span></td>
+                          <td data-label="Rol"><span className="crm-table-sub">{davet.role ? rolAdi(davet.role, "arvoos") : "—"}</span></td>
+                          <td className="crm-col-date" data-label="Davet">{tarihSaat(davet.sent_at ?? davet.created_at)}</td>
+                          <td className="crm-col-date" data-label="Son geçerlilik">{tarih(davet.expires_at)}</td>
+                          <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                          <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                          <MobilSatir href={kurumAdresi} baslik={davet.email} durum={durum}
+                            alt={[kurumAdi, davet.role ? rolAdi(davet.role, "arvoos") : null, `son gün ${tarih(davet.expires_at)}`]} />
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <SatirTiklama />
+              </div>
+            ) : bos("Bekleyen davet yok", "Davet edilip hiç giriş yapmamış kimse yok.")
+          ) : bos("Davetler okunamıyor", "Sunucu anahtarı tanımlı olmadığı için davetler okunamıyor — “davet yok” demek değil.")
+        ) : gosterilen.length ? (
+          <div className="talep-tablo">
+            <table className="crm-data-table" data-cols="ku-kisi">
+              <thead><tr><th>Kişi</th><th>Kurumlar</th><th>Telefon</th><th>Rol</th><th>Durum</th></tr></thead>
+              <tbody>
+                {gosterilen.map((kisi) => {
+                  const kurumSayisi = kisi.uyelikler.filter((u) => !u.bireysel).length;
+                  const rol = kisininRolu(kisi);
+                  const durum = kisi.acik ? { etiket: "Aktif", ton: "success" } : { etiket: kisi.sebep ?? "Erişim kapalı", ton: "danger" };
+                  const alt = kisiYazisi(kisi);
                   return (
-                    /* Satır kurumun dosyasına gider: davet orada yeniden gönderilir. */
-                    <KOge
-                      key={davet.id}
-                      href={kurumAdresi}
-                      baslik={davet.email}
-                      alt={[kurumAdi, davet.role ? rolAdi(davet.role, "arvoos") : null, `davet ${tarihSaat(davet.sent_at ?? davet.created_at)}`].filter(Boolean).join(" · ")}
-                      durum={durum}
-                      deger={tarih(davet.expires_at)}
-                      degerAlt="son geçerlilik"
-                    />
+                    <tr key={kisi.anahtar} className={kisi.acik ? undefined : "is-pasif"}>
+                      <td data-label="Kişi">
+                        <span className="ek-kisi">
+                          <span className="ek-avatar" data-tur="bireysel" aria-hidden="true">{basHarfleri(kisi.ad)}</span>
+                          <span className="ek-kisi-metin">
+                            <span className="crm-table-title" title={kisi.ad}>{kisi.ad}</span>
+                            {kisi.email && kisi.email !== kisi.ad
+                              ? <a className="crm-table-sub" href={`mailto:${kisi.email}`} title={alt}>{alt}</a>
+                              : alt ? <span className="crm-table-sub">{alt}</span> : null}
+                          </span>
+                        </span>
+                      </td>
+                      <td data-label="Kurumlar">
+                        <span className="fn-urunler">
+                          {kisi.uyelikler.map((u) => (
+                            /* Kurum adı ürün adıyla aynıysa (ArvoOS kurumu · ArvoOS) tekrar yazılmaz. */
+                            <span key={u.kapsam} data-tone={u.acik ? "success" : "neutral"} title={u.urunler.join(", ")}>
+                              {u.urunler.every((urun) => urun === u.kapsam) ? u.kapsam : `${u.kapsam} · ${u.urunler.join(", ")}`}
+                            </span>
+                          ))}
+                        </span>
+                      </td>
+                      {/* Telefon yalnızca ArvoOS profilinde var; ArvoLab ayrı veritabanında ve orada tutulmuyor. */}
+                      <td data-label="Telefon">{kisi.telefon ? <a className="crm-table-title" href={`tel:${kisi.telefon}`}>{kisi.telefon}</a> : <span className="crm-table-sub">—</span>}</td>
+                      <td data-label="Rol"><span className="crm-table-title">{rol}</span>{kurumSayisi > 1 ? <small>{kurumSayisi} kurumda</small> : kisi.bireysel ? <small>bireysel</small> : null}</td>
+                      <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                      <MobilSatir baslik={kisi.ad} durum={durum}
+                        alt={[kisi.email !== kisi.ad ? kisi.email : null, rol, kisi.uyelikler.map((u) => u.kapsam).join(", ")]} />
+                    </tr>
                   );
                 })}
-              </KListe>
-            ) :<KBos baslik="Bekleyen davet yok" aciklama="Davet edilip hiç giriş yapmamış kimse yok." />
-          ) : <KBos baslik="Davetler okunamıyor" aciklama="Sunucu anahtarı tanımlı olmadığı için davetler okunamıyor — “davet yok” demek değil." />
-        ) : gosterilen.length ? (
-          /* Kişi satırının açılacak bir ekranı yok: ok bilerek konmadı
-             (href yok), tıklanmayan satırda ok "açılır" diye yanlış söz
-             verirdi. iOS LİSTESİ (14.10.2026): eskiden beş sütunlu tabloydu
-             (Kişi, İletişim, Kurum, Ürün, Rol/Sebep); şimdi kurum · ürün ·
-             e-posta · telefon · unvan tek satırda, sağda rol ya da pasiflik
-             sebebi. E-posta ve telefon yine tıklanır bağlantı. */
-          <KListe>
-            {gosterilen.map((kisi) => {
-              const kurumSayisi = kisi.uyelikler.filter((u) => !u.bireysel).length;
-              const parcalar: ReactNode[] = [
-                kisi.email && kisi.email !== kisi.ad ? <a href={`mailto:${kisi.email}`}>{kisi.email}</a> : null,
-                /* Telefon yalnızca ArvoOS profilinde var; ArvoLab ayrı
-                   veritabanında ve orada tutulmuyor. */
-                kisi.telefon ? <a href={`tel:${kisi.telefon}`}>{kisi.telefon}</a> : null,
-                kisi.unvan,
-              ].filter(Boolean);
-              return (
-                <KOge
-                  key={kisi.anahtar}
-                  simge={kisi.ad}
-                  baslik={kisi.ad}
-                  alt={parcalar.length ? parcalar.map((parca, i) => <Fragment key={i}>{i ? " · " : null}{parca}</Fragment>) : undefined}
-                  etiketler={kisi.uyelikler.map((u) => ({
-                    /* Kurum adı ürün adıyla aynıysa (ArvoOS kurumu · ArvoOS) tekrar yazılmaz. */
-                    etiket: u.urunler.every((urun) => urun === u.kapsam) ? u.kapsam : `${u.kapsam} · ${u.urunler.join(", ")}`,
-                    ton: u.acik ? "success" : "neutral",
-                  }))}
-                  durum={secili === "pasif" ? { etiket: kisi.sebep ?? "Erişim kapalı", ton: "danger" } : null}
-                  /* Rol bir etiket, satırın değeri değil: adla aynı
-                     ağırlıkta durmasın (konsol-ui.css, k-ios-sessiz). */
-                  deger={secili === "pasif" ? undefined : <span className="k-ios-sessiz">{kisininRolu(kisi)}</span>}
-                  degerAlt={secili === "pasif" ? undefined : kurumSayisi > 1 ? `${kurumSayisi} kurumda` : kisi.bireysel ? "bireysel" : undefined}
-                />
-              );
-            })}
-          </KListe>
-        ) : (
-          <KBos baslik={aranan ? `“${aranan}” ile eşleşen kullanıcı yok` : "Bu evrede kullanıcı yok"} />
-        )}
+              </tbody>
+            </table>
+          </div>
+        ) : bos(aranan ? `“${aranan}” ile eşleşen kullanıcı yok` : "Bu evrede kullanıcı yok", "Aramayı ya da evreyi değiştirip yeniden deneyin.")}
       </section>
 
-      {/* 14.10.2026: İstatistik kartının dört kutusu (aktif, pasif, davet,
-          kişi) şeritteki sayıların AYNISIYDI. Yerine yalnızca şeritte
-          olmayanlar, iOS listesiyle: pasiflik sebepleri, aktiflerin
-          ürünleri ve süresi geçen davetler. */}
+      {/* Sağ sütun aramadan ve evreden bağımsız: bütün kullanıcıları anlatır. */}
       <div className="liste-sag">
-        <KKart baslik="Pasiflik sebebi" aciklama={`Aramadan bağımsız, bütün kullanıcılar${!arvolabReachable || !kullanicilarTam ? " · liste eksik olabilir" : ""}`}>
-          {sebepDagilimi.length ? (
-            <KListe>
-              {sebepDagilimi.map((d) => <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />)}
-            </KListe>
-          ) : <KBos baslik="Pasif kullanıcı yok" aciklama="Erişimi kapatılan kullanıcı olduğunda sebepleri burada dağılır." />}
-        </KKart>
-
-        <KKart baslik="Aktiflerin ürünleri">
-          {urunDagilimi.length ? (
-            <KListe>
-              {urunDagilimi.map((d) => <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />)}
-            </KListe>
-          ) : <KBos baslik="Aktif kullanıcı yok" aciklama="Kullanıcılar ürünlere göre burada dağılır." />}
-        </KKart>
-
-        <KKart baslik="Davetler" aciklama={admin ? "En yeni 100 kayıttan" : "Sunucu anahtarı yok, okunamıyor"}>
-          <KListe>
-            <KOge baslik="Süresi geçen" deger={admin ? sayi(suresiGecenDavet) : "—"} />
-          </KListe>
-        </KKart>
+        <TalepAkis kimlik="kullanici-sag" sinif="ek-sag" etiket="Kullanıcı istatistikleri" sekmeler={["İstatistikler"]}>
+          <IstatistikKarti
+            kapsam={`bütün kullanıcılar${!arvolabReachable || !kullanicilarTam ? " · liste eksik olabilir" : ""}`}
+            kutular={[
+              { ad: "Aktif", deger: sayi(aktifler.length), alt: "en az bir kurumda girebiliyor" },
+              { ad: "Pasif", deger: sayi(pasifler.length), alt: "hiçbir yere giremiyor", ton: pasifler.length ? "uyari" : undefined },
+              { ad: "Bekleyen davet", deger: admin ? sayi(davetler.length) : "—", alt: admin ? "en yeni 100 kayıttan" : "sunucu anahtarı yok" },
+              { ad: "Süresi geçen davet", deger: admin ? sayi(suresiGecenDavet) : "—", alt: "yeniden gönderilmeli", ton: suresiGecenDavet ? "uyari" : undefined },
+            ]}
+            gruplar={[
+              { baslik: "Aktiflerin ürünleri", satirlar: urunDagilimi },
+              { baslik: "Pasiflik sebebi", satirlar: sebepDagilimi },
+            ]}
+          />
+        </TalepAkis>
       </div>
     </div>
   </main>;
