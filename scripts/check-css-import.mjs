@@ -16,11 +16,38 @@
   Denetim: her rota için modül ağacındaki CSS'leri toplar, JSX'te geçen
   sınıf adlarından app içindeki bir CSS'te TANIMLI olanları ayıklar ve
   tanımın bulunduğu dosyalardan hiçbiri rotaya yüklenmiyorsa bildirir.
-  Hiçbir CSS'te tanımlı olmayan ad (Tailwind benzeri yardımcı, dinamik
-  ad) denetlenmiyor: burada ölçülen "bu sınıfın stili bu rotaya
-  giriyor mu", "bu sınıf var mı" değil.
+  İKİNCİ DENETİM: HİÇ TANIMLANMAMIŞ SINIF (29.10.2026).
+
+  Yukarıdaki denetim yalnızca "tanımlı ama rotaya girmiyor" hâlini
+  görüyordu; hiçbir CSS'te KARŞILIĞI OLMAYAN ad sessizce geçiyordu.
+  O boşluktan bir sayfa geçti: Hedefler ekranı başka bir depodan
+  taşınmış sınıflarla yazıldı (.kayit-kart, .projects-primary-button),
+  denetim sustu ve ekran kartsız, düğmesi düz yazı olarak canlıya
+  çıktı. Aynı boşlukta duran gerçek bir hata da bu gün bulundu:
+  `.cari-eksi` hiç tanımlı değildi, yani dört ekranda "dikkat" rengiyle
+  gösterilmesi gereken sayılar olağan renkte duruyordu.
+
+  Yanlış alarmı kesen üç kural:
+   - Yalnızca kebab-case adlar (`is-active`, `talep-bas`). Şablon
+     ifadesinden artakalan değişken adları (`dragging`, `index`) ve
+     nokta taşıyan parçalar elenir.
+   - Şablon dizgisindeki `${...}` parçaları okunmadan ATILIR; yoksa
+     `${dragging ? "is-dragging" : ""}` içindeki değişken adı sınıf
+     sanılıyordu.
+   - Gömülü CSS de tanım sayılır: belge bileşenleri stilini kendi
+     `<style>` şablonunda taşıyor (.doc-*).
+
+  Dosya başındaki `stil-tamam: <sebep>` işareti o dosyayı denetimden
+  çıkarır — sebebi yazmak, denetimi susturmanın bedeli (app/kurulum
+  Tailwind ile yazılı).
+
+  BILINEN_BORC bugün var olan tanımsız sınıfların listesi. Muafiyet
+  değil, BORÇ: yenisi eklenemiyor ve listeden biri tanımlanınca ya da
+  kullanımdan kalkınca denetim "listeden çıkar" diyor, yoksa liste
+  ölü satırlarla şişip anlamını yitirirdi.
 */
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import { gomuluCss, siniflar } from "./stil-sinif-ayikla.mjs";
 import { dirname, join, relative, resolve } from "node:path";
 
 const kok = resolve(import.meta.dirname, "..");
@@ -135,3 +162,93 @@ if (sorunlar.length) {
 }
 
 console.log(`✓ CSS import denetimi: ${sayfalar.filter((s) => s.endsWith("page.tsx")).length} sayfa, kullanılan her sınıfın stili rotaya giriyor`);
+
+/* ---------- Tanımsız sınıf denetimi ---------- */
+
+/*
+  BUGÜNÜN BORCU. Her satır bir sınıf ve ilk görüldüğü dosya. Bunlar
+  ekranda hiçbir şey yapmıyor: ya stilleri silinmiş, ya adı değişmiş,
+  ya da hiç yazılmamış. Liste kısaldıkça silinir; uzamasına denetim
+  izin vermiyor.
+*/
+const BILINEN_BORC = new Set([
+  "abk", // app/panel/billing/page.tsx
+  "abk-belgeler", // app/panel/billing/page.tsx
+  "an-dagilim", // app/panel/analitik/page.tsx
+  "appointment-form", // app/panel/crm/takvim/appointment-form.tsx
+  "bm-cikar", // app/panel/settings/belge-metinleri.tsx
+  "crm-birakma-sebebi", // app/panel/crm/page.tsx
+  "dp", // app/panel/hr/departmanlar/page.tsx
+  "flowx", // app/(site)/_components/story-stage.tsx
+  "flowx-copy", // app/(site)/_components/story-stage.tsx
+  "is-disabled", // app/panel/crm/contracts/page.tsx
+  "kisi-yetki-ozet", // app/panel/settings/permissions/kisi-yetkileri.tsx
+  "kisi-yetkileri", // app/panel/settings/permissions/kisi-yetkileri.tsx
+  "login-card-logo", // app/auth/dogrula/page.tsx
+  "maliyet-pencere", // app/panel/finance/costs/maliyet-detayi.tsx
+  "ml-side", // app/(site)/_components/mock-lab.tsx
+  "mu-kart", // app/panel/platform/musteriler/[id]/page.tsx
+  "ntf-card", // app/panel/notifications/page.tsx
+  "opd-mesaj", // app/panel/operations/[id]/page.tsx
+  "opd-pf", // app/panel/operations/[id]/portal-files.tsx
+  "panel-form-error", // app/panel/crm/contract-addendum-form.tsx
+  "panel-form-success", // app/panel/crm/contract-addendum-form.tsx
+  "panel-ghost", // app/panel/operations/sablon/page.tsx
+  "panel-muted", // app/panel/billing/kart/[oid]/page.tsx
+  "panel-page", // app/panel/sozlesmelerim/page.tsx
+  "personel-sayfalar", // app/panel/hr/personel-hareketleri.tsx
+  "pillars", // app/(site)/_views/home.tsx
+  "posta-govde-metin", // app/panel/posta/posta-govde.tsx
+  "posta-konusma", // app/panel/posta/[threadId]/page.tsx
+  "pp-isler", // app/panel/hr/prim-penceresi.tsx
+  "rpt-range-pill", // app/panel/finance/raporlar/page.tsx
+  "schedule-dates", // app/panel/crm/schedule-date-rows.tsx
+  "status-lookup", // app/durum/[slug]/lookup-form.tsx
+  "suite", // app/(site)/_views/home.tsx
+  "talep-menu", // app/panel/accounts/cari-hesap.tsx
+  "trio-phone", // app/(site)/_components/trio.tsx
+  "trio-win", // app/(site)/_components/trio.tsx
+  "trk-offer-card", // app/takip/takip-form.tsx
+  "trk-plan-card", // app/takip/takip-form.tsx
+  "trk-sign-card", // app/takip/takip-form.tsx
+  "work-plan-editor", // app/panel/crm/work-plan-editor.tsx
+]);
+
+const gomuluCssTopla = (metin) => {
+  for (const ad of gomuluCss(metin)) if (!sinifHaritasi.has(ad)) sinifHaritasi.set(ad, new Set());
+};
+for (const dizin of ["app", "lib"]) {
+  for (const yol of dosyalar(join(kok, dizin), (y) => y.endsWith(".tsx") || y.endsWith(".ts"))) {
+    gomuluCssTopla(readFileSync(yol, "utf8"));
+  }
+}
+
+const tanimsizlar = new Map();
+for (const yol of dosyalar(join(kok, "app"), (y) => y.endsWith(".tsx"))) {
+  const metin = readFileSync(yol, "utf8");
+  if (/stil-tamam:/.test(metin)) continue;
+  for (const ad of siniflar(metin)) {
+    if (sinifHaritasi.has(ad)) continue;
+    if (!tanimsizlar.has(ad)) tanimsizlar.set(ad, relative(kok, yol));
+  }
+}
+
+const yeniler = [...tanimsizlar].filter(([ad]) => !BILINEN_BORC.has(ad));
+const kalkanlar = [...BILINEN_BORC].filter((ad) => !tanimsizlar.has(ad));
+
+if (yeniler.length || kalkanlar.length) {
+  if (yeniler.length) {
+    console.error("\n✗ Hiçbir CSS'te tanımı olmayan sınıf:");
+    for (const [ad, yer] of yeniler) console.error(`   .${ad}  (kullanım: ${yer})`);
+    console.error("\nStilini yazın, adı düzeltin ya da sınıfı kaldırın. Tailwind gibi");
+    console.error("karşılığı derlemede üretilen bir dosyaysa başına `stil-tamam: <sebep>` yazın.\n");
+  }
+  if (kalkanlar.length) {
+    console.error("\n✗ BILINEN_BORC listesinden çıkarılacaklar (artık tanımsız değil):");
+    for (const ad of kalkanlar) console.error(`   .${ad}`);
+    console.error("\nscripts/check-css-import.mjs içindeki listeden silin.\n");
+  }
+  process.exit(1);
+}
+
+console.log(`✓ Tanımsız sınıf denetimi: ${tanimsizlar.size} bilinen borç, yenisi yok`);

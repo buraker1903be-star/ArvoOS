@@ -138,6 +138,26 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   görünüyor (önceki sayfanın CSS'i yüklü), sayfa YENİLENİNCE düzen
   dağılıyordu (10.10.2026). Bir bileşen her yerde kullanılıyorsa CSS'ini
   kendisi import etsin. `npm run check:css` bunu CI'da denetliyor.
+- **Yeni panel sayfası, kardeş sayfanın iskeletiyle yazılır.** Düzen
+  parçaları hazır: başlık `talep-bas`, özet şeridi `kayit-serit`,
+  kart `panel-card`, liste `crm-data-table`, form eylem satırı
+  `kayit-formu-eylem`, düğmeler `panel-primary` / `panel-secondary`.
+  Sabit yükseklikli liste sayfasında (`main.liste-sayfa`) kaydırmayı
+  KART yapar: kabuk `talep-bilgi`, kaydırma alanı `talep-tablo`.
+  29.10.2026'da Hedefler ekranı kendi sınıflarıyla yazıldı ve bir
+  kısmı bu depoda hiç tanımlı değildi (başka depodan taşınmış):
+  ekran kartsız, düğmesi düz yazı olarak canlıya çıktı; sonra da
+  kendi "flex:1" kuralı panelin `>:not(.talep-izgara):not(.talep-bilgi)`
+  kuralına özgüllükte yenilip başlığı üst çubuğun altına kaydırdı.
+- **Hiçbir CSS'te karşılığı olmayan sınıf yazılmaz.** `check:css`
+  ikinci bir denetim daha yapıyor: `className`'de YAZILI olup hiçbir
+  CSS'te (ve gömülü `<style>` şablonlarında) tanımı olmayan adları
+  bildiriyor. Bugün var olanlar `BILINEN_BORC` listesinde — muafiyet
+  değil borç: yenisi eklenemiyor, listedeki biri tanımlanınca ya da
+  kullanımdan kalkınca denetim "listeden çıkar" diyor. Karşılığı
+  derlemede üretilen bir dosya (Tailwind) `stil-tamam: <sebep>` ile
+  dışarıda kalır. Denetimin beyni ayrı ve testli
+  (`scripts/stil-sinif-ayikla.mjs`).
 - **Bulanık (`backdrop-filter`) bir kutunun içindeki `position:fixed`
   çocuk EKRANA göre konumlanmaz.** `backdrop-filter` (ve `transform`,
   `filter`, `perspective`, `contain`, `will-change`) kutuyu fixed

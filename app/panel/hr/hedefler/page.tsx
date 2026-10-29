@@ -289,7 +289,7 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
                         KALAN ise hedefsiz satırda yok — hedefi
                         olmayanın "kalanı" tanımsız, sıfır değil.
                       */}
-                      <td className="crm-col-amount hedefler-gerceklesen" data-label="Gerçekleşen">
+                      <td className="crm-col-amount" data-label="Gerçekleşen">
                         {gerceklesen ? (
                           /* Rakam ve altındaki bağlam TEK öğede: telefonda
                              hücre etiketli bir satıra dönüşüyor ve iki ayrı
@@ -300,7 +300,7 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
                           </span>
                         ) : <span className="talep-bos">—</span>}
                       </td>
-                      <td className="crm-col-amount hedefler-kalan" data-label="Kalan">
+                      <td className="crm-col-amount" data-label="Kalan">
                         {tutar === null || kalan === null ? <span className="talep-bos">—</span>
                           : kalan === 0 ? <span className="hedefler-tuttu">Tamam</span>
                           : (
@@ -334,22 +334,5 @@ export default async function HedeflerSayfasi({ searchParams }: { searchParams: 
       )}
     </section>
 
-    {/*
-      ÖNCEKİ AYDAN KOPYALAMA AYRI BİR FORM: üstteki formun içinde
-      ikinci bir düğme olsaydı Enter'a basan kullanıcı yazdığı
-      rakamların üstüne geçen ayı kopyalayabilirdi. Yalnızca BOŞ olan
-      satırlar doldurulur, yazılmış hedef ezilmez.
-    */}
-    {yonetir && oncekiSayi > 0 && hedefsiz > 0 ? (
-      <form action={hedefleriOncekiAydanKopyala} className="panel-card hedefler-kopya">
-        <input type="hidden" name="ay" value={ay} />
-        <input type="hidden" name="kaynak" value={oncekiAy} />
-        <div>
-          <b>{ayEtiketi(oncekiAy)} hedeflerini kopyala</b>
-          <small>O ay {oncekiSayi} kişiye hedef konmuştu. Yalnızca bu ayda boş olan {hedefsiz} satır doldurulur.</small>
-        </div>
-        <button className="panel-secondary" type="submit">Kopyala</button>
-      </form>
-    ) : null}
   </main>;
 }

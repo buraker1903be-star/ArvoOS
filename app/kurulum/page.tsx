@@ -1,3 +1,6 @@
+/* stil-tamam: Tailwind yardımcı sınıfları (kurulum sayfası tek
+   başına Tailwind ile yazılı; sınıfların karşılığı bir CSS
+   dosyasında değil, derlemede üretiliyor). */
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 

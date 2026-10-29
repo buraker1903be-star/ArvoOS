@@ -223,6 +223,16 @@
 .cari-oran-cubuk{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
 .cari-oran-cubuk i{display:block;width:var(--p,0%);height:100%;border-radius:inherit;background:var(--success)}
 .cari-arti{color:var(--success) !important}
+/*
+  `.cari-eksi` HİÇ TANIMLI DEĞİLDİ (29.10.2026). Eşi `.cari-arti`
+  yazılmış, eksisi unutulmuş; dört ekranda kullanılıyor ve hiçbir
+  şey yapmıyordu: İK'da "sorunlu davet", operasyonda "atanmamış
+  iş", personelin eksi prim bakiyesi ve abonelikte dönem sonu
+  uyarısı düz renkte çıkıyordu — yani dikkat çekmesi gereken sayı
+  olağan sayıyla aynı görünüyordu. `!important` eşiyle aynı:
+  hücrenin kendi rengini ezmesi gerekiyor.
+*/
+.cari-eksi{color:var(--danger) !important}
 .cari-baslik{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);margin-bottom:var(--sp-2)}
 .cari-baslik small{color:var(--muted);font-size:var(--fs-sm)}
 .cari-hareketler{list-style:none;margin:0 calc(var(--sp-2) * -1);padding:0;display:flex;flex-direction:column}
