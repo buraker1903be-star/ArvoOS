@@ -19,7 +19,7 @@ export const ARVOLAB_EN: ProductContent = {
     title: "A stronger workspace", subtitle: "for research.",
     lead: "ArvoLab is a web-based research workspace that brings the core steps of academic work — from literature to writing, from document checks to analysis — into one place.",
     actions: [
-      { label: "Request access", href: `${R("contact")}?interest=arvolab`, variant: "gold" },
+      { label: "Start free trial", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "Sign in to ArvoLab", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
     ],
   },
@@ -28,11 +28,11 @@ export const ARVOLAB_EN: ProductContent = {
     title: "A clearer process. Stronger output.",
     lead: "Move disconnected research tools and checks into one connected space where you can see the whole of your work.",
     items: [
-      { title: "Literature & citations", text: "Organize your sources and manage your literature and citation flow systematically." },
+      { title: "Literature & citations", text: "Paste a DOI and the reference fills in from Crossref and OpenAlex. APA 7, Harvard, Chicago, MLA 9, IEEE and Vancouver — in-text citations and the reference list are written together." },
       { title: "Academic writing", text: "Develop research texts with a sound structure and a consistent way of working." },
-      { title: "Guideline checks", text: "Compare document structure and formatting requirements against guidelines faster." },
+      { title: "Guideline checks", text: "Upload your thesis guideline as a PDF or link: page layout, required sections, citation style and limits are extracted, and the rules you confirm are applied to the editor. Reads guidelines in English and Turkish." },
       { title: "Analysis hub", text: "Organize quantitative and qualitative research processes in one workspace." },
-      { title: "Academic editor", text: "Build text review and improvement steps into your research flow." },
+      { title: "Academic editor", text: "Submission-ready Word and PDF on A4 or US Letter, with table of contents, footnotes and heading numbers. A submission checklist shows what is still missing in one place." },
       { title: "Originality pre-check", text: "Review your text before submission to spot potential risks earlier." },
     ],
   },
@@ -63,18 +63,19 @@ export const ARVOLAB_EN: ProductContent = {
     items: [
       { q: "What is ArvoLab?", a: "ArvoLab is the ArvoOS brand’s research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, academic editing and an originality pre-check." },
       { q: "Who is ArvoLab for?", a: "Individual researchers. Institutional licences are offered only to universities and educational institutions, on request." },
-      { q: "How do I get access to ArvoLab?", a: `Request access through the contact form or at info@arvo-os.com. Sign in at ${PRODUCT_APPS.arvolab.url}.` },
+      { q: "How do I get access to ArvoLab?", a: "Create an account on the sign-up page and start right away with a free trial; afterwards the subscription is paid by card. For an institutional licence, use the contact form or write to info@arvo-os.com." },
       { q: "Does the originality pre-check replace an official report?", a: "No. It is a pre-check that helps you spot risks before submission; your institution may still require its own official originality report." },
       { q: "What is the difference between ArvoLab and ArvoOS?", a: "ArvoOS runs a business’s operations; ArvoLab is a workspace that supports academic research and writing." },
     ],
   },
   cta: {
     eyebrow: "Access",
-    title: "Get in touch for ArvoLab access.",
-    lead: "Whether for individual or institutional use, our team will guide you.",
+    title: "Try ArvoLab today.",
+    lead: "Create your account and start with a free trial; pay by card, automatic renewal is optional. Contact us for an institutional licence.",
     actions: [
-      { label: "Request access", href: `${R("contact")}?interest=arvolab`, variant: "gold" },
+      { label: "Start free trial", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "Sign in to ArvoLab", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
+      { label: "Institutional licence", href: `${R("contact")}?interest=arvolab`, variant: "ghost" },
     ],
   },
 };

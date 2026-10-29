@@ -19,7 +19,7 @@ export const ARVOLAB_ES: ProductContent = {
     title: "Un espacio de trabajo más sólido", subtitle: "para investigar.",
     lead: "ArvoLab es un espacio de trabajo web para la investigación que reúne en un solo lugar los pasos esenciales del trabajo académico: de la literatura a la redacción, de la revisión de documentos al análisis.",
     actions: [
-      { label: "Solicitar acceso", href: `${R("contact")}?interest=arvolab`, variant: "gold" },
+      { label: "Probar gratis", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "Entrar en ArvoLab", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
     ],
   },
@@ -28,11 +28,11 @@ export const ARVOLAB_ES: ProductContent = {
     title: "Un proceso más claro. Un resultado más sólido.",
     lead: "Traslade herramientas y revisiones de investigación dispersas a un espacio conectado donde pueda ver su trabajo en conjunto.",
     items: [
-      { title: "Literatura y citas", text: "Organice sus fuentes y gestione de forma sistemática su flujo de literatura y citas." },
+      { title: "Literatura y citas", text: "Pegue un DOI y la referencia se completa desde Crossref y OpenAlex. APA 7, Harvard, Chicago, MLA 9, IEEE y Vancouver; las citas en el texto y la lista de referencias se escriben a la vez." },
       { title: "Redacción académica", text: "Desarrolle textos de investigación con una estructura sólida y una forma de trabajar coherente." },
-      { title: "Revisión de normas", text: "Compare más rápido la estructura del documento y los requisitos de formato con las normas." },
+      { title: "Revisión de normas", text: "Suba su normativa de tesis en PDF o como enlace: se extraen el formato de página, las secciones obligatorias, el estilo de citas y los límites, y las reglas que usted confirma se aplican en el editor. Lee normativas en inglés y turco." },
       { title: "Centro de análisis", text: "Organice los procesos de investigación cuantitativa y cualitativa en un solo espacio de trabajo." },
-      { title: "Editor académico", text: "Integre los pasos de revisión y mejora del texto en su flujo de investigación." },
+      { title: "Editor académico", text: "Word y PDF listos para entregar en A4 o US Letter, con índice, notas al pie y numeración de títulos. Una lista de comprobación muestra en un solo lugar lo que aún falta." },
       { title: "Revisión previa de originalidad", text: "Revise su texto antes de entregarlo para detectar antes posibles riesgos." },
     ],
   },
@@ -63,18 +63,19 @@ export const ARVOLAB_ES: ProductContent = {
     items: [
       { q: "¿Qué es ArvoLab?", a: "ArvoLab es el espacio de trabajo para la investigación de la marca ArvoOS, con gestión de literatura y citas, redacción académica, revisión de normas, análisis cuantitativo y cualitativo, edición académica y una revisión previa de originalidad." },
       { q: "¿Para quién es ArvoLab?", a: "Para investigadores individuales. Las licencias institucionales se ofrecen solo a universidades e instituciones educativas, previa solicitud." },
-      { q: "¿Cómo obtengo acceso a ArvoLab?", a: `Solicite acceso mediante el formulario de contacto o en info@arvo-os.com. Inicie sesión en ${PRODUCT_APPS.arvolab.url}.` },
+      { q: "¿Cómo obtengo acceso a ArvoLab?", a: "Cree una cuenta en la página de registro y empiece al momento con una prueba gratuita; después, la suscripción se paga con tarjeta. Para una licencia institucional, use el formulario de contacto o escriba a info@arvo-os.com." },
       { q: "¿Sustituye la revisión previa de originalidad a un informe oficial?", a: "No. Es una revisión previa que le ayuda a detectar riesgos antes de la entrega; su institución puede seguir exigiendo su propio informe oficial de originalidad." },
       { q: "¿Qué diferencia hay entre ArvoLab y ArvoOS?", a: "ArvoOS gestiona las operaciones de una empresa; ArvoLab es un espacio de trabajo que apoya la investigación y la redacción académicas." },
     ],
   },
   cta: {
     eyebrow: "Acceso",
-    title: "Contacte con nosotros para acceder a ArvoLab.",
-    lead: "Tanto para uso individual como institucional, nuestro equipo le orientará.",
+    title: "Pruebe ArvoLab hoy.",
+    lead: "Cree su cuenta y empiece con una prueba gratuita; pago con tarjeta, renovación automática opcional. Para una licencia institucional, contáctenos.",
     actions: [
-      { label: "Solicitar acceso", href: `${R("contact")}?interest=arvolab`, variant: "gold" },
+      { label: "Probar gratis", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "Entrar en ArvoLab", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
+      { label: "Licencia institucional", href: `${R("contact")}?interest=arvolab`, variant: "ghost" },
     ],
   },
 };

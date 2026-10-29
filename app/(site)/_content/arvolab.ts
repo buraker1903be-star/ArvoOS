@@ -1,4 +1,12 @@
-// ArvoLab ürün sayfası — Türkçe (mevcut metinden, iddia eklenmeden).
+// ArvoLab ürün sayfası — Türkçe.
+//
+// 29.10.2026: özellik metinleri ürünün BUGÜN yaptığı şeylerle somutlaştı
+// (altı atıf stili, kılavuz yükleme ve kural çıkarımı, A4/US Letter Word ve
+// PDF); hepsi ArvoLab'da çalışan özellikler, vaat değil. Deneme süresinin
+// GÜN SAYISI bilerek yazılmıyor: ArvoOS'tan ayarlanıyor (product_plans.trial_days),
+// sayfaya yazılan sayı değiştiği gün yalan olur. Ana düğme artık kayıt
+// sayfası: kayıt ve deneme herkese açıkken ziyaretçiyi iletişim formuna
+// göndermek, satın almaya hazır kişiyi bekletmekti.
 import { PRODUCT_APPS, ROUTES } from "@/lib/site/routes";
 import type { ProductContent } from "./types";
 
@@ -19,7 +27,7 @@ export const ARVOLAB_TR: ProductContent = {
     title: "Araştırma için daha", subtitle: "güçlü bir alan.",
     lead: "ArvoLab, literatürden akademik yazıma, belge kontrolünden analize kadar bilimsel üretimin temel adımlarını tek bir çalışma alanında birleştiren web tabanlı bir araştırma ortamıdır.",
     actions: [
-      { label: "Erişim talep edin", href: `${R("contact")}?ilgi=arvolab`, variant: "gold" },
+      { label: "Ücretsiz deneyin", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "ArvoLab giriş", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
     ],
   },
@@ -28,11 +36,11 @@ export const ARVOLAB_TR: ProductContent = {
     title: "Daha düzenli süreç. Daha güçlü çıktı.",
     lead: "Birbirinden kopuk araştırma araçlarını ve kontrol adımlarını, çalışmanın bütününü görebileceğiniz bağlantılı bir düzene taşıyın.",
     items: [
-      { title: "Literatür ve atıf", text: "Kaynaklarınızı düzenleyin; literatürünüzü ve atıf akışınızı sistemli yönetin." },
+      { title: "Literatür ve atıf", text: "DOI yapıştırın, künye Crossref ve OpenAlex kayıtlarından dolsun. APA 7, Harvard, Chicago, MLA 9, IEEE ve Vancouver; metin içi atıf ve kaynakça birlikte yazılır." },
       { title: "Akademik yazım", text: "Araştırma metinlerinizi doğru yapı ve tutarlı bir çalışma düzeni içinde geliştirin." },
-      { title: "Kılavuz kontrolü", text: "Belge yapısını ve biçimsel gereklilikleri kılavuzlarla daha hızlı karşılaştırın." },
+      { title: "Kılavuz kontrolü", text: "Tez yazım kılavuzunuzu PDF ya da bağlantı olarak yükleyin: sayfa düzeni, zorunlu bölümler, atıf sistemi ve sınırlar çıkarılır, onayladığınız kurallar editöre uygulanır. Türkçe ve İngilizce kılavuzlar okunur." },
       { title: "Analiz merkezi", text: "Nicel ve nitel araştırma süreçlerini tek çalışma alanında organize edin." },
-      { title: "Akademik editör", text: "Metin kontrolü ve iyileştirme adımlarını araştırma akışınıza dahil edin." },
+      { title: "Akademik editör", text: "Teslime hazır Word ve PDF: A4 ya da US Letter, içindekiler, dipnotlar ve başlık numaraları. Teslim kontrol listesi eksikleri tek yerde gösterir." },
       { title: "Özgünlük ön kontrolü", text: "Teslim öncesi olası riskleri daha erken fark etmek için metninizi değerlendirin." },
     ],
   },
@@ -63,18 +71,19 @@ export const ARVOLAB_TR: ProductContent = {
     items: [
       { q: "ArvoLab nedir?", a: "ArvoLab, ArvoOS markasının literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü sunan araştırma çalışma alanıdır." },
       { q: "ArvoLab kimler için?", a: "Bireysel araştırmacılar için. Kurum lisansı yalnızca üniversitelere ve eğitim kurumlarına, teklif usulüyle verilir." },
-      { q: "ArvoLab’e nasıl erişilir?", a: `İletişim formundan ya da info@arvo-os.com adresinden erişim talep edebilirsiniz. Giriş adresi: ${PRODUCT_APPS.arvolab.url}` },
+      { q: "ArvoLab’e nasıl erişilir?", a: "Kayıt sayfasından hesabınızı açıp deneme süresiyle hemen başlayabilirsiniz; sonrasında abonelik kartla ödenir. Kurum lisansı için iletişim formunu ya da info@arvo-os.com adresini kullanın." },
       { q: "Özgünlük ön kontrolü resmî raporun yerine geçer mi?", a: "Hayır. Teslim öncesi riskleri erken fark etmenizi sağlayan bir ön kontroldür; kurumunuz kendi resmî özgünlük raporunu ayrıca isteyebilir." },
       { q: "ArvoLab ile ArvoOS arasındaki fark nedir?", a: "ArvoOS bir işletmenin operasyonunu yönetir; ArvoLab ise akademik araştırma ve yazım sürecini destekleyen bir çalışma alanıdır." },
     ],
   },
   cta: {
     eyebrow: "Erişim",
-    title: "ArvoLab erişimi için bize ulaşın.",
-    lead: "Bireysel ya da kurumsal kullanım için ekibimiz size yol göstersin.",
+    title: "ArvoLab’i bugün deneyin.",
+    lead: "Hesabınızı açın, deneme süresiyle başlayın; ödeme kartla, otomatik yenileme isteğe bağlı. Kurum lisansı için bize ulaşın.",
     actions: [
-      { label: "Erişim talep edin", href: `${R("contact")}?ilgi=arvolab`, variant: "gold" },
+      { label: "Ücretsiz deneyin", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "ArvoLab giriş", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
+      { label: "Kurum lisansı", href: `${R("contact")}?ilgi=arvolab`, variant: "ghost" },
     ],
   },
 };

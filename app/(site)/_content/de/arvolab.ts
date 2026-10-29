@@ -19,7 +19,7 @@ export const ARVOLAB_DE: ProductContent = {
     title: "Ein stärkerer Arbeitsplatz", subtitle: "für die Forschung.",
     lead: "ArvoLab ist eine webbasierte Arbeitsumgebung für die Forschung, die die zentralen Schritte wissenschaftlicher Arbeit – von der Literatur bis zum Schreiben, von der Dokumentprüfung bis zur Analyse – an einem Ort zusammenführt.",
     actions: [
-      { label: "Zugang anfragen", href: `${R("contact")}?interest=arvolab`, variant: "gold" },
+      { label: "Kostenlos testen", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "Bei ArvoLab anmelden", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
     ],
   },
@@ -28,11 +28,11 @@ export const ARVOLAB_DE: ProductContent = {
     title: "Ein klarerer Prozess. Stärkere Ergebnisse.",
     lead: "Holen Sie verstreute Forschungstools und Prüfungen in einen vernetzten Raum, in dem Sie Ihre Arbeit als Ganzes sehen.",
     items: [
-      { title: "Literatur & Zitate", text: "Ordnen Sie Ihre Quellen und steuern Sie Ihren Literatur- und Zitatfluss systematisch." },
+      { title: "Literatur & Zitate", text: "DOI einfügen – die Quellenangabe wird aus Crossref und OpenAlex ergänzt. APA 7, Harvard, Chicago, MLA 9, IEEE und Vancouver; Zitate im Text und Literaturverzeichnis entstehen gemeinsam." },
       { title: "Wissenschaftliches Schreiben", text: "Entwickeln Sie Forschungstexte mit solider Struktur und einer einheitlichen Arbeitsweise." },
-      { title: "Richtlinienprüfung", text: "Gleichen Sie Dokumentstruktur und Formatvorgaben schneller mit den Richtlinien ab." },
+      { title: "Richtlinienprüfung", text: "Laden Sie Ihre Richtlinie als PDF oder Link hoch: Seitenlayout, Pflichtkapitel, Zitierstil und Grenzen werden ausgelesen, und die von Ihnen bestätigten Regeln gelten im Editor. Richtlinien auf Englisch und Türkisch werden gelesen." },
       { title: "Analyse-Hub", text: "Organisieren Sie quantitative und qualitative Forschungsprozesse in einer Arbeitsumgebung." },
-      { title: "Wissenschaftlicher Editor", text: "Integrieren Sie Überarbeitungs- und Verbesserungsschritte in Ihren Forschungsablauf." },
+      { title: "Wissenschaftlicher Editor", text: "Abgabefertiges Word und PDF in A4 oder US Letter, mit Inhaltsverzeichnis, Fußnoten und Überschriftennummern. Eine Abgabe-Checkliste zeigt an einem Ort, was noch fehlt." },
       { title: "Originalitäts-Vorprüfung", text: "Prüfen Sie Ihren Text vor der Einreichung, um mögliche Risiken früher zu erkennen." },
     ],
   },
@@ -63,18 +63,19 @@ export const ARVOLAB_DE: ProductContent = {
     items: [
       { q: "Was ist ArvoLab?", a: "ArvoLab ist die Arbeitsumgebung für die Forschung der Marke ArvoOS – für Literatur- und Zitatverwaltung, wissenschaftliches Schreiben, Richtlinienprüfung, quantitative und qualitative Analyse, wissenschaftliche Überarbeitung und eine Originalitäts-Vorprüfung." },
       { q: "Für wen ist ArvoLab gedacht?", a: "Für einzelne Forschende. Institutionslizenzen gibt es nur für Universitäten und Bildungseinrichtungen, auf Anfrage." },
-      { q: "Wie erhalte ich Zugang zu ArvoLab?", a: `Fragen Sie den Zugang über das Kontaktformular oder unter info@arvo-os.com an. Die Anmeldung erfolgt unter ${PRODUCT_APPS.arvolab.url}.` },
+      { q: "Wie erhalte ich Zugang zu ArvoLab?", a: "Legen Sie auf der Registrierungsseite ein Konto an und starten Sie sofort mit einer kostenlosen Testphase; danach wird das Abonnement per Karte bezahlt. Für eine Institutionslizenz nutzen Sie das Kontaktformular oder info@arvo-os.com." },
       { q: "Ersetzt die Originalitäts-Vorprüfung einen offiziellen Bericht?", a: "Nein. Sie ist eine Vorprüfung, die Ihnen hilft, Risiken vor der Einreichung zu erkennen; Ihre Institution kann dennoch einen eigenen offiziellen Originalitätsbericht verlangen." },
       { q: "Worin unterscheiden sich ArvoLab und ArvoOS?", a: "ArvoOS steuert die Abläufe eines Unternehmens; ArvoLab ist eine Arbeitsumgebung, die wissenschaftliche Forschung und das Schreiben unterstützt." },
     ],
   },
   cta: {
     eyebrow: "Zugang",
-    title: "Kontaktieren Sie uns für Ihren ArvoLab-Zugang.",
-    lead: "Ob für die individuelle oder die institutionelle Nutzung – unser Team berät Sie.",
+    title: "Testen Sie ArvoLab noch heute.",
+    lead: "Konto anlegen und mit einer kostenlosen Testphase starten; Zahlung per Karte, automatische Verlängerung optional. Für eine Institutionslizenz kontaktieren Sie uns.",
     actions: [
-      { label: "Zugang anfragen", href: `${R("contact")}?interest=arvolab`, variant: "gold" },
+      { label: "Kostenlos testen", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "Bei ArvoLab anmelden", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
+      { label: "Institutionslizenz", href: `${R("contact")}?interest=arvolab`, variant: "ghost" },
     ],
   },
 };

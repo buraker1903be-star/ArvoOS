@@ -54,8 +54,8 @@ const PAGES: Record<PageId, PageInfo> = {
     tr: { name: "Ücretler", summary: "ArvoOS, ArvoCal ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. ArvoOS ve ArvoCal kurum başına fiyatlanır, kullanıcı başına değil; ArvoLab araştırmacı başına fiyatlanır; TL fiyatlara KDV dahildir, dolar ve avro fiyatlarına dahil değildir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (müşterinin açık onayı olmadan otomatik kart çekimi yok (isteğe bağlı kart kaydıyla otomatik yenileme), iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
   },
   arvolab: {
-    en: { name: "ArvoLab", summary: "Research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, an academic editor and an originality pre-check." },
-    tr: { name: "ArvoLab", summary: "Literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü için araştırma çalışma alanı." },
+    en: { name: "ArvoLab", summary: "Research workspace for literature and citation management (APA 7, Harvard, Chicago, MLA 9, IEEE, Vancouver), academic writing, thesis-guideline checks from an uploaded guideline (English or Turkish), quantitative and qualitative analysis, an academic editor with Word/PDF export on A4 or US Letter, and an originality pre-check. Self-service sign-up with a free trial." },
+    tr: { name: "ArvoLab", summary: "Literatür ve atıf yönetimi (APA 7, Harvard, Chicago, MLA 9, IEEE, Vancouver), akademik yazım, yüklenen tez kılavuzundan (Türkçe ya da İngilizce) kural kontrolü, nicel ve nitel analiz, A4/US Letter Word ve PDF çıktılı akademik editör ve özgünlük ön kontrolü için araştırma çalışma alanı. Kayıt herkese açık, deneme süresiyle." },
   },
   services: {
     en: { name: "Services", summary: "Website design and development (including e-commerce websites delivered with their own store management panel), SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals) and ongoing development support." },
@@ -149,7 +149,7 @@ const SECTIONS: { title: string; ids: PageId[] }[] = [
 
 const SIGN_IN: Partial<Record<PageId, string>> = {
   arvoos: ` Sign in: ${PRODUCT_APPS.arvoos.url}.`,
-  arvolab: ` Sign in: ${PRODUCT_APPS.arvolab.url}.`,
+  arvolab: ` Sign up (free trial): ${PRODUCT_APPS.arvolab.url}/kayit. Sign in: ${PRODUCT_APPS.arvolab.url}.`,
   randevu: ` Panel: ${PRODUCT_APPS.randevu.url}.`,
 };
 
