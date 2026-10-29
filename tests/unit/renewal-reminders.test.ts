@@ -21,9 +21,10 @@ describe("renewalReminders", () => {
     assert.deepEqual(rows.map((r) => [r.product, r.daysLeft]), [["arc", -2], ["randevu", 3]]);
   });
 
-  test("Randevu mesajı Randevu'nun ödeme sayfasını, diğerleri ArvoOS'u gösterir", () => {
+  // Ürün kodu "randevu", adı ArvoCal, adresi 29.10.2026'dan beri cal.arvo-os.com.
+  test("ArvoCal mesajı ArvoCal'ın ödeme sayfasını, diğerleri ArvoOS'u gösterir", () => {
     const [randevu] = renewalReminders([lic({})], [org], NOW);
-    assert.match(randevu.message, /randevu\.arvo-os\.com\/panel\/ayarlar/);
+    assert.match(randevu.message, /cal\.arvo-os\.com\/panel\/ayarlar/);
     assert.match(randevu.message, /3 gün sonra/);
     assert.match(randevu.message, /750/);
     assert.match(randevu.whatsappUrl!, /^https:\/\/wa\.me\/905321112233\?text=/);

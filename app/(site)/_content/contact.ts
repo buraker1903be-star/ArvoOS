@@ -1,5 +1,5 @@
 // İletişim sayfası — tip + Türkçe (İngilizce: contact-en.ts).
-import { COMPANY, ROUTES } from "@/lib/site/routes";
+import { COMPANY, PRODUCT_APPS, ROUTES } from "@/lib/site/routes";
 import type { QA } from "../_components/ui";
 import type { Hero, Meta } from "./types";
 
@@ -26,7 +26,7 @@ export const CONTACT_TR: ContactContent = {
     items: [
       { q: "Nasıl demo talep edebilirim?", a: "Bu sayfadaki formda ilgilendiğiniz ürünü seçip ihtiyacınızı yazmanız yeterli; ekibimiz sizinle iletişime geçer." },
       { q: "Form dışında nasıl ulaşabilirim?", a: `${COMPANY.email} adresine e-posta gönderebilirsiniz.` },
-      { q: "Paneli kullanan bir kurumum, nereden giriş yaparım?", a: "ArvoOS app.arvo-os.com, ArvoLab lab.arvo-os.com, ArvoCal randevu.arvo-os.com adresinde çalışır; kurumunuzun özel alan adı varsa oradan da giriş yapabilirsiniz." },
+      { q: "Paneli kullanan bir kurumum, nereden giriş yaparım?", a: `ArvoOS ${PRODUCT_APPS.arvoos.host}, ArvoLab ${PRODUCT_APPS.arvolab.host}, ArvoCal ${PRODUCT_APPS.randevu.host} adresinde çalışır; kurumunuzun özel alan adı varsa oradan da giriş yapabilirsiniz.` },
       { q: "Form verilerim nasıl kullanılır?", a: `Yalnızca talebinizi yanıtlamak için işlenir. Ayrıntılar Gizlilik ve KVKK Aydınlatma Metni’nde (${ROUTES.privacy.tr}).` },
     ],
   },

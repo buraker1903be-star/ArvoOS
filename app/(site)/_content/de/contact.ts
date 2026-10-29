@@ -1,5 +1,5 @@
 // Almanca: contact-en.ts'in çevirisi. Yapı ve veriler aynı; yalnızca metin çevrildi.
-import { COMPANY, ROUTES } from "@/lib/site/routes";
+import { COMPANY, PRODUCT_APPS, ROUTES } from "@/lib/site/routes";
 import type { ContactContent } from "../contact";
 
 export const CONTACT_DE: ContactContent = {
@@ -18,7 +18,7 @@ export const CONTACT_DE: ContactContent = {
     items: [
       { q: "Wie fordere ich eine Demo an?", a: "Wählen Sie im Formular auf dieser Seite das Produkt, das Sie interessiert, und beschreiben Sie Ihren Bedarf; unser Team meldet sich bei Ihnen." },
       { q: "Wie kann ich Sie sonst erreichen?", a: `Schreiben Sie eine E-Mail an ${COMPANY.email}.` },
-      { q: "Meine Organisation nutzt bereits ein Panel – wo melde ich mich an?", a: "ArvoOS läuft unter app.arvo-os.com, ArvoLab unter lab.arvo-os.com und ArvoCal unter randevu.arvo-os.com; hat Ihre Organisation eine eigene Domain, können Sie sich auch dort anmelden." },
+      { q: "Meine Organisation nutzt bereits ein Panel – wo melde ich mich an?", a: `ArvoOS läuft unter ${PRODUCT_APPS.arvoos.host}, ArvoLab unter ${PRODUCT_APPS.arvolab.host} und ArvoCal unter ${PRODUCT_APPS.randevu.host}; hat Ihre Organisation eine eigene Domain, können Sie sich auch dort anmelden.` },
       { q: "Wie werden meine Formulardaten verwendet?", a: `Ausschließlich zur Beantwortung Ihrer Anfrage. Einzelheiten finden Sie in der Datenschutzerklärung (${ROUTES.privacy.de}).` },
     ],
   },
