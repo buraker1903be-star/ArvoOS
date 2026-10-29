@@ -1,7 +1,7 @@
 name: Kontrol
 
 # Her pushta ve PR'da tip, lint ve birim testleri çalışır.
-# Derleme (next build) Sites/Vercel tarafında yapılıyor; burada Supabase
+# Derleme (next build) Vercel tarafında yapılıyor; burada Supabase
 # anahtarı gerekmez — kontroller saf mantık ve statik analizle sınırlı.
 on:
   push:
@@ -27,11 +27,8 @@ jobs:
       - run: npm ci
       - name: Tipler
         run: npx tsc --noEmit
-      # npm run lint, proje kapsamlı HOME/npm yolları kuran
-      # scripts/sites-env.sh üzerinden geçiyor; bu CI'da gereksiz, eslint
-      # doğrudan aynı argümanlarla çalıştırılıyor.
       - name: Lint
-        run: npx eslint . --ignore-pattern dist --ignore-pattern .next
+        run: npm run lint
       - name: Birim testleri
         run: npm run test:unit
       # Canlı şemanın anlık görüntüsü (supabase/schema/canli-sema.sql) PGlite'a

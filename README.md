@@ -17,7 +17,7 @@ Bildirimler ve Platform yönetimi.
 ## Yığın
 
 Next.js 16 · React 19 · TypeScript · Tailwind 4 · Supabase (Postgres + Auth +
-Storage) · Cloudflare vinext üzerinde çalışır, dağıtım Sites/Vercel tarafında.
+Storage) · yerel geliştirme Cloudflare vinext üzerinde, dağıtım Vercel'de.
 
 ## Kurulum
 
@@ -40,10 +40,8 @@ değişken uygulamayı düşürmez, o özelliği kapalı gösterir.
 | `npm run test:unit` | Saf mantık birim testleri (derleme gerekmez) |
 | `npx tsc --noEmit` | Tip denetimi |
 | `npm run lint` | ESLint |
-| `npm run build` | Sites artefaktını üretir ve doğrular |
-| `npm test` | Derleme + yayınlanan HTML doğrulaması |
+| `npm run build` | Üretim derlemesi (`next build`) |
 | `npm run check:css` | CSS değişken (token) denetimi |
-| `npm run validate:artifact` | Mevcut artefaktın manifest/ESM kontrolü |
 
 Her push ve PR'da `.github/workflows/ci.yml` tip denetimi, lint ve birim
 testlerini çalıştırır. Derleme CI'da değil, dağıtım tarafında yapılır.
@@ -108,36 +106,18 @@ müşteri belgeleri ve oturum yolları hiçbir hostta dizine girmez. Kararların
 tamamı `lib/site/host-rules.ts` içinde saf fonksiyonlardadır ve birim
 testlidir; `lib/supabase/proxy.ts` ile `robots.ts` oradan okur.
 
-## Platform notları (Sites)
-
-Sites yaşam döngüsü CLI'ı kilitli bağımlılık kurulumunu kendisi yapar. Kaynağı
-düzenleyin, tutarlı bir aşama hazır olunca kontrol noktası alın; uzak Sites
-derleyicisi gönderilen commit üzerinde `npm run build` çalıştırır. Kurulum ve
-derlemeyi normal akışın parçası olarak tekrarlamayın.
-
-`install:ci` tek seferlik, yeniden denemeyen bir `npm ci`'dir: aynı proje için
-eşzamanlı kurulumu reddeder, imaj önbelleğini `--prefer-offline` ile kullanır,
-npm'i tek sokete indirir ve takılan kurulumu sonlandırır. Bu yardımcılar Linux
-ve GNU `timeout` içindir, macOS'ta çalışmaz. Zaman aşımları
-`SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT` ve
-`SITES_BUILD_KILL_AFTER` ile değiştirilebilir; hiçbiri yeniden denemez.
-
-Yazılabilir proje kapsamlı HOME/npm/XDG yolları gereken betikler
-`scripts/sites-env.sh` kullanır. Üretilen `.sites-runtime/` klasörü geçicidir
-ve Git'e girmez. Bu proje `wrangler.jsonc` kullanmaz.
-
 ## Şablondan kalan, şu an kullanılmayan parçalar
 
 Bunlar vinext başlangıç şablonundan gelir ve ArvoOS'ta **kullanılmaz**; silinmediler
 çünkü platform iskeletinin parçası:
 
 - **Cloudflare D1 + Drizzle** (`db/`, `drizzle.config.ts`, `examples/d1/`):
-  `db/schema.ts` boş, `.openai/hosting.json` içinde `d1: null`. Tüm veri
-  Supabase'de.
+  `db/schema.ts` boş, hiçbir yerde bağlama tanımlı değil. Tüm veri Supabase'de.
 - **ChatGPT ile giriş** (`app/chatgpt-auth.ts`): hiçbir yerden import
   edilmiyor. Panel girişi Supabase Auth ile yapılır.
 
-Bunlardan birini açacaksanız önce `.openai/hosting.json` bağlamalarını tanımlayın.
+Bunlardan birini açacaksanız bağlamayı `vite.config.ts`'teki Cloudflare
+yapılandırmasına ekleyin.
 
 ## WhatsApp
 
