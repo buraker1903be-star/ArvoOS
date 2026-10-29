@@ -1183,29 +1183,6 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
 /* ---------- Müşteri detayı: pencere düğmeleri (14.10.2026) ---------- */
 /* Altı düğme başlığın sağında tek sıra; sığmazsa alt satıra sarar,
    telefonda yatay kaydırmaya düşmesin. Açık pencerenin düğmesi dolu. */
-.musteri-pencereleri { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px }
-.musteri-pencereleri .panel-secondary { display: inline-flex; align-items: center; gap: 6px }
-.musteri-pencereleri .panel-secondary[aria-current="page"] { border-color: var(--primary); background: var(--primary); color: var(--surface) }
-.musteri-rozet { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--warning); color: var(--surface); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center }
-/*
-  Telefonda pencere sekmeleri tek sıra, yatay kaydırmalı (15.10.2026).
-  Dört sekme 375 piksellik ekranda 454 piksel tutuyordu: "Kurum Ayarları"
-  tek başına ikinci sıraya düşüyor, başlık 94 piksele çıkıyordu. Sarmak
-  yerine kaydırınca dördüncü sekme kenardan görünerek devamı olduğunu
-  söylüyor — konsolun süzgeç rayıyla aynı davranış.
-*/
-@media (max-width: 760px) {
-  .musteri-pencereleri {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .musteri-pencereleri::-webkit-scrollbar { display: none }
-  .musteri-pencereleri > * { flex: 0 0 auto }
-}
-.musteri-yukleniyor { min-height: 160px; display: grid; place-items: center; margin: 0 }
 .panel-root .proforma-kisayol{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
 .panel-root .proforma-kisayol > .kayit-formu-bolum{flex-basis:100%;margin-top:0}
 /* Tahsilat → Proformalar ve Banka hesapları: satır sonundaki iki düğme yan yana. */

@@ -7,7 +7,7 @@ import { kurumTuru } from "@/lib/kurum-turu";
 import { zorunlu } from "../../konsol-oku";
 import { ADDON_PRODUCTS, productLicenseLabels, urunSimgesi } from "@/lib/products";
 import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
-import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
+import { KURULUM_ADI, LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
 import { ETKINLIK_ADI, VARLIK_ADI } from "../../kiraci-dosyasi";
 import { KiraciUyeleri } from "../../kiraci-uyeleri";
 import { kiraciUyeleriniOku } from "../../kiraci-uyeleri-oku";
@@ -15,8 +15,11 @@ import { LisansBolumu } from "../../licenses/lisans-bolumu";
 import { KiraciDosyasi } from "../../kiraci-dosyasi";
 import { kiraciDosyasiVerisi } from "../../kiraci-dosyasi-verisi";
 import { OdemeBolumu, type Odeme, type UrunSatiri } from "./bolumler";
-import { MusteriPenceresi } from "./pencere";
+import { BelgeBolumu } from "./belgeler";
 import "../../platform.css";
+import "../../../hr/hr.css";
+import "../../../crm/kayit-detay/kayit-detay.css";
+import "./musteri-karti.css";
 
 /*
   MÜŞTERİ DETAYI (14.10.2026, kurum sahibinin isteği).
@@ -27,18 +30,12 @@ import "../../platform.css";
   "bu müşteri ne kullanıyor, ne ödüyor, ne zaman yenileniyor, kime
   ulaşırım".
 
-  SADE SAYFA, ALTI PENCERE (aynı gün, ikinci istek: "çok fazla buton çok
-  fazla sayfa var … butonların sayfası müşteri detay sayfasında açılan
-  popup olsun"). Sayfanın kendisi yalnızca özet: şerit, ürünler,
-  iletişim, son etkinlik. Lisanslar, Güncel Fiyat, Cari Hesap, Ödemeler,
-  Faturalar ve Kullanıcılar üstteki düğmelerle bu sayfanın içinde
-  pencerede açılıyor; kurucu müşteriden ayrılmadan lisansı düzenliyor,
-  dekontu onaylıyor, kullanıcının erişimini kapatıyor.
-
-  Pencereler YENİ bir düzenleme yolu değil: Lisanslar konsolun lisans
-  bileşenini (LisansBolumu), Kullanıcılar kiracı dosyasının üye listesini,
-  ödeme kararı Ödemeler sayfasının formunu ve işlemini kullanıyor. Aynı
-  işin iki ayrı kodu olsaydı biri ötekinin kuralını atlardı.
+  Bölümler YENİ bir düzenleme yolu değil: Ürünler ve lisans konsolun
+  lisans bileşenini (LisansBolumu), Kullanıcılar kiracı dosyasının üye
+  listesini, ödeme kararı Ödemeler sayfasının formunu ve işlemini
+  kullanıyor. Aynı işin iki ayrı kodu olsaydı biri ötekinin kuralını
+  atlardı. (14.10.2026'dan 29.10.2026'ya kadar bunlar açılır
+  pencerelerdi; aşağıdaki SEKMELER notu.)
 
   Ödeme, üyelik ve etkinlik kayıtları yalnızca kurum üyelerine açık
   (RLS); kurucu bunları sunucu anahtarıyla okuyor — sayfanın başında
@@ -49,22 +46,34 @@ const ACIK = new Set(["active", "trialing", "past_due"]);
 const ODEYEN = new Set(["active", "past_due"]);
 
 /*
-  DÖRT PENCERE (14.10.2026, "pencereleri birleştir, daha hızlı olsun").
-  Yediydi: Güncel Fiyat Lisanslar'a katıldı (liste fiyatı ürün satırında),
-  Cari Hesap ve Faturalar Ödemeler'e (aynı ödemeleri iki pencere ayrı
-  listeliyordu). Eski adresler (?pencere=fiyat / cari / faturalar)
-  ESKI_PENCERE ile yeni karşılığına açılıyor.
+  SEKMELİ MÜŞTERİ KARTI (29.10.2026, konsol yeniden kurulurken: "panel
+  kalitesinde"). Dört bölüm başlıktaki düğmelerle açılan PENCERELERDİ;
+  sayfanın kendisi yalnızca bir özetti ve kurucu her iş için pencere
+  açıp kapatıyordu. Personel kartında olduğu gibi artık tek bir sekmeli
+  kart: Bilgiler · Ürünler ve lisans · Kullanıcılar · Ödemeler ve
+  proformalar · Kurulum.
+
+  Sekmeler BAĞLANTI, istemci sekmesi değil: Ürünler ve lisans sekmesi
+  ArvoLab, ArvoARC ve ArvoCal'a gidiyor ve beş sekmenin hepsini her
+  açılışta sunucuda çizmek sayfayı en yavaş köprü kadar yavaşlatırdı.
+  Seçili sekme adreste (?pencere=), yalnızca o okunuyor; formu kaydeden
+  sekme yeniden çizimde açık kalıyor. Parametrenin adı bilerek
+  değişmedi: konsolun on beş yerinde ?pencere=lisanslar / ayarlar /
+  odemeler bağlantısı var, ESKI_SEKME onları yeni sekmelerine açıyor.
 */
-const PENCERELER = [
-  { kod: "lisanslar", ad: "Lisanslar" },
-  { kod: "odemeler", ad: "Ödemeler" },
+const SEKMELER = [
+  { kod: "bilgiler", ad: "Bilgiler" },
+  { kod: "urunler", ad: "Ürünler ve lisans" },
   { kod: "kullanicilar", ad: "Kullanıcılar" },
-  /* Kiracı dosyası (14.10.2026): ayrı sayfası kaldırıldı; kurum ayarları
-     formu, modüller, kurulum adımları ve sahibe giriş bağlantısı burada. */
-  { kod: "ayarlar", ad: "Kurum Ayarları" },
+  { kod: "odemeler", ad: "Ödemeler ve proformalar" },
+  /* Kiracı dosyası: kurum ayarları formu, modüller, kurulum adımları ve
+     sahibe giriş bağlantısı. */
+  { kod: "kurulum", ad: "Kurulum" },
 ] as const;
-type PencereKodu = (typeof PENCERELER)[number]["kod"];
-const ESKI_PENCERE: Record<string, PencereKodu> = { fiyat: "lisanslar", cari: "odemeler", faturalar: "odemeler" };
+type SekmeKodu = (typeof SEKMELER)[number]["kod"];
+const ESKI_SEKME: Record<string, SekmeKodu> = {
+  lisanslar: "urunler", fiyat: "urunler", ayarlar: "kurulum", cari: "odemeler", faturalar: "odemeler",
+};
 
 type Kurum = {
   id: string; name: string; display_name: string | null; slug: string; kind: string | null; plan_code: string | null;
@@ -84,7 +93,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
   if (!isPlatformOwner) notFound();
   const [{ id }, { pencere: pencereParametresi, provisioned }] = await Promise.all([params, searchParams]);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const pencere = PENCERELER.find((p) => p.kod === pencereParametresi)?.kod ?? ESKI_PENCERE[pencereParametresi ?? ""] ?? null;
+  const sekme: SekmeKodu = SEKMELER.find((x) => x.kod === pencereParametresi)?.kod ?? ESKI_SEKME[pencereParametresi ?? ""] ?? "bilgiler";
 
   const admin = createAdminClient();
   /*
@@ -151,10 +160,13 @@ export default async function MusteriDetayi({ params, searchParams }: {
 
   const adres = `/panel/platform/musteriler/${id}`;
 
-  async function pencereyiKur(kod: PencereKodu) {
-    if (kod === "lisanslar") return <LisansBolumu supabase={supabase} organizationId={id} label={ad} />;
-    if (kod === "odemeler") return <OdemeBolumu supabase={supabase} odemeler={odemeler} kurumAdi={ad} urunler={urunler} grup={grup} />;
-    if (kod === "ayarlar") {
+  async function sekmeyiKur(kod: Exclude<SekmeKodu, "bilgiler">) {
+    if (kod === "urunler") return <LisansBolumu supabase={supabase} organizationId={id} label={ad} />;
+    if (kod === "odemeler") return <>
+      <OdemeBolumu supabase={supabase} odemeler={odemeler} kurumAdi={ad} urunler={urunler} grup={grup} />
+      <BelgeBolumu organizationId={id} />
+    </>;
+    if (kod === "kurulum") {
       const veri = await kiraciDosyasiVerisi(supabase, id);
       return veri ? <KiraciDosyasi supabase={supabase} {...veri} pencerede /> : <KBos baslik="Kurum bulunamadı" />;
     }
@@ -175,21 +187,21 @@ export default async function MusteriDetayi({ params, searchParams }: {
     );
   }
 
-  return <main className="plt talep cari ekip liste-sayfa">
+  const olusma = (kayit as { created_at?: string } | null)?.created_at ?? null;
+  const sekmeAdresi = (kod: SekmeKodu) => (kod === "bilgiler" ? adres : `${adres}?pencere=${kod}`);
+  const sekmeEki = (kod: SekmeKodu) =>
+    kod === "odemeler" && bekleyen.length ? <span className="pu-sayi" data-tone="warning">{bekleyen.length}</span>
+      : kod === "kullanicilar" ? <span className="pu-sayi">{sayi(Number(kurum.aktif_uye))}</span>
+      : kod === "urunler" && kullandigi.length ? <span className="pu-sayi">{kullandigi.length}</span>
+      : null;
+
+  return <main className="plt talep cari ekip musteri-karti">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker"><Link href="/panel/platform/musteriler">MÜŞTERİLER</Link> · {tur === "grup" ? "GRUP MARKASI" : tur === "arvo" ? "ARVO" : "KURUMSAL"}</small>
         <h1>{ad}</h1>
+        <p className="ek-alt">{[ad !== kurum.name ? kurum.name : null, kurum.custom_domain || `${kurum.slug}.arvo-os.com`, olusma ? `${tarih(olusma)} tarihinden beri` : null].filter(Boolean).join(" · ")}</p>
       </div>
-      <nav className="talep-bas-eylem musteri-pencereleri" aria-label="Müşteri bölümleri">
-        {PENCERELER.map((p) => (
-          <Link key={p.kod} className="panel-secondary" href={`${adres}?pencere=${p.kod}`} scroll={false}
-            aria-current={pencere === p.kod ? "page" : undefined}>
-            {p.ad}
-            {p.kod === "odemeler" && bekleyen.length ? <span className="musteri-rozet">{bekleyen.length}</span> : null}
-          </Link>
-        ))}
-      </nav>
     </header>
 
     <nav className="kayit-serit talep-serit" aria-label="Müşteri özeti">
@@ -203,59 +215,91 @@ export default async function MusteriDetayi({ params, searchParams }: {
         <div><dt>En yakın yenileme</dt><dd className={yenileme ? undefined : "talep-bos"}>{yenileme ? tarih(yenileme) : "—"}</dd></div>
         <div>
           <dt>Kullanıcı</dt>
-          <dd>{sayi(Number(kurum.aktif_uye))}{kurum.user_limit ? ` / ${sayi(Number(kurum.user_limit))}` : ""}</dd>
+          <dd><Link href={sekmeAdresi("kullanicilar")} scroll={false}>{sayi(Number(kurum.aktif_uye))}{kurum.user_limit ? ` / ${sayi(Number(kurum.user_limit))}` : ""}</Link></dd>
           <small>{kurum.plan_code ? `${PAKET_ADI[kurum.plan_code] ?? kurum.plan_code} paket` : "Paket yok"}</small>
         </div>
         <div>
           <dt>Toplam tahsilat</dt>
-          <dd className={toplamTahsilat ? undefined : "talep-bos"}>{toplamTahsilat ? para(toplamTahsilat) : "Yok"}</dd>
+          <dd className={toplamTahsilat ? undefined : "talep-bos"}><Link href={sekmeAdresi("odemeler")} scroll={false}>{toplamTahsilat ? para(toplamTahsilat) : "Yok"}</Link></dd>
           <small>{onaylanan[0] ? `son ${tarih(onaylanan[0].reviewed_at ?? onaylanan[0].created_at)}` : "henüz ödeme yok"}</small>
         </div>
-        <div><dt>Müşteri olduğu tarih</dt><dd>{tarih((kayit as { created_at?: string } | null)?.created_at ?? null)}</dd></div>
       </dl>
     </nav>
 
     {provisioned === "1" ? (
-      <KNot ton="basari"><b>{ad} kuruldu.</b> Davet {kurum.davet_eposta ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse Kurum Ayarları&apos;ndan giriş bağlantısı oluşturup WhatsApp&apos;tan gönderin.</KNot>
+      <KNot ton="basari"><b>{ad} kuruldu.</b> Davet {kurum.davet_eposta ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse Kurulum sekmesinden giriş bağlantısı oluşturup WhatsApp&apos;tan gönderin.</KNot>
     ) : null}
-    {grup ? <KNot>{tur === "arvo" ? "Arvo&apos;nun kendi kaydı" : "Grup markası"}: ücretleri müşteri gelirine ve tahsilata girmez, konsolda &quot;grup içi değer&quot; olarak toplanır.</KNot> : null}
-    {bekleyen.length ? (
-      <KNot ton="uyari">{bekleyen.length} ödeme bildirimi onay bekliyor. <Link href={`${adres}?pencere=odemeler`} scroll={false}>Ödemeler&apos;de incele →</Link></KNot>
+    {grup ? <KNot>{tur === "arvo" ? "Arvo'nun kendi kaydı" : "Grup markası"}: ücretleri müşteri gelirine ve tahsilata girmez, konsolda &quot;grup içi değer&quot; olarak toplanır.</KNot> : null}
+    {bekleyen.length && sekme !== "odemeler" ? (
+      <KNot ton="uyari">{bekleyen.length} ödeme bildirimi onay bekliyor. <Link href={sekmeAdresi("odemeler")} scroll={false}>Ödemeler sekmesinde incele →</Link></KNot>
     ) : null}
 
     <div className="talep-izgara personel-iki ekip-izgara">
-      <section className="panel-card talep-bilgi" aria-label="Ürünler">
-        <KListe>
-          {urunler.map((u) => {
-            const acik = ACIK.has(u.status);
-            const tarihi = u.status === "trialing" ? u.deneme : u.donem;
-            return (
-              <KOge
-                key={u.kod}
-                href={`${adres}?pencere=lisanslar`}
-                simge={urunSimgesi(u.kod) ?? u.ad}
-                baslik={u.ad}
-                alt={u.status === "inactive" ? "Kullanmıyor" : tarihi ? `${u.status === "trialing" ? "deneme bitişi" : "dönem sonu"} ${tarih(tarihi)}` : "dönem girilmedi"}
-                durum={{ etiket: productLicenseLabels[u.status] ?? u.status, ton: acik ? LISANS_TONU[u.status] ?? "neutral" : "neutral" }}
-                deger={u.ucret ? para(Number(u.ucret)) : u.status === "inactive" ? "—" : <span className="k-ios-eksik">Ücret yok</span>}
-                degerAlt={u.ucret ? (grup ? "grup içi" : "aylık") : undefined}
-              />
-            );
-          })}
-        </KListe>
+      <section className="talep-akis panel-card mu-kart" aria-label="Müşteri kartı">
+        <nav className="talep-akis-sekmeler" aria-label="Müşteri bölümleri">
+          {SEKMELER.map((x) => (
+            <Link key={x.kod} href={sekmeAdresi(x.kod)} scroll={false} replace
+              className={sekme === x.kod ? "is-active" : undefined} aria-current={sekme === x.kod ? "page" : undefined}>
+              {x.ad}{sekmeEki(x.kod)}
+            </Link>
+          ))}
+        </nav>
+        <div className="mu-govde">
+          {sekme === "bilgiler" ? <>
+            <header className="phr-bas"><h2>Ürünler</h2><Link className="pu-tumu" href={sekmeAdresi("urunler")} scroll={false}>Lisansı düzenle</Link></header>
+            <ul className="pu-liste">
+              {urunler.map((u) => {
+                const acik = ACIK.has(u.status);
+                const tarihi = u.status === "trialing" ? u.deneme : u.donem;
+                return (
+                  <li key={u.kod} className={u.status === "inactive" ? "is-pasif" : undefined}>
+                    <Link href={sekmeAdresi("urunler")} scroll={false}>
+                      <span className="mu-simge" aria-hidden="true">{urunSimgesi(u.kod) ?? u.ad.slice(0, 2)}</span>
+                      <span className="pu-govde">
+                        <b>{u.ad}</b>
+                        <small>{u.status === "inactive" ? "Kullanmıyor" : [u.planCode ? `${PAKET_ADI[u.planCode] ?? u.planCode} paket` : null, tarihi ? `${u.status === "trialing" ? "deneme bitişi" : "dönem sonu"} ${tarih(tarihi)}` : "dönem girilmedi"].filter(Boolean).join(" · ")}</small>
+                      </span>
+                      {u.status === "inactive" ? null : (
+                        <span className="mu-tutar">{u.ucret ? <>{para(Number(u.ucret))}<small>{grup ? "grup içi" : "aylık"}</small></> : <span className="k-ios-eksik">Ücret yok</span>}</span>
+                      )}
+                      <span className="status-pill" data-tone={acik ? LISANS_TONU[u.status] ?? "neutral" : "neutral"}>{productLicenseLabels[u.status] ?? u.status}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <header className="phr-bas"><h2>Kurum</h2><Link className="pu-tumu" href={sekmeAdresi("kurulum")} scroll={false}>Kurum ayarları</Link></header>
+            <dl className="talep-liste talep-liste--iki mu-bilgi">
+              <div><dt>Yasal unvan</dt><dd>{kurum.name}</dd></div>
+              <div><dt>Görünen ad</dt><dd>{kurum.display_name || <em>Unvanla aynı</em>}</dd></div>
+              <div><dt>Çalışma alanı</dt><dd className="plt-mono">{kurum.slug}</dd></div>
+              <div><dt>Alan adı</dt><dd>{kurum.custom_domain || <em>Yok</em>}</dd></div>
+              <div><dt>Paket</dt><dd>{kurum.plan_code ? PAKET_ADI[kurum.plan_code] ?? kurum.plan_code : <em>Yok</em>}</dd></div>
+              <div><dt>Kullanıcı limiti</dt><dd>{kurum.user_limit ? sayi(Number(kurum.user_limit)) : <em>Sınırsız</em>}</dd></div>
+              <div><dt>Kurulum</dt><dd><span className="status-pill" data-tone={kurum.provisioning_state === "failed" ? "danger" : kurum.provisioning_state === "active" ? "success" : "info"}>{KURULUM_ADI[kurum.provisioning_state] ?? kurum.provisioning_state}</span></dd></div>
+              <div><dt>Müşteri olduğu tarih</dt><dd>{tarih(olusma)}</dd></div>
+            </dl>
+          </> : (
+            /* İçerik akarak geliyor (Suspense): sekme hemen değişiyor,
+               köprüye giden Ürünler ve lisans sekmesi bir saniye "boş
+               düğme" gibi beklemiyor. */
+            <Suspense key={sekme} fallback={<p className="pu-bos">Yükleniyor…</p>}>
+              {sekmeyiKur(sekme)}
+            </Suspense>
+          )}
+        </div>
       </section>
 
       <div className="liste-sag">
-        <KKart baslik="İletişim" sag={<Link className="panel-secondary" href={`${adres}?pencere=ayarlar`} scroll={false}>Düzenle</Link>}>
+        <KKart baslik="İletişim" sag={<Link className="pu-tumu" href={sekmeAdresi("kurulum")} scroll={false}>Düzenle</Link>}>
           <KListe>
-            <KOge baslik="Yasal unvan" deger={kurum.name} />
             <KOge baslik="Yetkili e-posta" deger={kurum.davet_eposta ? <a href={`mailto:${kurum.davet_eposta}`}>{kurum.davet_eposta}</a> : <span className="k-ios-eksik">Yok</span>} />
             <KOge baslik="Telefon" deger={kurum.contact_phone ? <a href={`tel:${kurum.contact_phone.replace(/\s/g, "")}`}>{kurum.contact_phone}</a> : <span className="k-ios-eksik">Girilmedi</span>} />
-            {kurum.custom_domain ? <KOge baslik="Alan adı" deger={kurum.custom_domain} /> : null}
           </KListe>
         </KKart>
 
-        <KKart baslik="Son etkinlik">
+        <KKart baslik="Son etkinlik" aciklama="Kurumun panelinde yapılan son işlemler">
           {etkinlikler.length ? (
             <KListe>
               {etkinlikler.map((e, i) => (
@@ -266,19 +310,5 @@ export default async function MusteriDetayi({ params, searchParams }: {
         </KKart>
       </div>
     </div>
-
-    {/*
-      Pencere HEMEN açılıyor, içeriği akarak geliyor (Suspense). Eskiden
-      sayfa pencerenin verisini bekleyip öyle çiziliyordu: Lisanslar
-      ArvoLab, ARC ve Randevu'ya gittiği için düğmeye basınca bir saniye
-      hiçbir şey olmuyordu — "çalışmıyor mu" dedirten bekleyiş.
-    */}
-    {pencere ? (
-      <MusteriPenceresi key={pencere} ust={ad} baslik={PENCERELER.find((p) => p.kod === pencere)!.ad} kapatAdresi={adres}>
-        <Suspense fallback={<p className="panel-muted musteri-yukleniyor">Yükleniyor…</p>}>
-          {pencereyiKur(pencere)}
-        </Suspense>
-      </MusteriPenceresi>
-    ) : null}
   </main>;
 }
