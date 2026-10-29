@@ -12,6 +12,9 @@ import { kurumTuru, musteriMi } from "@/lib/kurum-turu";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels } from "@/lib/payment-incidents";
+import { havaleDenetimleri } from "@/lib/beklenen-odeme";
+import { reviewBankTransferPayment } from "./platform/payments/actions";
+import { HizliOnay } from "./platform/payments/hizli-onay";
 import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
 import { gunFarki } from "@/lib/is-adimlari";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -62,8 +65,21 @@ import "./konsol-ana-sayfa.css";
   Elle yazılmış "Bölümler" kartı kalktı: dock beş uygulamaya indi ve
   aynı listeyi zaten gösteriyor.
 
-  Sayfa okunur: buradan hiçbir şey yazılmıyor, her satır işin yapıldığı
-  ekrana götürüyor. Aynı kuralı iki yerde uygulamak, birinin sapması demek.
+  SAYFA ARTIK BİR ŞEY YAZIYOR, AMA TEK BİR ŞEY (29.10.2026, kurum
+  sahibinin isteği): beklenenle UYUŞAN ödeme bildirimi kuyruktan tek
+  tıkla onaylanabiliyor. Kurucunun günde defalarca yaptığı iş "dekont
+  geldi, tutar doğru, onayla" idi ve bunun için ekran değiştirmek
+  gerekiyordu.
+
+  Eski kural ("buradan hiçbir şey yazılmıyor") şunun için konmuştu:
+  aynı işi iki yerde uygulamak, birinin sapması demek. Kural
+  korunuyor — ikinci bir uygulama YOK: düğme payments/actions.ts'teki
+  AYNI sunucu işlemini çağırıyor, yetki, tutar denetimi, lisans uzatma
+  ve ürün köprüsüne yansıtma orada.
+
+  Farkı olan bildirim burada onaylanmıyor; satır "incelenmeli" deyip
+  ekrana götürüyor, çünkü farkı görerek teyit etmek orada. Ret de
+  orada: ret notu müşteriye gösteriliyor ve zorunlu.
 */
 
 const TZ = "Europe/Istanbul";
@@ -100,7 +116,7 @@ const hatirlatmalariHesapla = (lisanslar: RenewalLicense[], kurumlar: RenewalOrg
 type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null; grup_markasi: boolean | null };
 type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
-type BekleyenOdeme = { id: string; organization_id: string; product: string | null; amount: number | null; currency: string | null; payment_method: string | null; created_at: string };
+type BekleyenOdeme = { id: string; organization_id: string; product: string | null; plan_code: string | null; amount: number | null; currency: string | null; payment_method: string | null; created_at: string };
 type BekleyenSozlesme = { id: string; contract_no: string | null; customer_name: string | null; amount: number | null; currency: string | null; created_at: string };
 type KurulumKaydi = { id: number | string; organization_id: string; action: string; result: string | null; state: string | null; created_at: string };
 
@@ -169,7 +185,7 @@ export async function KonsolAnaSayfa() {
       .catch((hata: unknown) => ({ data: null, error: { message: hata instanceof Error ? hata.message : String(hata) } })),
     /* Bekleyenlerin TAMAMI, sınırsız: kuyruk kurucunun bugünkü işi ve
        satır satır gösteriliyor (Ödeme onayları ekranındaki kuralın aynısı). */
-    supabase.from("organization_payment_requests").select("id,organization_id,product,amount,currency,payment_method,created_at")
+    supabase.from("organization_payment_requests").select("id,organization_id,product,plan_code,amount,currency,payment_method,created_at")
       .eq("status", "pending").order("created_at", { ascending: false }),
     supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
     /* Ad birden çok yerde olabilir ve hiçbiri zorunlu değil; davet
@@ -344,6 +360,20 @@ export async function KonsolAnaSayfa() {
 
   const hatirlatmalar = hatirlatmalariHesapla(urunler as RenewalLicense[], kurumlar as RenewalOrganization[]);
   const odemeler = (bekleyenOdeme.data ?? []) as BekleyenOdeme[];
+  /*
+    TUTAR DENETİMİ KUYRUKTA DA ÇALIŞIYOR (lib/beklenen-odeme). Tek
+    tıkla onay yalnızca beklenenle UYUŞAN bildirimde var; farkı olan
+    satır "İncele" diyerek ekrana götürüyor, çünkü farkı görerek teyit
+    etmek orada (payments/karar-formu). Okuma bekleyen kuyruk kadar
+    küçük ve kurum kimlikleriyle sınırlı.
+  */
+  const odemeDenetimleri = await havaleDenetimleri(supabase, odemeler.map((o) => ({
+    id: o.id, organization_id: o.organization_id, product: o.product, plan_code: o.plan_code,
+    /* Tutarsız bildirim yoktur: sütun NOT NULL değil ama bildirim
+       tutarsız gelirse denetim onu 0 ile karşılaştırıp fark yazar —
+       yani sessizce "uyumlu" saymaz. */
+    amount: Number(o.amount ?? 0),
+  })));
   /** Sunucu anahtarı yoksa null: okunamadı, boş değil. */
   const sozlesmeler = admin ? ((sozlesmeSatirlari ?? []) as BekleyenSozlesme[]) : null;
 
@@ -531,17 +561,33 @@ export async function KonsolAnaSayfa() {
             {bas("Kurumların gönderdiği dekontlar ve kart ödemeleri; onaylanınca lisans açılır.", "/panel/platform/payments", "Ödeme onayları")}
             {bekleyenOdeme.error ? okunamadi : odemeler.length ? (
               <ul className="pu-liste">
-                {odemeler.map((odeme) => (
-                  <li key={odeme.id}>
-                    <Link href="/panel/platform/payments">
-                      <span className="pu-govde">
-                        <b>{kurumAdi.get(odeme.organization_id) ?? "Kurum"}</b>
-                        <small>{[odeme.product ? productName(odeme.product) : null, odeme.payment_method === "paytr" ? "Kart (PayTR)" : "Havale/EFT", relativeTime(odeme.created_at)].filter(Boolean).join(" · ")}</small>
-                      </span>
-                      <span className="konsol-tutar">{para(Number(odeme.amount ?? 0), odeme.currency ?? "TRY")}</span>
-                    </Link>
-                  </li>
-                ))}
+                {odemeler.map((odeme) => {
+                  const farklar = odemeDenetimleri.get(odeme.id)?.farklar ?? [];
+                  const ayrinti = [odeme.product ? productName(odeme.product) : null, odeme.payment_method === "paytr" ? "Kart (PayTR)" : "Havale/EFT", relativeTime(odeme.created_at)].filter(Boolean).join(" · ");
+                  const tutar = para(Number(odeme.amount ?? 0), odeme.currency ?? "TRY");
+                  return (
+                    <li key={odeme.id} className="pu-eylemli">
+                      <Link href="/panel/platform/payments">
+                        <span className="pu-govde">
+                          <b>{kurumAdi.get(odeme.organization_id) ?? "Kurum"}</b>
+                          <small>{farklar.length ? "Beklenenle uyuşmuyor · incelenmeli" : ayrinti}</small>
+                        </span>
+                        <span className="konsol-tutar" data-uyari={farklar.length ? "evet" : undefined}>{tutar}</span>
+                      </Link>
+                      {/* Farkı olan bildirim burada onaylanmıyor: teyit,
+                          farkın satır satır yazılı olduğu ekranda. */}
+                      {farklar.length ? null : (
+                        <HizliOnay
+                          paymentId={odeme.id}
+                          kurumAdi={kurumAdi.get(odeme.organization_id) ?? "Kurum"}
+                          tutar={tutar}
+                          ayrinti={ayrinti}
+                          kaydet={reviewBankTransferPayment}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             ) : bos("İncelenecek ödeme bildirimi yok.")}
           </section>

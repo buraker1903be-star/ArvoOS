@@ -25,6 +25,25 @@
 .os-root .konsol-isler .phr-bas>small{color:var(--muted);font-size:var(--fs-sm)}
 .os-root .konsol-isler .pu-bos[data-tone="danger"]{border-color:var(--danger);color:var(--danger)}
 .konsol-tutar{flex:none;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+/* Beklenenle uyuşmayan tutar: rakamın kendisi işaretli, satırda ayrı
+   bir rozet yok — kuyruk satırı iki satırlık, üçüncü bir öğe sıkışırdı. */
+.konsol-tutar[data-uyari="evet"]{color:var(--danger)}
+
+/*
+  TEK TIKLA ONAY SATIRI. Satırın tamamı bağlantı (pu-liste a), düğme
+  onun DIŞINDA duruyor: bağlantının içine form koymak geçersiz HTML ve
+  düğmeye basınca sayfa da değişirdi.
+*/
+.pu-eylemli{display:flex;align-items:center;gap:var(--sp-2);padding-right:var(--sp-3)}
+.pu-eylemli>a{flex:1 1 auto;min-width:0}
+.hizli-onay{flex:none;margin:0}
+@media (max-width:620px){
+  /* Dar ekranda düğme alta geçiyor: tutar ve "Onayla" yan yana
+     sıkışınca ikisi de okunmuyordu. */
+  .pu-eylemli{flex-wrap:wrap;padding:0 var(--sp-3) var(--sp-3)}
+  .pu-eylemli>a{flex:1 1 100%;padding-left:0;padding-right:0}
+  .hizli-onay{margin-left:auto}
+}
 
 @media (max-width:760px){
   .konsol-serit{grid-template-columns:1fr 1fr}
