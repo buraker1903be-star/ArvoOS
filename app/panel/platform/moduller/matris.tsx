@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { KBaslik, KBos, KSatirSonu, KTablo } from "../konsol-ui";
+import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { basHarfleri } from "../bicim";
 // Hücre bağlantısı (.plt-matris-hucre) ve "yalnızca müşteriler" kutusu konsolun stilinde.
 import "../platform.css";
 
@@ -109,52 +111,73 @@ export function Matris({ urunler, satirlar, durum }: {
       </div>
 
       {gorunen.length ? (
-        /* Konsolun öbür listeleri iOS satırına geçti (KListe/KOge,
-           14.10.2026); bu matris BİLEREK tablo kalıyor. Satır başına dört
-           ürün hücresi var ve soru sütun boyunca okunuyor ("kimin
-           Randevu'su yeşil değil"): tek satırlık özete sıkıştırınca o
-           dikey tarama kayboluyor. */
-        <KTablo kolonlar={[{ ad: "Kiracı" }, ...urunler.map((urun) => ({ ad: urun.name })), { ad: "" }]}>
-          {gorunen.map((satir) => {
-            const kiraci = `/panel/platform/musteriler/${satir.id}?pencere=ayarlar`;
-            return (
-              <tr key={satir.id}>
-                <KBaslik avatar etiket="Kiracı" href={kiraci} baslik={satir.ad} alt={satir.kendiMarkamiz ? "kendi markamız" : undefined} />
-                {urunler.map((urun) => {
-                  const hucre = satir.hucreler[urun.code];
-                  if (!hucre) return <td key={urun.code} data-label={urun.name}>—</td>;
-                  return (
-                    <td key={urun.code} data-label={urun.name}>
-                      {/* Hücre, o kiracının lisans ekranına götürüyor:
-                          sorunu gören kurucu adresi elle kuruyordu. */}
-                      <Link
-                        className="plt-matris-hucre"
-                        href={`/panel/platform/musteriler/${satir.id}?pencere=lisanslar`}
-                        title={`${satir.ad} · ${urun.name}: ${hucre.durumAdi}${hucre.bagimsiz ? " · bağımsız" : ""}`}
-                      >
-                        <span className="status-pill" data-tone={hucre.tone}>{hucre.kisaAd}</span>
-                        {hucre.bagimsiz ? <span className="crm-table-sub">bağımsız</span> : null}
+        /* Konsolun öbür listeleri gibi panelin tablosu (29.10.2026). Bu
+           ekran 14.10.2026'dan beri BİLEREK tabloydu (KTablo): satır başına
+           dört ürün hücresi var ve soru sütun boyunca okunuyor ("kimin
+           ArvoCal'ı yeşil değil"). Değişen yalnızca dil: Müşteriler ve
+           Kullanıcılar tablosuyla aynı ilk hücre, aynı telefon özeti. */
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="md-matris">
+            <thead>
+              <tr>
+                <th>Kiracı</th>
+                {urunler.map((urun) => <th key={urun.code}>{urun.name}</th>)}
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {gorunen.map((satir) => {
+                const kiraci = `/panel/platform/musteriler/${satir.id}?pencere=ayarlar`;
+                const kapali = urunler.filter((urun) => satir.hucreler[urun.code] && !satir.hucreler[urun.code].acik).length;
+                return (
+                  <tr key={satir.id}>
+                    <td data-label="Kiracı">
+                      <Link className="crm-row-link ek-kisi" href={kiraci}>
+                        <span className="ek-avatar" aria-hidden="true">{basHarfleri(satir.ad)}</span>
+                        <span className="ek-kisi-metin">
+                          <span className="crm-table-title" title={satir.ad}>{satir.ad}</span>
+                          <span className="crm-table-sub">{satir.kendiMarkamiz ? "kendi markamız" : kapali ? `${kapali} modül kapalı` : "bütün modüller açık"}</span>
+                        </span>
                       </Link>
                     </td>
-                  );
-                })}
-                <KSatirSonu mobil={{
-                  href: kiraci,
-                  baslik: satir.ad,
-                  alt: [satir.kendiMarkamiz ? "kendi markamız" : null],
-                  /* Telefonda dört hücre tek satırda işaret olarak: soru yine
-                     "hangisi yeşil değil". */
-                  isaretler: urunler.map((urun) => {
-                    const hucre = satir.hucreler[urun.code];
-                    return hucre ? { metin: `${urun.name}: ${hucre.kisaAd}${hucre.bagimsiz ? " · bağımsız" : ""}`, ton: hucre.acik ? "basari" as const : "uyari" as const } : null;
-                  }),
-                }} />
-              </tr>
-            );
-          })}
-        </KTablo>
+                    {urunler.map((urun) => {
+                      const hucre = satir.hucreler[urun.code];
+                      if (!hucre) return <td key={urun.code} data-label={urun.name}>—</td>;
+                      return (
+                        <td key={urun.code} data-label={urun.name}>
+                          {/* Hücre, o kiracının lisans sekmesine götürüyor:
+                              sorunu gören kurucu adresi elle kuruyordu. */}
+                          <Link
+                            className="plt-matris-hucre"
+                            href={`/panel/platform/musteriler/${satir.id}?pencere=lisanslar`}
+                            title={`${satir.ad} · ${urun.name}: ${hucre.durumAdi}${hucre.bagimsiz ? " · bağımsız" : ""}`}
+                          >
+                            <span className="status-pill" data-tone={hucre.tone}>{hucre.kisaAd}</span>
+                            {hucre.bagimsiz ? <span className="crm-table-sub">bağımsız</span> : null}
+                          </Link>
+                        </td>
+                      );
+                    })}
+                    <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                    <MobilSatir
+                      href={kiraci}
+                      baslik={satir.ad}
+                      alt={[satir.kendiMarkamiz ? "kendi markamız" : null]}
+                      /* Telefonda dört hücre tek satırda işaret olarak: soru yine "hangisi yeşil değil". */
+                      isaretler={urunler.map((urun) => {
+                        const hucre = satir.hucreler[urun.code];
+                        return hucre ? { metin: `${urun.name}: ${hucre.kisaAd}${hucre.bagimsiz ? " · bağımsız" : ""}`, ton: hucre.acik ? "basari" as const : "uyari" as const } : null;
+                      })}
+                    />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <SatirTiklama />
+        </div>
       ) : (
-        <KBos baslik="Eşleşen kurum yok" aciklama="Bu süzgeçle ya da aramayla eşleşen kurum yok." />
+        <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>Eşleşen kurum yok</h2><p>Bu süzgeçle ya da aramayla eşleşen kurum yok.</p></div>
       )}
     </>
   );

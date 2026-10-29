@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PRODUCTS, productLicenseLabels } from "@/lib/products";
-import { KBos } from "../konsol-ui";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { LISANS_TONU } from "../bicim";
@@ -115,7 +114,10 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
       <div className="talep-bas-metin">
         <small className="panel-kicker">ÜRÜNLER VE FİYATLAR</small>
         <h1>Modüller</h1>
-        <p className="ek-alt">Hangi ürün hangi kiracıda açık; hücreye tıklayınca o kiracının lisans sekmesi açılır.</p>
+        {/* Kartın başlığındaki uzun açıklama buraya indi (29.10.2026): kart
+            başlığı tablonun üstünde 90 piksel tutuyordu. Sayım kuralı sağdaki
+            istatistik kartının kapsam satırında. */}
+        <p className="ek-alt">Hangi ürün hangi kiracıda açık. Hücreye tıklayınca o kiracının lisans sekmesi açılır; bağımsız mod yalnızca açık modülde yazılır.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/musteriler">Müşteriler</Link>
@@ -156,13 +158,6 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
     */}
     <div className="talep-izgara personel-iki ekip-izgara">
       <section id="matris" className="panel-card talep-bilgi" aria-label="Kiracı × modül">
-        <header className="k-kart-bas">
-          <div>
-            <h2>Kiracı × modül</h2>
-            <p>Sayımda Arvo&apos;nun kendi kurumu yok; grup markaları sayılıyor, çünkü onlar da ürünü kullanıyor. Bağımsız mod yalnızca açık modüllerde yazılır — kapalı bir modülün köprü modu bir şey anlatmaz. Hücreye tıklayınca o kiracının lisans ekranı açılır.</p>
-          </div>
-          <div className="k-kart-sag"><span className="status-pill">{satirlar.length} kurum</span></div>
-        </header>
         {satirlar.length ? (
           <>
             <Matris
@@ -200,7 +195,7 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
               ))}
             </p>
           </>
-        ) : <KBos baslik="Henüz kurum yok" aciklama="İlk müşteri kurulduğunda matris burada dolar." />}
+        ) : <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>Henüz kurum yok</h2><p>İlk müşteri kurulduğunda matris burada dolar.</p></div>}
       </section>
 
       {/*
