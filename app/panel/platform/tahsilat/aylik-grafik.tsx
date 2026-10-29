@@ -47,6 +47,13 @@ export function AylikGrafik({ satirlar }: { satirlar: AylikSatir[] }) {
   const enYuksek = seri.reduce((e, s, i) => (s.tahsilat > (seri[e]?.tahsilat ?? 0) ? i : e), 0);
   const son = seri.length - 1;
   const ilkAy = seri[0]?.ay;
+  /*
+    Hiç kayıt yoksa çubuk ızgarası çizilmiyor (29.10.2026, canlıda ilk
+    açılış). On iki boş çubuk 170 piksel yer kaplayıp "sıfır" demekten
+    başka bir şey söylemiyordu; genel bakış kartlarındaki kuralın aynısı
+    (os/genel-bakis → SeriKarti "bos"). Başlık ve toplamlar duruyor.
+  */
+  const bos = seri.every((s) => !s.tahsilat && !s.bekleyenToplam);
 
   return (
     <section className="panel-card ag-kart" aria-label="Aylık tahsilat">
@@ -55,16 +62,19 @@ export function AylikGrafik({ satirlar }: { satirlar: AylikSatir[] }) {
           <h2>Aylık tahsilat</h2>
           <p>Son {seri.length} ay · Türkiye takvimiyle{ilkAy ? ` · ${ayAdi(ilkAy, true)}'dan beri` : ""}</p>
         </div>
-        <ul className="ag-lejant" aria-label="Lejant">
-          <li data-seri="tahsilat">Tahsil edilen</li>
-          <li data-seri="bekleyen">Bekleyen (havale + proforma)</li>
-        </ul>
+        {bos ? null : (
+          <ul className="ag-lejant" aria-label="Lejant">
+            <li data-seri="tahsilat">Tahsil edilen</li>
+            <li data-seri="bekleyen">Bekleyen (havale + proforma)</li>
+          </ul>
+        )}
         <dl className="ag-toplam">
           <div><dt>{seri.length} ayda tahsil edilen</dt><dd>{para(toplam)}</dd></div>
           <div><dt>Bekleyen</dt><dd>{bekleyen ? para(bekleyen) : "Yok"}</dd></div>
         </dl>
       </header>
 
+      {bos ? <p className="ag-bos">Son {seri.length} ayda tahsilat, bekleyen havale ya da açık proforma yok. İlk ödeme onaylandığında ya da ilk proforma kesildiğinde grafik burada çizilir.</p> : <>
       <div className="ag-cizim">
         <div className="ag-eksen" aria-hidden="true">
           <span>{kisaPara(tavan)}</span><span>{kisaPara(tavan / 2)}</span><span>0</span>
@@ -113,6 +123,7 @@ export function AylikGrafik({ satirlar }: { satirlar: AylikSatir[] }) {
           </table>
         </div>
       </details>
+      </>}
     </section>
   );
 }
