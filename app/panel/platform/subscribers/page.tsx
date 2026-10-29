@@ -299,7 +299,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
                   {bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? (
                     <p className="wide panel-muted">
                       Ücret fiyat listesinden: <b>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "teklif usulü (kartla satılmaz)"}</b>.
-                      {" "}Değiştirmek için <Link href="/panel/platform/fiyatlar">Ücret ve Paketler</Link>.
+                      {" "}Değiştirmek için <Link href="/panel/platform/fiyatlar">Fiyat listesi</Link>.
                     </p>
                   ) : (
                     <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" inputMode="decimal" autoComplete="off" defaultValue={plan?.individual_monthly_fee ? liraYazisi(Number(plan.individual_monthly_fee)) : ""} placeholder="Boşsa ödeme kapalı" /></label>

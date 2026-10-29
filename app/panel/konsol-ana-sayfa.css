@@ -1,0 +1,39 @@
+/*
+  Kurucu konsolunun ana sayfası (29.10.2026): sayı şeridi + "Bugünün
+  işleri" kuyruğu. Kartlar genel bakışın dash-card diliyle aynı kenar ve
+  gölgede; sekmeli kart panelin TalepAkis'i (kayit-detay.css), satırlar
+  personel sayfasının pu-liste'si (hr.css). Yeni bir görsel dil yok,
+  yalnızca üçünü bu sayfada bir araya getiren düzen.
+*/
+.konsol-serit{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin:0;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden}
+.konsol-serit>div{display:flex;flex-direction:column;gap:2px;min-width:0;padding:var(--sp-4) var(--sp-5);border-left:1px solid var(--line-soft)}
+.konsol-serit>div:first-child{border-left:0}
+.konsol-serit dt{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.konsol-serit dd{margin:0;font-size:var(--fs-lg);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-root .konsol-serit dd a{color:var(--ink);font-size:inherit;font-weight:inherit;text-decoration:none}
+.os-root .konsol-serit dd a:hover{color:var(--primary)}
+.konsol-serit small{color:var(--muted);font-size:var(--fs-micro);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-root .konsol-serit>[data-tone="gold"] dd a{color:var(--warning)}
+
+.konsol-isler-kap{display:flex;flex-direction:column;gap:var(--sp-2);scroll-margin-top:var(--sp-12)}
+.konsol-isler-baslik{margin:0 0 0 var(--sp-1);color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+.os-root .konsol-isler{margin:0;border-radius:22px;box-shadow:var(--shadow-sm)}
+/* Kuyruk sayfanın ortası: TalepAkis'in kayıt detayına göre konan boy
+   tavanı burada ekranı ikiye bölüyordu. Liste uzarsa sayfa kayar. */
+.os-root .konsol-isler .talep-akis-panel{max-height:none;min-height:0}
+.os-root .konsol-isler .talep-akis-panel>section{display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4) var(--sp-5)}
+.os-root .konsol-isler .phr-bas>small{color:var(--muted);font-size:var(--fs-sm)}
+.os-root .konsol-isler .pu-bos[data-tone="danger"]{border-color:var(--danger);color:var(--danger)}
+.konsol-tutar{flex:none;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+
+@media (max-width:760px){
+  .konsol-serit{grid-template-columns:1fr 1fr}
+  .konsol-serit>div{border-left:0;border-top:1px solid var(--line-soft)}
+  .konsol-serit>div:nth-child(-n+2){border-top:0}
+  .konsol-serit>div:nth-child(even){border-left:1px solid var(--line-soft)}
+  /* Tek sayıda kutuda sonuncusu satırı doldursun; yoksa yanı boş kalıyordu. */
+  .konsol-serit>div:last-child:nth-child(odd){grid-column:1/-1}
+  .os-root .konsol-isler .talep-akis-panel>section{padding:var(--sp-3)}
+  .os-root .konsol-isler .talep-akis-sekmeler{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .os-root .konsol-isler .talep-akis-sekmeler button{flex:none}
+}
