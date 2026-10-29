@@ -1186,3 +1186,7 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
 /* Tahsilat → Proformalar ve Banka hesapları: satır sonundaki iki düğme yan yana. */
 .k-proforma-eylem{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
 .k-proforma-eylem form{margin:0}
+
+/* Gönderim hatası satırı: ayarın yeşilini çürüten kanıt, bedel
+   cümlesinin altında ve uyarı renginde. */
+.sy-posta-hatasi{display:block;margin-top:4px;color:var(--danger);overflow-wrap:anywhere}

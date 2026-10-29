@@ -290,11 +290,35 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     siparişlerinde zaten uyguluyordu ("'bekleyen yok' demek değil");
     bu iki okuma dışarıda kalmıştı.
   */
+  /*
+    "TANIMLI" İLE "ÇALIŞIYOR" AYNI ŞEY DEĞİL. Denetim yalnızca ortam
+    değişkeninin varlığına bakıyor: iptal edilmiş ya da yanlış
+    kopyalanmış bir anahtar da "Bağlı" görünür, gönderim ise sessizce
+    düşer — kurucunun bugün yanıldığı kusurun kardeşi.
+
+    Tek gerçek kanıt, YAPILMIŞ bir gönderim. Otomatik proforma her
+    denemenin sonucunu satıra yazıyor (gonderim_hatasi); son hata
+    buradan okunuyor ve ayar satırı "Bağlı ama son gönderim hata
+    verdi" diyor. Tek satır, en yeni hata: kuyruk değil, kanıt.
+  */
+  const { data: postaHatasiSatiri, error: postaHatasiHatasi } = admin
+    ? await admin.from("platform_proformalari")
+        .select("proforma_no,gonderim_hatasi,duzenleme_tarihi")
+        .not("gonderim_hatasi", "is", null)
+        .order("duzenleme_tarihi", { ascending: false })
+        .limit(1)
+    : { data: null, error: null };
+  const sonPostaHatasi = ((postaHatasiSatiri ?? []) as { proforma_no: string | null; gonderim_hatasi: string }[])[0] ?? null;
+
   const okunamayan = ([
     ["Kiracı listesi", kiraciHatasi],
     ["Ürün lisansları", urunHatasi],
     ["Koşma kayıtlarının başlangıcı", cronIlkHatasi],
     ["Kurulum günlüğü", kurulumHatasi],
+    /* Okunamayan gönderim kaydı "gönderim sorunsuz" DEĞİL: ayar satırı
+       yeşil kalırdı ve yeşili çürütecek kanıtı göremediğimiz hiç
+       yazmazdı. */
+    ["Proforma gönderim kayıtları", postaHatasiHatasi],
   ] as [string, { message: string } | null][])
     .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
   if (okunamayan.length)
@@ -319,7 +343,10 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   */
   const mesajAyarListesi = mesajAyarlari((ad) => Boolean(process.env[ad]), pushYapilandi());
   const eksikAyarlar = eksikMesajAyarlari(mesajAyarListesi);
-  const toplamSorun = krediSonucu.veri.length + cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length + eksikAyarlar.length;
+  /* Gönderim hatası da açık sorun: anahtar tanımlıyken bile posta
+     gitmiyorsa kurucunun bunu bilmesi gerekiyor. */
+  const ayarSorunu = eksikAyarlar.length + (sonPostaHatasi ? 1 : 0);
+  const toplamSorun = krediSonucu.veri.length + cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length + ayarSorunu;
 
   const kisi = (ad: string, alt: string, href: string | null) => {
     const ic = <>
@@ -360,7 +387,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     { kod: "kota", ad: "Kota ve limitler", adet: kotaSorunu },
     { kod: "kurulum", ad: "Kurulum", adet: kurulumSorunu },
     { kod: "odeme", ad: "Ödeme ve kredi", adet: odemeSorunu },
-    { kod: "ayar", ad: "Platform ayarları", adet: eksikAyarlar.length },
+    { kod: "ayar", ad: "Platform ayarları", adet: ayarSorunu },
   ] as const;
   type SekmeKodu = (typeof sekmeler)[number]["kod"];
   /* Adres sekme söylemiyorsa sorunlu ilk sekme: kurucu boş bir sekmeye inip doluyu aramasın. */
@@ -684,12 +711,26 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
                   <tr key={ayar.ad}>
                     <td data-label="Ayar">{kisi(ayar.ad, ayar.not, "/panel/platform/ayarlar?sekme=entegrasyon")}</td>
                     <td data-label="Durum">
-                      <span className="status-pill" data-tone={ayar.bagli ? "success" : "warning"}>{ayar.bagli ? "Bağlı" : "Eksik"}</span>
+                      {/* Anahtarı tanımlı ama son gönderimi düşmüş ayar
+                          "Bağlı" değil: ekranın yeşili, işin yapıldığı
+                          anlamına gelmeli. */}
+                      {ayar.ad.startsWith("E-posta") && ayar.bagli && sonPostaHatasi ? (
+                        <span className="status-pill" data-tone="danger" title={sonPostaHatasi.gonderim_hatasi}>Gönderim hatası</span>
+                      ) : (
+                        <span className="status-pill" data-tone={ayar.bagli ? "success" : "warning"}>{ayar.bagli ? "Bağlı" : "Eksik"}</span>
+                      )}
                     </td>
                     {/* Bedel BAĞLIYKEN DE yazılıyor: "bu anahtar ne işe
                         yarıyor" sorusunun cevabı, onu kaldırmayı düşünen
                         kişinin görmesi gereken şey. */}
-                    <td data-label="Eksikse ne olmuyor"><small>{ayar.bedel}</small></td>
+                    <td data-label="Eksikse ne olmuyor">
+                      <small>{ayar.bedel}</small>
+                      {ayar.ad.startsWith("E-posta") && ayar.bagli && sonPostaHatasi ? (
+                        <small className="sy-posta-hatasi">
+                          Son deneme düştü{sonPostaHatasi.proforma_no ? ` (${sonPostaHatasi.proforma_no})` : ""}: {sonPostaHatasi.gonderim_hatasi}
+                        </small>
+                      ) : null}
+                    </td>
                     <MobilSatir baslik={ayar.ad} durum={{ etiket: ayar.bagli ? "Bağlı" : "Eksik", ton: ayar.bagli ? "success" : "warning" }} alt={[ayar.not]} />
                   </tr>
                 ))}
