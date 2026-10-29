@@ -1,0 +1,32 @@
+/*
+  Abonelik ve faturalama düzeni (28.10.2026). ArvoLab'ın "Abonelik ve
+  kredi" ekranıyla aynı iskelet: solda abonelikler, sağda faturalama.
+  Dar ekranda tek sütuna iner; iki sütunu yan yana sıkıştırmak tutarları
+  ve düğmeleri satır satır kırıyordu.
+*/
+.panel-root .abk-sutunlar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-4);align-items:start}
+@media (max-width:900px){.panel-root .abk-sutunlar{grid-template-columns:1fr}}
+.panel-root .abk-kart{display:flex;flex-direction:column;gap:var(--sp-3);min-width:0}
+.panel-root .abk-bas h2{margin:0;font-size:17px;color:var(--ink)}
+.panel-root .abk-bas p{margin:4px 0 0;font-size:13px;color:var(--muted)}
+.panel-root .abk-urunler,.panel-root .abk-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)}
+.panel-root .abk-urun{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.panel-root .abk-urun-bas{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.panel-root .abk-urun-bas b{display:block;font-size:15px;color:var(--ink)}
+.panel-root .abk-urun-bas small{display:block;margin-top:2px;font-size:12px;color:var(--muted)}
+.panel-root .abk-ozet{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:0}
+.panel-root .abk-ozet div{padding:8px 10px;border-radius:10px;background:var(--surface-2)}
+.panel-root .abk-ozet dt{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.panel-root .abk-ozet dd{margin:2px 0 0;font-size:14px;font-weight:600;color:var(--ink)}
+.panel-root .abk-not{margin:0;padding:8px 10px;border-radius:10px;font-size:12px;line-height:1.5;background:var(--surface-2);color:var(--ink-soft)}
+.panel-root .abk-not[data-tone="warning"]{border-left:3px solid var(--warning)}
+.panel-root .abk-not[data-tone="success"]{border-left:3px solid var(--success)}
+.panel-root .abk-eylem{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.panel-root .abk-eylem small{flex:1 1 220px;font-size:12px;color:var(--muted)}
+.panel-root .abk-alt{margin:var(--sp-2) 0 0;padding-top:var(--sp-3);border-top:1px solid var(--line-soft);font-size:13px;font-weight:600;color:var(--ink-soft)}
+.panel-root .abk-alt:first-of-type{border-top:0;padding-top:0}
+.panel-root .abk-satir{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:10px}
+.panel-root .abk-satir > span:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.panel-root .abk-satir b{font-size:13px;color:var(--ink);overflow-wrap:anywhere}
+.panel-root .abk-satir small{font-size:12px;color:var(--muted)}
+.panel-root .abk-satir form{margin:0;flex:none}
