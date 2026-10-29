@@ -40,7 +40,16 @@ export async function tumSatirlar<T>(
       );
     }
     const { data, error } = await sayfala(bas, bas + sayfaBoyu - 1);
-    if (error) throw new Error(`${ad} okunamadı: ${error.message}`);
+    /*
+      ÖZGÜN HATA `cause`'DA. Çağıranların bir kısmı PostgREST kodunu
+      okuyup karar veriyor: yenileme takvimi 42703 ("sütun yok")
+      görünce proformaları eski şemayla yeniden okuyor. Kod
+      taşınmayınca `error.code` hep undefined kalıyor, o yedek yol
+      ÖLÜYOR ve sayfa hata ekranına düşüyor — 29.10.2026'da canlıda
+      tam olarak böyle oldu: sayfalama eklenirken bu satır eksik
+      kaldı ve Yenileme takvimi açılmaz oldu.
+    */
+    if (error) throw new Error(`${ad} okunamadı: ${error.message}`, { cause: error });
     if (!data || data.length === 0) break;
     toplanan.push(...data);
     /* Tam sayfa dolmadıysa son sayfa. Boş sayfa beklemek fazladan bir

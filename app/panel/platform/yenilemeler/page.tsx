@@ -120,12 +120,24 @@ export default async function YenilemelerPage({ searchParams }: { searchParams: 
     proformalar o sütunlar olmadan okunuyor ve hepsi "elle kesilmiş"
     sayılıyor — eşleştirme yine çalışır, yalnızca gönderim bilgisi boş.
   */
-  let proformaSatirlari = proformaSonucu;
+  let proformaSatirlari: { data: Partial<TakvimProformasi>[] | null; error: { message: string; code?: string } | null } = proformaSonucu;
   if (proformaSonucu.error?.code === "42703") {
-    proformaSatirlari = await admin.from("platform_proformalari").select("id,proforma_no,organization_id,subscriber_id,product,durum,duzenleme_tarihi,toplam")
-      .gte("duzenleme_tarihi", doksanGunOnce).limit(2000) as typeof proformaSonucu;
+    proformaSatirlari = await sayfaliSonuc<Partial<TakvimProformasi>>("proformalar (eski şema)", (bas, son) =>
+      admin.from("platform_proformalari").select("id,proforma_no,organization_id,subscriber_id,product,durum,duzenleme_tarihi,toplam")
+        .gte("duzenleme_tarihi", doksanGunOnce).order("id").range(bas, son));
   }
-  const proformalar = ((zorunlu(proformaSatirlari, "Proformalar") ?? []) as Partial<TakvimProformasi>[])
+  /*
+    PROFORMA OKUNAMAZSA TAKVİM YİNE AÇILIYOR (29.10.2026). Burada
+    `zorunlu` vardı: proforma okuması düştüğü an bütün yenileme
+    takvimi hata ekranına dönüyordu — oysa proforma, takvimin SÜSÜ
+    ("kesildi mi, gönderildi mi"); asıl bilgi dönemi dolan abonelik.
+    Canlıda tam olarak bu oldu ve kurucu yenilemelerini hiç
+    göremedi. Okunamadığı ekranda YAZIYOR (aşağıdaki uyarı satırı),
+    sessizce "proforma yok" denmiyor.
+  */
+  const proformaOkunamadi = proformaSatirlari.error?.message ?? null;
+  if (proformaOkunamadi) console.error("[konsol] proformalar okunamadı", proformaOkunamadi);
+  const proformalar = ((proformaSatirlari.data ?? []) as Partial<TakvimProformasi>[])
     .map((p) => ({ otomatik: false, donem_sonu: null, gonderildi_at: null, bildirildi_at: null, gonderim_hatasi: null, ...p }) as TakvimProformasi);
 
   type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null };
@@ -218,6 +230,16 @@ export default async function YenilemelerPage({ searchParams }: { searchParams: 
         <Link className="panel-secondary" href="/panel/platform/tahsilat?kanal=proforma">Proformalar</Link>
       </div>
     </header>
+
+    {/* Okunamayan bölüm EKRANDA yazıyor: "proforma kesilmemiş" ile
+        "proforma okunamadı" aynı görünürse kurucu olmayan bir işi
+        yapmaya kalkar. */}
+    {proformaOkunamadi ? (
+      <p className="panel-error" role="alert">
+        Proforma bilgisi okunamadı; takvim yenilemeleri gösteriyor ama “kesildi/gönderildi” sütunu boş.
+        Sorun sürerse Sistem → Sistem sağlığı.
+      </p>
+    ) : null}
 
     <nav className="kayit-serit talep-serit" aria-label="Takvim özeti">
       <dl>
