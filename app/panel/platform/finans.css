@@ -74,3 +74,6 @@
 .ab-plan{display:flex;flex-direction:column;gap:var(--sp-2);padding-top:var(--sp-3);border-top:1px solid var(--line-soft)}
 .os-root .ab-plan .phr-bas h2{font-size:var(--fs-base)}
 .os-root .ab-plan .kayit-formu{margin:0}
+/* Modüller: kısa etiketlerin karşılığı tablonun altında, kaydırılan tablonun dışında kalsın. */
+.os-root main.liste-sayfa .talep-bilgi>.plt-matris-lejant{flex:none;margin-top:var(--sp-3)}
+.os-root .urun-sayfa .crm-data-table[data-cols="md-matris"] td:not(:first-child){white-space:nowrap}
