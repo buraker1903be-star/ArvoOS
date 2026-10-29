@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import { KBos, KListe, KOge } from "../konsol-ui";
+import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { basHarfleri } from "../bicim";
 
 /*
   Kurum abonelikleri: KİRACI BAZINDA gruplu.
@@ -35,6 +37,12 @@ import { KBos, KListe, KOge } from "../konsol-ui";
   tekrar ediyordu ve sütun başlıklarıyla liste iki kat uzuyordu. Ürünün
   dönem tarihi lisans ekranında (satırın bağlantısı), yaklaşan dönem
   sonları "Dönem sonu yaklaşanlar" bölümünde.
+
+  PANELİN TABLOSU (29.10.2026, konsol yeniden kurulurken). iOS satırı
+  kurumun ürünlerini, paketlerini ve ücretsiz kalemlerini tek bir alt
+  satıra sıkıştırıyordu; uzun bir kurumda satır "…" ile kesiliyor ve
+  hangi ürünün gecikmiş olduğu okunmuyordu. Kurum yine TEK satır, ama
+  ürünler kendi sütununda durum renginde rozet; aylık toplam hizalı.
 
   Bileşen bir parça (fragment) döndürüyor: liste sayfasında kaydırma
   kartın DOĞRUDAN çocuğu olan tablo kutusunda (os-shell.css .liste-sayfa),
@@ -122,28 +130,33 @@ export function AbonelikListesi({ gruplar, durum, bolum, bolumler, children }: {
     });
   }, [gruplar, arama, suzgec]);
 
+  const bos = (baslik: string, aciklama: string) => (
+    <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
+  );
+
   return (
     <>
-      <div className="ekip-suzgec talep-suzgec" role="group" aria-label="Süzgeç">
-        {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
-            masaüstünde sarmalayıcı display:contents ile görünmez. */}
-        <div className="suzgec-ray">
-        {SUZGECLER.map((secim) => {
-          const aktif = abonelikGorunumu && suzgec === secim.kod;
-          return (
-            <Link key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?durum=${secim.kod}`}
-              className={aktif ? "is-active" : undefined} aria-current={aktif ? "page" : undefined}>
-              {secim.ad} <small>{gruplar.filter((grup) => suzgeceUyar(grup, secim.kod)).length}</small>
+      <div className="ekip-suzgec talep-suzgec ek-arac" role="group" aria-label="Süzgeç">
+        <nav className="ek-segment" aria-label="Abonelik durumu">
+          {SUZGECLER.map((secim) => {
+            const aktif = abonelikGorunumu && suzgec === secim.kod;
+            return (
+              <Link key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?durum=${secim.kod}`}
+                className={aktif ? "is-active" : undefined} aria-current={aktif ? "page" : undefined}>
+                {secim.ad} <small>{gruplar.filter((grup) => suzgeceUyar(grup, secim.kod)).length}</small>
+              </Link>
+            );
+          })}
+        </nav>
+        {/* Bölümler ayrı segmentte: süzgeç değil, başka bir liste açıyorlar. */}
+        <nav className="ek-segment" aria-label="Takip">
+          {bolumler.map((b) => (
+            <Link key={b.kod} href={`${ADRES}?bolum=${b.kod}`}
+              className={bolum === b.kod ? "is-active" : undefined} aria-current={bolum === b.kod ? "page" : undefined}>
+              {b.ad} <small className={b.uyari ? "talep-uyari" : undefined}>{b.adet}</small>
             </Link>
-          );
-        })}
-        {bolumler.map((b) => (
-          <Link key={b.kod} href={`${ADRES}?bolum=${b.kod}`}
-            className={bolum === b.kod ? "is-active" : undefined} aria-current={bolum === b.kod ? "page" : undefined}>
-            {b.ad} <small className={b.uyari ? "talep-uyari" : undefined}>{b.adet}</small>
-          </Link>
-        ))}
-        </div>
+          ))}
+        </nav>
         {abonelikGorunumu ? (
           <div className="talep-ara" role="search">
             <input type="search" value={arama} placeholder="Kiracı ya da ürün ara" aria-label="Kiracı ya da ürün ara" onChange={(olay) => setArama(olay.target.value)} />
@@ -152,39 +165,56 @@ export function AbonelikListesi({ gruplar, durum, bolum, bolumler, children }: {
       </div>
 
       {!abonelikGorunumu ? children : !gruplar.length ? (
-        <KBos baslik="Abonelik yok" aciklama="Aktif, denemede ya da ödemesi gecikmiş abonelik yok." />
+        bos("Abonelik yok", "Aktif, denemede ya da ödemesi gecikmiş abonelik yok.")
       ) : gorunen.length ? (
-        <KListe>
-          {gorunen.map((grup) => {
-            const lisans = `/panel/platform/musteriler/${grup.organizationId}?pencere=lisanslar`;
-            /* Kurumun durumu, ürünlerinden en çok dikkat isteyeninki:
-               gecikmiş ödeme aktif aboneliği, aktif olan denemeyi örter.
-               Ondan farklı durumdaki ürün özette parantezle yazılıyor. */
-            const ana = DURUM_ONCELIGI.map((kod) => grup.kalemler.find((kalem) => kalem.durum === kod)).find(Boolean) ?? grup.kalemler[0];
-            const urunler = grup.kalemler.map((kalem) =>
-              `${kalem.urunAdi}${kalem.planAdi ? ` ${kalem.planAdi}` : ""}${ana && kalem.durum !== ana.durum ? ` (${kalem.durumAdi.toLocaleLowerCase("tr-TR")})` : ""}`);
-            /* Ücreti girilmemiş abonelik ₺0 yazmıyor: sıfır ücret bir
-               fiyat, eksik ücret eksik bir kayıt. */
-            const ucretsiz = grup.kalemler.filter((kalem) => !kalem.ucret).length;
-            return (
-              <KOge
-                key={grup.organizationId}
-                href={lisans}
-                simge={grup.ad}
-                baslik={grup.ad}
-                alt={[grup.grup ? "Grup markası" : null, ...urunler, ucretsiz ? `${ucretsiz} üründe ücret girilmedi` : null].filter(Boolean).join(" · ")}
-                durum={ana ? { etiket: ana.durumAdi, ton: ana.tone } : null}
-                /* Aylık toplam kurum satırında: "bu kurum bize ne ödüyor"
-                   sorusunun yanıtı satırları gözle toplamak olmamalı.
-                   Denemedekiler toplama girmiyor — henüz ödemiyorlar. */
-                deger={grup.aylikToplamAdi}
-                degerAlt={grup.aylikToplam ? (grup.grup ? "grup içi değer" : "aylık toplam") : "tahsil edilen yok"}
-              />
-            );
-          })}
-        </KListe>
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="fn-abonelik">
+            <thead><tr><th>Kurum</th><th>Ürünler</th><th>Durum</th><th className="crm-col-amount">Aylık</th><th></th></tr></thead>
+            <tbody>
+              {gorunen.map((grup) => {
+                const lisans = `/panel/platform/musteriler/${grup.organizationId}?pencere=lisanslar`;
+                /* Kurumun durumu, ürünlerinden en çok dikkat isteyeninki:
+                   gecikmiş ödeme aktif aboneliği, aktif olan denemeyi örter. */
+                const ana = DURUM_ONCELIGI.map((kod) => grup.kalemler.find((kalem) => kalem.durum === kod)).find(Boolean) ?? grup.kalemler[0];
+                /* Ücreti girilmemiş abonelik ₺0 yazmıyor: sıfır ücret bir
+                   fiyat, eksik ücret eksik bir kayıt. */
+                const ucretsiz = grup.kalemler.filter((kalem) => !kalem.ucret).length;
+                const alt = [grup.grup ? "Grup markası" : "Kurumsal", `${grup.kalemler.length} abonelik`, ucretsiz ? `${ucretsiz} üründe ücret girilmedi` : null].filter(Boolean).join(" · ");
+                return (
+                  <tr key={grup.organizationId}>
+                    <td data-label="Kurum">
+                      <Link className="crm-row-link ek-kisi" href={lisans}>
+                        <span className="ek-avatar" aria-hidden="true">{basHarfleri(grup.ad)}</span>
+                        <span className="ek-kisi-metin"><span className="crm-table-title" title={grup.ad}>{grup.ad}</span><span className="crm-table-sub">{alt}</span></span>
+                      </Link>
+                    </td>
+                    <td data-label="Ürünler">
+                      <span className="fn-urunler">
+                        {grup.kalemler.map((kalem) => (
+                          <span key={kalem.urun} data-tone={kalem.tone} title={`${kalem.durumAdi} · ${kalem.donemAdi} ${kalem.donemNotu}`}>
+                            {kalem.urunAdi}{kalem.planAdi ? ` ${kalem.planAdi}` : ""}
+                          </span>
+                        ))}
+                      </span>
+                    </td>
+                    <td data-label="Durum">{ana ? <span className="status-pill" data-tone={ana.tone}>{ana.durumAdi}</span> : null}</td>
+                    <td className="crm-col-amount" data-label="Aylık">
+                      {/* Denemedekiler toplama girmiyor — henüz ödemiyorlar. */}
+                      <span className="crm-table-title">{grup.aylikToplamAdi}</span>
+                      <small>{grup.aylikToplam ? (grup.grup ? "grup içi değer" : "aylık toplam") : "tahsil edilen yok"}</small>
+                    </td>
+                    <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                    <MobilSatir href={lisans} baslik={grup.ad} durum={ana ? { etiket: ana.durumAdi, ton: ana.tone } : null}
+                      alt={[grup.kalemler.map((kalem) => kalem.urunAdi).join(", "), grup.aylikToplam ? `${grup.aylikToplamAdi} / ay` : null]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <SatirTiklama />
+        </div>
       ) : (
-        <KBos baslik="Eşleşen abonelik yok" aciklama="Bu süzgeçle ya da aramayla eşleşen abonelik yok." />
+        bos("Eşleşen abonelik yok", "Bu süzgeçle ya da aramayla eşleşen abonelik yok.")
       )}
     </>
   );
