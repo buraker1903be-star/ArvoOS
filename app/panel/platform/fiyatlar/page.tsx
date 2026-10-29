@@ -9,8 +9,13 @@ import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
 import { PAKET_ADI, depolama, para, sayi, tarihSaat } from "../bicim";
 import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi, type FiyatKaydi } from "@/lib/fiyat-dogrulama";
 import { YAYIN_KODU } from "@/lib/paket-ucreti";
-import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
+import { KKart, KListe, KNot, KOge } from "../konsol-ui";
+import { MobilSatir } from "../../crm/table-cells";
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /*
   ÜCRET VE PAKETLER (14.10.2026, Kurucu Konsolu'nun "en önemli konusu").
@@ -60,25 +65,33 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
   const taslak = kayit?.taslak_kurus ?? null;
   const bekliyor = Boolean(kayit?.taslak_bekliyor);
   /*
-    iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): basamak tek satır —
-    adı, altında birim · kod · kaynağı; sağda yayındaki aylık ve yıllık
-    karşılığı, en sağda taslak kutusu ve düğmeler (sonu: satır bağlantı
-    değil, kendi işini yapıyor). Eskiden beş sütunlu tablo satırıydı
-    (KTablo); "yayım bekliyor" taslak hücresinin altında ayrı satırdı,
-    şimdi durum noktası. Telefonda MobilSatir'e hiç düşülmüyordu (taslak
-    formu gizlenirdi); bu satırda gizlenen bir şey yok.
+    TABLO SATIRI (29.10.2026, konsol yeniden kurulurken). 14.10.2026'dan
+    beri iOS satırıydı; yayındaki tutar ile taslak kutusu aynı satırın
+    iki ucundaydı ve beş basamağın tutarları alt alta hizalanmıyordu —
+    "Profesyonel, Başlangıç'ın kaç katı" sorusu göz kaydırarak okunuyordu.
+    Artık yayındaki aylık ve yıllık kendi sütununda; taslak formu satır
+    sonunda. Telefonda MobilSatir yalnızca özet; taslak formu düğme
+    hücresinde kaldığı için telefonda da düzenlenebiliyor.
   */
+  const durum = bekliyor ? { etiket: `Yayım bekliyor: ${taslak === null ? "Teklif" : para(taslak)}`, ton: "warning" } : null;
   return (
-    <KOge
-      baslik={ad}
-      alt={<>{birim} · <span className="plt-mono">{kod}</span> · {konsoldan ? "konsoldan yayımlı" : "koddaki değer"}</>}
-      durum={bekliyor ? { etiket: `Yayım bekliyor: ${taslak === null ? "Teklif" : para(taslak)}`, ton: "warning" } : null}
-      deger={cozulmus === null ? "Teklif" : para(cozulmus)}
-      /* Yıllıkta 10 ay bedeli ödeniyor; ek kalemler aylık, orada yıllık yok. */
-      degerAlt={yillik ? (cozulmus === null ? "yıllık teklif" : `${para(cozulmus * YILLIK_ODENEN_AY)} / yıl`) : "aylık"}
-      sonu={(
-        /* Yayım satır başına değil, yukarıdaki önizlemeden TOPLU
-           (14.10.2026): liste ya tamamen eski ya tamamen yeni. */
+    <tr>
+      <td data-label="Basamak">
+        <span className="crm-table-title">{ad}</span>
+        <span className="crm-table-sub">{birim} · <span className="plt-mono">{kod}</span></span>
+      </td>
+      <td data-label="Kaynak">
+        <span className="crm-table-sub">{konsoldan ? "konsoldan yayımlı" : "koddaki değer"}</span>
+        {durum ? <span className="status-pill" data-tone="warning">{durum.etiket}</span> : null}
+      </td>
+      <td className="crm-col-amount" data-label="Yayında">
+        <span className="crm-table-title">{cozulmus === null ? "Teklif" : para(cozulmus)}</span>
+        {/* Yıllıkta 10 ay bedeli ödeniyor; ek kalemler aylık, orada yıllık yok. */}
+        <small>{yillik ? (cozulmus === null ? "yıllık teklif" : `${para(cozulmus * YILLIK_ODENEN_AY)} / yıl`) : "aylık"}</small>
+      </td>
+      <td className="crm-table-actions">
+        {/* Yayım satır başına değil, yukarıdaki önizlemeden TOPLU
+            (14.10.2026): liste ya tamamen eski ya tamamen yeni. */}
         <div className="plt-fiyat-eylem">
           <form action={taslagiKaydet} className="plt-fiyat-form">
             <input type="hidden" name="kod" value={kod} />
@@ -100,8 +113,9 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
             </form>
           ) : null}
         </div>
-      )}
-    />
+      </td>
+      <MobilSatir baslik={ad} durum={durum} alt={[cozulmus === null ? "Teklif" : para(cozulmus), birim, konsoldan ? "konsoldan yayımlı" : "koddaki değer"]} />
+    </tr>
   );
 }
 
@@ -215,11 +229,18 @@ export default async function FiyatlarPage({ searchParams }: {
     panel-card + .plt-table + .plt-banner'dı. Bölümler (?bolum=) hâlâ
     üstteki şeritten seçiliyor; her bölüm alt alta KKart.
   */
-  return <main className={`plt talep cari${secili === "liste" ? " ekip liste-sayfa" : ""}`}>
+  const BOLUM_ADI = {
+    liste: { baslik: "Fiyat listesi", alt: "Ücretler sayfası, JSON-LD, llms-full.txt, kurulum ve ArvoLab bireysel aboneliği bu listeyi okur" },
+    paket: { baslik: "Paket limitleri", alt: "Yeni kiracının lisansına yazılan dahil kullanıcı, depolama ve yapay zekâ kredisi" },
+    gecmis: { baslik: "Fiyat geçmişi", alt: "Her taslak, yayım, geri alma ve koda dönüş; son otuz kayıt" },
+  } as const;
+  const bas = BOLUM_ADI[secili];
+  return <main className={`plt talep cari ekip urun-sayfa${secili === "liste" ? " liste-sayfa" : ""}`}>
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · ÜCRET VE PAKETLER</small>
-        <h1>Ücret ve Paketler</h1>
+        <small className="panel-kicker">ÜRÜNLER VE FİYATLAR</small>
+        <h1>{bas.baslik}</h1>
+        <p className="ek-alt">{bas.alt}</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/urunler">Ürünler</Link>
@@ -251,10 +272,8 @@ export default async function FiyatlarPage({ searchParams }: {
     {secili === "liste" ? (
       <div className="talep-izgara personel-iki ekip-izgara">
         <section className="panel-card talep-bilgi" aria-label="Fiyat listesi">
-          <div className="ekip-suzgec talep-suzgec">
-            {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
-                masaüstünde sarmalayıcı display:contents ile görünmez. */}
-            <div className="suzgec-ray">
+          <div className="ekip-suzgec talep-suzgec ek-arac">
+            <nav className="ek-segment" aria-label="Ürün">
             {LISTE_URUNLERI.map((kod) => {
               const bekleyen = kod === "ek"
                 ? degisiklikler.filter((d) => d.urun === "ek").length
@@ -267,7 +286,7 @@ export default async function FiyatlarPage({ searchParams }: {
                 </Link>
               );
             })}
-            </div>
+            </nav>
           </div>
           {/*
             KOD VARSAYILAN, KONSOL ÜSTÜNE YAZAR (14.10.2026). Basamağın
@@ -276,7 +295,10 @@ export default async function FiyatlarPage({ searchParams }: {
             okunamazsa site fiyatsız kalmıyor: yayımlanmış bir fiyat
             listesinde boş hücre, yanlış rakamdan da kötüdür.
           */}
-          <KListe>
+          <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="ur-fiyat">
+            <thead><tr><th>Basamak</th><th>Kaynak</th><th className="crm-col-amount">Yayında</th><th className="fn-eylem-bas">Taslak</th></tr></thead>
+            <tbody>
             {seciliUrun === "ek"
               ? ADD_ONS.map((kalem) => (
                   <FiyatSatiri key={kalem.code} kod={kalem.code} ad={EK_KALEM_ADI[kalem.code] ?? kalem.code}
@@ -287,7 +309,9 @@ export default async function FiyatlarPage({ searchParams }: {
                     birim={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
                     cozulmus={cozulmus.get(plan.code) ?? null} kayit={kayitlar.get(plan.code)} yillik />
                 ))}
-          </KListe>
+            </tbody>
+          </table>
+          </div>
         </section>
 
         <div className="liste-sag">
@@ -403,20 +427,25 @@ export default async function FiyatlarPage({ searchParams }: {
           varsayılanı değiştirmek bugün bir migration gerektiriyor — konsoldan düzenleme henüz yok.
         </>}
       >
-        {/* iOS satırı (14.10.2026): limitler altta tek satırda, sağda bugün
-            o paketteki kiracı sayısı. Eskiden altı sütunlu tabloydu. */}
-        <KListe>
-          {Object.entries(PAKET_VARSAYILANI).map(([paket, limit]) => (
-            <KOge
-              key={paket}
-              simge={PAKET_ADI[paket] ?? paket}
-              baslik={PAKET_ADI[paket] ?? paket}
-              alt={`${sayi(limit.userLimit)} dahil kullanıcı · ${depolama(limit.storageLimitMb)} · ${sayi(limit.aiCreditLimit)} yapay zekâ kredisi`}
-              deger={`${sayi(paketKiracisi(paket))} kiracı`}
-              degerAlt="bugün bu pakette"
-            />
-          ))}
-        </KListe>
+        {/* Tablo (29.10.2026): üç limit ve bugünkü kiracı sayısı kendi
+            sütununda; iOS satırında tek alt satıra diziliyorlardı. */}
+        <div className="talep-tablo fn-ic-tablo">
+          <table className="crm-data-table" data-cols="ur-paket">
+            <thead><tr><th>Paket</th><th>Dahil kullanıcı</th><th>Depolama</th><th>Yapay zekâ kredisi</th><th>Kiracı</th></tr></thead>
+            <tbody>
+              {Object.entries(PAKET_VARSAYILANI).map(([paket, limit]) => (
+                <tr key={paket}>
+                  <td data-label="Paket"><span className="crm-table-title">{PAKET_ADI[paket] ?? paket}</span><span className="crm-table-sub plt-mono">{paket}</span></td>
+                  <td data-label="Dahil kullanıcı"><span className="crm-table-title">{sayi(limit.userLimit)}</span></td>
+                  <td data-label="Depolama"><span className="crm-table-title">{depolama(limit.storageLimitMb)}</span></td>
+                  <td data-label="Yapay zekâ kredisi"><span className="crm-table-title">{sayi(limit.aiCreditLimit)}</span></td>
+                  <td data-label="Kiracı"><span className="crm-table-title">{sayi(paketKiracisi(paket))}</span><small>bugün bu pakette</small></td>
+                  <MobilSatir baslik={PAKET_ADI[paket] ?? paket} alt={[`${sayi(limit.userLimit)} kullanıcı`, depolama(limit.storageLimitMb), `${sayi(limit.aiCreditLimit)} kredi`, `${sayi(paketKiracisi(paket))} kiracı`]} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <KNot>
           ArvoARC, Randevu ve ArvoLab&apos;in limitleri kiracının ürün lisansında (limits) duruyor ve bugün yalnızca
           gösteriliyor, uygulanmıyor.
@@ -429,28 +458,33 @@ export default async function FiyatlarPage({ searchParams }: {
         {gecmisHatasi ? (
           <KNot ton="tehlike">Geçmiş okunamadı ({gecmisHatasi.message}) — kayıt yok demek değil.</KNot>
         ) : gecmis.length ? (
-          /* iOS satırı (14.10.2026): basamak, altında kim · ne zaman; sağda
-             işlem ve yeni tutar, altında önceki. Eskiden altı sütunlu tablo. */
-          <KListe>
-            {gecmis.map((g) => {
-              /* Yayımda önceki satır yoksa koddaki değer geçerliydi. */
-              const once = g.islem === "yayim" && !g.onceki_yayimli ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.onceki_kurus);
-              const sonra = g.islem === "koda_donus" ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.yeni_kurus);
-              const kim = g.kim ? kimAdi.get(g.kim) ?? "—" : "—";
-              const islem = GECMIS_ISLEMI[g.islem] ?? g.islem;
-              return (
-                <KOge
-                  key={g.id}
-                  baslik={basamakAdi(g.kod)}
-                  alt={<><span className="plt-mono">{g.kod}</span>{kim !== "—" ? ` · ${kim}` : ""} · {tarihSaat(g.zaman)}</>}
-                  durum={{ etiket: islem, ton: g.islem === "yayim" ? "success" : "neutral" }}
-                  deger={sonra}
-                  degerAlt={`önce ${once}`}
-                />
-              );
-            })}
-          </KListe>
-        ) : <KBos baslik="Henüz fiyat değişikliği yok" aciklama="Bir tutar yayımlandığında kimin, ne zaman, neyden neye değiştirdiği burada yazar." />}
+          /* Tablo (29.10.2026): önce → sonra yan yana, kim ve ne zaman ayrı sütunda. */
+          <div className="talep-tablo fn-ic-tablo">
+            <table className="crm-data-table" data-cols="ur-gecmis">
+              <thead><tr><th>Basamak</th><th>İşlem</th><th className="crm-col-amount">Önce</th><th className="crm-col-amount">Sonra</th><th>Kim</th><th className="crm-col-date">Zaman</th></tr></thead>
+              <tbody>
+                {gecmis.map((g) => {
+                  /* Yayımda önceki satır yoksa koddaki değer geçerliydi. */
+                  const once = g.islem === "yayim" && !g.onceki_yayimli ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.onceki_kurus);
+                  const sonra = g.islem === "koda_donus" ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.yeni_kurus);
+                  const kim = g.kim ? kimAdi.get(g.kim) ?? "—" : "—";
+                  const islem = { etiket: GECMIS_ISLEMI[g.islem] ?? g.islem, ton: g.islem === "yayim" ? "success" : "neutral" };
+                  return (
+                    <tr key={g.id}>
+                      <td data-label="Basamak"><span className="crm-table-title">{basamakAdi(g.kod)}</span><span className="crm-table-sub plt-mono">{g.kod}</span></td>
+                      <td data-label="İşlem"><span className="status-pill" data-tone={islem.ton}>{islem.etiket}</span></td>
+                      <td className="crm-col-amount" data-label="Önce"><span className="crm-table-sub">{once}</span></td>
+                      <td className="crm-col-amount" data-label="Sonra"><span className="crm-table-title">{sonra}</span></td>
+                      <td data-label="Kim"><span className="crm-table-title">{kim}</span></td>
+                      <td className="crm-col-date" data-label="Zaman">{tarihSaat(g.zaman)}</td>
+                      <MobilSatir baslik={basamakAdi(g.kod)} durum={islem} alt={[`${once} → ${sonra}`, kim !== "—" ? kim : null, tarihSaat(g.zaman)]} />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>Henüz fiyat değişikliği yok</h2><p>Bir tutar yayımlandığında kimin, ne zaman, neyden neye değiştirdiği burada yazar.</p></div>}
       </KKart>
     ) : null}
   </main>;

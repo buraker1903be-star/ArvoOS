@@ -2,11 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PRODUCTS, productLicenseLabels } from "@/lib/products";
-import { KBos, KKart, KListe, KOge } from "../konsol-ui";
+import { KBos } from "../konsol-ui";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { LISANS_TONU } from "../bicim";
 import { Matris } from "./matris";
 import { kurumTuru, musteriMi } from "@/lib/kurum-turu";
 import "../platform.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 
 /*
   Çapraz modül matrisi: hangi modül hangi kiracıda açık.
@@ -104,11 +110,12 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
       : kiracilar.filter((kurum) => urunById.get(`${kurum.id}:${urun.code}`)?.integrated === false).length,
   }));
 
-  return <main className="plt talep cari ekip liste-sayfa">
+  return <main className="plt talep cari ekip liste-sayfa urun-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · MODÜL MATRİSİ</small>
-        <h1>Modül matrisi</h1>
+        <small className="panel-kicker">ÜRÜNLER VE FİYATLAR</small>
+        <h1>Modüller</h1>
+        <p className="ek-alt">Hangi ürün hangi kiracıda açık; hücreye tıklayınca o kiracının lisans sekmesi açılır.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/musteriler">Müşteriler</Link>
@@ -208,14 +215,18 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
         {/* Üç tür ayrı: "Müşteri kurum" rakamı konsolun her yerinde aynı
             şeyi saymalı (lib/kurum-turu). Burada grup markaları müşteriye
             katılıyordu ve ana sayfayla çelişiyordu. */}
-        <KKart baslik="Kurumlar" aciklama="Modül sayımı Arvo'nun kendi kurumu dışındaki her kiracıyı kapsıyor">
-          <KListe>
-            <KOge baslik="Müşteri kurum" deger={String(satirlar.filter(musteriMi).length)} />
-            <KOge baslik="Grup markası" alt="sayımda var, müşteri geliri değil" deger={String(satirlar.filter((k) => kurumTuru(k) === "grup").length)} />
-            <KOge baslik="Arvo" alt="tabloda, sayımda yok" deger={String(satirlar.filter((k) => kurumTuru(k) === "arvo").length)} />
-            <KOge baslik="Bağımsız modda" alt="köprüsüz ürün lisansı" deger={String(sayim.reduce((t, u) => t + u.bagimsiz, 0))} />
-          </KListe>
-        </KKart>
+        <TalepAkis kimlik="modul-sag" sinif="ek-sag" etiket="Modül istatistikleri" sekmeler={["İstatistikler"]}>
+          <IstatistikKarti
+            kapsam="Arvo'nun kendi kurumu dışındaki kiracılar"
+            kutular={[
+              { ad: "Müşteri kurum", deger: String(satirlar.filter(musteriMi).length), alt: "müşteri geliri" },
+              { ad: "Grup markası", deger: String(satirlar.filter((k) => kurumTuru(k) === "grup").length), alt: "sayımda var" },
+              { ad: "Arvo", deger: String(satirlar.filter((k) => kurumTuru(k) === "arvo").length), alt: "tabloda, sayımda yok" },
+              { ad: "Bağımsız modda", deger: String(sayim.reduce((t, u) => t + u.bagimsiz, 0)), alt: "köprüsüz ürün lisansı" },
+            ]}
+            gruplar={[{ baslik: "Modülü açık kiracı", satirlar: sayim.map((u) => ({ ad: u.name, adet: u.acik })) }]}
+          />
+        </TalepAkis>
       </div>
     </div>
   </main>;
