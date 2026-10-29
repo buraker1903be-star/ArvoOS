@@ -118,7 +118,11 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
       ? admin.from("whatsapp_accounts").select("status,display_phone,verified_name,last_error").eq("organization_id", targetId).maybeSingle()
       : Promise.resolve({ data: null }),
     admin && !pencerede
-      ? admin.from("activity_logs").select("action,entity_type,created_at,metadata").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(6)
+      /* Aktör ve metadata da okunuyor: "Aşamaya sorumlu atandı · İş
+         akışı" satırı beş kez tekrarlandığında hiçbir şey anlatmıyordu
+         (30.10.2026, canlıda görüldü). Kim yaptı ve hangi aşamada —
+         ikisi de kayıtta zaten vardı, yalnızca çizilmiyordu. */
+      ? admin.from("activity_logs").select("action,entity_type,created_at,metadata,actor_user_id").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(6)
       : bos,
   ]),
   ]);
@@ -165,7 +169,14 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
   const bekleyenOdeme = odemeSatirlari.filter((satir) => satir.status === "pending");
   const sonTahsilat = odemeSatirlari.find((satir) => satir.status === "approved") ?? null;
   const wa = whatsappHesabi as { status: string; display_phone: string | null; verified_name: string | null; last_error: string | null } | null;
-  const etkinlikSatirlari = (etkinlikler ?? []) as { action: string; entity_type: string; created_at: string }[];
+  const etkinlikSatirlari = (etkinlikler ?? []) as {
+    action: string; entity_type: string; created_at: string;
+    metadata: { step_title?: string | null } | null; actor_user_id: string | null;
+  }[];
+  /* Aktör kimliğinden ad: üye listesi zaten okunuyor (kiraciUyeleri),
+     ikinci bir sorgu açmaya gerek yok. Listede olmayan bir kimlik
+     (ayrılmış personel) adsız kalıyor. */
+  const uyeAdi = new Map(kiraciUyeleri.filter((u) => u.name).map((u) => [u.userId, u.name as string]));
 
   const auditRows = (auditData ?? []) as AuditRow[];
   const moduleRows = ((moduleData ?? []) as ModuleRow[]).map((row) => {
@@ -456,14 +467,31 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
             <table className="crm-data-table" data-cols="mk-etkinlik">
               <thead><tr><th>İşlem</th><th>Kayıt</th><th className="crm-col-date">Zaman</th></tr></thead>
               <tbody>
-                {etkinlikSatirlari.map((satir, sira) => (
-                  <tr key={`${satir.created_at}-${sira}`}>
-                    <td data-label="İşlem"><span className="crm-table-title">{eylemEtiketi(satir.action, "edilgen")}</span></td>
-                    <td data-label="Kayıt"><span className="crm-table-sub">{varlikEtiketi(satir.entity_type)}</span></td>
-                    <td className="crm-col-date" data-label="Zaman">{tarihSaat(satir.created_at)}</td>
-                    <MobilSatir baslik={eylemEtiketi(satir.action, "edilgen")} alt={[varlikEtiketi(satir.entity_type), tarihSaat(satir.created_at)]} />
-                  </tr>
-                ))}
+                {etkinlikSatirlari.map((satir, sira) => {
+                  /* Aşama adı metadata'da (lib/activity-log): adım olayları
+                     ayrı bir varlık değil, işin kimliğiyle yazılıyor. */
+                  const asama = (satir.metadata as { step_title?: string | null } | null)?.step_title ?? null;
+                  const yapan = satir.actor_user_id ? uyeAdi.get(satir.actor_user_id) ?? null : null;
+                  return (
+                    <tr key={`${satir.created_at}-${sira}`}>
+                      <td data-label="İşlem">
+                        <span className="crm-table-title">{eylemEtiketi(satir.action, "edilgen")}</span>
+                        {asama ? <small className="crm-table-sub">{asama}</small> : null}
+                      </td>
+                      <td data-label="Kayıt">
+                        <span className="crm-table-sub">{varlikEtiketi(satir.entity_type)}</span>
+                        {/* Yapan kişi: adı bilinmiyorsa satır hiç yazılmıyor —
+                            "—" yazmak, kişinin silindiğini düşündürürdü. */}
+                        {yapan ? <small className="crm-table-sub">{yapan}</small> : null}
+                      </td>
+                      <td className="crm-col-date" data-label="Zaman">{tarihSaat(satir.created_at)}</td>
+                      <MobilSatir
+                        baslik={eylemEtiketi(satir.action, "edilgen")}
+                        alt={[asama, varlikEtiketi(satir.entity_type), yapan, tarihSaat(satir.created_at)].filter(Boolean) as string[]}
+                      />
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
