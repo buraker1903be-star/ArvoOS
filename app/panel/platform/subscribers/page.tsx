@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
-import { KKart, KListe, KNot, KOge } from "../konsol-ui";
+import { KNot } from "../konsol-ui";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { LISANS_TONU, para, tarih, tarihDegeri } from "../bicim";
 import { setSubscriberOrganization, updateProductPlan, updateSubscriber } from "./actions";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
@@ -12,6 +13,10 @@ import { AboneListesi } from "./abone-listesi";
 import "../platform.css";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
+import "../../hr/hr.css";
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
+import "../finans.css";
 import { liraYazisi } from "@/lib/turkish-amount";
 
 type PlanRow = { product: string; individual_monthly_fee: number | null; trial_days: number };
@@ -145,11 +150,17 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
   // Ücreti girilmemiş ürün kimseden para tahsil edemez; kurucunun görmesi gereken ilk şey bu.
   const ucretsizUrunler = SUBSCRIBER_PRODUCTS.filter((product) => !plans.get(product.code)?.individual_monthly_fee);
 
-  return <main className="plt talep cari ekip liste-sayfa">
+  /*
+    PANELİN DİLİ (29.10.2026, konsol yeniden kurulurken): Müşteriler ve
+    Kullanıcılar listesiyle aynı tablo; sağdaki iki kart (kurum
+    lisansındakiler, bireysel planlar) tek sekmeli kart oldu.
+  */
+  return <main className="plt talep cari ekip talepler teklifler liste-sayfa kisi-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · BİREYSEL ABONELER</small>
-        <h1>Bireysel Aboneler</h1>
+        <small className="panel-kicker"><Link href="/panel/platform/musteriler">MÜŞTERİLER</Link></small>
+        <h1>Bireysel aboneler</h1>
+        <p className="ek-alt">Kendi adına abone olan kişiler · {paying.length} ödeyen · {trialing.length} denemede{monthlyRevenue ? ` · ${para(monthlyRevenue)} / ay` : ""}</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/kullanicilar">Kullanıcılar</Link>
@@ -163,19 +174,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
       </KNot>
     ) : null}
 
-    {/*
-      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "erişimi kapalı
-      abone yok" demek, satırın hiç olmamasından daha çok şey söyler.
-    */}
-    {/*
-      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
-      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
-      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
-      sayıları her seferinde yeniden aramak demekti.
-
-      Hepsi her zaman çiziliyor: sıfır da bir cevaptır ve satırın hiç
-      olmamasından daha çok şey söyler.
-    */}
+    {/* Dördü de her zaman çiziliyor: sıfır da bir cevaptır. */}
     <nav className="kayit-serit talep-serit" aria-label="Abone özeti">
       <dl>
         <div><dt>Ödeyen abone</dt><dd className="cari-arti">{paying.length}</dd><small>{monthlyRevenue ? `${para(monthlyRevenue)} / ay` : "Aylık gelir yok"}</small></div>
@@ -185,17 +184,6 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
       </dl>
     </nav>
 
-    {/*
-      14.10.2026: panelin liste düzeni. Aboneler solda liste kartında,
-      sağda istatistik ve bireysel plan formları (.liste-sag). Eskiden
-      planlar sayfanın üstünde StgSection kartlarından bir ızgaraydı ve
-      abone listesi onun altında ikinci bir StgSection'dı.
-
-      Aboneler satır listesi. Eskiden her abone, içinde açık bir
-      düzenleme formu olan tam boy bir karttı ve iki yüz taneye kadar
-      çiziliyordu: tek bir aboneyi bulmanın yolu tarayıcının sayfa içi
-      aramasıydı, ekranda hiçbir süzgeç yoktu.
-    */}
     <div className="talep-izgara personel-iki ekip-izgara">
       <section id="aboneler" className="panel-card talep-bilgi" aria-label="Bireysel aboneler">
         {eksikKapsam ? (
@@ -229,88 +217,66 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
         />
       </section>
 
+      {/*
+        Sağ sütun: bireysel planlar ve kurum lisansına geçmiş kişiler tek
+        sekmeli kartta. Ürün başına abone dağılımı bilerek yok: liste
+        sınırlı (LISTE_SINIRI) ve listeden sayılan adet sınıra varınca
+        sessizce eksilir.
+      */}
       <div className="liste-sag">
-        {/*
-          14.10.2026: İstatistikler kartı kalktı. Dört kutusu ve "Erişim"
-          dağılımı şeritteki sayıların AYNISIYDI (ödeyen, denemede,
-          erişimi kapalı, toplam); kesit uyarısı şeritte ve listenin
-          üstünde yazıyor. Ürün başına dağılım bilerek yok: liste sınırlı
-          (LISTE_SINIRI) ve listeden sayılan ürün adedi sınıra varınca
-          sessizce eksilir.
-        */}
-
-        {/*
-          Plan formları yan sütunda alt alta (14.10.2026). Önce tek sütunda
-          tam genişlikteydiler: iki kısa formu alt alta okumak için ekran
-          boyu kaydırmak gerekiyordu; sonra yan yana bir ızgara oldular
-          (StgSection kartları). Liste sayfasında asıl alanı abone listesi
-          alıyor; iki kısa form dar yan sütuna sığıyor.
-        */}
-        {/* Kurum anlaşmasıyla gelen kişiler (14.10.2026): bireysel listede
-            ve sayılarda yoklar; erişimleri kurumun lisansıyla açılıp kapanıyor. */}
-        {kurumdakiler.length ? (
-          <KKart baslik="Kurum lisansında" aciklama="Bireysel değil; erişim kurumun lisansından" sag={<span className="status-pill" data-tone="info">{kurumdakiler.length}</span>}>
-            <KListe>
-              {kurumdakiler.map((kisi) => (
-                <KOge
-                  key={kisi.id}
-                  simge={kisiAdi(kisi)}
-                  baslik={kisiAdi(kisi)}
-                  alt={[kurumAdi.get(kisi.kurum_id) ?? "Kurum", productName(kisi.product), kisiAdi(kisi) === kisi.email ? null : kisi.email].filter(Boolean).join(" · ")}
-                  sonu={(
-                    <form action={setSubscriberOrganization}>
-                      <input type="hidden" name="subscriber_id" value={kisi.id} />
-                      <input type="hidden" name="kurum_id" value="" />
-                      <button type="submit" className="panel-secondary" aria-label={`${kisiAdi(kisi)} bireysel aboneliğe geri al`}>Bireysele al</button>
-                    </form>
-                  )}
-                />
-              ))}
-            </KListe>
-          </KKart>
-        ) : null}
-
-        <KKart
-          id="planlar"
-          baslik="Bireysel planlar"
-          aciklama="Fiyat herkese aynı uygulanır. Ücret girilmezse kişi ödeme yapamaz; deneme süresi 0 girilirse kayıt olan kişi doğrudan kapalı başlar."
-          sag={(
-            <span className="status-pill" data-tone={ucretsizUrunler.length ? "warning" : "success"}>
-              {SUBSCRIBER_PRODUCTS.length - ucretsizUrunler.length} / {SUBSCRIBER_PRODUCTS.length} fiyatlı
-            </span>
-          )}
-        >
-          {SUBSCRIBER_PRODUCTS.map((product) => {
-            const plan = plans.get(product.code);
-            const tone = plan?.individual_monthly_fee ? "success" : "warning";
-            return (
-              <section key={product.code} id={`plan-${product.code}`} className="talep-not" aria-label={`${product.name} bireysel planı`}>
-                <header className="k-kart-bas">
-                  <div>
-                    <h3>{product.name} bireysel planı</h3>
-                    <p>{product.description}</p>
-                  </div>
-                  <div className="k-kart-sag">
+        <TalepAkis kimlik="abone-sag" sinif="ek-sag" etiket="Bireysel planlar ve kurum lisansı"
+          sekmeler={[ucretsizUrunler.length ? `Planlar · ${ucretsizUrunler.length} eksik` : "Planlar", ...(kurumdakiler.length ? [`Kurum lisansında · ${kurumdakiler.length}`] : [])]}>
+          <section className="ek-panel" id="planlar" aria-label="Bireysel planlar">
+            <p className="ek-not">Fiyat herkese aynı uygulanır. Ücret girilmezse kişi ödeme yapamaz; deneme süresi 0 girilirse kayıt olan kişi doğrudan kapalı başlar.</p>
+            {SUBSCRIBER_PRODUCTS.map((product) => {
+              const plan = plans.get(product.code);
+              const tone = plan?.individual_monthly_fee ? "success" : "warning";
+              const listeden = bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined;
+              return (
+                <section key={product.code} id={`plan-${product.code}`} className="ab-plan" aria-label={`${product.name} bireysel planı`}>
+                  <header className="phr-bas">
+                    <h2>{product.name}</h2>
                     <span className="status-pill" data-tone={tone}>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "Ücret yok"}</span>
-                  </div>
-                </header>
-                <form className="panel-form kayit-formu" action={updateProductPlan}>
-                  <input type="hidden" name="product" value={product.code} />
-                  {bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? (
-                    <p className="wide panel-muted">
-                      Ücret fiyat listesinden: <b>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "teklif usulü (kartla satılmaz)"}</b>.
-                      {" "}Değiştirmek için <Link href="/panel/platform/fiyatlar">Fiyat listesi</Link>.
-                    </p>
-                  ) : (
-                    <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" inputMode="decimal" autoComplete="off" defaultValue={plan?.individual_monthly_fee ? liraYazisi(Number(plan.individual_monthly_fee)) : ""} placeholder="Boşsa ödeme kapalı" /></label>
-                  )}
-                  <label><span>Deneme süresi (gün)<b className="req" aria-hidden="true">*</b></span><input name="trial_days" type="number" min={0} max={365} defaultValue={plan?.trial_days ?? 14} required /></label>
-                  <div className="wide panel-form-actions kayit-formu-eylem"><p>{bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? "Burada yalnızca deneme süresi değişir." : "Ücret boşsa bu ürün kartla satılmaz."}</p><button className="panel-primary" type="submit">{product.name} planını kaydet</button></div>
-                </form>
-              </section>
-            );
-          })}
-        </KKart>
+                  </header>
+                  <form className="panel-form kayit-formu" action={updateProductPlan}>
+                    <input type="hidden" name="product" value={product.code} />
+                    {listeden ? (
+                      <p className="wide panel-muted">
+                        Ücret fiyat listesinden{plan?.individual_monthly_fee ? "" : ": teklif usulü (kartla satılmaz)"}. Değiştirmek için <Link href="/panel/platform/fiyatlar">Fiyat listesi</Link>.
+                      </p>
+                    ) : (
+                      <label className="wide">Bireysel aylık ücret (TL)<input name="individual_monthly_fee" inputMode="decimal" autoComplete="off" defaultValue={plan?.individual_monthly_fee ? liraYazisi(Number(plan.individual_monthly_fee)) : ""} placeholder="Boşsa ödeme kapalı" /></label>
+                    )}
+                    <label className="wide"><span>Deneme süresi (gün)<b className="req" aria-hidden="true">*</b></span><input name="trial_days" type="number" min={0} max={365} defaultValue={plan?.trial_days ?? 14} required /></label>
+                    <div className="wide panel-form-actions kayit-formu-eylem"><p>{listeden ? "Burada yalnızca deneme süresi değişir." : "Ücret boşsa bu ürün kartla satılmaz."}</p><button className="panel-primary" type="submit">Kaydet</button></div>
+                  </form>
+                </section>
+              );
+            })}
+          </section>
+
+          {/* Kurum anlaşmasıyla gelen kişiler (14.10.2026): bireysel listede
+              ve sayılarda yoklar; erişimleri kurumun lisansıyla açılıp kapanıyor. */}
+          {kurumdakiler.length ? (
+            <section className="ek-panel" aria-label="Kurum lisansında">
+              <p className="ek-not">Bireysel değil; erişim kurumun lisansından. &quot;Bireysele al&quot; kişiyi kendi aboneliğine geri taşır.</p>
+              <ul className="pu-liste">
+                {kurumdakiler.map((kisi) => (
+                  <li key={kisi.id}>
+                    <span className="sy-ozet">
+                      <span className="pu-govde"><b>{kisiAdi(kisi)}</b><small>{[kurumAdi.get(kisi.kurum_id) ?? "Kurum", productName(kisi.product), kisiAdi(kisi) === kisi.email ? null : kisi.email].filter(Boolean).join(" · ")}</small></span>
+                      <form action={setSubscriberOrganization}>
+                        <input type="hidden" name="subscriber_id" value={kisi.id} />
+                        <input type="hidden" name="kurum_id" value="" />
+                        <button type="submit" className="panel-secondary" aria-label={`${kisiAdi(kisi)} bireysel aboneliğe geri al`}>Bireysele al</button>
+                      </form>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </TalepAkis>
       </div>
     </div>
   </main>;

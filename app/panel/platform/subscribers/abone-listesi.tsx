@@ -3,7 +3,8 @@
 import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { KBos, KListe, KOge } from "../konsol-ui";
+import { MobilSatir } from "../../crm/table-cells";
+import { basHarfleri } from "../bicim";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
 // Düzenleme penceresi (.plt-pencere) ve gizli düğme (.plt-gizli) konsolun stilinde.
@@ -108,24 +109,19 @@ export function AboneListesi({ aboneler, kaydet, tasi, kurumlar, durum }: {
 
   return (
     <>
-      {/* 14.10.2026: panelin süzgeç satırı ve tablosu (konsol-ui). Eskiden
-          konsolun kendi düğme dizisi (.plt-hizli) ve satır listesi
-          (.plt-abone-satir) vardı ve süzgeç yalnızca bellekteydi. Artık
-          ?durum= adresinde, Abonelikler listesindeki gibi: bağlantı
-          paylaşılabiliyor, sayfa yenilenince süzgeç kaybolmuyor. */}
-      <div className="ekip-suzgec talep-suzgec" role="group" aria-label="Süzgeç">
-        {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
-            masaüstünde sarmalayıcı display:contents ile görünmez. */}
-        <div className="suzgec-ray">
-        {SUZGECLER.map((secim) => (
-          <Link
-            key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?durum=${secim.kod}`}
-            className={suzgec === secim.kod ? "is-active" : undefined} aria-current={suzgec === secim.kod ? "page" : undefined}
-          >
-            {secim.ad} <small>{aboneler.filter((abone) => suzgeceUyar(abone, secim.kod)).length}</small>
-          </Link>
-        ))}
-        </div>
+      {/* Süzgeç adreste (?durum=): bağlantı paylaşılabiliyor, sayfa
+          yenilenince kaybolmuyor. 29.10.2026'dan beri panelin segmenti. */}
+      <div className="ekip-suzgec talep-suzgec ek-arac" role="group" aria-label="Süzgeç">
+        <nav className="ek-segment" aria-label="Abone durumu">
+          {SUZGECLER.map((secim) => (
+            <Link
+              key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?durum=${secim.kod}`}
+              className={suzgec === secim.kod ? "is-active" : undefined} aria-current={suzgec === secim.kod ? "page" : undefined}
+            >
+              {secim.ad} <small>{aboneler.filter((abone) => suzgeceUyar(abone, secim.kod)).length}</small>
+            </Link>
+          ))}
+        </nav>
         <div className="talep-ara" role="search">
           <input
             type="search" value={arama} placeholder="Ad, e-posta ya da ürün ara" aria-label="Abone ara"
@@ -136,46 +132,53 @@ export function AboneListesi({ aboneler, kaydet, tasi, kurumlar, durum }: {
 
       {listelenen.length ? (
         /*
-          iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): abone tek satır —
-          kişi simgesi, ad, altında ürün · e-posta; sağda durum ve deneme
-          bitişi / dönem sonu. Eskiden beş sütunlu tabloydu (KTablo).
+          PANELİN TABLOSU (29.10.2026, konsol yeniden kurulurken). iOS
+          satırında ürün ve e-posta tek alt satırdaydı, deneme bitişi ile
+          dönem sonu aynı sağ hücrede birbirinin yerine yazılıyordu;
+          "denemesi bu hafta biten kim" sorusu satır satır okunuyordu.
+          Artık ürün, kayıt ve bitiş tarihi kendi sütununda. Gidilecek
+          sayfa yok, düzenleme pencerede: düğme satırın sonunda.
         */
-        <KListe>
-          {listelenen.map((abone) => {
-            const durumu = { etiket: abone.erisimAcik ? abone.durumAdi : "Erişim kapalı", ton: abone.tone };
-            const tarihEtiketi = abone.durum === "trialing" ? "deneme bitişi" : "dönem sonu";
-            const tarihAdi = abone.durum === "trialing" ? abone.denemeSonuAdi : abone.donemSonuAdi;
-            return (
-              <KOge
-                key={abone.id}
-                simge={abone.ad || abone.eposta}
-                baslik={abone.ad || abone.eposta}
-                /* E-posta her zaman yazılıyor: adı girilmemiş üç aboneyi
-                   birbirinden ayırmanın başka yolu yok. */
-                alt={[abone.urunAdi, abone.ad ? abone.eposta : null].filter(Boolean).join(" · ")}
-                durum={durumu}
-                deger={tarihAdi}
-                degerAlt={tarihEtiketi}
-                /* Gidilecek sayfa yok, düzenleme pencerede. Eskiden satıra
-                   tıklama gizli .satir-ac düğmesine basıyordu (SatirTiklama,
-                   KTablo'nun içindeydi); iOS listesinde o dinleyici yok, düğme
-                   satırın sonunda görünür duruyor — klavye ve ekran okuyucu
-                   da onu kullanıyor. */
-                sonu={(
-                  <button type="button" className="satir-ac panel-secondary" onClick={() => setAcik(abone.id)}
-                    aria-label={`${abone.ad || abone.eposta} aboneliğini düzenle`}>
-                    Düzenle
-                  </button>
-                )}
-              />
-            );
-          })}
-        </KListe>
+        <div className="talep-tablo">
+          <table className="crm-data-table" data-cols="ab-abone">
+            <thead><tr><th>Abone</th><th>Ürün</th><th className="crm-col-date">Kayıt</th><th className="crm-col-date">Bitiş</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              {listelenen.map((abone) => {
+                const durumu = { etiket: abone.erisimAcik ? abone.durumAdi : "Erişim kapalı", ton: abone.tone };
+                const deneme = abone.durum === "trialing";
+                const tarihAdi = deneme ? abone.denemeSonuAdi : abone.donemSonuAdi;
+                const ad = abone.ad || abone.eposta;
+                return (
+                  <tr key={abone.id} className={abone.erisimAcik ? undefined : "is-pasif"}>
+                    <td data-label="Abone">
+                      <span className="ek-kisi">
+                        <span className="ek-avatar" data-tur="bireysel" aria-hidden="true">{basHarfleri(ad)}</span>
+                        {/* E-posta her zaman yazılıyor: adı girilmemiş üç aboneyi birbirinden ayırmanın başka yolu yok. */}
+                        <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span>{abone.ad ? <span className="crm-table-sub" title={abone.eposta}>{abone.eposta}</span> : null}</span>
+                      </span>
+                    </td>
+                    <td data-label="Ürün"><span className="crm-table-title">{abone.urunAdi}</span></td>
+                    <td className="crm-col-date" data-label="Kayıt">{abone.kayit}</td>
+                    <td className="crm-col-date" data-label="Bitiş">{tarihAdi}<small>{deneme ? "deneme bitişi" : "dönem sonu"}</small></td>
+                    <td data-label="Durum"><span className="status-pill" data-tone={durumu.ton}>{durumu.etiket}</span></td>
+                    <td className="crm-table-actions">
+                      <button type="button" className="satir-ac panel-secondary" onClick={() => setAcik(abone.id)}
+                        aria-label={`${ad} aboneliğini düzenle`}>
+                        Düzenle
+                      </button>
+                    </td>
+                    <MobilSatir baslik={ad} durum={durumu} alt={[abone.urunAdi, abone.ad ? abone.eposta : null, `${deneme ? "deneme" : "dönem"} ${tarihAdi}`]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
-        <KBos
-          baslik={arama || suzgec !== "hepsi" ? "Eşleşen abone yok" : "Henüz bireysel abone yok"}
-          aciklama={arama || suzgec !== "hepsi" ? "Bu süzgeçle ya da aramayla eşleşen abone yok." : "Bir kişi ArvoLab ya da ArvoARC'a kendi adına abone olduğunda burada listelenir."}
-        />
+        <div className="crm-empty-state talep-bos-kutu ek-bos">
+          <h2>{arama || suzgec !== "hepsi" ? "Eşleşen abone yok" : "Henüz bireysel abone yok"}</h2>
+          <p>{arama || suzgec !== "hepsi" ? "Bu süzgeçle ya da aramayla eşleşen abone yok." : "Bir kişi ArvoLab ya da ArvoARC'a kendi adına abone olduğunda burada listelenir."}</p>
+        </div>
       )}
 
       <dialog
