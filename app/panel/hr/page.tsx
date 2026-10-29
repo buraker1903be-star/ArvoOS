@@ -199,6 +199,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
         {canManageTeam ? <details className="os-menu talep-menu">
           <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
           <div className="os-menu-list" role="menu">
+            <Link className="os-menu-item" href="/panel/hr/departmanlar" role="menuitem">Departmanları yönet</Link>
             {canManageTeam ? (
               <PanelDrawer triggerLabel="Yeni departman" triggerClassName="os-menu-item" kicker="ORGANİZASYON" title="Yeni departman" description="Adında “Satış” ya da “Operasyon” geçen departmana o alanın müdür profili atanabilir.">
                 <form className="panel-form kayit-formu" action={createDepartment}><label className="wide"><span>Departman adı<b className="req" aria-hidden="true">*</b></span><input name="name" required placeholder="Örn. Satış" /></label><label className="wide">Kısa kod<input name="code" maxLength={30} placeholder="Örn. SAT" /></label><div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Departmanı kaydet</button></div></form>

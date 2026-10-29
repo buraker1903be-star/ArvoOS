@@ -82,6 +82,8 @@ export function ikBolumleri(): Bolum[] {
        personel detayında (finanstaki Müşteriler düzeni); ayrı bölüm değiller.
        Görünürlükleri yine primGorur / ikKayitGorur ile, detay sayfasında. */
     { key: "personel", href: "/panel/hr", label: "Personel" },
+    // Departmanlar 29.10.2026'da kendi sayfasına çıktı (eskiden yalnızca "⋯" menüsünden açılabiliyordu).
+    { key: "departmanlar", href: "/panel/hr/departmanlar", label: "Departmanlar" },
   ];
 }
 
