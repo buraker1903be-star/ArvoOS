@@ -12,8 +12,10 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { ProformaBelgesi } from "../../../../billing/proforma/proforma-belgesi";
 import { YazdirDugmesi } from "../../../../billing/proforma/yazdir-dugmesi";
 import { KKart, KNot } from "../../../konsol-ui";
-import { para, tarih } from "../../../bicim";
-import { proformaEsle, proformaIptal } from "../../actions";
+import { para, tarih, tarihSaat } from "../../../bicim";
+import { proformaEsle, proformaGonder, proformaIptal } from "../../actions";
+import { epostaAyarli } from "@/lib/eposta-gonder";
+import { ikincil } from "../../../konsol-oku";
 import "../../../platform.css";
 import "../../../../components/kayit-formu.css";
 import "../../../../hr/hr.css";
@@ -48,15 +50,20 @@ export default async function KonsolProformaPage({ params }: { params: Promise<{
   if (!isPlatformOwner) notFound();
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu yapılandırması eksik; proforma okunamadı.");
-  const [p, s, kimlikSonucu] = await Promise.all([
+  const [p, s, kimlikSonucu, gonderimSonucu] = await Promise.all([
     proformaGetir(admin, id),
     satici(admin),
     // Abone proformasının abone kimliği eşleştirme adayları için (proformaGetir onu taşımıyor).
     admin.from("platform_proformalari").select("subscriber_id").eq("id", id).maybeSingle(),
+    /* Gönderim kaydı (20261029160309) ayrı okunuyor ve okunamazsa sayfa
+       düşmüyor: migration canlıya uygulanmadan belge yine açılmalı. */
+    admin.from("platform_proformalari").select("otomatik,donem_sonu,gonderildi_at,gonderilen,bildirildi_at,gonderim_hatasi").eq("id", id).maybeSingle(),
   ]);
   if (!p) notFound();
   if (kimlikSonucu.error) throw new Error("Proforma okunamadı: " + kimlikSonucu.error.message);
   const aboneId = (kimlikSonucu.data as { subscriber_id: string | null } | null)?.subscriber_id ?? null;
+  const gonderim = ikincil(gonderimSonucu as { data: { otomatik: boolean; donem_sonu: string | null; gonderildi_at: string | null; gonderilen: string[] | null; bildirildi_at: string | null; gonderim_hatasi: string | null } | null; error: { message: string } | null }, "Proforma gönderim kaydı");
+  const g = gonderim.veri;
 
   const bugun = todayInIstanbul();
   const durum = proformaGorunumu(p.durum, p.gecerlilikTarihi, bugun);
@@ -157,6 +164,27 @@ export default async function KonsolProformaPage({ params }: { params: Promise<{
             )}
           </KKart>
         ) : null}
+
+        {/* Müşteriye gönderim (otomatik iş ya da bu düğme; lib/otomatik-proforma-isi). */}
+        <KKart baslik="Müşteriye gönderim" aciklama={aboneId ? "E-posta ve ArvoLab bildirimi aboneye gider." : "E-posta ve panel bildirimi kurumun Kurum Sahiplerine gider."}>
+          {gonderim.okunamadi ? (
+            <KNot ton="uyari">Gönderim kaydı okunamadı; otomatik proforma migration&apos;ı (20261029160309) canlıya uygulanmamış olabilir.</KNot>
+          ) : <>
+            {g?.otomatik ? <KNot>Otomatik düzenlendi{g.donem_sonu ? ` · ${tarih(`${g.donem_sonu}T12:00:00Z`)} tarihinde dolan dönem için` : ""}.</KNot> : null}
+            <dl className="talep-liste">
+              <div><dt>E-posta</dt><dd>{g?.gonderildi_at ? <>{tarihSaat(g.gonderildi_at)}<small className="ek-alt"> · {(g.gonderilen ?? []).join(", ")}</small></> : <em>Gönderilmedi</em>}</dd></div>
+              <div><dt>Bildirim</dt><dd>{g?.bildirildi_at ? tarihSaat(g.bildirildi_at) : <em>Gönderilmedi</em>}</dd></div>
+            </dl>
+            {g?.gonderim_hatasi && !(g.gonderildi_at && g.bildirildi_at) ? <KNot ton="tehlike"><b>Son deneme:</b> {g.gonderim_hatasi}</KNot> : null}
+            {!epostaAyarli() ? <KNot ton="uyari">E-posta gönderimi ayarlı değil (RESEND_API_KEY). Bildirim gider; e-posta anahtar tanımlanınca gönderilebilir.</KNot> : null}
+            {p.durum === "bekliyor" ? (
+              <form action={proformaGonder}>
+                <input type="hidden" name="id" value={p.id} />
+                <button className="panel-secondary" type="submit">{g?.gonderildi_at || g?.bildirildi_at ? "Yeniden gönder" : "Müşteriye gönder"}</button>
+              </form>
+            ) : null}
+          </>}
+        </KKart>
 
         <KKart baslik="Müşteri ne görüyor">
           <p className="ek-not">Müşteri bu belgeyi {nerede} görüyor{durum === "iptal" ? "; iptal edilen proforma müşteride listelenmiyor" : ""}.</p>

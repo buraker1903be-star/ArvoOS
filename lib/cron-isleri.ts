@@ -70,6 +70,10 @@ const TANIM: Record<string, { ad: string; aciklama: string }> = {
     ad: "Otomatik yenileme",
     aciklama: "Durursa kartını kaydedip otomatik yenilemeyi seçen kurumlardan çekim yapılmaz ve hatırlatma gitmez; dönemleri dolar ve ödemeleri gecikmiş görünür.",
   },
+  "/api/cron/otomatik-proforma": {
+    ad: "Otomatik proforma",
+    aciklama: "Durursa dönemi dolan müşteriye proforma kesilmez ve e-postayla gitmez; ödeme belgesi kurucunun elle kesmesine kalır.",
+  },
   "/api/cron/abonelik-hatirlatma": {
     ad: "Abonelik hatırlatması",
     aciklama: "Durursa dönemi dolan kiracıya hatırlatma gitmez ve gecikenler işaretlenmez.",
