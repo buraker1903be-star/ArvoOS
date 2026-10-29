@@ -10,6 +10,8 @@ import { CONFIDENTIALITY_AGREEMENT_TEXT, CONFIDENTIALITY_AGREEMENT_VERSION, conf
 import { assertYetki } from "@/lib/yetkiler";
 
 const text=(formData:FormData,key:string,max=300)=>String(formData.get(key)??"").trim().slice(0,max);
+const CALISMA_TIPLERI=["full_time","part_time","contractor","intern"];
+const CALISMA_DURUMLARI=["active","on_leave","inactive","terminated"];
 const number=(formData:FormData,key:string)=>Number(String(formData.get(key)??"0").replace(",","."))||0;
 
 // Bu dosyadaki işlemlerin hepsi (departman, personel ekleme/düzenleme, prim
@@ -76,13 +78,28 @@ async function updateEmployee__impl(formData:FormData){
   const commissionRate=number(formData,"commission_rate");
   const operationCommissionRate=number(formData,"operation_commission_rate");
   if(commissionRate<0||commissionRate>100||operationCommissionRate<0||operationCommissionRate>100) throw new Error("Prim oranları 0 ile 100 arasında olmalıdır.");
+  /*
+    Personel no, işe giriş ve çalışma tipi 29.10.2026'dan beri düzenleme
+    formunda da var. Değerler kısıtla sabit (hr_employees_employment_type_check);
+    listede olmayan bir değer veritabanında İngilizce kısıt hatasıyla
+    düşerdi, burada Türkçe reddediliyor. Boş tarih "silindi" demek.
+  */
+  const employmentType=text(formData,"employment_type",30)||"full_time";
+  if(!CALISMA_TIPLERI.includes(employmentType)) throw new Error("Çalışma tipi tanınmadı.");
+  const employmentStatus=text(formData,"employment_status",30)||"active";
+  if(!CALISMA_DURUMLARI.includes(employmentStatus)) throw new Error("Durum tanınmadı.");
+  const startDate=text(formData,"start_date",20);
+  if(startDate&&!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error("İşe giriş tarihi geçersiz.");
   const {data,error}=await supabase.from("hr_employees").update({
     full_name:text(formData,"full_name",180),
+    employee_no:text(formData,"employee_no",50)||null,
+    start_date:startDate||null,
+    employment_type:employmentType,
     email:text(formData,"email",240)||null,
     phone:text(formData,"phone",80)||null,
     job_title:text(formData,"job_title",160)||null,
     department_id:text(formData,"department_id",80)||null,
-    employment_status:text(formData,"employment_status",30)||"active",
+    employment_status:employmentStatus,
     can_receive_sales_requests:formData.get("can_receive_sales_requests")==="on",
     commission_rate:commissionRate,
     operation_commission_rate:operationCommissionRate,
