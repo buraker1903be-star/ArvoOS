@@ -3,6 +3,7 @@ import { normalizePhone } from "@/lib/whatsapp-send";
 import { loadConversation, type InboxMessage } from "@/lib/whatsapp-inbox";
 import { istanbulTime, todayInIstanbul } from "@/lib/istanbul-date";
 import type { getPanelContext } from "@/lib/panel-context";
+import "./musteri-yazismalari.css";
 
 /*
   MÜŞTERİYLE YAZIŞMALAR (2026-10): WhatsApp ve posta, müşteri sayfasında
@@ -95,55 +96,119 @@ const KISI = {
   personel: { iyelik: "Personelin", ile: "Bu kişiyle", baglanti: "yalnızca üstlendiği yazışmalar görünür" },
 } as const;
 
+/* Gün başlığı: "Bugün", "Dün" ya da "27 Ekim Salı". Türkiye günüyle. */
+function gunBasligi(anahtar: string) {
+  const simdi = new Date();
+  if (anahtar === todayInIstanbul(simdi)) return "Bugün";
+  if (anahtar === todayInIstanbul(new Date(simdi.getTime() - 86_400_000))) return "Dün";
+  return new Intl.DateTimeFormat("tr-TR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(new Date(`${anahtar}T12:00:00Z`));
+}
+
+/* Ardışık aynı güne düşenler tek başlık altında; sıra korunur (yeniden eskiye). */
+function gunlereAyir<T>(liste: T[], an: (oge: T) => string | null) {
+  const gruplar: { anahtar: string; ogeler: T[] }[] = [];
+  for (const oge of liste) {
+    const deger = an(oge);
+    const anahtar = deger ? todayInIstanbul(new Date(deger)) : "—";
+    const son = gruplar[gruplar.length - 1];
+    if (son?.anahtar === anahtar) son.ogeler.push(oge);
+    else gruplar.push({ anahtar, ogeler: [oge] });
+  }
+  return gruplar;
+}
+
+/* normalizePhone "905xxxxxxxxx" verir; ekranda "+90 (5xx) xxx xx xx". */
+const telefonYazisi = (n: string) => n.replace(/^90(\d{3})(\d{3})(\d{2})(\d{2})$/, "+90 ($1) $2 $3 $4");
+
+const bas = (ad: string) => ad.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr-TR") ?? "").join("") || "?";
+
+/*
+  Görünüm (29.10.2026, kurum sahibinin isteği: personel sayfasının
+  Hareketler sekmesiyle "aynı kalitede"). Bileşen bütün kayıt
+  sayfalarında ortak; düzen de ortak. Eskiden iki sekme de düz satır
+  listesiydi: WhatsApp'ta kimin yazdığı yalnızca satır başındaki adla,
+  postada okunmamış olan yalnızca " · yeni" ekiyle ayırt ediliyordu.
+  Artık üstte araç çubuğu (sayı + ilgili ekrana geçiş), mesajlar gün gün
+  ve yöne göre baloncukta, postalar okunmamış işaretli kartlarda.
+*/
 export function WhatsappAkisi({ mesajlar, numara, musteri, kisi = "musteri" }: { mesajlar: InboxMessage[]; numara: string | null; musteri: string; kisi?: keyof typeof KISI }) {
   return (
-    <div className="musteri-mesajlar">
+    <div className="musteri-mesajlar yz">
+      <header className="yz-bas">
+        <div>
+          <h2>WhatsApp</h2>
+          <small>{numara ? `${telefonYazisi(numara)}${mesajlar.length ? ` · son ${mesajlar.length} mesaj` : ""}` : "Numara yok"}</small>
+        </div>
+        {numara ? <Link className="panel-secondary yz-git" href="/panel/crm/whatsapp">WhatsApp ekranını aç</Link> : null}
+      </header>
       {mesajlar.length ? (
-        <>
-          <ul className="cari-hareketler">
-            {mesajlar.map((w) => (
-              <li key={w.id}>
-                <span className="cari-hareket-metin">
-                  <b>{w.direction === "inbound" ? musteri : "Biz"}{w.status === "failed" ? " · gitmedi" : ""}</b>
-                  <small className="musteri-mesaj-govde">{w.body || (w.template ? `Şablon: ${w.template}` : w.media ? `Dosya${w.media.filename ? `: ${w.media.filename}` : ""}` : "—")}</small>
-                  <small>{zaman(w.createdAt)}</small>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <Link className="panel-secondary musteri-sekme-bag" href="/panel/crm/whatsapp">WhatsApp ekranını aç</Link>
-        </>
+        gunlereAyir(mesajlar, (w) => w.createdAt).map((grup) => (
+          <section key={grup.anahtar} className="yz-gun" aria-label={gunBasligi(grup.anahtar)}>
+            <h3><span>{gunBasligi(grup.anahtar)}</span></h3>
+            <ol className="yz-baloncuklar">
+              {grup.ogeler.map((w) => {
+                const gelen = w.direction === "inbound";
+                const gitmedi = w.status === "failed";
+                return (
+                  <li key={w.id} data-yon={gelen ? "gelen" : "giden"} data-hata={gitmedi ? "evet" : undefined}>
+                    <span className="yz-kim">{gelen ? musteri : "Biz"}</span>
+                    <p>{w.body || (w.template ? `Şablon: ${w.template}` : w.media ? `Dosya${w.media.filename ? `: ${w.media.filename}` : ""}` : "—")}</p>
+                    <small>{istanbulTime(new Date(w.createdAt))}{gitmedi ? " · gitmedi" : ""}</small>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))
       ) : (
-        <p className="ic-akis-bos">{numara ? "Bu numarayla WhatsApp yazışması yok." : `${KISI[kisi].iyelik} cep telefonu kayıtlı değil ya da biçimi tanınmıyor.`}</p>
+        <p className="yz-bos">{numara ? "Bu numarayla WhatsApp yazışması yok." : `${KISI[kisi].iyelik} cep telefonu kayıtlı değil ya da biçimi tanınmıyor.`}</p>
       )}
     </div>
   );
 }
 
 export function PostaAkisi({ postalar, epostaVar, eylem, kisi = "musteri" }: { postalar: PostaKonusmasi[]; epostaVar: boolean; eylem?: React.ReactNode; kisi?: keyof typeof KISI }) {
+  const okunmamis = postalar.filter((p) => p.okunmamis).length;
   return (
-    <div className="musteri-mesajlar">
-      {eylem ? <div className="musteri-sekme-arac">{eylem}</div> : null}
+    <div className="musteri-mesajlar yz">
+      <header className="yz-bas">
+        <div>
+          <h2>Postalar</h2>
+          <small>{postalar.length ? `${postalar.length} yazışma${okunmamis ? ` · ${okunmamis} okunmamış` : ""}` : "Yazışma yok"}</small>
+        </div>
+        <div className="yz-arac">
+          {eylem}
+          <Link className="panel-secondary yz-git" href="/panel/posta">Posta kutusunu aç</Link>
+        </div>
+      </header>
       {postalar.length ? (
-        <ul className="cari-hareketler">
+        <ul className="yz-postalar">
           {postalar.map((p) => {
             const durum = POSTA_DURUMU[p.durum] ?? POSTA_DURUMU.acik;
+            const gonderen = p.son_gonderen_ad || p.son_gonderen_adres || "—";
             return (
-              <li key={p.thread_id}>
+              <li key={p.thread_id} data-okunmamis={p.okunmamis ? "evet" : undefined}>
                 <Link href={`/panel/posta/${p.thread_id}`}>
-                  <span className="cari-hareket-metin">
-                    <b>{p.konu || "(konusuz)"}{p.okunmamis ? " · yeni" : ""}</b>
-                    <small className="musteri-mesaj-govde">{p.ozet}</small>
-                    <small>{[p.son_gonderen_ad || p.son_gonderen_adres, p.son_mesaj_at ? zaman(p.son_mesaj_at) : null, `${p.mesaj_sayisi} ileti`].filter(Boolean).join(" · ")}</small>
+                  <span className="yz-avatar" aria-hidden="true">{bas(gonderen)}</span>
+                  <span className="yz-posta-govde">
+                    <span className="yz-posta-ust">
+                      <b>{p.konu || "(konusuz)"}</b>
+                      <time>{p.son_mesaj_at ? zaman(p.son_mesaj_at) : ""}</time>
+                    </span>
+                    <small className="yz-ozet">{p.ozet}</small>
+                    <span className="yz-posta-alt">
+                      <small>{gonderen} · {p.mesaj_sayisi} ileti</small>
+                      <span className="status-pill" data-tone={durum.ton}>{durum.ad}</span>
+                    </span>
                   </span>
-                  <span className="status-pill" data-tone={durum.ton}>{durum.ad}</span>
+                  {p.okunmamis ? <span className="yz-yeni" aria-label="Okunmamış" /> : null}
                 </Link>
               </li>
             );
           })}
         </ul>
       ) : (
-        <p className="ic-akis-bos">{epostaVar ? `${KISI[kisi].ile} posta yazışması yok.` : `${KISI[kisi].iyelik} e-posta adresi kayıtlı değil; ${KISI[kisi].baglanti}.`}</p>
+        <p className="yz-bos">{epostaVar ? `${KISI[kisi].ile} posta yazışması yok.` : `${KISI[kisi].iyelik} e-posta adresi kayıtlı değil; ${KISI[kisi].baglanti}.`}</p>
       )}
     </div>
   );
