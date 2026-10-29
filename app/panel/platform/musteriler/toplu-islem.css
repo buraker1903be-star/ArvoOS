@@ -1,0 +1,12 @@
+/* Müşteri listesinin toplu işlem çubuğu (toplu-islem.tsx) ve satır seçim kutusu. */
+.os-root .mu-toplu{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;padding:8px 0 10px}
+.os-root .mu-toplu-hepsi{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--ink-soft);cursor:pointer}
+.os-root .mu-toplu-temizle{padding:0;border:0;background:none;font-size:var(--fs-sm);color:var(--primary);cursor:pointer}
+.os-root .mu-toplu-bosluk{flex:1}
+.os-root .mu-toplu input[type=checkbox],.os-root .mu-secim input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--primary);cursor:pointer}
+.os-root .crm-data-table .mu-secim{width:36px;padding-right:0}
+@media (max-width:760px){
+  .os-root .mu-toplu .panel-secondary,.os-root .mu-toplu .panel-primary{flex:1 1 auto}
+  /* Telefonda satır kart (MobilSatir); seçim kutusu yok, "Seç" bütün listeyi seçiyor. */
+  .os-root .crm-data-table .mu-secim{display:none}
+}
