@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import "./panel-modal.css";
@@ -46,6 +46,12 @@ type PanelModalProps = {
     mesajlar) sayfa içindeki sekmeyi açıyor, pencere üstüne açılmasın.
   */
   yalnizcaTelefonda?: boolean;
+  /*
+    Düğmenin içeriği metin değil bir kart olacaksa (prim penceresinin ön
+    bilgili kartları, 29.10.2026). Verilince triggerLabel yalnızca
+    erişilebilir ad olarak kullanılır.
+  */
+  tetik?: ReactNode;
   children: ReactNode;
 };
 
@@ -73,7 +79,7 @@ const subscribeNothing = () => () => undefined;
 */
 export function PanelModal({
   triggerLabel, triggerNote, triggerBadge, triggerTone = "neutral", triggerClassName = "panel-secondary",
-  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, kapaninca, dugmesiz = false, yalnizcaTelefonda = false, children,
+  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, kapaninca, dugmesiz = false, yalnizcaTelefonda = false, tetik, children,
 }: PanelModalProps) {
   /* Sunucuda pencere zaten çizilmiyor (portal istemciyi bekliyor); bu
      yüzden ilk durumu tarayıcıda ekran genişliğine bakarak kurmak
@@ -100,6 +106,7 @@ export function PanelModal({
     if (!deger && kapaninca) router.replace(kapaninca, { scroll: false });
   }, [router, kapaninca]);
   const titleId = useId();
+  const kokRef = useRef<HTMLDivElement>(null);
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
 
@@ -114,8 +121,14 @@ export function PanelModal({
 
   useEffect(() => {
     if (!open) return;
+    /* Pencere pencerenin üstünde açılabiliyor (prim penceresindeki
+       ayrıntılar); Escape yalnızca EN ÜSTTEKİNİ kapatır. Eskiden iki
+       pencere de dinliyordu ve bir Escape ikisini birden kapatıyordu. */
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      const acikPencereler = document.querySelectorAll(".panel-modal-root");
+      if (acikPencereler[acikPencereler.length - 1] !== kokRef.current) return;
+      setOpen(false);
     };
     document.addEventListener("keydown", onKeyDown);
 
@@ -141,7 +154,7 @@ export function PanelModal({
   }, [open, setOpen]);
 
   const pencere = (
-    <div className="panel-modal-root" data-boy={boy}>
+    <div className="panel-modal-root" data-boy={boy} ref={kokRef}>
       <button className="panel-modal-backdrop" type="button" aria-label="Pencereyi kapat" onClick={() => setOpen(false)} />
       <div className="panel-modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="panel-modal-header">
@@ -158,7 +171,7 @@ export function PanelModal({
   );
 
   return <>
-    {dugmesiz ? null : <button className={triggerClassName} data-tone={triggerTone} type="button" onClick={() => setOpen(true)}>
+    {dugmesiz ? null : tetik ? <button className={triggerClassName} type="button" aria-label={triggerLabel} onClick={() => setOpen(true)}>{tetik}</button> : <button className={triggerClassName} data-tone={triggerTone} type="button" onClick={() => setOpen(true)}>
       <span className="panel-modal-trigger-text">
         {triggerLabel}
         {triggerNote ? <small>{triggerNote}</small> : null}
