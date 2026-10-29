@@ -113,7 +113,20 @@ export async function POST(request: Request) {
       /* Kredi paketleri de burada (28.10.2026): kurumun kredisi artık ArvoLab'dan
          alınıyor, liste ArvoLab'a kopyalanmıyor — fiyat değiştiği gün iki taraf
          ayrı fiyat göstermesin (bireysel abonenin ensure yanıtındakiyle aynı). */
-      return json(200, { ...(await kurumFaturalamasi(yonetici, organizationId, product)), ...(product === "arvolab" ? { creditPackages: KREDI_PAKETLERI } : {}) });
+      /*
+        platformKurumu (29.10.2026): kurum ArvoOS'un kendisiyse paket
+        gönderilmiyor ve ArvoLab satış bölümünü hiç çizmiyor.
+        org_credit_checkout zaten platform_self ile reddediyor; eskiden
+        ArvoLab'da iç ekip kurum seçmeyince paketler kendi kurumu için
+        görünüyor, düğmeye basan genel "ödeme başlatılamadı" alıyordu.
+      */
+      const [faturalama, platformId] = await Promise.all([kurumFaturalamasi(yonetici, organizationId, product), getPlatformOrganizationId()]);
+      const platformKurumu = platformId === organizationId;
+      return json(200, {
+        ...faturalama,
+        ...(product === "arvolab" && !platformKurumu ? { creditPackages: KREDI_PAKETLERI } : {}),
+        ...(platformKurumu ? { platformKurumu: true } : {}),
+      });
     } catch (error) {
       console.error("[bridge] kurum faturalaması okunamadı", error instanceof Error ? error.message : error);
       return json(503, { error: "unavailable" });
