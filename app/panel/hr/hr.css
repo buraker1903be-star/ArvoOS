@@ -437,3 +437,43 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .prim-is-ozet strong{flex:none;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
 .prim-is-ozet .prim-is-devam{margin-left:6px;padding:1px 6px;border-radius:999px;background:var(--info-soft);color:var(--info);font-size:var(--fs-micro);font-style:normal;font-weight:var(--fw-medium)}
 .prim-is-sekme{margin:var(--sp-2) 0 var(--sp-1);padding-bottom:var(--sp-2)}
+
+/*
+  Ekip listesi (29.10.2026): personel detayıyla aynı dil. Ad hücresinde
+  baş harf rozeti ve çevrimiçi noktası, segmentli durum süzgeci, sağda
+  sekmeli kart.
+*/
+.os-root .ek-alt{margin:2px 0 0;color:var(--muted);font-size:var(--fs-sm)}
+.ek-arac{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--sp-2)}
+.ek-segment{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
+.os-root .ek-arac .ek-segment a{min-height:30px;padding:0 var(--sp-3);border-radius:var(--r-sm);background:transparent;color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.os-root .ek-arac .ek-segment a:hover{background:transparent;color:var(--ink)}
+.os-root .ek-arac .ek-segment a.is-active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px var(--line)}
+.os-root .ek-arac .ek-segment small{opacity:1;color:var(--muted)}
+.os-root .ek-arac>.talep-ara{flex:1 1 320px;justify-content:flex-end;margin:0}
+
+/* Liste tablosu Personel hücresindeki bağlantıyı display:block yapıyor
+   (kayit-detay.css); rozet metnin üstüne düşüyordu. Seçici onunkinden
+   bir sınıf ağır. */
+.os-root .talep-tablo .crm-data-table td[data-label="Personel"] .crm-row-link.ek-kisi{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--sp-3);text-align:left}
+.ek-avatar{position:relative;flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--primary-soft);color:var(--primary-strong);font-size:var(--fs-micro);font-weight:var(--fw-semibold)}
+.os-root tr.is-pasif .ek-avatar{background:var(--surface-2);color:var(--muted)}
+.ek-nokta{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border:2px solid var(--surface);border-radius:50%;background:var(--success)}
+.ek-kisi-metin{display:flex;flex-direction:column;min-width:0}
+.ek-gizli{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ek-prim{color:var(--warning);font-weight:var(--fw-semibold)}
+
+.ek-bos{display:flex;flex-direction:column;align-items:center;gap:var(--sp-1);text-align:center}
+.ek-bos-simge{display:grid;place-items:center;width:48px;height:48px;margin-bottom:var(--sp-2);border-radius:50%;background:var(--surface-2);color:var(--muted)}
+
+/* Sağ sekmeli kart: davet sekmeleri. İstatistik sekmesi kendi kartı
+   (.talep-akis-panel>section kenarsız). */
+.ek-sag .ek-panel{display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4)}
+.os-root .ek-sag .talep-istatistik{padding:var(--sp-4)}
+/* Sekmenin adı zaten "İstatistikler"; kartın kendi başlığı tekrar olurdu, kapsamı kalıyor. */
+.os-root .ek-sag .talep-istatistik>.cari-baslik h2{display:none}
+.os-root .ek-not{margin:0;padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm);line-height:var(--lh-base)}
+.os-root .ek-not[data-tone="danger"]{border-left:3px solid var(--danger)}
+.os-root .ek-liste{margin:0;border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
+.os-root .ek-liste li{margin:0;padding:var(--sp-2) var(--sp-3)}
+.os-root .ek-bos-kucuk{margin:0;padding:var(--sp-5) var(--sp-3);border:1px dashed var(--line);border-radius:var(--r-md);text-align:center;color:var(--muted);font-size:var(--fs-sm)}

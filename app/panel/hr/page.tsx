@@ -21,6 +21,7 @@ import { ledgerTotals } from "@/lib/commission-ledger";
 import { primVerisi } from "./prim-verisi";
 import { DAVET_DURUM_ADLARI, davetleriAyir, OKUNAN_DAVET_DURUMLARI } from "./davet-durumu";
 import { modulGerek } from "@/lib/modul-kapisi";
+import { TalepAkis } from "../crm/kayit-detay/kayit-akis";
 
 /*
   EKİP LİSTESİ (2026-10): talepler, teklifler, sözleşmeler, işler ve
@@ -43,6 +44,13 @@ import { modulGerek } from "@/lib/modul-kapisi";
   (finanstaki Müşteriler düzeni). Kurum geneli soruların cevabı listede
   kaldı: "Prim bakiyesi" ve "Gizlilik" sütunları, adın yanında çevrimiçi
   noktası — her biri eski sayfasının yetkisiyle.
+
+  Görünüm (29.10.2026, kurum sahibinin isteği: personel detayıyla "aynı
+  kalitede"): ad hücresinde baş harf rozeti ve çevrimiçi noktası, durum
+  süzgeci segmentli, sağ sütun sekmeli kart (İstatistikler · Davetler ·
+  Sorunlu). Eskiden bekleyen ve sorunlu davetler istatistiklerin altına
+  ayrı kartlar olarak diziliyordu ve sorunlu davet sağ sütunun dibinde
+  gözden kaçıyordu; artık sekme adında sayısıyla duruyor.
 */
 
 type Department = { id: string; name: string; code: string | null; is_active: boolean };
@@ -66,6 +74,7 @@ const DURUM_SUZGECLERI = [
 ] as const;
 
 const inviteStatusTone: Record<string, string> = { failed: "danger" };
+const basHarfler = (ad: string) => ad.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr-TR")).join("") || "?";
 // Çevrimiçi sınırı: son 2 dakikada görülen (personel hareketleriyle aynı).
 const cevrimiciSiniri = () => Date.now() - 2 * 60 * 1000;
 
@@ -134,6 +143,9 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
     personele bakıyor; şeritteki sayı artık onunla aynı kümeyi sayıyor.
   */
   const cevrimiciPersonel = employees.filter((item) => item.user_id && cevrimici.has(item.user_id)).length;
+  /* Prim bakiyesi bir kez: şerit ve satırlar aynı haritadan (eskiden ikisi ayrı ayrı hesaplıyordu). */
+  const primBakiyesi = new Map(prim ? employees.map((e) => [e.id, ledgerTotals(e.id, prim.accruals, prim.payments).balance]) : []);
+  const odenecekPrim = [...primBakiyesi.values()].reduce((t, b) => t + Math.max(0, b), 0);
 
   const pasifMi = (item: Employee) => item.employment_status === "inactive" || item.employment_status === "terminated";
   const gorunen = employees.filter((item) =>
@@ -197,6 +209,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
       <div className="talep-bas-metin">
         <small className="panel-kicker">İNSAN KAYNAKLARI</small>
         <h1>Ekip ve personel</h1>
+        <p className="ek-alt">{activeCount} aktif personel{departments.length ? ` · ${departments.filter((d) => d.is_active).length} departman` : ""}{hareketGorur ? ` · ${cevrimiciPersonel} çevrimiçi` : ""}</p>
       </div>
       <div className="talep-bas-eylem">
         {canManageTeam ? <PanelDrawer triggerLabel="Yeni personel" kicker="YENİ KAYIT" title="Yeni personel" description="Kimlik, görev ve iletişim bilgileri. Panel erişimi kayıttan sonra personel sayfasından verilir.">{employeeForm}</PanelDrawer> : null}
@@ -225,18 +238,20 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
         {canManageTeam ? <div><dt>Bekleyen davet</dt><dd className={invitations.length ? "talep-uyari" : undefined}>{invitations.length}</dd></div> : null}
         {canManageTeam && sorunluDavetler.length ? <div><dt>Sorunlu davet</dt><dd className="cari-eksi">{sorunluDavetler.length}</dd></div> : null}
         {hareketGorur ? <div><dt>Şu an çevrimiçi</dt><dd className={cevrimiciPersonel ? "cari-arti" : undefined}>{cevrimiciPersonel}</dd></div> : null}
-        {prim ? <div><dt>Ödenecek prim</dt><dd>{money(employees.reduce((t, e) => t + Math.max(0, ledgerTotals(e.id, prim.accruals, prim.payments).balance), 0))}</dd></div> : null}
+        {prim ? <div><dt>Ödenecek prim</dt><dd className={odenecekPrim ? "talep-uyari" : undefined}>{money(odenecekPrim)}</dd></div> : null}
       </dl>
     </nav>
 
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label="Ekip listesi">
-        <div className="ekip-suzgec talep-suzgec">
-          {DURUM_SUZGECLERI.map(([kod, ad]) => (
-            <Link key={kod || "tumu"} href={adres({ durum: kod })} className={durum === kod ? "is-active" : undefined} aria-current={durum === kod ? "page" : undefined}>
-              {ad} <small>{durumSayisi(kod)}</small>
-            </Link>
-          ))}
+        <div className="ekip-suzgec talep-suzgec ek-arac">
+          <nav className="ek-segment" aria-label="Durum">
+            {DURUM_SUZGECLERI.map(([kod, ad]) => (
+              <Link key={kod || "tumu"} href={adres({ durum: kod })} className={durum === kod ? "is-active" : undefined} aria-current={durum === kod ? "page" : undefined}>
+                {ad} <small>{durumSayisi(kod)}</small>
+              </Link>
+            ))}
+          </nav>
           {/* Departman süzgeci eskiden sağdaki departman kartındaydı; o kartın
               yerini istatistikler aldı, süzgeç buraya geldi. */}
           <form action="/panel/hr" className="talep-ara talep-ara--secimli" role="search">
@@ -276,12 +291,15 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                   return (
                     <tr key={employee.id} className={pasifMi(employee) ? "is-pasif" : undefined}>
                       <td data-label="Personel">
-                        <Link className="crm-row-link" href={`/panel/hr/${employee.id}`} aria-label={`${employee.full_name} detayını aç`}>
-                          <span className="crm-table-title" title={employee.full_name}>
-                            {employee.user_id && cevrimici.has(employee.user_id) ? <i className="personel-cevrimici" title="Çevrimiçi" aria-label="Çevrimiçi" /> : null}
-                            {employee.full_name}
+                        <Link className="crm-row-link ek-kisi" href={`/panel/hr/${employee.id}`} aria-label={`${employee.full_name} detayını aç`}>
+                          <span className="ek-avatar" aria-hidden="true">
+                            {basHarfler(employee.full_name)}
+                            {employee.user_id && cevrimici.has(employee.user_id) ? <i className="ek-nokta" /> : null}
                           </span>
-                          <span className="crm-table-sub">{employee.job_title || "Pozisyon belirtilmedi"}{employee.employee_no ? ` · ${employee.employee_no}` : ""}</span>
+                          <span className="ek-kisi-metin">
+                            <span className="crm-table-title" title={employee.full_name}>{employee.full_name}{employee.user_id && cevrimici.has(employee.user_id) ? <span className="ek-gizli"> · çevrimiçi</span> : null}</span>
+                            <span className="crm-table-sub">{employee.job_title || "Pozisyon belirtilmedi"}{employee.employee_no ? ` · ${employee.employee_no}` : ""}</span>
+                          </span>
                         </Link>
                       </td>
                       <td data-label="Departman">{departmentName ? <span className="crm-table-title">{departmentName}</span> : <span className="crm-table-sub">Departmansız</span>}</td>
@@ -299,8 +317,8 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                         return <td data-label="Gizlilik"><span className="status-pill" data-tone={ton}>{ad}</span></td>;
                       })() : null}
                       {prim ? (() => {
-                        const bakiye = ledgerTotals(employee.id, prim.accruals, prim.payments).balance;
-                        return <td className="crm-col-amount" data-label="Prim bakiyesi">{bakiye ? money(bakiye) : "—"}</td>;
+                        const bakiye = primBakiyesi.get(employee.id) ?? 0;
+                        return <td className="crm-col-amount" data-label="Prim bakiyesi"><span className={bakiye > 0 ? "ek-prim" : bakiye < 0 ? "cari-eksi" : "crm-table-sub"}>{bakiye ? money(bakiye) : "—"}</span></td>;
                       })() : null}
                       <td data-label="Durum"><span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span></td>
                       <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
@@ -324,7 +342,10 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
             <SatirTiklama />
           </div>
         ) : (
-          <div className="crm-empty-state talep-bos-kutu">
+          <div className="crm-empty-state talep-bos-kutu ek-bos">
+            <span className="ek-bos-simge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-3-5.5" /></svg>
+            </span>
             <h2>{employees.length ? "Eşleşen personel yok" : "Henüz personel kaydı yok"}</h2>
             <p>{employees.length ? "Aramayı veya süzgeci değiştirip yeniden deneyin." : canManageTeam ? "“Yeni personel” ile ilk kaydı ekleyin; ardından panele davet edebilirsiniz." : "Yöneticiniz personel ekledikçe burada görünecek."}</p>
             {employees.length ? <div className="crm-empty-actions"><Link className="panel-secondary" href="/panel/hr">Süzgeci temizle</Link></div> : null}
@@ -332,59 +353,63 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
         )}
       </section>
 
-      {/* Sağ sütun: istatistikler; varsa altında bekleyen davetler (giriş
-          bağlantısını yeniden göndermek için). */}
+      {/* Sağ sütun: sekmeli kart — istatistikler ve (yöneticiye) davetler.
+          Sorunlu davet sekmesi yalnızca sorun varken çıkıyor; sekme adındaki
+          sayı onu ilk bakışta gösteriyor. */}
       <div className="liste-sag">
-        <IstatistikKarti
-          kapsam="çalışan personel"
-          kutular={[
-            { ad: "Aktif personel", deger: String(activeCount), alt: `${employees.length} kayıt` },
-            { ad: "Ortalama kıdem", deger: kidemYazisi, alt: `${kidemler.length} kişinin işe giriş tarihi var` },
-            { ad: "Son 90 günde katılan", deger: String(son90Giren), alt: "işe giriş tarihine göre" },
-            { ad: "Panel erişimi", deger: canManageTeam ? (erisimOrani === null ? "—" : `%${erisimOrani}`) : "—", alt: canManageTeam ? `${accessCount}/${calisanlar.length} personel` : "yetkiniz yok" },
-          ]}
-          gruplar={[
-            { baslik: "Departmana göre", satirlar: departmanDagilimi.map(([ad, adet]) => ({ ad, adet })) },
-            { baslik: "Çalışma tipine göre", satirlar: tipDagilimi.map(([ad, adet]) => ({ ad, adet })) },
-          ]}
-        />
-        {canManageTeam && invitations.length ? (
-          <section className="panel-card talep-musteri" aria-label="Bekleyen davetler">
-            <div className="cari-baslik"><h2>Bekleyen davetler</h2><small>{invitations.length}</small></div>
-            <ul className="cari-hareketler">
-              {invitations.map((invite) => (
-                <li key={invite.id}>
-                  <span className="cari-hareket-metin"><b title={invite.email}>{invite.email}</b><small>{roleNames[invite.role] ?? invite.role} · son gün {shortDate(invite.expires_at)}</small></span>
-                  <span className="status-pill" data-tone={statusTone(invite.status)}>{DAVET_DURUM_ADLARI[invite.status] ?? invite.status}</span>
-                  <PanelDrawer triggerLabel="Bağlantı" triggerClassName="panel-secondary ekip-baglanti" kicker="PANEL ERİŞİMİ" title={`${invite.email} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
-                    <TeamInviteLink invitationId={invite.id} organizationName={organizationName} personName={null} email={invite.email} />
-                  </PanelDrawer>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-        {canManageTeam && sorunluDavetler.length ? (
-          <section className="panel-card talep-musteri" aria-label="Sorunlu davetler">
-            <div className="cari-baslik"><h2>Sorunlu davetler</h2><small>{sorunluDavetler.length}</small></div>
-            <p className="hr-invite-link-hint">Bu davetler kişiye ULAŞMADI. Adresi personel kartından düzeltip yeniden davet edin; gerekmiyorsa daveti iptal edin.</p>
-            <ul className="cari-hareketler">
-              {sorunluDavetler.map((invite) => (
-                <li key={invite.id}>
-                  <span className="cari-hareket-metin">
-                    <b title={invite.email}>{invite.email}</b>
-                    <small title={invite.sebep}>{roleNames[invite.role] ?? invite.role} · {invite.sebep}</small>
-                  </span>
-                  <span className="status-pill" data-tone={inviteStatusTone[invite.status] ?? "warning"}>{DAVET_DURUM_ADLARI[invite.status] ?? invite.status}</span>
-                  <form action={cancelInvitation}>
-                    <input type="hidden" name="invitation_id" value={invite.id} />
-                    <button className="panel-secondary ekip-baglanti" type="submit">İptal et</button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
+        <TalepAkis kimlik="ekip-sag" sinif="ek-sag" etiket="Ekip istatistikleri ve davetler" sekmeler={["İstatistikler", ...(canManageTeam ? [invitations.length ? `Davetler · ${invitations.length}` : "Davetler"] : []), ...(canManageTeam && sorunluDavetler.length ? [`Sorunlu · ${sorunluDavetler.length}`] : [])]}>
+          <IstatistikKarti
+            kapsam="çalışan personel"
+            kutular={[
+              { ad: "Aktif personel", deger: String(activeCount), alt: `${employees.length} kayıt` },
+              { ad: "Ortalama kıdem", deger: kidemYazisi, alt: `${kidemler.length} kişinin işe giriş tarihi var` },
+              { ad: "Son 90 günde katılan", deger: String(son90Giren), alt: "işe giriş tarihine göre" },
+              { ad: "Panel erişimi", deger: canManageTeam ? (erisimOrani === null ? "—" : `%${erisimOrani}`) : "—", alt: canManageTeam ? `${accessCount}/${calisanlar.length} personel` : "yetkiniz yok" },
+            ]}
+            gruplar={[
+              { baslik: "Departmana göre", satirlar: departmanDagilimi.map(([ad, adet]) => ({ ad, adet })) },
+              { baslik: "Çalışma tipine göre", satirlar: tipDagilimi.map(([ad, adet]) => ({ ad, adet })) },
+            ]}
+          />
+          {canManageTeam ? (
+            <section className="ek-panel" aria-label="Bekleyen davetler">
+              {invitations.length ? <>
+                <p className="ek-not">Davet e-postası ulaşmadıysa giriş bağlantısını WhatsApp ya da e-postayla kendiniz gönderin.</p>
+                <ul className="cari-hareketler ek-liste">
+                  {invitations.map((invite) => (
+                    <li key={invite.id}>
+                      <span className="cari-hareket-metin"><b title={invite.email}>{invite.email}</b><small>{roleNames[invite.role] ?? invite.role} · son gün {shortDate(invite.expires_at)}</small></span>
+                      <span className="status-pill" data-tone={statusTone(invite.status)}>{DAVET_DURUM_ADLARI[invite.status] ?? invite.status}</span>
+                      <PanelDrawer triggerLabel="Bağlantı" triggerClassName="panel-secondary ekip-baglanti" kicker="PANEL ERİŞİMİ" title={`${invite.email} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
+                        <TeamInviteLink invitationId={invite.id} organizationName={organizationName} personName={null} email={invite.email} />
+                      </PanelDrawer>
+                    </li>
+                  ))}
+                </ul>
+              </> : <p className="ek-bos-kucuk">Bekleyen davet yok. Personele panel erişimi personel sayfasından verilir.</p>}
+            </section>
+          ) : null}
+          {canManageTeam && sorunluDavetler.length ? (
+            <section className="ek-panel" aria-label="Sorunlu davetler">
+              <p className="ek-not" data-tone="danger">Bu davetler kişiye ULAŞMADI. Adresi personel kartından düzeltip yeniden davet edin; gerekmiyorsa daveti iptal edin.</p>
+              <ul className="cari-hareketler ek-liste">
+                {sorunluDavetler.map((invite) => (
+                  <li key={invite.id}>
+                    <span className="cari-hareket-metin">
+                      <b title={invite.email}>{invite.email}</b>
+                      <small title={invite.sebep}>{roleNames[invite.role] ?? invite.role} · {invite.sebep}</small>
+                    </span>
+                    <span className="status-pill" data-tone={inviteStatusTone[invite.status] ?? "warning"}>{DAVET_DURUM_ADLARI[invite.status] ?? invite.status}</span>
+                    <form action={cancelInvitation}>
+                      <input type="hidden" name="invitation_id" value={invite.id} />
+                      <button className="panel-secondary ekip-baglanti" type="submit">İptal et</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </TalepAkis>
       </div>
     </div>
   </main>;
