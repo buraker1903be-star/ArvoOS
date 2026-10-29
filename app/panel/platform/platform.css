@@ -1183,8 +1183,6 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
 /* ---------- Müşteri detayı: pencere düğmeleri (14.10.2026) ---------- */
 /* Altı düğme başlığın sağında tek sıra; sığmazsa alt satıra sarar,
    telefonda yatay kaydırmaya düşmesin. Açık pencerenin düğmesi dolu. */
-.panel-root .proforma-kisayol{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
-.panel-root .proforma-kisayol > .kayit-formu-bolum{flex-basis:100%;margin-top:0}
 /* Tahsilat → Proformalar ve Banka hesapları: satır sonundaki iki düğme yan yana. */
 .k-proforma-eylem{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
 .k-proforma-eylem form{margin:0}

@@ -90,8 +90,3 @@
   .panel-root .doc-proforma::before{display:none}
   .panel-root .doc-tablo tr{break-inside:avoid}
 }
-/* Konsolun belge sayfası: kurucuya özel bilgi şeridi (müşteride yok). */
-.panel-root .doc-konsol{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);padding:var(--sp-3) var(--sp-4);border:1px dashed var(--line);border-radius:var(--r-md);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm)}
-.panel-root .doc-konsol span{flex:1 1 280px}
-.panel-root .doc-konsol .panel-secondary{min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
-@media print{.panel-root .doc-konsol{display:none!important}}

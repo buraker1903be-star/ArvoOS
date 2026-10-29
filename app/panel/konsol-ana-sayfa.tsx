@@ -11,6 +11,10 @@ import { kotaDurumu } from "@/lib/kota-durumu";
 import { kurumTuru, musteriMi } from "@/lib/kurum-turu";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 import { productName } from "@/lib/products";
+import { getPaymentIncidents, incidentLabels } from "@/lib/payment-incidents";
+import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
+import { gunFarki } from "@/lib/is-adimlari";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import Link from "next/link";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
@@ -150,13 +154,36 @@ export async function KonsolAnaSayfa() {
      okunuyor (sozlesmeler sayfasındaki kuralın aynısı). Anahtar yoksa
      satır hiç çizilmiyor: "0 sözleşme bekliyor" yazmak, okunamayan bir
      kuyruğu boş göstermek olurdu. */
-  const [{ data: sozlesmeSatirlari, error: sozlesmeHatasi }, { data: kurulumKayitlari, error: kurulumHatasi }] = admin
+  const [{ data: sozlesmeSatirlari, error: sozlesmeHatasi }, { data: kurulumKayitlari, error: kurulumHatasi }, { data: proformaSatirlari, error: proformaHatasi }] = admin
     ? await Promise.all([
         admin.from("platform_subscription_requests").select("id,contract_no,customer_name,amount,currency,created_at")
           .eq("status", "pending").order("created_at", { ascending: false }),
         admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at").order("created_at", { ascending: false }).limit(6),
+        /*
+          BEKLEYEN PROFORMALAR (29.10.2026): gönderilmiş, ödemesi gelmemiş
+          belgeler. Hepsi, sınırsız: bekleyen proforma bir iş kalemi ve
+          sayısı küçük. Geçerliliği en yakın olan başta — kurucunun
+          aradığı "hangisinin süresi dolmak üzere".
+        */
+        admin.from("platform_proformalari").select("id,proforma_no,musteri_adi,product,toplam,para_birimi,gecerlilik_tarihi")
+          .eq("durum", "bekliyor").order("gecerlilik_tarihi", { ascending: true }),
       ])
-    : [{ data: null, error: null }, { data: [], error: null }];
+    : [{ data: null, error: null }, { data: [], error: null }, { data: null, error: null }];
+  /*
+    ÖDEME VE KREDİ SORUNLARI da kuyrukta (29.10.2026): PayTR'nin ödeyip
+    kaydı oluşmayan bildirimleri ve ödenip ArvoLab'a yüklenemeyen AI
+    kredisi. İkisi de yalnızca Sistem sağlığında yazıyordu; ana ekran
+    "Her kiracı yolunda" derken müşteri ödediği krediyi kullanamıyordu.
+    getPaymentIncidents okunamazsa kendi içinde boş döner (günlüğe yazar);
+    kredi okuması düşerse satırı "okunamadı" olarak işaretliyoruz.
+  */
+  const [odemeOlaylari, krediSonucu] = await Promise.all([
+    getPaymentIncidents(),
+    admin
+      ? bekleyenKrediler(admin).then((veri) => ({ veri, hata: null as string | null }))
+          .catch((hata: unknown) => ({ veri: [], hata: hata instanceof Error ? hata.message : String(hata) }))
+      : Promise.resolve({ veri: [], hata: null as string | null }),
+  ]);
 
   /*
     GRAFİĞİN TAHSİLATLARI: üç kanal, PENCEREYLE sınırlı.
@@ -218,6 +245,7 @@ export async function KonsolAnaSayfa() {
     ["Kurum ödemeleri", havaleHatasi],
     ["Bireysel abone ödemeleri", bireyselHatasi],
     ["Kurulum günlüğü", kurulumHatasi],
+    ["Bekleyen proformalar", proformaHatasi],
   ] as [string, { message: string } | null][])
     .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
   if (okunamayan.length)
@@ -363,6 +391,21 @@ export async function KonsolAnaSayfa() {
     kiracının değil bütün ürünün sorunu.
   */
   const sorunlar = [
+    ...odemeOlaylari.map((olay) => ({
+      id: `o-${olay.id}`,
+      href: olay.organizationId ? `/panel/platform/musteriler/${olay.organizationId}?pencere=odemeler` : "/panel/platform/payments#karsiliksiz",
+      ad: olay.organizationName ?? "Kurum bilinmiyor",
+      alt: `PayTR ${olay.merchantOid}${olay.paymentAmount !== null ? ` · ${para(olay.paymentAmount)}` : ""}`,
+      rozet: incidentLabels[olay.result] ?? "Ödeme işlenemedi",
+    })),
+    ...krediSonucu.veri.map((kredi) => ({
+      id: `c-${kredi.siparisId}`,
+      href: kredi.organizationId ? `/panel/platform/musteriler/${kredi.organizationId}?pencere=odemeler` : "/panel/platform/saglik?sekme=odeme",
+      ad: kredi.organizationId ? kurumAdi.get(kredi.organizationId) ?? "Kurum" : "Bireysel abone",
+      alt: `${kredi.kredi} AI kredisi ödendi, ArvoLab'a yüklenemedi`,
+      rozet: "Kredi yüklenemedi",
+    })),
+    ...(krediSonucu.hata ? [{ id: "c-hata", href: "/panel/platform/saglik?sekme=odeme", ad: "AI kredi siparişleri", alt: krediSonucu.hata, rozet: "Okunamadı" }] : []),
     ...dikkatliler.map((kurum) => ({ id: `d-${kurum.id}`, href: `/panel/platform/musteriler/${kurum.id}`, ad: kurum.ad, alt: "Kiracı", rozet: kurum.sebep })),
     ...bayatKopyalar.map((kayit) => ({
       id: `k-${kayit.organizationId}-${kayit.product}`,
@@ -378,9 +421,13 @@ export async function KonsolAnaSayfa() {
     sıfır bir cevaptır, okunamayan sorgu cevap değildir (yukarıdaki
     `okunamayan` da aynı adı en üstte yazıyor).
   */
+  const bugun = todayInIstanbul();
+  const proformalar = ((proformaSatirlari ?? []) as { id: string; proforma_no: string; musteri_adi: string; product: string; toplam: number; para_birimi: string | null; gecerlilik_tarihi: string }[])
+    .map((p) => ({ ...p, kalan: gunFarki(bugun, p.gecerlilik_tarihi) }));
   const sekmeler = [
     { ad: "Ödeme onayları", sayi: odemeler.length, hata: Boolean(bekleyenOdeme.error) },
     ...(sozlesmeler ? [{ ad: "Sözleşmeler", sayi: sozlesmeler.length, hata: Boolean(sozlesmeHatasi) }] : []),
+    ...(admin ? [{ ad: "Proformalar", sayi: proformalar.length, hata: Boolean(proformaHatasi) }] : []),
     { ad: "Kurulumlar", sayi: kurulumdakiler.length, hata: Boolean(kiraciHatasi) },
     { ad: "Dönemi dolanlar", sayi: hatirlatmalar.length, hata: Boolean(urunHatasi) },
     { ad: "Sorunlar", sayi: sorunlar.length, hata: Boolean(kiraciHatasi) },
@@ -486,6 +533,30 @@ export async function KonsolAnaSayfa() {
             </section>
           ) : null}
 
+          {admin ? (
+            <section>
+              {bas("Gönderilmiş, ödemesi gelmemiş proformalar; geçerliliği en yakın olan başta.", "/panel/platform/tahsilat?kanal=proforma", "Proformalar")}
+              {proformaHatasi ? okunamadi : proformalar.length ? (
+                <ul className="pu-liste">
+                  {proformalar.map((p) => (
+                    <li key={p.id}>
+                      <Link href={`/panel/platform/tahsilat/proforma/${p.id}`}>
+                        <span className="pu-govde">
+                          <b>{p.musteri_adi}</b>
+                          <small>{[p.proforma_no, productName(p.product)].join(" · ")}</small>
+                        </span>
+                        <span className="konsol-tutar">{para(Number(p.toplam), p.para_birimi ?? "TRY")}</span>
+                        <span className="status-pill" data-tone={p.kalan < 0 ? "danger" : p.kalan <= 3 ? "gold" : "neutral"}>
+                          {p.kalan < 0 ? `${-p.kalan} gün geçti` : p.kalan === 0 ? "Bugün son gün" : `${p.kalan} gün kaldı`}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : bos("Ödeme bekleyen proforma yok.")}
+            </section>
+          ) : null}
+
           <section>
             {bas("Kurulumu bitmemiş kiracılar: oluşturuluyor, davet gönderiliyor ya da kurum sahibi bekleniyor.", "/panel/platform/kurulumlar?asama=devam", "Kurulumlar")}
             {kiraciHatasi ? okunamadi : kurulumdakiler.length ? (
@@ -524,7 +595,7 @@ export async function KonsolAnaSayfa() {
           </section>
 
           <section>
-            {bas("Kurulum hatası, kota aşımı ve ürüne yansımamış lisanslar.", "/panel/platform/saglik", "Sistem sağlığı")}
+            {bas("İşlenemeyen ödeme, yüklenemeyen AI kredisi, kurulum hatası, kota aşımı ve ürüne yansımamış lisanslar.", "/panel/platform/saglik", "Sistem sağlığı")}
             {kiraciHatasi ? okunamadi : sorunlar.length ? (
               <ul className="pu-liste">
                 {sorunlar.map((sorun) => (
