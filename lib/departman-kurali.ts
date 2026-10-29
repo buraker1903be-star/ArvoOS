@@ -16,7 +16,10 @@ import { departmanTuru } from "@/lib/yetki-profilleri";
   "Satış"tan "Yönetim"e çevirmek içindeki herkesi aynı sonuca götürür
   ve tetikleyiciye hiç uğramaz. Yeniden adlandırma bu yüzden aynı
   kurala bağlı: yönetim adına giren ya da çıkan değişikliği yalnızca
-  Kurum Sahibi yapar.
+  Kurum Sahibi yapar. Veritabanı da aynı kuralı uyguluyor
+  (20261029112549, private.arvo_department_management_guard): buradaki
+  kontrol kullanıcıya anlaşılır mesaj verir, API'den doğrudan gelen
+  isteği tetikleyici durdurur.
 
   Testi tests/unit/departman-kurali.test.ts.
 */
