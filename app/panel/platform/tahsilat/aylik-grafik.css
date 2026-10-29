@@ -62,3 +62,4 @@
   .os-root .ag-cubuklar{gap:4px}
   .os-root .ag-deger{display:none}
 }
+.os-root .ag-bos{margin:0;padding:var(--sp-4);border:1px dashed var(--line);border-radius:var(--r-sm);font-size:var(--fs-sm);color:var(--muted);text-align:center}
