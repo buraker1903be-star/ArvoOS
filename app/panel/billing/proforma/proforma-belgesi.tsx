@@ -18,7 +18,7 @@ import "./proforma-belge.css";
 const para = (kurus: number, birim: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: birim || "TRY" }).format(kurus / 100);
 const gun = (g: string) => new Intl.DateTimeFormat("tr-TR", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${g}T12:00:00Z`));
 
-export function ProformaBelgesi({ p, s, urun, durum, bugun, geri, ust }: {
+export function ProformaBelgesi({ p, s, urun, durum, bugun, geri, ust, yalnizBelge = false }: {
   p: KopruProforma;
   s: KopruSatici;
   urun: string | null;
@@ -27,6 +27,12 @@ export function ProformaBelgesi({ p, s, urun, durum, bugun, geri, ust }: {
   geri: { href: string; etiket: string };
   /** Belgenin üstünde, düğmelerin altında (konsolun kurucuya özel bilgileri). */
   ust?: React.ReactNode;
+  /**
+   * Yalnızca kâğıt: düğme çubuğu ve durum şeridi yok. Konsolun belge
+   * sayfası (29.10.2026) bunları kendi başlığında ve şeridinde çiziyor;
+   * ikinci kez çizilseydi aynı durum sayfada iki kez yazardı.
+   */
+  yalnizBelge?: boolean;
 }) {
   const a = p.alici;
   const kalan = gunFarki(bugun, p.gecerlilikTarihi);
@@ -44,18 +50,7 @@ export function ProformaBelgesi({ p, s, urun, durum, bugun, geri, ust }: {
     IBAN'lar. Eskiden geri bağlantısı ve son not sayfanın eski adını
     ("Ödeme ve Lisans") yazıyordu.
   */
-  return <div className="doc-proforma-sayfa">
-    <div className="doc-eylem">
-      <Link className="panel-secondary" href={geri.href}>← {geri.etiket}</Link>
-      <YazdirDugmesi />
-    </div>
-    <div className="doc-durum-serit" data-tone={durumBilgisi.ton}>
-      <b>{durumBilgisi.baslik}</b>
-      <span>{durumBilgisi.metin}</span>
-      <strong>{para(p.toplam, p.paraBirimi)}</strong>
-    </div>
-    {ust}
-
+  const kagit = (
     <article className="doc-proforma" data-durum={durum}>
       <header className="doc-antet">
         <div className="doc-satici">
@@ -123,5 +118,20 @@ export function ProformaBelgesi({ p, s, urun, durum, bugun, geri, ust }: {
       {p.notlar ? <p className="doc-not">{p.notlar}</p> : null}
       <p className="doc-uyari">Bu belge proforma faturadır; mali değeri yoktur. Ödeme alındıktan sonra faturanız kesilir ve Abonelik ve faturalama sayfasının Faturalar sekmesinde yer alır.</p>
     </article>
+  );
+  if (yalnizBelge) return kagit;
+  return <div className="doc-proforma-sayfa">
+    <div className="doc-eylem">
+      <Link className="panel-secondary" href={geri.href}>← {geri.etiket}</Link>
+      <YazdirDugmesi />
+    </div>
+    <div className="doc-durum-serit" data-tone={durumBilgisi.ton}>
+      <b>{durumBilgisi.baslik}</b>
+      <span>{durumBilgisi.metin}</span>
+      <strong>{para(p.toplam, p.paraBirimi)}</strong>
+    </div>
+    {ust}
+
+    {kagit}
   </div>;
 }
