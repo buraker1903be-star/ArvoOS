@@ -78,10 +78,11 @@ export function KartFormu({ odemeAdresi, merchantOid, tutar, alanlar, utoken, va
       <label className="wide"><span>Fatura adresi<b className="req" aria-hidden="true">*</b></span>
         <input name="user_address" defaultValue={varsayilanAdres} required maxLength={400} autoComplete="street-address" /></label>
 
-      <label className="wide kart-onay">
+      {/* Onay metni boşsa otomatik yenileme kapalı (lib/paytr-kart-akisi otomatikYenilemeAcik): kutu hiç çizilmez. */}
+      {onayMetni ? <label className="wide kart-onay">
         <input type="checkbox" checked={otomatik} onChange={(e) => setOtomatik(e.target.checked)} />
         <span><b>Kartımı kaydet, aboneliğim otomatik yenilensin.</b> {onayMetni}</span>
-      </label>
+      </label> : null}
 
       {/*
         Sözleşme onayı (29.10.2026). Eskiden form tutarı ve kart alanlarını

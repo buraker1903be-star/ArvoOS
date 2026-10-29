@@ -2,7 +2,7 @@
 import { COMPANY, PRODUCT_APPS, productList, ROUTES } from "@/lib/site/routes";
 import type { PrivacyContent } from "../privacy";
 
-const actualizado = "Última actualización: 30 de septiembre de 2026";
+const actualizado = "Última actualización: 29 de octubre de 2026";
 const aviso = "Esta traducción se ofrece con fines informativos; en caso de discrepancia prevalece la versión en turco.";
 
 /** Künyenin dolu satırları; boş alan satır üretmez (legal.ts'teki kunye ile aynı kural). */
@@ -43,11 +43,9 @@ export const DISTANCE_SALES_ES: PrivacyContent = {
       "Las suscripciones mensuales se facturan al inicio de cada periodo. Las suscripciones anuales se facturan una sola vez al inicio del periodo de 12 meses, por el importe de 10 meses de cuota.",
       "Cuando se superan los usuarios, sedes, tiendas o productos incluidos en un plan, solo se aplican las tarifas de complementos publicadas en la misma página; la cuota del plan no cambia.",
       "El pago se realiza con tarjeta de crédito o débito a través del proveedor de pagos del Vendedor, o mediante transferencia bancaria. El Vendedor no almacena los datos de la tarjeta.",
-      "De forma predeterminada no se realiza ningún cargo automático en la tarjeta; se envía un enlace de pago para cada periodo y el pago se efectúa con la aprobación del suscriptor.",
-      "Si el suscriptor elige expresamente al pagar guardar la tarjeta y activar la renovación automática, la cuota del periodo se cobra al final de cada periodo en la tarjeta guardada a través del proveedor de pagos. Los datos de la tarjeta los almacena el proveedor de pagos (PayTR), no el Vendedor (ArvoCulture Group).",
-      "Con la renovación automática, el suscriptor recibe un aviso al menos 3 días antes de cada cargo. El suscriptor puede desactivar la renovación automática o eliminar la tarjeta guardada desde el panel en cualquier momento; la desactivación surte efecto a partir del siguiente periodo.",
-      "Si un cargo automático falla, se reintenta como máximo dos veces más y se informa al suscriptor.",
-      "El consentimiento del suscriptor a la renovación automática se registra con fecha, hora y dirección IP.",
+      "Nunca se realiza un cargo automático en la tarjeta; se envía un enlace de pago para cada periodo y el pago se efectúa con la aprobación del suscriptor.",
+      "Los pagos con tarjeta los autoriza el banco del suscriptor mediante 3D Secure (contraseña de un solo uso); cada periodo se paga por separado.",
+      "La suscripción no se renueva por sí sola si no se paga la cuota del periodo; el suscriptor recibe un recordatorio antes de que termine el periodo.",
     ] },
     { h: "4. Cambios de precio y de plan", list: [
       "El Vendedor puede actualizar los precios de lista. Un cambio de precio no afecta al periodo en curso (ya pagado) del suscriptor.",

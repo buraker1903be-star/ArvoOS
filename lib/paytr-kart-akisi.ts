@@ -37,6 +37,21 @@ type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
 export const kartSaklamaAcik = () => process.env.PAYTR_KART_SAKLAMA === "acik";
 
+/*
+  OTOMATİK YENİLEME KAPALI (29.10.2026, kurum sahibinin kararı).
+  Kayıtlı karttan otomatik çekim 3D Secure'suz (non_3d=1) gidiyor; müşteri
+  "bu çekim bana ait değil" diye itiraz ederse 3D'nin sağladığı sorumluluk
+  devri olmadığı için kayıp üye işyerinde kalıyor. Bu yüzden her ödeme
+  müşterinin bankasında SMS ile onayladığı 3D'li ödeme olarak alınır.
+  Kapalıyken: kart formlarında kart kaydetme/otomatik yenileme kutusu
+  görünmez, sunucu onayı hep "hayır" yazar (tarayıcıdan gelen bir "evet"
+  de dâhil), zamanlanmış iş çekim yapmaz, köprü ArvoLab'a seçeneği
+  göndermez. Kod silinmedi: yeniden açmak için bu değeri değiştirmek ve
+  Mesafeli Satış Sözleşmesi'ne otomatik yenileme maddelerini geri koymak
+  gerekir (app/(site)/_content/legal.ts).
+*/
+export const otomatikYenilemeAcik = () => false;
+
 /* Kabul edilen metnin kendisi kayda giriyor: ileride metin değişirse eski
    onayın neye verildiği yine okunabilsin. Sürüm öneki o yüzden var. */
 export const OTOMATIK_YENILEME_ONAY_METNI =
@@ -156,7 +171,7 @@ export async function kartOnayiniKaydet(admin: Admin, input: {
   if (!islem || !bizim) throw new Error("Ödeme bulunamadı.");
   if (islem.durum !== "bekliyor") throw new Error("Bu ödeme artık beklemede değil; sayfayı yenileyin.");
   // Bireysel abonenin ArvoOS'ta kullanıcı hesabı yok: onaylayan boş, kanıt an + IP + metin.
-  const { error: yazmaHatasi } = await admin.from("paytr_kart_islemleri").update(input.otomatikYenileme
+  const { error: yazmaHatasi } = await admin.from("paytr_kart_islemleri").update(input.otomatikYenileme && otomatikYenilemeAcik()
     ? { kart_sakla: true, otomatik_onay: true, onay_at: new Date().toISOString(), onay_ip: input.ip, onay_metni: OTOMATIK_YENILEME_ONAY_METNI, onaylayan: input.actorId }
     : { kart_sakla: false, otomatik_onay: false, onay_at: null, onay_ip: null, onay_metni: null, onaylayan: null })
     .eq("merchant_oid", input.merchantOid).eq("durum", "bekliyor");

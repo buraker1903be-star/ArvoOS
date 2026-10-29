@@ -9,7 +9,7 @@ import { musteriMi } from "@/lib/kurum-turu";
 import { getArvolabBridgeHealth, syncArvolabLicense } from "@/lib/arvolab";
 import { kurucuyaBildir } from "@/lib/kurucu-bildirimi";
 import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
-import { kartSaklamaAcik } from "@/lib/paytr-kart-akisi";
+import { kartSaklamaAcik, otomatikYenilemeAcik } from "@/lib/paytr-kart-akisi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -186,7 +186,8 @@ async function kosu(): Promise<CronKosusu> {
     Okunamazsa hatırlatma herkese gider: fazla hatırlatma, eksikten iyi.
   */
   const otomatik = new Set<string>();
-  if (kartSaklamaAcik()) {
+  // Otomatik yenileme kapalıyken (29.10.2026) kimsenin kartından çekilmiyor; hatırlatma herkese gider.
+  if (kartSaklamaAcik() && otomatikYenilemeAcik()) {
     const { data: acik, error: acikHatasi } = await admin.from("paytr_otomatik_yenileme").select("organization_id,product").eq("aktif", true).not("organization_id", "is", null);
     // hata-tamam: okunamazsa hatırlatma herkese gider (yukarıdaki gerekçe); günlüğe yazılıyor.
     if (acikHatasi) console.error("[abonelik] otomatik yenilemeler okunamadı", acikHatasi.message);

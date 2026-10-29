@@ -71,7 +71,7 @@ export const ARVOLAB_FR: ProductContent = {
   cta: {
     eyebrow: "Accès",
     title: "Essayez ArvoLab dès aujourd’hui.",
-    lead: "Créez votre compte et commencez par un essai gratuit ; paiement par carte, renouvellement automatique facultatif. Contactez-nous pour une licence institutionnelle.",
+    lead: "Créez votre compte et commencez par un essai gratuit ; paiement par carte, avec 3D Secure ; aucun prélèvement automatique. Contactez-nous pour une licence institutionnelle.",
     actions: [
       { label: "Essai gratuit", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "Se connecter à ArvoLab", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },

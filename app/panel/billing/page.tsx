@@ -8,7 +8,7 @@ import { submitBankTransferPayment } from "./actions";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kurumBelgeleri } from "@/lib/faturalama-koprusu";
-import { kartSaklamaAcik } from "@/lib/paytr-kart-akisi";
+import { kartSaklamaAcik, otomatikYenilemeAcik } from "@/lib/paytr-kart-akisi";
 import { kartlaOdemeyeBasla, kayitliKartiKaldir, otomatikYenilemeyiKapat } from "./kart-actions";
 import { proformaGorunumu, PROFORMA_DURUM_ADI } from "@/lib/proforma";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -158,7 +158,10 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     ödemeyen müşteri onları kaydırarak arıyordu; sağ sütunun kendisi de
     üç başlığı alt alta dizip uzuyordu.
   */
-  const aktifYenilemeler = yenilemeler.filter((y) => y.aktif);
+  /* Otomatik yenileme kapalıyken (29.10.2026) eski bir "aktif" satır
+     çekim yapılacakmış gibi gösterilmez; iş hiçbir karttan çekmiyor. */
+  const yenilemeAcik = otomatikYenilemeAcik();
+  const aktifYenilemeler = yenilemeAcik ? yenilemeler.filter((y) => y.aktif) : [];
   const disari = platformId === organization.id;
   const kalanGun = (bitis: string | null) => (bitis ? gunFarki(bugun, turkiyeGunu(bitis)) : null);
   const kalanYazisi = (gun: number | null) => gun === null ? null : gun < 0 ? `${-gun} gün gecikti` : gun === 0 ? "bugün bitiyor" : `${gun} gün kaldı`;
@@ -198,7 +201,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <div><dt>Aylık toplam</dt><dd>{aylikToplam ? formatTry(aylikToplam) : "—"}</dd></div>
         <div><dt>En yakın dönem sonu</dt><dd className={kalanTonu(kalanGun(enYakin?.periodEnd ?? null)) === "danger" ? "cari-eksi" : kalanTonu(kalanGun(enYakin?.periodEnd ?? null)) === "warning" ? "talep-uyari" : undefined}>{enYakin?.periodEnd ? istanbulDateTime(enYakin.periodEnd, { dateStyle: "medium" }) : "—"}</dd></div>
         <div><dt>Kullanıcı</dt><dd>{dahilLimit ? `${sayi(uyeSayisi)} / ${sayi(dahilLimit)}` : sayi(uyeSayisi)}</dd></div>
-        {kartSekmesi ? <div><dt>Otomatik yenileme</dt><dd className={aktifYenilemeler.length ? "cari-arti" : undefined}>{aktifYenilemeler.length ? `${aktifYenilemeler.length} açık` : "Kapalı"}</dd></div> : null}
+        {kartSekmesi && yenilemeAcik ? <div><dt>Otomatik yenileme</dt><dd className={aktifYenilemeler.length ? "cari-arti" : undefined}>{aktifYenilemeler.length ? `${aktifYenilemeler.length} açık` : "Kapalı"}</dd></div> : null}
         {belgeler ? <div><dt>Bekleyen proforma</dt><dd className={bekleyenProforma ? "talep-uyari" : undefined}>{bekleyenProforma}</dd></div> : null}
       </dl>
     </nav>
@@ -207,7 +210,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       <section className="panel-card abk-kart" aria-label="Aboneliklerim">
         <header className="phr-bas abk-bas">
           <h2>Aboneliklerim <small className="pu-sayi">{subscriptions.length}</small></h2>
-          <small>{kartAcik ? "kartla ya da havaleyle · otomatik yenileme isteğe bağlı" : "kartla ya da havaleyle"}</small>
+          <small>{kartAcik && yenilemeAcik ? "kartla ya da havaleyle · otomatik yenileme isteğe bağlı" : "kartla ya da havaleyle"}</small>
         </header>
         <ul className="abk-urunler">
           {subscriptions.map((product) => {
@@ -244,7 +247,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   <form action={kartlaOdemeyeBasla} className="abk-eylem">
                     <input type="hidden" name="product" value={product.code} />
                     <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>
-                    <small>{yenileme ? "Şimdi öderseniz dönem uzar; otomatik yenileme sonraki dönemde devam eder." : "Dilerseniz kartınızı kaydedip otomatik yenilemeyi seçebilirsiniz."}</small>
+                    <small>{yenileme ? "Şimdi öderseniz dönem uzar; otomatik yenileme sonraki dönemde devam eder." : yenilemeAcik ? "Dilerseniz kartınızı kaydedip otomatik yenilemeyi seçebilirsiniz." : "Ödemeyi bankanızın 3D Secure ekranında onaylarsınız; kartınızdan otomatik çekim yapılmaz."}</small>
                   </form>
                 ) : storeReady && product.fee > 0 ? (
                   <form action={payLicenseWithCard} className="abk-eylem">
@@ -326,8 +329,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   <form action={kayitliKartiKaldir}><input type="hidden" name="kart_id" value={k.id} /><button className="panel-secondary" type="submit">Kartı sil</button></form>
                 </span>
               </li>)}
-            </ul> : <p className="pu-bos">Kayıtlı kartınız yok. Kartla öderken &quot;Kartımı kaydet&quot; seçeneğini işaretlerseniz aboneliğiniz her dönem otomatik yenilenir; istediğiniz zaman buradan kapatabilirsiniz.</p>}
-            <p className="ek-not">Kart bilgileriniz bizde tutulmaz; PayTR&apos;nin güvenli kasasında saklanır. Onayınız olmadan çekim yapılmaz ve her çekimden 3 gün önce bildirim gelir.</p>
+            </ul> : yenilemeAcik
+              ? <p className="pu-bos">Kayıtlı kartınız yok. Kartla öderken &quot;Kartımı kaydet&quot; seçeneğini işaretlerseniz aboneliğiniz her dönem otomatik yenilenir; istediğiniz zaman buradan kapatabilirsiniz.</p>
+              : <p className="pu-bos">Kayıtlı kartınız yok. Her dönemin ödemesi ayrı ayrı, bankanızın 3D Secure onayıyla alınır; kartınızdan otomatik çekim yapılmaz.</p>}
+            <p className="ek-not">{yenilemeAcik
+              ? "Kart bilgileriniz bizde tutulmaz; PayTR'nin güvenli kasasında saklanır. Onayınız olmadan çekim yapılmaz ve her çekimden 3 gün önce bildirim gelir."
+              : "Kart bilgileriniz bizde tutulmaz; ödeme PayTR'nin güvenli sayfasında, bankanızın onayıyla yapılır."}</p>
           </div>
         ) : null}
 

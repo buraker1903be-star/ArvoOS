@@ -71,7 +71,7 @@ export const ARVOLAB_AR: ProductContent = {
   cta: {
     eyebrow: "الوصول",
     title: "جرّب ArvoLab اليوم.",
-    lead: "أنشئ حسابك وابدأ بفترة تجريبية مجانية؛ الدفع بالبطاقة والتجديد التلقائي اختياري. تواصل معنا للحصول على ترخيص مؤسسي.",
+    lead: "أنشئ حسابك وابدأ بفترة تجريبية مجانية؛ الدفع بالبطاقة مع 3D Secure؛ بلا خصم تلقائي. تواصل معنا للحصول على ترخيص مؤسسي.",
     actions: [
       { label: "ابدأ تجربة مجانية", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "تسجيل الدخول إلى ArvoLab", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },

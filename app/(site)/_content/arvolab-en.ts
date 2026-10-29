@@ -71,7 +71,7 @@ export const ARVOLAB_EN: ProductContent = {
   cta: {
     eyebrow: "Access",
     title: "Try ArvoLab today.",
-    lead: "Create your account and start with a free trial; pay by card, automatic renewal is optional. Contact us for an institutional licence.",
+    lead: "Create your account and start with a free trial; pay by card with 3D Secure; no automatic charges. Contact us for an institutional licence.",
     actions: [
       { label: "Start free trial", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "Sign in to ArvoLab", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },

@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
-import { kartSaklamaAcik } from "@/lib/paytr-kart-akisi";
+import { kartSaklamaAcik, otomatikYenilemeAcik } from "@/lib/paytr-kart-akisi";
 import { otomatikYenilemeleriIsle } from "@/lib/otomatik-yenileme-isi";
 
 export const runtime = "nodejs";
@@ -34,7 +34,8 @@ export async function GET(istek: Request) {
 }
 
 async function kosu(): Promise<CronKosusu> {
-  if (!kartSaklamaAcik()) return { yanit: Response.json({ kapali: true }), sonuc: "tamam", ayrinti: { kapali: true } };
+  // Daha önce onay vermiş müşteriler de dâhil, kapalıyken hiçbir karttan çekim yapılmaz.
+  if (!kartSaklamaAcik() || !otomatikYenilemeAcik()) return { yanit: Response.json({ kapali: true }), sonuc: "tamam", ayrinti: { kapali: true } };
   const admin = createAdminClient();
   if (!admin) return { yanit: Response.json({ hata: "sunucu anahtarı yok" }, { status: 500 }), sonuc: "hata", ayrinti: { hata: "sunucu anahtarı yok" } };
   try {

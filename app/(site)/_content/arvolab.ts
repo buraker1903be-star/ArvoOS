@@ -79,7 +79,7 @@ export const ARVOLAB_TR: ProductContent = {
   cta: {
     eyebrow: "Erişim",
     title: "ArvoLab’i bugün deneyin.",
-    lead: "Hesabınızı açın, deneme süresiyle başlayın; ödeme kartla, otomatik yenileme isteğe bağlı. Kurum lisansı için bize ulaşın.",
+    lead: "Hesabınızı açın, deneme süresiyle başlayın; ödeme kartla, 3D Secure onayıyla; otomatik çekim yok. Kurum lisansı için bize ulaşın.",
     actions: [
       { label: "Ücretsiz deneyin", href: `${PRODUCT_APPS.arvolab.url}/kayit`, external: true, variant: "gold" },
       { label: "ArvoLab giriş", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },

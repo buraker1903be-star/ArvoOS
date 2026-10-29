@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { kartSaklamaAcik, kurumKartFormu, OTOMATIK_YENILEME_ONAY_METNI } from "@/lib/paytr-kart-akisi";
+import { kartSaklamaAcik, kurumKartFormu, OTOMATIK_YENILEME_ONAY_METNI, otomatikYenilemeAcik } from "@/lib/paytr-kart-akisi";
 import { PAYTR_ODEME_ADRESI, paytrEpostasiUygunMu } from "@/lib/paytr-direkt";
 import { KartFormu } from "./kart-formu";
 import "../../../team.css";
@@ -52,7 +52,7 @@ export default async function KartOdemesiPage({ params }: { params: Promise<{ oi
       utoken={form.utoken}
       varsayilanAdres={form.varsayilan.adres}
       varsayilanTelefon={form.varsayilan.telefon || (profil?.phone ?? "").replace(/[^\d+]/g, "").slice(0, 20)}
-      onayMetni={OTOMATIK_YENILEME_ONAY_METNI.replace(/^v\d+ · /, "")}
+      onayMetni={otomatikYenilemeAcik() ? OTOMATIK_YENILEME_ONAY_METNI.replace(/^v\d+ · /, "") : ""}
     />
   </>;
 }

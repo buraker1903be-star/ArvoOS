@@ -134,12 +134,11 @@ export const PRICING_TR: PricingContent = {
     lead: "Aşağıdakiler özet değil, uyguladığımız kuralların kendisidir; tamamı mesafeli satış sözleşmesi ile iptal ve iade koşullarında yazılıdır.",
     items: [
       /*
-        28.10.2026'ya kadar "otomatik çekim yok" yazıyordu; artık ödeme
-        sırasında kart kaydedip otomatik yenileme SEÇİLEBİLİYOR. Özellik
-        kademeli açıldığı için metin bir kural olarak yazıldı ("bu sayfada
-        seçebilirsiniz" değil): açılmadan önce de sonra da doğru kalmalı.
+        28–29.10.2026 arasında isteğe bağlı otomatik yenileme anlatılıyordu;
+        29.10.2026'da kapatıldı (3D Secure'suz çekim itirazda korumasız,
+        lib/paytr-kart-akisi otomatikYenilemeAcik). Her ödeme 3D'li.
       */
-      { title: "Onayınız olmadan çekim yok", text: "Kartınızdan, açık onayınız olmadan tahsilat yapılmaz. Varsayılan olarak her dönem için ödeme bağlantısı gönderilir ve ödemeyi siz onaylarsınız. Ödeme sırasında kartınızı kaydedip otomatik yenilemeyi seçerseniz, her çekimden en az 3 gün önce bilgilendirilirsiniz ve otomatik yenilemeyi istediğiniz zaman kapatabilirsiniz." },
+      { title: "Onayınız olmadan çekim yok", text: "Kartınızdan otomatik tahsilat yapılmaz. Her dönem için ödeme bağlantısı gönderilir; ödemeyi siz yapar, bankanızın 3D Secure ekranında onaylarsınız." },
       { title: "İptal dönem sonunda", text: "Aboneliği panelden ya da e-posta ile iptal edebilirsiniz. İptal, ödenmiş dönemin sonunda yürürlüğe girer; o güne kadar hizmet açık kalır." },
       { title: "Fiyat değişikliği", text: "Yürürlükteki döneminiz etkilenmez. Değişiklik en az 30 gün önce e-posta ile bildirilir ve yalnızca sonraki dönemde uygulanır." },
       { title: "Paket yükseltme ve düşürme", text: "Yükseltme aynı gün yürürlüğe girer; yalnızca dönemin kalan günleri için fark alınır. Düşürme, mevcut dönemin sonunda uygulanır." },
@@ -161,7 +160,7 @@ export const PRICING_TR: PricingContent = {
       { q: "Kullanıcı başına mı ödüyoruz?", a: "ArvoOS ve ArvoCal'da hayır: fiyat kurum başınadır ve her pakette belirli sayıda kullanıcı vardır; bu sayıyı aşarsanız yalnızca ek kullanıcı ücreti işlenir, paket fiyatı katlanmaz. ArvoLab'de evet: araştırmacı başına fiyatlanır, çünkü orada değeri üreten doğrudan kullanan kişidir." },
       { q: "ArvoLab'i bir ekip ya da şirket olarak alabilir miyiz?", a: "ArvoLab bireysel araştırmacılara satılır. Kurum lisansı yalnızca üniversitelere ve eğitim kurumlarına, teklif usulüyle verilir." },
       { q: "Yıllık ödeme ne kazandırır?", a: "Yıllık seçenekte 12 aylık kullanım için 10 aylık bedel ödenir; iki ay bedavadır. Tutar dönem başında tek seferde faturalanır." },
-      { q: "Abonelik otomatik yenileniyor mu?", a: "Siz seçmedikçe hayır. Varsayılan olarak kartınızdan otomatik tahsilat yapılmaz; her dönem için ödeme bağlantısı gönderilir. Ödeme sırasında kartınızı kaydedip otomatik yenilemeyi seçebilirsiniz; çekimden en az 3 gün önce bildirim alırsınız ve otomatik yenilemeyi hesabınızdaki ödeme ekranından istediğiniz zaman kapatabilirsiniz." },
+      { q: "Abonelik otomatik yenileniyor mu?", a: "Hayır. Kartınızdan otomatik tahsilat yapılmaz; dönem sonu yaklaşınca hatırlatma ve ödeme bağlantısı gönderilir. Ödemezseniz abonelik dönem sonunda kendiliğinden kapanır." },
       { q: "Paketimi sonradan değiştirebilir miyim?", a: "Evet. Yükseltme aynı gün yürürlüğe girer ve yalnızca dönemin kalan günleri için fark alınır; düşürme mevcut dönemin sonunda uygulanır." },
       { q: "Fiyatlar değişirse ne olur?", a: "Yürürlükteki döneminiz etkilenmez. Değişiklik en az 30 gün önce bildirilir ve sonraki dönemde uygulanır." },
       { q: "Yıllık ödedim, erken iptal edersem ne olur?", a: "Kullandığınız aylar aylık liste fiyatı üzerinden hesaplanır ve kalan bakiye iade edilir; yıllık indirim yalnızca kullanılmayan aylar için geri alınır." },

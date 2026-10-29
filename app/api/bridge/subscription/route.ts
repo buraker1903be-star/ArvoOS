@@ -12,7 +12,7 @@ import { KREDI_PAKETLERI } from "@/lib/ai-kredi-paketleri";
 import { createAiKrediCheckout, createBireyselKrediCheckout } from "@/lib/ai-kredi-checkout";
 import { CheckoutError } from "@/lib/license-checkout";
 import { aboneFaturalamasi, BOS_FATURALAMA, kurumFaturalamasi } from "@/lib/faturalama-koprusu";
-import { aboneKartOdemesiAc, kartOnayiniKaydet, kartSaklamaAcik, OTOMATIK_YENILEME_ONAY_METNI, platformKimligi } from "@/lib/paytr-kart-akisi";
+import { aboneKartOdemesiAc, kartOnayiniKaydet, kartSaklamaAcik, OTOMATIK_YENILEME_ONAY_METNI, otomatikYenilemeAcik, platformKimligi } from "@/lib/paytr-kart-akisi";
 import { kayitliKartiSil, PAYTR_ODEME_ADRESI, paytrEpostasiUygunMu } from "@/lib/paytr-direkt";
 
 // Ürünler için abonelik köprüsü (ArvoLab, ileride ArvoARC).
@@ -313,7 +313,9 @@ export async function POST(request: Request) {
         const form = await aboneKartOdemesiAc(admin, { subscriberId: subscriber.id, product, fee: monthlyFee, ip, email, adSoyad: body.fullName?.trim() || null });
         return json(200, {
           paymentUrl: PAYTR_ODEME_ADRESI, merchantOid: form.merchantOid, amount: form.tutar, title: form.baslik,
-          fields: form.alanlar, utoken: form.utoken, consentText: OTOMATIK_YENILEME_ONAY_METNI.replace(/^v\d+ · /, ""),
+          fields: form.alanlar, utoken: form.utoken,
+          // Boş metin = ArvoLab kart kaydetme/otomatik yenileme kutusunu göstermez (otomatikYenilemeAcik).
+          consentText: otomatikYenilemeAcik() ? OTOMATIK_YENILEME_ONAY_METNI.replace(/^v\d+ · /, "") : "",
         });
       }
       if (action === "card_consent") {
