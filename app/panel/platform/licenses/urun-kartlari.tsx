@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { LisansFormu, type LisansDegerleri } from "./lisans-formu";
 import { UrunFormu, type KotaAlani } from "./urun-formu";
-import { KListe, KOge } from "../konsol-ui";
+import { MobilSatir } from "../../crm/table-cells";
 import { OnayPenceresi, type OnayIstegi } from "../../components/onay-penceresi";
 import { urunSimgesi } from "@/lib/products";
 
@@ -160,60 +160,70 @@ export function UrunKartlari({
   return (
     <>
       {/*
-        KOMPAKT LİSTE (14.10.2026). Dört ürün dört kartlık bir ızgaraydı:
-        her kartta açıklama cümlesi ve beş satırlık özet, pencerede ekranın
-        yarısı. Artık tek satır — ürün, özet (paket · dönem · kota), durum,
-        aylık ücret ve Düzenle. Özetin içeriği aynı; yalnızca dizilişi.
+        PANELİN TABLOSU (29.10.2026, müşteri kartı sekmeleri). 14.10.2026'dan
+        beri iOS satırıydı: paket, dönem ve kota tek alt satırda virgülle
+        diziliyor, anahtarın yeri hizalansın diye kapalı ürünlerde boş bir
+        kutu çiziliyordu. Artık sütunlar: ürün, ayrıntı, durum, aylık,
+        erişim, düzenle. Düzenleme yine pencerede.
       */}
-      <KListe>
-        {kartlar.map((kart) => {
-          const ucret = kart.ozet.find((satir) => satir.etiket === "Aylık ücret")?.deger ?? "";
-          const ozet = kart.ozet
-            .filter((satir) => satir.etiket !== "Aylık ücret")
-            .map((satir) => `${satir.etiket} ${satir.deger}`)
-            .join(" · ");
-          return (
-            <KOge
-              key={kart.kod}
-              /* Dört ürünün adı da "Arvo" ile başlıyor; baş harf simgesi
-                 dördünde "AR" yazıyordu. Ürünün kısa kodu. */
-              simge={urunSimgesi(kart.kod) ?? kart.ad}
-              baslik={kart.ad}
-              alt={ozet}
-              durum={{ etiket: kart.durumAdi, ton: kart.acik ? kart.tone : "neutral" }}
-              /* Kapalı üründe ücret beklenmiyor: uyarı rengi yalnızca açık üründe. */
-              deger={ucret && ucret !== "girilmedi" ? ucret.replace(" / ay", "") : kart.acik ? <span className="k-ios-eksik">Ücret yok</span> : "—"}
-              degerAlt={ucret && ucret !== "girilmedi" ? "aylık" : undefined}
-              sonu={<>
-                {/* ERİŞİM ANAHTARI (14.10.2026): ödeme yapmayan kurumu tek
-                    dokunuşla kapatmak için — ArvoOS ve kullandığı her ek
-                    ürün. Kullanmadığı üründe anahtar yok (ürün açmak
-                    lisans formunda). */}
-                {kart.erisimAcik !== null ? (
-                  <button
-                    type="button"
-                    className={kart.erisimAcik ? "plt-switch is-on" : "plt-switch is-off"}
-                    role="switch"
-                    aria-checked={kart.erisimAcik}
-                    aria-label={`${kurumAdi} ${kart.ad} erişimi: ${kart.erisimAcik ? "kapat" : "aç"}`}
-                    title={kart.erisimAcik ? "Erişimi kapat" : "Erişimi aç"}
-                    disabled={calisiyor}
-                    onClick={() => erisimDegistir(kart, !kart.erisimAcik)}
-                  ><i /></button>
-                ) : (
-                  /* Anahtarın yeri öteki satırlarda da ayrılıyor: yalnızca
-                     ArvoOS satırı daha geniş olunca durum ve ücret sütunu o
-                     satırda sola kayıyor, liste hizasız görünüyordu. */
-                  <span aria-hidden="true" style={{ width: 46, flex: "none" }} />
-                )}
-                <button type="button" className="panel-secondary" onClick={() => setAcik(kart.kod)} aria-label={`${kart.ad} aboneliğini düzenle`}>
-                  Düzenle
-                </button>
-              </>}
-            />
-          );
-        })}
-      </KListe>
+      <div className="talep-tablo fn-ic-tablo">
+        <table className="crm-data-table" data-cols="mk-urun">
+          <thead><tr><th>Ürün</th><th>Ayrıntı</th><th>Durum</th><th className="crm-col-amount">Aylık</th><th>Erişim</th><th></th></tr></thead>
+          <tbody>
+            {kartlar.map((kart) => {
+              const ucret = kart.ozet.find((satir) => satir.etiket === "Aylık ücret")?.deger ?? "";
+              const ozet = kart.ozet.filter((satir) => satir.etiket !== "Aylık ücret");
+              const durum = { etiket: kart.durumAdi, ton: kart.acik ? kart.tone : "neutral" };
+              const ucretVar = Boolean(ucret && ucret !== "girilmedi");
+              return (
+                <tr key={kart.kod} className={kart.acik ? undefined : "is-pasif"}>
+                  <td data-label="Ürün">
+                    <span className="ek-kisi">
+                      {/* Dört ürünün adı da "Arvo" ile başlıyor: baş harf yerine ürünün kısa kodu. */}
+                      <span className="ek-avatar" aria-hidden="true">{urunSimgesi(kart.kod) ?? kart.ad.slice(0, 2)}</span>
+                      <span className="ek-kisi-metin"><span className="crm-table-title">{kart.ad}</span><span className="crm-table-sub" title={kart.aciklama}>{kart.aciklama}</span></span>
+                    </span>
+                  </td>
+                  <td data-label="Ayrıntı">
+                    {ozet.length ? ozet.map((satir) => (
+                      <span key={satir.etiket} className="crm-table-sub mk-ozet"><b>{satir.etiket}</b> {satir.deger}</span>
+                    )) : <span className="crm-table-sub">—</span>}
+                  </td>
+                  <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                  {/* Kapalı üründe ücret beklenmiyor: uyarı rengi yalnızca açık üründe. */}
+                  <td className="crm-col-amount" data-label="Aylık">
+                    {ucretVar ? <span className="crm-table-title">{ucret.replace(" / ay", "")}</span> : kart.acik ? <span className="k-ios-eksik">Ücret yok</span> : <span className="crm-table-sub">—</span>}
+                  </td>
+                  <td data-label="Erişim">
+                    {/* ERİŞİM ANAHTARI (14.10.2026): ödeme yapmayan kurumu tek
+                        dokunuşla kapatmak için. Kullanmadığı üründe anahtar yok
+                        (ürün açmak lisans formunda). */}
+                    {kart.erisimAcik !== null ? (
+                      <button
+                        type="button"
+                        className={kart.erisimAcik ? "plt-switch is-on" : "plt-switch is-off"}
+                        role="switch"
+                        aria-checked={kart.erisimAcik}
+                        aria-label={`${kurumAdi} ${kart.ad} erişimi: ${kart.erisimAcik ? "kapat" : "aç"}`}
+                        title={kart.erisimAcik ? "Erişimi kapat" : "Erişimi aç"}
+                        disabled={calisiyor}
+                        onClick={() => erisimDegistir(kart, !kart.erisimAcik)}
+                      ><i /></button>
+                    ) : <span className="crm-table-sub">kullanmıyor</span>}
+                  </td>
+                  <td className="crm-table-actions">
+                    <button type="button" className="panel-secondary" onClick={() => setAcik(kart.kod)} aria-label={`${kart.ad} aboneliğini düzenle`}>
+                      Düzenle
+                    </button>
+                  </td>
+                  <MobilSatir baslik={kart.ad} durum={durum}
+                    alt={[ucretVar ? ucret : null, ...ozet.map((satir) => `${satir.etiket} ${satir.deger}`)]} />
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <dialog
         ref={pencere}

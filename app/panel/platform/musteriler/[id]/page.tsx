@@ -19,6 +19,8 @@ import { BelgeBolumu } from "./belgeler";
 import "../../platform.css";
 import "../../../hr/hr.css";
 import "../../../crm/kayit-detay/kayit-detay.css";
+import "../../../crm/crm.css";
+import "../../finans.css";
 import "./musteri-karti.css";
 
 /*
