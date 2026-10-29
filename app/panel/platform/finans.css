@@ -77,3 +77,9 @@
 /* Modüller: kısa etiketlerin karşılığı tablonun altında, kaydırılan tablonun dışında kalsın. */
 .os-root main.liste-sayfa .talep-bilgi>.plt-matris-lejant{flex:none;margin-top:var(--sp-3)}
 .os-root .urun-sayfa .crm-data-table[data-cols="md-matris"] td:not(:first-child){white-space:nowrap}
+/* Kurulumlar: süren kurulumun dört adımı, nokta nokta (29.10.2026). */
+.ky-adimlar{display:inline-flex;gap:4px;vertical-align:middle}
+.ky-adimlar>i{width:22px;height:6px;border-radius:999px;background:var(--line)}
+.ky-adimlar>i[data-durum="tamam"]{background:var(--success)}
+.ky-adimlar>i[data-durum="sirada"]{background:var(--warning)}
+.ky-adimlar>i[data-durum="hata"]{background:var(--danger)}

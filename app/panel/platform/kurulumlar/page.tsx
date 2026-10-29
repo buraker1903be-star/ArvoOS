@@ -10,7 +10,8 @@ import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { NewOrganizationWizard } from "../new-organization-wizard";
 import { createCustomerOrganization } from "../actions";
-import { basHarfleri, LISANS_TONU, PAKET_ADI, KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
+import { basHarfleri, LISANS_TONU, PAKET_ADI, KURULUM_ADI, KURULUM_ISLEMI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
+import { relativeTime } from "../../crm/last-contact";
 import { productLicenseLabels } from "@/lib/products";
 import { listeFiyatiniUygula } from "./actions";
 import { kurumTuru } from "@/lib/kurum-turu";
@@ -55,7 +56,7 @@ type Kiraci = {
   license_status: string | null; plan_code: string | null;
   monthly_fee: number | null; trial_ends_at: string | null;
   current_period_end: string | null; aktif_uye: number;
-  davet_eposta: string | null; davet_durumu: string | null; davet_gonderildi: string | null; davet_hatasi: string | null;
+  davet_eposta: string | null; davet_durumu: string | null; davet_gonderildi: string | null; davet_hatasi: string | null; davet_kabul: string | null;
 };
 
 const ASAMALAR = [
@@ -76,7 +77,7 @@ export default async function KurulumlarPage({ searchParams }: {
 
   const [kiraciSonucu, planSonucu, fiyatlar] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,slug,display_name,kind,grup_markasi,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye,davet_eposta,davet_durumu,davet_gonderildi,davet_hatasi")
+      .select("id,name,slug,display_name,kind,grup_markasi,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye,davet_eposta,davet_durumu,davet_gonderildi,davet_hatasi,davet_kabul")
       .order("name"),
     supabase.from("plans").select("code,name").eq("is_active", true).order("code"),
     // Liste fiyatı konsolda yayımlanan tablodan (sitedekiyle aynı).
@@ -101,12 +102,23 @@ export default async function KurulumlarPage({ searchParams }: {
     kuralın aynısı). Anahtar yoksa bölüm "istek yok" demiyor, okunamadığını
     yazıyor.
   */
-  const { data: istekSatirlari, error: istekHatasi } = admin
-    ? await admin.from("platform_subscription_requests")
-        .select("id,contract_no,customer_name,amount,currency,status,created_at,target_organization_id")
-        .eq("status", "pending").is("target_organization_id", null)
-        .order("created_at", { ascending: false }).limit(20)
-    : { data: null, error: null };
+  /*
+    SON HAREKETLER (29.10.2026): kurulum günlüğünün en yeni on iki kaydı,
+    sağdaki ikinci sekmede. Konsolun ana sayfası aynı günlükten altı satır
+    gösteriyordu; kurulum ekranının kendisinde "kim, en son ne zaman,
+    hangi adımda" sorusunun yanıtı yoktu. Okunamazsa sekme "hareket yok"
+    demiyor, hatayı yazıyor.
+  */
+  const [{ data: istekSatirlari, error: istekHatasi }, { data: hareketSatirlari, error: hareketHatasi }] = admin
+    ? await Promise.all([
+        admin.from("platform_subscription_requests")
+          .select("id,contract_no,customer_name,amount,currency,status,created_at,target_organization_id")
+          .eq("status", "pending").is("target_organization_id", null)
+          .order("created_at", { ascending: false }).limit(20),
+        admin.from("provisioning_audit_logs").select("id,organization_id,action,state,result,created_at")
+          .order("created_at", { ascending: false }).limit(12),
+      ])
+    : [{ data: null, error: null }, { data: null, error: null }];
 
   const tumKiracilar = (kiraciSatirlari ?? []) as unknown as Kiraci[];
   /*
@@ -136,6 +148,30 @@ export default async function KurulumlarPage({ searchParams }: {
   const denemede = tamamlananlar.filter((k) => k.license_status === "trialing").length;
 
   const adres = (kod: string) => `/panel/platform/kurulumlar?asama=${kod}`;
+  const kurumAdi = new Map(tumKiracilar.map((k) => [k.id, k.display_name || k.name]));
+  const hareketler = (hareketSatirlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; result: string | null; created_at: string }[];
+  // tuzak-tamam: tutar bilerek listelenen en yeni 20 isteğin; sayı da aynı kesitten ve istatistik kartı "en yeni 20 kayıttan" diyor.
+  const istekTutari = bekleyenIstekler.reduce((t, i) => t + Number(i.amount ?? 0), 0);
+  const hataliKurulum = bekleyenler.filter((k) => k.provisioning_state === "failed" || k.davet_hatasi).length;
+
+  /*
+    KURULUMUN DÖRT ADIMI (29.10.2026). Süren kurulumlarda yalnızca aşama
+    rozeti vardı ("Sahip bekleniyor"); kurumun nerede takıldığını görmek
+    için davet sütunu ile rozeti kafada birleştirmek gerekiyordu. Adımlar
+    görünümün kendi alanlarından: kurum açıldı (kurulum durumu), davet
+    gitti (davet_gonderildi), sahip katıldı (davet_kabul), kullanımda.
+  */
+  const adimlar = (k: Kiraci) => {
+    const hata = k.provisioning_state === "failed";
+    const liste = [
+      { ad: "Kurum açıldı", tamam: k.provisioning_state !== "creating" && !hata },
+      { ad: "Davet gönderildi", tamam: Boolean(k.davet_gonderildi) && !k.davet_hatasi },
+      { ad: "Sahip katıldı", tamam: Boolean(k.davet_kabul) },
+      { ad: "Kullanımda", tamam: k.provisioning_state === "active" },
+    ];
+    const ilkEksik = liste.findIndex((a) => !a.tamam);
+    return { liste, ilkEksik, hata: hata || Boolean(k.davet_hatasi) };
+  };
   const sayim: Record<string, number> = { yeni: bekleyenIstekler.length, devam: bekleyenler.length, tamam: tamamlananlar.length };
 
   /* Süren kurulumların aşama dağılımı: yukarıdaki sınırsız kiracı
@@ -179,18 +215,30 @@ export default async function KurulumlarPage({ searchParams }: {
       </div>
     </header>
 
-    <nav className="kayit-serit talep-serit" aria-label="Kurulum aşamaları">
+    {/* Şerit ÖZET, sekme değil (29.10.2026): aşama seçimi listenin
+        segmentinde; şerit eskiden aynı üç sayıyı ikinci kez yazıyordu.
+        Artık segmentte olmayanı söylüyor: tutar, hata, deneme. */}
+    <nav className="kayit-serit talep-serit" aria-label="Kurulum özeti">
       <dl>
-        {ASAMALAR.map((a) => (
-          <div key={a.kod} className={secili === a.kod ? "is-active" : undefined}>
-            <dt>{a.ad}</dt>
-            <dd><Link href={adres(a.kod)} aria-current={secili === a.kod ? "page" : undefined}>{sayi(sayim[a.kod])}</Link></dd>
-          </div>
-        ))}
+        <div className={secili === "yeni" ? "is-active" : undefined}>
+          <dt>Yeni istek</dt>
+          <dd className={bekleyenIstekler.length ? "talep-uyari" : undefined}><Link href={adres("yeni")}>{admin ? sayi(bekleyenIstekler.length) : "—"}</Link></dd>
+          <small>{bekleyenIstekler.length ? `${para(istekTutari)} sözleşme tutarı` : "imzalı, kurumu açılmamış"}</small>
+        </div>
+        <div className={secili === "devam" ? "is-active" : undefined}>
+          <dt>Süren kurulum</dt>
+          <dd><Link href={adres("devam")}>{sayi(bekleyenler.length)}</Link></dd>
+          <small className={hataliKurulum ? "talep-uyari" : undefined}>{hataliKurulum ? `${sayi(hataliKurulum)} hatada ya da davet gitmedi` : "takılan yok"}</small>
+        </div>
+        <div className={secili === "tamam" ? "is-active" : undefined}>
+          <dt>Tamamlanan</dt>
+          <dd className="cari-arti"><Link href={adres("tamam")}>{sayi(tamamlananlar.length)}</Link></dd>
+          <small>{denemede ? `${sayi(denemede)} kiracı denemede` : "denemede kiracı yok"}</small>
+        </div>
         <div>
           <dt>Ücreti girilmemiş</dt>
           <dd className={ucretsiz ? "talep-uyari" : undefined}>{sayi(ucretsiz)}</dd>
-          <small>{denemede ? `${sayi(denemede)} kiracı denemede` : "Denemede kiracı yok"}</small>
+          <small>{ucretsiz ? "Tamamlananlarda liste fiyatını uygulayın" : "her kiracının ücreti var"}</small>
         </div>
       </dl>
     </nav>
@@ -244,7 +292,7 @@ export default async function KurulumlarPage({ searchParams }: {
           bekleyenler.length ? (
             <div className="talep-tablo">
               <table className="crm-data-table" data-cols="sy-devam">
-                <thead><tr><th>Kurum</th><th>Paket</th><th>Sahip daveti</th><th>Kullanıcı</th><th>Aşama</th><th></th></tr></thead>
+                <thead><tr><th>Kurum</th><th>Paket</th><th>Sahip daveti</th><th>İlerleme</th><th>Aşama</th><th></th></tr></thead>
                 <tbody>
                   {bekleyenler.map((kiraci) => {
                     const ad = kiraci.display_name || kiraci.name;
@@ -263,7 +311,19 @@ export default async function KurulumlarPage({ searchParams }: {
                             <><span className="crm-table-title" title={kiraci.davet_eposta}>{kiraci.davet_eposta}</span><small>{kiraci.davet_gonderildi ? tarihSaat(kiraci.davet_gonderildi) : "gönderilmedi"}</small></>
                           ) : <span className="crm-table-sub">sahip daveti yok</span>}
                         </td>
-                        <td data-label="Kullanıcı"><span className="crm-table-title">{sayi(Number(kiraci.aktif_uye))}</span></td>
+                        <td data-label="İlerleme">
+                          {(() => {
+                            const { liste, ilkEksik, hata } = adimlar(kiraci);
+                            return <>
+                              <span className="ky-adimlar" aria-label={`${liste.filter((a) => a.tamam).length} / ${liste.length} adım`}>
+                                {liste.map((a, i) => (
+                                  <i key={a.ad} title={a.ad} data-durum={a.tamam ? "tamam" : i === ilkEksik ? (hata ? "hata" : "sirada") : "bekliyor"} />
+                                ))}
+                              </span>
+                              <small>{ilkEksik < 0 ? "tamamlandı" : `${hata ? "Takıldı" : "Sırada"}: ${liste[ilkEksik].ad.toLocaleLowerCase("tr-TR")}`}</small>
+                            </>;
+                          })()}
+                        </td>
                         <td data-label="Aşama"><span className="status-pill" data-tone={asama.ton}>{asama.etiket}</span></td>
                         <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
                         <MobilSatir href={href} baslik={ad} durum={asama}
@@ -334,7 +394,7 @@ export default async function KurulumlarPage({ searchParams }: {
       {/* Sağ sütun: süren kurulumların aşama dağılımı. Yeni istekler en
           yeni yirmiyle sınırlı okunuyor ve kart bunu söylüyor. */}
       <div className="liste-sag">
-        <TalepAkis kimlik="kurulum-sag" sinif="ek-sag" etiket="Kurulum istatistikleri" sekmeler={["İstatistikler"]}>
+        <TalepAkis kimlik="kurulum-sag" sinif="ek-sag" etiket="Kurulum istatistikleri ve son hareketler" sekmeler={["İstatistikler", "Son hareketler"]}>
           <IstatistikKarti
             kapsam="Arvo'nun kendi kurumu hariç; yeni istekler en yeni 20 kayıttan"
             kutular={[
@@ -343,6 +403,28 @@ export default async function KurulumlarPage({ searchParams }: {
             ]}
             gruplar={[{ baslik: "Süren kurulumun aşaması", satirlar: asamaDagilimi }]}
           />
+          <section className="ek-panel" aria-label="Son kurulum hareketleri">
+            {!admin ? (
+              <p className="ek-bos-kucuk">Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hareket yok” demek değil.</p>
+            ) : hareketHatasi ? (
+              <p className="ek-not" data-tone="danger">Kurulum günlüğü okunamadı ({hareketHatasi.message}) — “hareket yok” demek değil.</p>
+            ) : hareketler.length ? (
+              <ul className="pu-liste">
+                {hareketler.map((h) => (
+                  <li key={h.id}>
+                    <Link href={`/panel/platform/musteriler/${h.organization_id}?pencere=ayarlar`}>
+                      <span className="pu-govde">
+                        <b>{kurumAdi.get(h.organization_id) ?? "Kurum"}</b>
+                        <small>{[KURULUM_ISLEMI[h.action] ?? h.action, h.state ? KURULUM_ADI[h.state] ?? h.state : null, relativeTime(h.created_at)].filter(Boolean).join(" · ")}</small>
+                      </span>
+                      {/* 'failed', 'error' değil: sütunun kısıtı 'error'a izin vermiyor. */}
+                      {h.result === "failed" ? <span className="status-pill" data-tone="danger">hata</span> : null}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="ek-bos-kucuk">Henüz kurulum kaydı yok.</p>}
+          </section>
         </TalepAkis>
       </div>
     </div>
