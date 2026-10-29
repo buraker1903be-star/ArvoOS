@@ -13,6 +13,7 @@ import { sendThroughGateway } from "@/lib/whatsapp-gateway";
 import { loadConversation } from "@/lib/whatsapp-inbox";
 import { normalizePhone } from "@/lib/whatsapp-send";
 import { HATIRLATMA_SABLONLARI, hatirlatmaEngeli } from "@/lib/abonelik-hatirlatma";
+import { kurulumHatasiCumlesi } from "@/lib/kurulum-hatasi";
 
 // DİKKAT: "use server" dosyasında `export type { X }` yeniden dışa aktarımı
 // yazmayın; modül çöker. `export type X = {...}` sorunsuz.
@@ -78,7 +79,19 @@ async function createCustomerOrganization__impl(formData: FormData) {
     const context = (error as { context?: Response } | null)?.context;
     const body = context ? await context.clone().json().catch(() => null) as { error?: string } | null : null;
     const message = body?.error || data?.error || error?.message || "Kurum provisioning işlemi tamamlanamadı.";
-    throw new Error(`Kurum oluşturulamadı: ${message}`);
+    /*
+      HAM POSTGRES MESAJI EKRANA ÇIKMASIN (30.10.2026). Kurucu "Kurum
+      oluşturulamadı: duplicate key value violates unique constraint
+      "organizations_slug_key"" okuyordu — ne olduğunu söyleyen ama ne
+      YAPILACAĞINI söylemeyen bir cümle, hem de ilk gerçek müşterinin
+      açıldığı anda. Tanınmayan hata olduğu gibi kalıyor
+      (lib/kurulum-hatasi): anlaşılmaz bir cümle, yanlış bir cümleden
+      iyidir ve ekran görüntüsü bize gelen tek kanıt.
+
+      Çeviri BURADA, kenar fonksiyonunda değil: fonksiyonun dağıtımı
+      ayrı bir iş ve bu düzeltmenin ona bağlanması gerekmiyor.
+    */
+    throw new Error(`Kurum oluşturulamadı: ${kurulumHatasiCumlesi(message)}`);
   }
 
   revalidatePath("/panel", "layout");
