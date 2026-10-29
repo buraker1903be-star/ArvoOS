@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { productName } from "@/lib/products";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
-import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
+import { KKart, KNot } from "../../konsol-ui";
+import { MobilSatir } from "../../../crm/table-cells";
 import { ODEME_DURUMU, PAKET_ADI, para, tarih, tarihSaat } from "../../bicim";
 import { KararFormu } from "../../payments/karar-formu";
 import { reviewBankTransferPayment } from "../../payments/actions";
@@ -136,23 +137,33 @@ export async function OdemeBolumu({ supabase, odemeler, kurumAdi, urunler, grup 
 
     <KKart baslik="Hareketler" sag={<span className="status-pill">{hareketler.length} kayıt</span>}>
       {hareketler.length ? (
-        <KListe>
-          {hareketler.map((o) => {
-            const onayli = o.status === "approved";
-            const durum = ODEME_DURUMU[o.status] ?? { ad: o.status, ton: "neutral" };
-            return (
-              <KOge
-                key={o.id}
-                baslik={o.product ? productName(o.product) : "Abonelik ödemesi"}
-                alt={[tarih(o.reviewed_at ?? o.created_at), ODEME_YOLU[o.payment_method ?? ""] ?? o.payment_method, o.review_note].filter(Boolean).join(" · ")}
-                durum={onayli ? null : { etiket: durum.ad, ton: durum.ton }}
-                deger={onayli ? `+${para(Number(o.amount), o.currency ?? "TRY")}` : para(Number(o.amount), o.currency ?? "TRY")}
-                degerAlt={onayli ? `toplam ${para(yuruyen.get(o.id) ?? 0)}` : undefined}
-              />
-            );
-          })}
-        </KListe>
-      ) : <KBos baslik="Henüz ödeme yok" aciklama="Kurum dekont bildirdiğinde ya da kartla ödediğinde hareketler burada toplanır." />}
+        /* Tablo (29.10.2026): tarih, ürün, yol, tutar ve yürüyen toplam kendi
+           sütununda; iOS satırında tek alt satıra diziliyordu. */
+        <div className="talep-tablo fn-ic-tablo">
+          <table className="crm-data-table" data-cols="mk-hareket">
+            <thead><tr><th>Ürün</th><th>Yol</th><th className="crm-col-date">Tarih</th><th className="crm-col-amount">Tutar</th><th className="crm-col-amount">Toplam</th><th>Durum</th></tr></thead>
+            <tbody>
+              {hareketler.map((o) => {
+                const onayli = o.status === "approved";
+                const durum = ODEME_DURUMU[o.status] ?? { ad: o.status, ton: "neutral" };
+                const tutar = para(Number(o.amount), o.currency ?? "TRY");
+                const urunAdi = o.product ? productName(o.product) : "Abonelik ödemesi";
+                return (
+                  <tr key={o.id} className={onayli ? undefined : "is-pasif"}>
+                    <td data-label="Ürün"><span className="crm-table-title">{urunAdi}</span>{o.review_note ? <span className="crm-table-sub" title={o.review_note}>{o.review_note}</span> : null}</td>
+                    <td data-label="Yol"><span className="crm-table-sub">{ODEME_YOLU[o.payment_method ?? ""] ?? o.payment_method}</span></td>
+                    <td className="crm-col-date" data-label="Tarih">{tarih(o.reviewed_at ?? o.created_at)}</td>
+                    <td className="crm-col-amount" data-label="Tutar"><span className={onayli ? "crm-table-title cari-arti" : "crm-table-title"}>{onayli ? `+${tutar}` : tutar}</span></td>
+                    <td className="crm-col-amount" data-label="Toplam"><span className="crm-table-sub">{onayli ? para(yuruyen.get(o.id) ?? 0) : "—"}</span></td>
+                    <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.ad}</span></td>
+                    <MobilSatir baslik={urunAdi} durum={{ etiket: durum.ad, ton: durum.ton }} alt={[tutar, tarih(o.reviewed_at ?? o.created_at), ODEME_YOLU[o.payment_method ?? ""] ?? o.payment_method]} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>Henüz ödeme yok</h2><p>Kurum dekont bildirdiğinde ya da kartla ödediğinde hareketler burada toplanır.</p></div>}
     </KKart>
     {/* Faturalar ve proformalar 29.10.2026'dan beri yanındaki BelgeBolumu'nda
         (belgeler.tsx). Burada "platform henüz fatura kesmiyor" yazıyordu;
