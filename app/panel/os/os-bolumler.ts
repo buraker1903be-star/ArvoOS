@@ -26,6 +26,8 @@ export type BolumErisimi = {
 
 /** İş maliyetleri sekmesi (finance-navigation.tsx). */
 export const maliyetGorur = (e: BolumErisimi) => e.yetkiler.has("finance.maliyet.yonet");
+/** Abonelik ve faturalama: kurumun ödemesini yapabilen (sayfadaki ödeme düğmeleriyle aynı yetki). */
+export const abonelikGorur = (e: BolumErisimi) => e.yetkiler.has("finance.lisans.yonet");
 /** Raporlar: kurumda Raporlama modülü açık + rolde rapor yetkisi. */
 export const finansRaporGorur = (e: BolumErisimi) =>
   e.modules.some((m) => m.code === "reporting") && e.yetkiler.has("finance.rapor.gor");
@@ -72,6 +74,11 @@ export function finansBolumleri(e: BolumErisimi): Bolum[] {
     { key: "cari", href: "/panel/finance", label: "Müşteriler", altYollar: ["/panel/finance/musteri"] },
     ...(maliyetGorur(e) ? [{ key: "maliyet", href: "/panel/finance?gorunum=maliyet", label: "İş Maliyetleri" }] : []),
     ...(finansRaporGorur(e) ? [{ key: "raporlar", href: "/panel/finance/raporlar", label: "Raporlar" }] : []),
+    /* Abonelik ve faturalama (29.10.2026): sayfa vardı ama panelde hiçbir
+       bağlantı ona gitmiyordu; yalnızca hatırlatma bildirimi ve erişim
+       kapalı ekranı açıyordu. Ödeme yapabilen (finance.lisans.yonet)
+       görür; kullanıcı menüsünde de aynı kuralla duruyor. */
+    ...(abonelikGorur(e) ? [{ key: "abonelik", href: "/panel/billing", label: "Abonelik" }] : []),
   ];
 }
 

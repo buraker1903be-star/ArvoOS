@@ -428,7 +428,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
             <ThemeToggle />
           </div>
           <OsMenuKapat />
-          <OsKullaniciMenusu ad={benimAdim} rol={roleName} kurum={brandName} paket={organization.plan_code} workspaces={workspaces} aktifKurumId={organization.id} cikis={logout} />
+          <OsKullaniciMenusu ad={benimAdim} rol={roleName} kurum={brandName} paket={organization.plan_code} workspaces={workspaces} aktifKurumId={organization.id} abonelik={izin("finance.lisans.yonet")} cikis={logout} />
         </div>
       </header>
       {/* Telefonda açık uygulamanın bölümleri (masaüstünde gizli; orada dock'un ikinci katı). */}
