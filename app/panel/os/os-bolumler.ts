@@ -82,7 +82,10 @@ export function finansBolumleri(e: BolumErisimi): Bolum[] {
   ];
 }
 
-export function ikBolumleri(): Bolum[] {
+/** Maaş ve hakediş (30.10.2026): yalnızca yetkisi olana; RLS de aynı kümeye açık. */
+export const maasGorur = (e: BolumErisimi) => e.yetkiler.has("hr.maas.yonet");
+
+export function ikBolumleri(e?: BolumErisimi): Bolum[] {
   return [
     { key: "genel-bakis", href: "/panel/hr/genel-bakis", label: "Genel Bakış" },
     /* Prim, gizlilik sözleşmesi ve personel hareketleri 2026-10'dan beri
@@ -94,6 +97,12 @@ export function ikBolumleri(): Bolum[] {
     /* Hedefler 29.10.2026'da eklendi: Personel Performansı raporu
        "hedef verisi yok" diyordu ve hedefi girecek hiçbir yer yoktu. */
     { key: "hedefler", href: "/panel/hr/hedefler", label: "Hedefler" },
+    /* Maaşlar (kadrolu) ve Hakedişler (serbest çalışan) 30.10.2026: bordroyu
+       müşavir hesaplıyor, ArvoOS veriyi topluyor ve ödemeyi kaydediyor. */
+    ...(e && maasGorur(e) ? [
+      { key: "maaslar", href: "/panel/hr/maaslar", label: "Maaşlar" },
+      { key: "hakedisler", href: "/panel/hr/hakedisler", label: "Hakedişler" },
+    ] : []),
   ];
 }
 
@@ -118,7 +127,7 @@ export function uygulamaBolumleri(uygulama: string, e: BolumErisimi): Bolum[] {
     case "crm": return crmBolumleri();
     case "operations": return operasyonBolumleri(e);
     case "finance": return finansBolumleri(e);
-    case "hr": return ikBolumleri();
+    case "hr": return ikBolumleri(e);
     case "documents": return dokumanBolumleri();
     case "analitik": return analitikBolumleri();
     default: return [];

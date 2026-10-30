@@ -172,6 +172,9 @@ export const YETKI_GRUPLARI: readonly { id: string; modul: string | null; baslik
          varsayılanı YONETIM onunla AYNI kümeye bakmak zorunda, yoksa
          düğme görünür ama satır sessizce elenirdi. */
       { key: "hr.hedef.yonet", modul: "hr", label: "Satış hedefleri", aciklama: "Personelin aylık satış hedefini koyar ve değiştirir", varsayilan: YONETIM, rlsBagli: true },
+      /* Maaş ve hakediş (30.10.2026): maaş kurumdaki en hassas veri; RLS de
+         yalnızca owner/admin'e açık (20261030065444), varsayılan aynı küme. */
+      { key: "hr.maas.yonet", modul: "hr", label: "Maaş ve hakediş", aciklama: "Kadrolu personelin maaşını ve serbest çalışanların hakedişini görür, kaydeder, öder", varsayilan: YONETIM, rlsBagli: true },
       { key: "hr.prim.gor", modul: "hr", label: "Prim hesaplarını görme", aciklama: "Personel prim hesaplarını görüntüler", varsayilan: YONETIM_VE_SEF },
       { key: "hr.prim.yonet", modul: "hr", label: "Prim ödemesi", aciklama: "Prim ödemesi kaydeder", varsayilan: YONETIM, rlsBagli: true },
       { key: "hr.hareket.gor", modul: "hr", label: "Personel hareketleri", aciklama: "Personelin panel hareket geçmişini görür", varsayilan: YONETIM_VE_SEF },
