@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { kurumOnizlemesi } from "@/lib/kurum-onizleme";
+import { requestOrigin } from "@/app/_components/request-origin";
 import { getLoginBrand } from "@/lib/login-branding";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 import { TakipForm } from "./takip-form";
@@ -22,6 +24,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${marka.name} | İş Takibi`,
     description: `${marka.name} işinizin güncel durumunu takip kodunuzla görüntüleyin.`,
+    // Bağlantı önizlemesi de kurumun (lib/kurum-onizleme): yoksa kökteki ArvoOS logosu çıkıyordu.
+    ...kurumOnizlemesi({ kurumAdi: marka.name, logoUrl: marka.logo_url, baslik: `${marka.name} | İş Takibi`, aciklama: `${marka.name} işinizin güncel durumunu takip kodunuzla görüntüleyin.`, koken: await requestOrigin(), yol: "/takip" }),
     /* Sekme simgesi kurumun yüklediği KARE simge (lib/kurum-simgesi), logo
        değil: yatay logo 16×16 kareye sıkışıp bozuk görünüyordu (13.10.2026,
        takip sayfası). Giriş ve iş durumu sayfaları zaten böyleydi. */

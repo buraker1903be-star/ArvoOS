@@ -1,4 +1,6 @@
 import { headers } from "next/headers";
+import { kurumOnizlemesi } from "@/lib/kurum-onizleme";
+import { requestOrigin } from "@/app/_components/request-origin";
 import { getLoginBrand } from "@/lib/login-branding";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -21,6 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${marka.name} | İş Durumu Sorgula`,
     description: `${marka.name} işinizin güncel durumunu takip kodunuzla görüntüleyin.`,
+    // Bağlantı önizlemesi de kurumun (lib/kurum-onizleme): yoksa kökteki ArvoOS logosu çıkıyordu.
+    ...kurumOnizlemesi({ kurumAdi: marka.name, logoUrl: marka.logo_url, baslik: `${marka.name} | İş Durumu Sorgula`, aciklama: `${marka.name} işinizin güncel durumunu takip kodunuzla görüntüleyin.`, koken: await requestOrigin(), yol: "/is-durumu" }),
     // Sekme simgesi logo değil: yatay logo 16×16 kareye sıkışıyordu (lib/kurum-simgesi).
     icons: kurumSimgeleri(marka),
   };
