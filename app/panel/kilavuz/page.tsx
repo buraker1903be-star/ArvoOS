@@ -5,6 +5,7 @@ import { aramaMetni, kilavuzBolumleri, type KilavuzErisimi } from "@/lib/kilavuz
 import { resolveNavigationGroups } from "../panel-navigation-config";
 import { KilavuzArama } from "./kilavuz-arama";
 import "../crm/kayit-detay/kayit-detay.css";
+import "../hr/hr.css";
 import "./kilavuz.css";
 
 export const metadata: Metadata = { title: "Kullanım kılavuzu", robots: { index: false, follow: false } };
