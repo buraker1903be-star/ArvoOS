@@ -9,11 +9,15 @@
   ArvoOS logosu ve "ArvoOS | Ürünler ve Dijital Hizmetler" çıkıyordu.
 
   Sayfa düzeyindeki openGraph kökünkünü BÜTÜNÜYLE değiştiriyor (alan
-  alan birleşmiyor). Bu yüzden kurumun logosu yoksa görsel hiç
-  verilmiyor: ArvoOS logosuna düşmek, düzeltilen hatanın kendisi olurdu.
+  alan birleşmiyor); kökün ArvoOS görseli hiçbir koşulda sızmıyor.
 
-  Kart türü "summary": görsel bir LOGO, geniş kapak görseli değil;
-  "summary_large_image" yatay logoyu kırpıp büyütüyordu.
+  GÖRSEL LOGONUN KENDİSİ DEĞİL, LOGOYU TAŞIYAN 1200×630 BİR KART
+  (app/onizleme-gorseli). İlk sürüm logonun adresini doğrudan veriyordu:
+  WhatsApp yatay logoyu önizlemenin genişliğine büyütüp kırptı,
+  "AkademikMerkez" "AkademikMe" diye kesildi (30.10.2026). Kart logoyu
+  kenar boşluklu, oranını koruyarak ortalıyor; hangi uygulama nasıl
+  kırparsa kırpsın logo bütün kalıyor. Logo yoksa kart kurumun adını
+  yazıyor — ArvoOS logosuna düşmüyor.
 */
 import type { Metadata } from "next";
 
@@ -22,26 +26,25 @@ export type KurumOnizlemeGirdisi = {
   logoUrl: string | null | undefined;
   baslik: string;
   aciklama: string;
-  /** İsteğin kök adresi (https://app.kurum.com); göreli logo yolu buna göre çözülür. */
+  /** İsteğin kök adresi (https://app.kurum.com); önizleme görselinin adresi buna göre kurulur. */
   koken: string;
   /** Sayfanın yolu (/takip); önizlemenin adresi. */
   yol?: string;
 };
 
-/** Logo adresini mutlak yapar; çözülemezse null (bozuk görsel yerine görselsiz önizleme). */
-export function mutlakLogo(logoUrl: string | null | undefined, koken: string): string | null {
-  const ham = logoUrl?.trim();
-  if (!ham) return null;
-  try {
-    const adres = new URL(ham, koken);
-    return adres.protocol === "https:" || adres.protocol === "http:" ? adres.toString() : null;
-  } catch {
-    return null;
-  }
+export const ONIZLEME_GORSELI_YOLU = "/onizleme-gorseli";
+export const ONIZLEME_BOYUTU = { width: 1200, height: 630 } as const;
+
+/** Logo değişince önizleme yenisini çeksin (WhatsApp görseli adresine göre önbelleğe alıyor). */
+export function onizlemeSurumu(logoUrl: string | null | undefined, kurumAdi: string): string {
+  const kaynak = `${logoUrl ?? ""}|${kurumAdi}`;
+  let h = 5381;
+  for (let i = 0; i < kaynak.length; i += 1) h = ((h << 5) + h + kaynak.charCodeAt(i)) >>> 0;
+  return h.toString(36);
 }
 
 export function kurumOnizlemesi(g: KurumOnizlemeGirdisi): Pick<Metadata, "openGraph" | "twitter"> {
-  const logo = mutlakLogo(g.logoUrl, g.koken);
+  const gorsel = new URL(`${ONIZLEME_GORSELI_YOLU}?v=${onizlemeSurumu(g.logoUrl, g.kurumAdi)}`, g.koken).toString();
   const url = g.yol ? new URL(g.yol, g.koken).toString() : undefined;
   return {
     openGraph: {
@@ -50,13 +53,36 @@ export function kurumOnizlemesi(g: KurumOnizlemeGirdisi): Pick<Metadata, "openGr
       type: "website",
       siteName: g.kurumAdi,
       ...(url ? { url } : {}),
-      ...(logo ? { images: [{ url: logo, alt: `${g.kurumAdi} logosu` }] } : {}),
+      images: [{ url: gorsel, ...ONIZLEME_BOYUTU, alt: `${g.kurumAdi} logosu` }],
     },
-    twitter: {
-      card: "summary",
-      title: g.baslik,
-      description: g.aciklama,
-      ...(logo ? { images: [logo] } : {}),
-    },
+    twitter: { card: "summary_large_image", title: g.baslik, description: g.aciklama, images: [gorsel] },
   };
+}
+
+/** PNG ya da JPEG başlığından piksel boyutu; okunamazsa null. */
+export function gorselBoyutu(b: Uint8Array): { genislik: number; yukseklik: number } | null {
+  if (b.length > 24 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) {
+    const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    return { genislik: v.getUint32(16), yukseklik: v.getUint32(20) };
+  }
+  if (b.length > 4 && b[0] === 0xff && b[1] === 0xd8) {
+    let i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] !== 0xff) { i += 1; continue; }
+      const isaret = b[i + 1];
+      const uzunluk = (b[i + 2] << 8) | b[i + 3];
+      // SOF0–SOF15 (DHT 0xC4, JPG 0xC8, DAC 0xCC hariç) boyutu taşır.
+      if (isaret >= 0xc0 && isaret <= 0xcf && isaret !== 0xc4 && isaret !== 0xc8 && isaret !== 0xcc) {
+        return { yukseklik: (b[i + 5] << 8) | b[i + 6], genislik: (b[i + 7] << 8) | b[i + 8] };
+      }
+      i += 2 + uzunluk;
+    }
+  }
+  return null;
+}
+
+/** Logoyu kutuya oranını koruyarak sığdırır; küçük logo büyütülür (bulanık değil, vektörel değilse de okunur kalsın diye üst sınır 2×). */
+export function sigdir(boyut: { genislik: number; yukseklik: number }, kutu: { genislik: number; yukseklik: number }) {
+  const oran = Math.min(kutu.genislik / boyut.genislik, kutu.yukseklik / boyut.yukseklik, 2);
+  return { genislik: Math.max(1, Math.round(boyut.genislik * oran)), yukseklik: Math.max(1, Math.round(boyut.yukseklik * oran)) };
 }
