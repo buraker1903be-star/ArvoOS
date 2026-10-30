@@ -6,7 +6,7 @@ import type { OsIkon } from "./os-apps";
   başlatıcı ikonla tanınıyor. Çizgi ikonlar `currentColor` alır: kurum
   rengi ve koyu tema kendiliğinden işler.
 */
-const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external" | "sun" | "moon" | "plus" | "back", React.ReactNode> = {
+const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external" | "sun" | "moon" | "plus" | "back" | "help", React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
   crm: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.4 3.5 5.2" /></>,
   operations: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M15 4v16" /></>,
@@ -33,6 +33,8 @@ const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external
   repeat: <><path d="M17 2l3 3-3 3" /><path d="M4 11V9a4 4 0 0 1 4-4h12" /><path d="M7 22l-3-3 3-3" /><path d="M20 13v2a4 4 0 0 1-4 4H4" /></>,
   notifications: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
   bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
+  /* Kullanım kılavuzu: daire içinde soru işareti. */
+  help: <><circle cx="12" cy="12" r="9" /><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7" /><path d="M12 17.2h.01" /></>,
   search: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></>,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   logout: <><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 16l-4-4 4-4M6 12h10" /></>,

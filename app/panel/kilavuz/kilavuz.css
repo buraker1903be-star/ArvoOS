@@ -1,0 +1,34 @@
+/*
+  KULLANIM KILAVUZU (kilavuz/page.tsx). Okuma sayfası: satır boyu
+  sınırlı, içindekiler masaüstünde solda sabit, telefonda üstte.
+*/
+.panel-root .kilavuz{display:flex;flex-direction:column;gap:var(--sp-4);max-width:1120px}
+.panel-root .kilavuz-arama input{width:100%;max-width:520px;min-height:40px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:var(--fs-base)}
+.panel-root .kilavuz-bos{margin:8px 0 0;color:var(--muted);font-size:var(--fs-sm)}
+
+.panel-root .kilavuz-duzen{display:grid;grid-template-columns:220px minmax(0,1fr);gap:var(--sp-4);align-items:start}
+.panel-root .kilavuz-icindekiler{position:sticky;top:var(--sp-4);padding:var(--sp-4)}
+.panel-root .kilavuz-icindekiler b{display:block;margin-bottom:8px;font-size:var(--fs-sm);color:var(--muted)}
+.panel-root .kilavuz-icindekiler ol{display:grid;gap:4px;margin:0;padding-left:18px;font-size:var(--fs-base)}
+.panel-root .kilavuz-icindekiler a{color:var(--ink);text-decoration:none}
+.panel-root .kilavuz-icindekiler a:hover{color:var(--primary);text-decoration:underline}
+
+.panel-root .kilavuz-metin{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+.panel-root .kilavuz-bolum{padding:var(--sp-4) var(--sp-5);scroll-margin-top:var(--sp-4)}
+.panel-root .kilavuz-bolum h2{margin:0 0 6px;font-size:var(--fs-lg);color:var(--ink)}
+.panel-root .kilavuz-giris{margin:0 0 var(--sp-3);color:var(--ink-soft);font-size:var(--fs-base);line-height:1.6;max-width:72ch}
+
+.panel-root .kilavuz-konu{border-top:1px solid var(--line-soft)}
+.panel-root .kilavuz-konu summary{padding:10px 0;cursor:pointer;font-weight:600;font-size:var(--fs-base);color:var(--ink)}
+.panel-root .kilavuz-konu summary:hover{color:var(--primary)}
+.panel-root .kilavuz-konu-govde{padding:0 0 var(--sp-3);max-width:72ch;font-size:var(--fs-base);line-height:1.6;color:var(--ink)}
+.panel-root .kilavuz-konu-govde p{margin:0 0 8px}
+.panel-root .kilavuz-adimlar,.panel-root .kilavuz-notlar{margin:0 0 10px;padding-left:22px;display:grid;gap:4px}
+.panel-root .kilavuz-notlar{color:var(--ink-soft)}
+.panel-root .kilavuz-git{display:inline-flex;margin-top:4px}
+
+@media (max-width:760px){
+  .panel-root .kilavuz-duzen{grid-template-columns:1fr}
+  .panel-root .kilavuz-icindekiler{position:static}
+  .panel-root .kilavuz-bolum{padding:var(--sp-4)}
+}
