@@ -16,10 +16,11 @@ test("önizleme kurumun adını ve kurumun alan adındaki kart görselini taşı
   assert.equal(og.title, "AkademikMerkez | İş Takibi");
   assert.equal(og.siteName, "AkademikMerkez");
   assert.equal(og.url, "https://app.akademikmerkez.com/takip");
-  // Logonun kendisi değil, logoyu kenar boşluklu taşıyan kart: kırpılmasın.
+  // Logonun kendisi değil, kare simge görseli: kırpılacak bir şey kalmasın.
   assert.match(og.images[0].url, /^https:\/\/app\.akademikmerkez\.com\/onizleme-gorseli\?v=/);
-  assert.equal(og.images[0].width, 1200);
-  assert.equal(og.images[0].height, 630);
+  assert.equal(og.images[0].width, 600);
+  assert.equal(og.images[0].height, 600);
+  assert.equal((o.twitter as { card: string }).card, "summary");
   assert.ok(!JSON.stringify(o).toLowerCase().includes("arvoos"));
 });
 
