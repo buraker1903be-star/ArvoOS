@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { kurumOnizlemesi } from "@/lib/kurum-onizleme";
+import { requestOrigin } from "@/app/_components/request-origin";
 import Link from "next/link";
 import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
@@ -20,7 +22,10 @@ import "../../login/login.css";
 export async function generateMetadata(): Promise<Metadata> {
   const marka = await getLoginBrand();
   if (!marka) return { title: "Devam et", description: "Bağlantınızı onaylayın." };
-  return { title: `${marka.name} | Devam et`, description: `${marka.name} hesabınız için bağlantıyı onaylayın.`, icons: kurumSimgeleri(marka) };
+  const baslik = `${marka.name} | Devam et`;
+  const aciklama = `${marka.name} hesabınız için bağlantıyı onaylayın.`;
+  // Davet ve şifre bağlantısı e-postayla gidiyor; önizlemede kurumun adı ve logosu görünsün (lib/kurum-onizleme).
+  return { title: baslik, description: aciklama, icons: kurumSimgeleri(marka), ...kurumOnizlemesi({ kurumAdi: marka.name, logoUrl: marka.logo_url, baslik, aciklama, koken: await requestOrigin() }) };
 }
 
 const BASLIK: Record<BaglantiTuru, { ust: string; baslik: string; metin: string; dugme: string }> = {

@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { kurumOnizlemesi } from "@/lib/kurum-onizleme";
+import { requestOrigin } from "@/app/_components/request-origin";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { slugMarkasi } from "@/lib/takip-markasi";
@@ -17,9 +19,13 @@ export async function generateMetadata({params}:{params:Promise<Params>}):Promis
     başlık, yerleşim ve sayfa aynı istekte tek sorgu yapıyor. */
  const org=await slugMarkasi(supabase,slug);
  if(!org)return {title:"İş Durumu Sorgula"};
+ const baslik=`${org.name} | İş Durumu Sorgula`;
+ const aciklama=`${org.name} dosyanızın güncel durumunu takip kodunuzla görüntüleyin.`;
  return {
-  title:`${org.name} | İş Durumu Sorgula`,
-  description:`${org.name} dosyanızın güncel durumunu takip kodunuzla görüntüleyin.`,
+  title:baslik,
+  description:aciklama,
+  // Bağlantı önizlemesi de kurumun (lib/kurum-onizleme): yoksa kökteki ArvoOS logosu çıkıyordu.
+  ...kurumOnizlemesi({kurumAdi:org.name,logoUrl:org.logo_url,baslik,aciklama,koken:await requestOrigin(),yol:`/durum/${slug}`}),
   ...(org.logo_url?{icons:{icon:org.logo_url}}:{}),
  };
 }

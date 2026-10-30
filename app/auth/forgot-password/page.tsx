@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { kurumOnizlemesi } from "@/lib/kurum-onizleme";
+import { requestOrigin } from "@/app/_components/request-origin";
 import Link from "next/link";
 import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { requestPasswordReset } from "./actions";
@@ -18,6 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${marka.name} | Şifremi Unuttum`,
     description: `${marka.name} hesabınızın şifresini sıfırlayın.`,
+    // Bağlantı önizlemesi de kurumun (lib/kurum-onizleme): yoksa kökteki ArvoOS logosu çıkıyordu.
+    ...kurumOnizlemesi({ kurumAdi: marka.name, logoUrl: marka.logo_url, baslik: `${marka.name} | Şifremi Unuttum`, aciklama: `${marka.name} hesabınızın şifresini sıfırlayın.`, koken: await requestOrigin(), yol: "/auth/forgot-password" }),
     // Sekme simgesi logo değil: yatay logo 16×16 kareye sıkışıyordu (lib/kurum-simgesi).
     icons: kurumSimgeleri(marka),
   };

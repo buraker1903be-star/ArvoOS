@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { kurumOnizlemesi } from "@/lib/kurum-onizleme";
+import { requestOrigin } from "@/app/_components/request-origin";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -20,6 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${marka.name} | Şifre Oluştur`,
     description: `${marka.name} hesabınız için şifre belirleyin.`,
+    // Bağlantı önizlemesi de kurumun (lib/kurum-onizleme): yoksa kökteki ArvoOS logosu çıkıyordu.
+    ...kurumOnizlemesi({ kurumAdi: marka.name, logoUrl: marka.logo_url, baslik: `${marka.name} | Şifre Oluştur`, aciklama: `${marka.name} hesabınız için şifre belirleyin.`, koken: await requestOrigin(), yol: "/auth/set-password" }),
     // Sekme simgesi logo değil: yatay logo 16×16 kareye sıkışıyordu (lib/kurum-simgesi).
     icons: kurumSimgeleri(marka),
   };
