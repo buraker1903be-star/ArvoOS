@@ -50,12 +50,22 @@ export function harfSimgesiSvg(ad: string | null | undefined, renk: string | nul
   bir şeyi kendi alan adında yayınlatması demek (AGENTS.md, logo kuralı).
 */
 export function depodakiSimgeMi(adres: string | null | undefined, supabaseUrl: string | null | undefined, kurumId: string): adres is string {
+  return depodakiGorselMi(adres, supabaseUrl, kurumId, "favicon");
+}
+
+/**
+ * Adres kurumun KENDİ depo dosyası mı (organization-assets/<kurum>/<ad>.*)?
+ * Sunucu bu dosyayı indirip yayınlıyor; başka bir adres (iç ağ, başka
+ * kurumun dosyası) indirilmesin diye. Logo bağlantı önizlemesi
+ * (app/onizleme-gorseli) de aynı kuralı kullanıyor.
+ */
+export function depodakiGorselMi(adres: string | null | undefined, supabaseUrl: string | null | undefined, kurumId: string, ad: "favicon" | "logo"): adres is string {
   if (!adres || !supabaseUrl) return false;
   try {
     const url = new URL(adres);
     const depo = new URL(supabaseUrl);
     return url.protocol === "https:" && url.host === depo.host
-      && /^\/storage\/v1\/object\/public\/organization-assets\/[0-9a-f-]{36}\/favicon\.(png|jpg|webp)$/.test(url.pathname)
+      && new RegExp(`^/storage/v1/object/public/organization-assets/[0-9a-f-]{36}/${ad}\\.(png|jpg|webp)$`).test(url.pathname)
       && url.pathname.split("/")[6] === kurumId;
   } catch { return false; }
 }
