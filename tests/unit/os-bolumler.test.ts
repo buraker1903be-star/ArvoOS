@@ -29,6 +29,13 @@ test("İK: prim, gizlilik ve hareketler personel detayında; bölüm değil", ()
   assert.deepEqual(uygulamaBolumleri("hr", { modules: [], yetkiler: new Set(["hr.prim.gor", "hr.gizlilik.gor", "hr.hareket.gor"]), isPlatformOwner: true }).map((b) => b.key), beklenen);
 });
 
+test("İK: Maaşlar ve Hakedişler yalnızca maaş yetkisiyle", () => {
+  // 30.10.2026: maaş kurumdaki en hassas veri; yetkisi olmayana sekme bile görünmez.
+  assert.ok(!ikBolumleri(bos).some((b) => b.key === "maaslar" || b.key === "hakedisler"));
+  const yetkili = { modules: [], yetkiler: new Set(["hr.maas.yonet"]) };
+  assert.deepEqual(ikBolumleri(yetkili).map((b) => b.key).slice(-2), ["maaslar", "hakedisler"]);
+});
+
 test("bölümü olmayan uygulama boş", () => {
   assert.deepEqual(uygulamaBolumleri("settings", bos), []);
   // WhatsApp bölüm değil, ayrı uygulama (os-apps.ts).

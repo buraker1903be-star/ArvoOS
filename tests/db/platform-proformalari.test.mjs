@@ -115,8 +115,15 @@ describe("platform proformaları", () => {
       await rol(db, "service_role");
       await reddedilir(db,
         `insert into public.platform_proformalari (product, organization_id, musteri_adi, kalemler, ara_toplam, kdv, toplam, gecerlilik_tarihi)
-         values ('arc', $1, 'X', $2::jsonb, 100000, 20000, 120000, current_date + 15)`,
+         values ('bilinmeyen', $1, 'X', $2::jsonb, 100000, 20000, 120000, current_date + 15)`,
         [SALON, KALEM], /platform_proformalari_product_check/);
+      /* Eskiden burada 'arc' reddediliyordu; 20261030062700 ArvoARC'ı
+         kısıta ekledi (lib/proforma URUNLER ile aynı liste) ve bu satır
+         artık KABUL edilmeli. */
+      await db.query(
+        `insert into public.platform_proformalari (product, organization_id, musteri_adi, kalemler, ara_toplam, kdv, toplam, gecerlilik_tarihi)
+         values ('arc', $1, 'X', $2::jsonb, 100000, 20000, 120000, current_date + 15)`,
+        [SALON, KALEM]);
       await reddedilir(db,
         `insert into public.platform_proformalari (organization_id, musteri_adi, alici, kalemler, ara_toplam, kdv, toplam, gecerlilik_tarihi)
          values ($1, 'X', '"metin"'::jsonb, $2::jsonb, 100000, 20000, 120000, current_date + 15)`,

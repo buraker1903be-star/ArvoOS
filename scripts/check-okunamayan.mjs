@@ -62,6 +62,9 @@ const EKRANLAR = [
   "app/panel/finance/page.tsx",
   "app/panel/finance/raporlar/page.tsx",
   "app/panel/hr/page.tsx",
+  // 30.10.2026: maaş ve hakediş — okunamayan sorgu "maaş yok" diye çizilip müşavire eksik dosya gitmesin.
+  "app/panel/hr/maaslar/page.tsx",
+  "app/panel/hr/hakedisler/page.tsx",
   "app/panel/accounts/page.tsx",
   "app/panel/posta/page.tsx",
 ];

@@ -74,6 +74,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261029162437_sozlesme_onaylari.sql",
   "20261029181748_personel_satis_hedefleri.sql",
   "20261030062700_proforma_arc_urunu.sql",
+  "20261030065444_maas_ve_hakedis.sql",
 ];
 
 /*

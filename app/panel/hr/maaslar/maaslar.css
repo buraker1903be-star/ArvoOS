@@ -1,0 +1,33 @@
+/*
+  MAAŞLAR EKRANI. İskelet Satış hedefleri ekranının (hedefler.css) —
+  başlık, şerit, kart, kaydırma alanı ve kaydet satırı oradan geliyor.
+  Burada yalnızca bu tabloya özgü olanlar: on sütunluk tablo, kutu
+  genişlikleri ve satır içi küçük düğmeler.
+*/
+
+/* Kaydet formu yalnızca gizli alanı taşıyor; kutular `form=` ile bağlı. */
+.maaslar-gizli-form{display:none}
+
+@media (min-width:761px){
+  .maaslar-tablo{min-width:1180px}
+  .maaslar-tablo :is(th,td):nth-child(1){min-width:170px}
+  .maaslar-tablo :is(th,td):nth-child(2){min-width:150px}
+  .maaslar-tablo .maaslar-kutu{width:118px}
+  .maaslar-tablo .maaslar-not{min-width:140px}
+}
+.maaslar-kutu input,.maaslar-not input{width:100%;min-width:0;text-align:right}
+.maaslar-not input{text-align:left}
+.maaslar-alt{display:block;color:var(--muted);font-size:12px;line-height:1.3}
+.maaslar-deger{display:flex;flex-direction:column;gap:2px;line-height:1.25}
+.maaslar-deger small{color:var(--muted);font-size:12px}
+.maaslar-durum{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1)}
+.maaslar-durum small{color:var(--muted);font-size:12px}
+.maaslar-durum form{margin:0}
+.maaslar-kucuk{min-height:30px;padding:4px 10px;font-size:12px}
+.maaslar-odeme-tutar{margin:0;font-size:15px}
+.maaslar-not-yazi{margin:0;color:var(--muted);font-size:12px}
+
+@media (min-width:761px){
+  .hakedisler-tablo{min-width:900px}
+  .hakedisler-tablo :is(th,td):nth-child(2){min-width:220px}
+}
