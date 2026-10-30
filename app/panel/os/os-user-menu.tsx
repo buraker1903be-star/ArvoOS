@@ -86,6 +86,7 @@ export function OsKullaniciMenusu({
           {abonelik ? <Link href="/panel/billing"><OsSimge ad="wallet" boyut={16} />Abonelik ve faturalama</Link> : null}
           <Link href="/panel/settings"><OsSimge ad="settings" boyut={16} />Ayarlar</Link>
           <Link href="/panel/notifications"><OsSimge ad="bell" boyut={16} />Bildirimler</Link>
+          <Link href="/panel/kilavuz"><OsSimge ad="help" boyut={16} />Kullanım kılavuzu</Link>
           {/* Kişinin kendi sözleşme onayları ve yürürlükteki metin (sözleşmenin 14. maddesi). */}
           <Link href="/panel/sozlesmelerim"><OsSimge ad="documents" boyut={16} />Sözleşmelerim</Link>
         </nav>

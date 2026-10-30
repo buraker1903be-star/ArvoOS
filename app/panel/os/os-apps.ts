@@ -142,6 +142,8 @@ export function osSayfalari(uygulamalar: OsUygulama[]): OsSayfa[] {
   // Bölümü olmayan, yalnızca başlatıcıdaki uygulamalar (WhatsApp) Ctrl+K'da da bulunsun.
   for (const u of uygulamalar) if (u.yalnizBaslatici) sayfalar.push({ label: u.label, href: u.href, uygulama: u.key });
   sayfalar.push({ label: "Bildirimler", href: "/panel/notifications", uygulama: "home" });
+  // Kullanım kılavuzu (30.10.2026): "nasıl yapılır" diye arayan Ctrl+K'dan bulsun.
+  sayfalar.push({ label: "Kullanım kılavuzu", href: "/panel/kilavuz", uygulama: "home" });
   return sayfalar;
 }
 

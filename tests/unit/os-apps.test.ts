@@ -56,6 +56,8 @@ test("Ctrl+K sayfaları yalnızca açık uygulamalardan", () => {
   const sayfalar = osSayfalari(apps);
   assert.ok(sayfalar.some((s) => s.label === "Teklifler"));
   assert.ok(!sayfalar.some((s) => s.uygulama === "finance"));
+  // Kılavuz modülden bağımsız: herkes Ctrl+K'dan bulabilmeli.
+  assert.ok(sayfalar.some((s) => s.href === "/panel/kilavuz"));
 });
 
 test("baş harfler Türkçe büyük harfle", () => {
