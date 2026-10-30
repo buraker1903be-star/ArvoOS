@@ -11,13 +11,13 @@
   Sayfa düzeyindeki openGraph kökünkünü BÜTÜNÜYLE değiştiriyor (alan
   alan birleşmiyor); kökün ArvoOS görseli hiçbir koşulda sızmıyor.
 
-  GÖRSEL LOGONUN KENDİSİ DEĞİL, LOGOYU TAŞIYAN 1200×630 BİR KART
-  (app/onizleme-gorseli). İlk sürüm logonun adresini doğrudan veriyordu:
-  WhatsApp yatay logoyu önizlemenin genişliğine büyütüp kırptı,
-  "AkademikMerkez" "AkademikMe" diye kesildi (30.10.2026). Kart logoyu
-  kenar boşluklu, oranını koruyarak ortalıyor; hangi uygulama nasıl
-  kırparsa kırpsın logo bütün kalıyor. Logo yoksa kart kurumun adını
-  yazıyor — ArvoOS logosuna düşmüyor.
+  GÖRSEL KARE: KURUMUN SEKME SİMGESİ (app/onizleme-gorseli). İlk sürüm
+  logonun adresini doğrudan veriyordu ve WhatsApp yatay logoyu kırptı
+  ("AkademikMe…", 30.10.2026). Kurum sahibinin isteğiyle önizleme
+  favicon gibi kare: WhatsApp kare görseli mesajın yanında küçük bir
+  simge olarak gösteriyor, kırpacak bir şey kalmıyor. Simge yoksa
+  logo karenin içine sığdırılıyor, o da yoksa kurumun baş harfi —
+  ArvoOS logosuna hiçbir koşulda düşmüyor.
 */
 import type { Metadata } from "next";
 
@@ -33,7 +33,7 @@ export type KurumOnizlemeGirdisi = {
 };
 
 export const ONIZLEME_GORSELI_YOLU = "/onizleme-gorseli";
-export const ONIZLEME_BOYUTU = { width: 1200, height: 630 } as const;
+export const ONIZLEME_BOYUTU = { width: 600, height: 600 } as const;
 
 /** Logo değişince önizleme yenisini çeksin (WhatsApp görseli adresine göre önbelleğe alıyor). */
 export function onizlemeSurumu(logoUrl: string | null | undefined, kurumAdi: string): string {
@@ -55,7 +55,7 @@ export function kurumOnizlemesi(g: KurumOnizlemeGirdisi): Pick<Metadata, "openGr
       ...(url ? { url } : {}),
       images: [{ url: gorsel, ...ONIZLEME_BOYUTU, alt: `${g.kurumAdi} logosu` }],
     },
-    twitter: { card: "summary_large_image", title: g.baslik, description: g.aciklama, images: [gorsel] },
+    twitter: { card: "summary", title: g.baslik, description: g.aciklama, images: [gorsel] },
   };
 }
 
