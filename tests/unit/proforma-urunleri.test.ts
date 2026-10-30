@@ -51,3 +51,22 @@ test("kartla ödenebilen ürünler listesi kataloğa bağlı", () => {
   assert.ok(!KARTLA_ODENEBILEN.includes("arc"));
   assert.equal(KARTLA_ODENEBILEN.length, PRODUCTS.length - 1);
 });
+
+/*
+  VERİTABANI KISITI DA AYNI LİSTE (30.10.2026). caf618a kodu dört ürüne
+  açtı ama platform_proformalari_product_check üç ürüne izin veriyordu;
+  ArvoARC proforması veritabanında düşüyordu ve hiçbir test bunu
+  göremedi. Kısıtın SON tanımı migration'lardan okunup kodla
+  karşılaştırılıyor: ürün eklenir de migration yazılmazsa burada düşer.
+*/
+test("proforma ürün kısıtı (son migration) = PROFORMA_URUNLERI", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const klasor = path.resolve(import.meta.dirname, "../../supabase/migrations");
+  const tanimlar = fs.readdirSync(klasor).sort()
+    .map((ad) => fs.readFileSync(path.join(klasor, ad), "utf8"))
+    .flatMap((metin) => [...metin.matchAll(/platform_proformalari_product_check check \(product = any \(array\[([^\]]*)\]\)\)/g)].map((m) => m[1]));
+  assert.ok(tanimlar.length, "kısıt tanımı bulunamadı");
+  const son = tanimlar.at(-1)!.split(",").map((s) => s.trim().replace(/'/g, "")).sort();
+  assert.deepEqual(son, [...PROFORMA_URUNLERI].sort());
+});

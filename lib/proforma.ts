@@ -21,9 +21,10 @@ export type ProformaToplami = { araToplam: number; kdv: number; toplam: number }
 
 export const AZAMI_KALEM = 20;
 
-/* Proforma kesilebilen ürünler; veritabanı kısıtıyla aynı küme
-   (20261028155350). Kurum ArvoOS ve ArvoCal proformasını ArvoOS
-   panelinde, ArvoLab proformasını ArvoLab'da görür. */
+/* Proforma kesilebilen ürünler; veritabanı kısıtıyla (platform_proformalari_product_check,
+   son tanımı 20261030062700) AYNI küme — tests/unit/proforma-urunleri.test.ts
+   ikisini karşılaştırıyor. Kurum ArvoOS, ArvoCal ve ArvoARC proformasını
+   ArvoOS panelinde, ArvoLab proformasını ArvoLab'da görür. */
 /*
   PROFORMA KESİLEBİLEN ÜRÜNLER = BÜTÜN ÜRÜNLER (lib/products).
 
