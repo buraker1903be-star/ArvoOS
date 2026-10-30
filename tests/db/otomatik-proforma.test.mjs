@@ -71,3 +71,13 @@ test("elle kesilen, sonraki dönem, başka ürün ve bireysel abone çakışmıy
     assert.equal(say.n, 6);
   });
 });
+
+// 20261030062700: ArvoARC proforması kesilebiliyor; bilinmeyen ürün kodu yine reddediliyor.
+test("ArvoARC proforması kabul ediliyor, bilinmeyen ürün reddediliyor", async () => {
+  await islem(db, async () => {
+    await rol(db, "service_role");
+    await kes({ product: "arc", donem: "2026-11-05" });
+    await reddedilir(db, `insert into public.platform_proformalari (product, organization_id, musteri_adi, kalemler, ara_toplam, kdv_orani, kdv, toplam, duzenleme_tarihi, gecerlilik_tarihi)
+      values ('arcc', $1, 'M', '[{"aciklama":"a","miktar":1,"birim_fiyat":1}]', 1, 20, 0, 1, '2026-10-30', '2026-11-01')`, [KURUM], /product_check|check constraint/i);
+  });
+});
