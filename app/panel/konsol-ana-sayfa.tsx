@@ -1,3 +1,4 @@
+import { askidakiKurumlar, type AskiSatiri } from "@/lib/askidakiler";
 import { GONDERIM_ADI, gonderimDurumu, gonderimSirasi } from "@/lib/proforma-gonderim";
 import MIGRATION_IZLERI from "@/lib/migration-izleri.json";
 import { notFound } from "next/navigation";
@@ -264,7 +265,7 @@ export async function KonsolAnaSayfa() {
     getPaymentIncidents okunamazsa kendi içinde boş döner (günlüğe yazar);
     kredi okuması düşerse satırı "okunamadı" olarak işaretliyoruz.
   */
-  const [odemeOlaylari, krediSonucu, etkinlik] = await Promise.all([
+  const [odemeOlaylari, krediSonucu, etkinlik, askiCekirdek, askiUrun] = await Promise.all([
     getPaymentIncidents(),
     admin
       ? bekleyenKrediler(admin).then((veri) => ({ veri, hata: null as string | null }))
@@ -272,6 +273,11 @@ export async function KonsolAnaSayfa() {
       : Promise.resolve({ veri: [], hata: null as string | null }),
     /* Panel etkinliği (lib/musteri-etkinligi-oku): okunamazsa harita null, risk sekmesi "okunamadı". */
     musteriEtkinlikleri(),
+    /* Askıdaki lisanslar (02.11.2026, lib/askidakiler): kuyruk "açalım mı, kapatalım mı".
+       sınırsız-tamam: askıdaki lisans sayısı küçük ve kurucunun temizlediği bir iş listesi. */
+    (admin ?? supabase).from("organization_licenses").select("organization_id,suspended_at,suspension_reason").eq("license_status", "suspended"),
+    /* sınırsız-tamam: aynı kuyruk, ek ürünler. */
+    (admin ?? supabase).from("organization_product_licenses").select("organization_id,product,suspended_at,suspension_reason").eq("status", "suspended"),
   ]);
 
   /*
@@ -407,6 +413,12 @@ export async function KonsolAnaSayfa() {
   const musteriler = kurumlar.filter(musteriMi);
   const grupMarkalari = kurumlar.filter((kurum) => kurumTuru(kurum) === "grup");
   const kurumAdi = new Map(kurumlar.map((kurum) => [kurum.id, kurum.display_name || kurum.name]));
+  const askiHatasi = askiCekirdek.error ?? askiUrun.error;
+  const askiMusterileri = new Set(kurumlar.filter((k) => musteriMi(k)).map((k) => k.id));
+  const askidakiler = askiHatasi ? [] : askidakiKurumlar([
+    ...((askiCekirdek.data ?? []) as { organization_id: string; suspended_at: string | null; suspension_reason: string | null }[]).map((s) => ({ ...s, product: "arvoos" })),
+    ...((askiUrun.data ?? []) as AskiSatiri[]),
+  ], (id) => askiMusterileri.has(id), simdi());
 
   const aktifUye = new Map(kiracilar.map((satir) => [satir.id, Number(satir.aktif_uye)]));
   const depolamaBayt = new Map(
@@ -635,6 +647,7 @@ export async function KonsolAnaSayfa() {
     ...(admin ? [{ ad: "Proformalar", sayi: proformalar.length, hata: Boolean(proformaHatasi) }] : []),
     { ad: "Kurulumlar", sayi: kurulumdakiler.length, hata: Boolean(kiraciHatasi) },
     { ad: "Dönemi dolanlar", sayi: hatirlatmalar.length, hata: Boolean(urunHatasi) },
+    { ad: "Askıdakiler", sayi: askidakiler.length, hata: Boolean(askiHatasi) },
     { ad: "Yenileme riski", sayi: riskliler.length, hata: !etkinlik.harita || Boolean(kiraciHatasi) },
     { ad: "Kullanmayanlar", sayi: kullanmayanlar.length, hata: !etkinlik.harita || Boolean(kiraciHatasi) },
     { ad: "Sorunlar", sayi: sorunlar.length, hata: Boolean(kiraciHatasi) },
@@ -868,6 +881,27 @@ export async function KonsolAnaSayfa() {
                 ))}
               </ul>
             ) : bos("Yakında dolan abonelik yok.")}
+          </section>
+
+          <section>
+            {bas("Ödeme gelmediği için askıya alınmış müşteriler, en uzun bekleyen başta. Askı geçici: ödeme gelince açılır, gelmeyecekse lisansı İptal edip kayıp nedenini yazın.", "/panel/platform/musteriler", "Müşteriler")}
+            {askiHatasi ? okunamadi : askidakiler.length ? (
+              <ul className="pu-liste">
+                {askidakiler.map((k) => (
+                  <li key={k.organizationId}>
+                    <Link href={`/panel/platform/musteriler/${k.organizationId}?pencere=urunler`}>
+                      <span className="pu-govde">
+                        <b>{kurumAdi.get(k.organizationId) ?? "Kurum"}</b>
+                        <small>{[k.urunler.map((u) => productName(u)).join(", "), k.sebep].filter(Boolean).join(" · ")}</small>
+                      </span>
+                      <span className="status-pill" data-tone={k.gun !== null && k.gun >= 14 ? "danger" : "gold"}>
+                        {k.gun === null ? "Askıda" : k.gun === 0 ? "Bugün" : `${k.gun} gündür`}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : bos("Askıda bekleyen müşteri yok.")}
           </section>
 
           <section>
