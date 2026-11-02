@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -28,8 +29,9 @@ type Mesaj = { id: string; body: string; is_staff: boolean; created_at: string }
   bildirimi o yazıyor (private.touch_support_ticket).
 */
 export default async function DestekTalebi({ params }: { params: Promise<{ id: string }> }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "destek");
   const { id } = await params;
   if (!UUID.test(id)) notFound();
 

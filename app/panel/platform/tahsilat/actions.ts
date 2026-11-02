@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -26,8 +27,9 @@ import { aliciAdi, aliciOku, kalemleriOku, kdvDahilProforma, PROFORMA_KALEM_SINI
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function faturaYukle__impl(formData: FormData) {
-  const { isPlatformOwner, userId } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami, userId } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Fatura yalnızca platform kurucusu tarafından yüklenebilir.");
+  konsolAlaniniDogrula(konsolKapsami, "finans");
 
   const tur = String(formData.get("tur") ?? "");
   const odemeId = String(formData.get("odeme_id") ?? "");
@@ -105,8 +107,9 @@ export async function faturaYukle(...args: Parameters<typeof faturaYukle__impl>)
 */
 
 async function kurucuYoneticisi() {
-  const { isPlatformOwner, userId } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami, userId } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Proforma yalnızca platform kurucusu tarafından düzenlenebilir.");
+  konsolAlaniniDogrula(konsolKapsami, "finans");
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu yapılandırması eksik; proforma kaydedilemedi.");
   return { admin, userId };
@@ -299,8 +302,9 @@ export async function proformaGonder(...args: Parameters<typeof proformaGonder__
 const PARA_BIRIMLERI = ["TRY", "USD", "EUR", "GBP"];
 
 async function bankaHesabiKaydet__impl(formData: FormData) {
-  const { isPlatformOwner, supabase } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami, supabase } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Banka hesaplarını yalnızca platform kurucusu düzenleyebilir.");
+  konsolAlaniniDogrula(konsolKapsami, "finans");
   const id = String(formData.get("id") ?? "").trim();
   const bankName = String(formData.get("bank_name") ?? "").trim().slice(0, 120);
   const holder = String(formData.get("account_holder") ?? "").trim().slice(0, 160);
@@ -324,8 +328,9 @@ async function bankaHesabiKaydet__impl(formData: FormData) {
 }
 
 async function bankaHesabiDurumu__impl(formData: FormData) {
-  const { isPlatformOwner, supabase } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami, supabase } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Banka hesaplarını yalnızca platform kurucusu düzenleyebilir.");
+  konsolAlaniniDogrula(konsolKapsami, "finans");
   const id = String(formData.get("id") ?? "").trim();
   if (!UUID.test(id)) throw new Error("Hesap bulunamadı.");
   const aktif = formData.get("aktif") === "1";

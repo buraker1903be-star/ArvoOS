@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
@@ -14,6 +15,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function baglam() {
   const c = await getPanelContext();
   if (!c.isPlatformOwner) throw new Error("Hazır yanıtları yalnızca kurucu düzenleyebilir.");
+  konsolAlaniniDogrula(c.konsolKapsami, "destek");
   return c;
 }
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath, updateTag } from "next/cache";
@@ -52,8 +53,9 @@ function readOptionalMonthlyFee(formData: FormData, key = "monthly_fee") {
 }
 
 async function updateOrganizationLicense__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   const planCode = String(formData.get("plan_code") ?? "").trim();
@@ -136,8 +138,9 @@ async function updateOrganizationLicense__impl(formData: FormData) {
 // ve dönem. Kurum yalnızca aldığı ürüne öder; ücreti boş bırakılan üründe
 // kartla ödeme açılmaz.
 async function updateProductLicense__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   const product = String(formData.get("product") ?? "").trim();
@@ -225,8 +228,9 @@ async function updateProductLicense__impl(formData: FormData) {
   Veriye dokunmaz: yalnızca mevcut durumu ürün veritabanına yeniden yazar.
 */
 async function urunuYenidenYansit__impl(formData: FormData) {
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   const product = String(formData.get("product") ?? "").trim();
@@ -290,8 +294,9 @@ export async function urunuYenidenYansit(...args: Parameters<typeof urunuYeniden
   provisioning_state 'suspended' kalıyordu; burada açarken geri alınıyor.
 */
 async function cekirdekErisimi__impl(formData: FormData) {
-  const { supabase, isPlatformOwner, userId } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami, userId } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   const ac = String(formData.get("ac") ?? "") === "true";

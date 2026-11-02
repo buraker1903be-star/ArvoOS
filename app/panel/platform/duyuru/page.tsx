@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -26,8 +27,9 @@ type Duyuru = { id: string; baslik: string; metin: string; baglanti: string | nu
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function DuyuruSayfasi({ searchParams }: { searchParams: Promise<{ kurumlar?: string }> }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "musteriler");
   /*
     SEÇİLİ KURUMLAR (02.11.2026): Müşteriler listesinin toplu işlem
     çubuğundaki "Duyuru gönder" buraya ?kurumlar=<kimlik,…> ile geliyor.

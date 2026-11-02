@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
@@ -16,6 +17,7 @@ const GUN = /^\d{4}-\d{2}-\d{2}$/;
 async function baglam() {
   const c = await getPanelContext();
   if (!c.isPlatformOwner) throw new Error("Müşteri notlarını yalnızca kurucu yazabilir.");
+  konsolAlaniniDogrula(c.konsolKapsami, "musteriler");
   return c;
 }
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
@@ -59,8 +60,9 @@ async function kurumYetkilileri(admin: NonNullable<ReturnType<typeof createAdmin
   kurumda düştüğü sonuç mesajında yazıyor.
 */
 async function duyuruGonder__impl(f: FormData) {
-  const { supabase, userId, isPlatformOwner } = await getPanelContext();
+  const { supabase, userId, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Duyuruyu yalnızca kurucu gönderebilir.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu anahtarı tanımlı değil; duyuru gönderilemez.");
 

@@ -4,7 +4,7 @@ import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import { useState } from "react";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
-import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
+import { PAKET_VARSAYILANI, type PaketLimiti } from "@/lib/paket-limitleri";
 import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -63,8 +63,8 @@ const DURUMLAR = [
 ] as const;
 
 /*
-  Paket varsayılanları lib/paket-limitleri'nde (veritabanının
-  private.default_license_limits ile eşitliği testle sabit). Burada
+  Paket varsayılanları 02.11.2026'dan beri konsoldan düzenleniyor
+  (platform_paket_limitleri); çağıran okuyup `varsayilanlar` ile veriyor. Burada
   yalnızca "uygula" kısayolu için kullanılıyor: kurucu paketi değiştirince
   limitleri elle yazmak zorunda kalmasın. Kaydedilen değer her zaman
   formdaki değer — varsayılan kendiliğinden uygulanmıyor, çünkü çoğu
@@ -99,6 +99,7 @@ export function LisansFormu({
   kullanilanMb,
   aiKullanilan,
   kaydet,
+  varsayilanlar = PAKET_VARSAYILANI,
 }: {
   organizationId: string;
   baslangic: LisansDegerleri;
@@ -107,6 +108,8 @@ export function LisansFormu({
   /** Bu ayki AI kredisi; null ise ölçüm alınamadı (sıfır değil). */
   aiKullanilan: number | null;
   kaydet: (formData: FormData) => void;
+  /* Konsoldan düzenlenen paket limitleri (02.11.2026); verilmezse kod yedeği. */
+  varsayilanlar?: Record<string, PaketLimiti>;
 }) {
   const [deger, setDeger] = useState(baslangic);
 
@@ -125,7 +128,7 @@ export function LisansFormu({
   const tavan = Number.parseInt(deger.extraUserCap, 10);
   /* Şu an kaç koltuk ücretli: kurucu tavanı düşürürken kimseyi kilitlemesin. */
   const ekKoltuk = Math.max(0, aktifUye - (Number.parseInt(deger.userLimit, 10) || 0));
-  const varsayilan = PAKET_VARSAYILANI[deger.planCode];
+  const varsayilan = varsayilanlar[deger.planCode];
   /*
     Varsayılanı uygulama önerisi yalnızca GERÇEKTEN farklıysa çıkıyor.
     Her paket seçiminde beliren bir öneri, hep orada duran bir uyarıya

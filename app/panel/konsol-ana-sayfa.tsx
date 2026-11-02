@@ -25,6 +25,8 @@ import { musteriEtkinlikleri } from "@/lib/musteri-etkinligi-oku";
 import { etkinlikYazisi, kullanilmayanMi, yenilemeRiski } from "@/lib/musteri-etkinligi";
 import { beklemeSuresi, gecikmisMi, kuyrukSirala, ONCELIK_ADI, YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import Link from "next/link";
+import { KONSOL_ALANLARI, uygulamalariSuz, type KonsolKapsami } from "@/lib/konsol-alanlari";
+import { konsolUygulamalari } from "./os/konsol-apps";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { TalepAkis } from "./crm/kayit-detay/kayit-akis";
 import { StgIcon } from "./settings/settings-ui";
@@ -92,6 +94,22 @@ const ODEYEN_DURUMLAR = new Set(["active", "past_due"]);
 
 type Tone = "info" | "gold" | "success" | "danger" | "brand" | "neutral";
 
+function KisitliKonsol({ kapsam }: { kapsam: KonsolKapsami }) {
+  const uygulamalar = uygulamalariSuz(konsolUygulamalari(), kapsam).filter((u) => u.key !== "home");
+  return (
+    <GenelBakis baslik={selamlama().selam} sinif="konsol-ana">
+      <ListeIzgarasi etiket="Konsol alanlarınız">
+        <ListeKarti baslik="Konsol alanlarınız" alt="Size açık olan bölümler; yetkiyi tam yetkili bir kurucu Sistem → Ayarlar'dan değiştirir." bos="Size açık bir konsol alanı yok." sayi={uygulamalar.length}>
+          {uygulamalar.map((u) => (
+            <ListeSatiri key={u.key} href={u.href} baslik={u.label}
+              alt={KONSOL_ALANLARI.find((a) => a.kod === u.key)?.aciklama} />
+          ))}
+        </ListeKarti>
+      </ListeIzgarasi>
+    </GenelBakis>
+  );
+}
+
 function selamlama() {
   const now = new Date();
   const saat = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" }).format(now));
@@ -125,10 +143,17 @@ type BekleyenSozlesme = { id: string; contract_no: string | null; customer_name:
 type KurulumKaydi = { id: number | string; organization_id: string; action: string; result: string | null; state: string | null; created_at: string };
 
 export async function KonsolAnaSayfa() {
-  const { supabase, userId, isPlatformOwner } = await getPanelContext();
+  const { supabase, userId, isPlatformOwner, konsolKapsami } = await getPanelContext();
   /* Kabuk da eliyor (layout.tsx) ama yetki üç yerde birden duruyor
      (AGENTS.md): kabuğun bir gün değişmesi bu sayfayı açmamalı. */
   if (!isPlatformOwner) notFound();
+  /*
+    KISITLI KURUCU (02.11.2026, lib/konsol-alanlari). Bu ekran bütün
+    alanların sayılarını taşıyor (gelir, ödeme kuyruğu, destek, kurulum);
+    her bölümü ayrı ayrı süzmek yerine kısıtlı kurucuya yalnızca kendi
+    alanlarının girişleri gösteriliyor.
+  */
+  if (konsolKapsami !== null) return <KisitliKonsol kapsam={konsolKapsami} />;
   const admin = createAdminClient();
 
   const [

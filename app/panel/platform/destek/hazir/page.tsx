@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -21,8 +22,9 @@ export const dynamic = "force-dynamic";
   Liste küçük (kurucunun kendi şablonları) ve bilerek sınırsız.
 */
 export default async function HazirYanitlar() {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "destek");
   /* sınırsız-tamam: kurucunun kendi şablon listesi, birkaç düzine satır. */
   const sonuc = await supabase.from("platform_hazir_yanitlar").select("id,baslik,metin").order("baslik");
   const yanitlar = (zorunlu(sonuc, "Hazır yanıtlar") ?? []) as { id: string; baslik: string; metin: string }[];

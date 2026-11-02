@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -53,8 +54,9 @@ async function kapanisliOku<T>(ad: string, kur: (secim: string) => (bas: number,
 const URUN = (kod: string) => productName(kod as Parameters<typeof productName>[0]);
 
 export default async function AylikRaporSayfasi({ searchParams }: { searchParams: Promise<{ ay?: string }> }) {
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "musteriler");
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu anahtarı tanımlı değil; rapor okunamıyor.");
 

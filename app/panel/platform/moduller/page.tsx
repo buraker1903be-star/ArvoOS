@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 
@@ -7,8 +8,9 @@ import { getPanelContext } from "@/lib/panel-context";
   Adres yönlendirme olarak kalıyor: eski bağlantılar ve yer imleri kırılmasın.
 */
 export default async function EskiModulSayfasi({ searchParams }: { searchParams: Promise<{ suzgec?: string }> }) {
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "urunler");
   const { suzgec } = await searchParams;
   const ek = suzgec === "kapali" || suzgec === "bagimsiz" ? `&suzgec=${suzgec}` : "";
   redirect(`/panel/platform/urunler?gorunum=moduller${ek}`);

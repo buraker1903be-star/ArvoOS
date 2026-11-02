@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 // Paket adı tek kaynaktan, sitedeki adla aynı (plans.name eski adı taşıyabilir).
@@ -71,8 +72,9 @@ const ASAMALAR = [
 export default async function KurulumlarPage({ searchParams }: {
   searchParams: Promise<{ asama?: string }>;
 }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "sistem");
   const admin = createAdminClient();
 
   const { asama } = await searchParams;

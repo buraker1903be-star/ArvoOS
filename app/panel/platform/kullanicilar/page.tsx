@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -64,8 +65,9 @@ const davetleriIsaretle = (davetler: Davet[]) => {
 export default async function KullanicilarPage({ searchParams }: {
   searchParams: Promise<{ evre?: string; ara?: string }>;
 }) {
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "musteriler");
   const admin = createAdminClient();
 
   const { evre, ara } = await searchParams;

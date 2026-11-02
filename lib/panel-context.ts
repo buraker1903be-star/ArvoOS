@@ -1,3 +1,4 @@
+import { kapsamOku, type KonsolKapsami } from "@/lib/konsol-alanlari";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -207,6 +208,24 @@ const panelBaglaminiKur = cache(async () => {
   const isPlatformOwner = membership.role === "owner" && organization.slug === "arvo-os";
 
   /*
+    KONSOL KAPSAMI (02.11.2026, lib/konsol-alanlari). Yalnızca kurucuda
+    okunuyor; satır yoksa tam yetki (null).
+
+    Okunamazsa TAM YETKİ varsayılıyor, kısıtlı değil: geçici bir hata
+    bütün kurucuları konsoldan atmamalı ve kısıt bir güven sınırı değil
+    iş bölümü (veritabanı kısıtlı kurucuyu zaten kurucu sayıyor).
+    Tablonun henüz olmaması da aynı cevap.
+  */
+  let konsolKapsami: KonsolKapsami = null;
+  if (isPlatformOwner) {
+    const { data: kapsamSatiri, error: kapsamHatasi } = await supabase
+      .from("platform_kurucu_alanlari").select("alanlar").eq("user_id", userId).maybeSingle();
+    if (kapsamHatasi) {
+      if (kapsamHatasi.code !== "42P01" && kapsamHatasi.code !== "PGRST205") console.error("[panel] kurucu alanları okunamadı; tam yetki varsayıldı", kapsamHatasi.message);
+    } else konsolKapsami = kapsamOku(kapsamSatiri);
+  }
+
+  /*
     Panelden ayarlanabilir yetkilendirme. Üç soru, aynı yerden:
       hangi modüller gizli, hangi yetenekler açık, kişiye özel istisna var mı.
 
@@ -259,7 +278,7 @@ const panelBaglaminiKur = cache(async () => {
   /** Tek yetenek sorusu. Sayfalarda `izin("crm.teklif.sil")` biçiminde okunur. */
   const izin = (key: string) => yetkiler.has(key);
 
-  return { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, yetkiler, izin, erisimKapali, kapanmaNedeni };
+  return { supabase, userId, membership, organization, modules, isPlatformOwner, konsolKapsami, workspaces, hiddenModuleKeys, yetkiler, izin, erisimKapali, kapanmaNedeni };
 });
 
 /**

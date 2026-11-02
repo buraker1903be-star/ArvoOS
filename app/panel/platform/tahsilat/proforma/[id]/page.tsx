@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../../../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -46,8 +47,9 @@ export const metadata: Metadata = { title: "Proforma", robots: { index: false, f
 export default async function KonsolProformaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!kimlikMi(id)) notFound();
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "finans");
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu yapılandırması eksik; proforma okunamadı.");
   const [p, s, kimlikSonucu, gonderimSonucu] = await Promise.all([

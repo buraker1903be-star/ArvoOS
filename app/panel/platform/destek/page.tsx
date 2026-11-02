@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -40,8 +41,9 @@ const kurumAdi = (t: Talep) => {
 const simdiOku = () => new Date();
 
 export default async function DestekKuyrugu({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "destek");
   const { durum: istenen } = await searchParams;
   const sekme = KUYRUK_SEKMELERI.find((s) => s.anahtar === istenen) ?? KUYRUK_SEKMELERI[0];
 

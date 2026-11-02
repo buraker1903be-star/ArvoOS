@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { LisansFormu, type LisansDegerleri } from "./lisans-formu";
+import type { PaketLimiti } from "@/lib/paket-limitleri";
 import { UrunFormu, type KotaAlani } from "./urun-formu";
 import { MobilSatir } from "../../crm/table-cells";
 import { OnayPenceresi, type OnayIstegi } from "../../components/onay-penceresi";
@@ -67,10 +68,13 @@ export function UrunKartlari({
   urunuYansit,
   erisimiDegistir,
   urunErisiminiDegistir,
+  paketVarsayilanlari,
 }: {
   organizationId: string;
   kurumAdi: string;
   kartlar: UrunKarti[];
+  /** Konsoldan düzenlenen paket limitleri (lib/paket-limitleri, paketLimitleriOku). */
+  paketVarsayilanlari: Record<string, PaketLimiti>;
   /** ArvoOS erişimini kapat / aç (licenses/actions cekirdekErisimi). */
   erisimiDegistir: (formData: FormData) => Promise<unknown> | void;
   /** Ek ürün erişimini kapat / aç (modul-actions modulErisimiDegistir). */
@@ -252,6 +256,7 @@ export function UrunKartlari({
                 kullanilanMb={secili.kullanilanMb}
                 aiKullanilan={secili.aiKullanilan}
                 kaydet={cekirdegiKaydet}
+                varsayilanlar={paketVarsayilanlari}
               />
             ) : (
               <UrunFormu

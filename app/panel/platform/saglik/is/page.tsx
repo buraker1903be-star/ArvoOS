@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -48,8 +49,9 @@ function hataMetni(ayrinti: unknown): string | null {
 }
 
 export default async function CronIsiSayfasi({ searchParams }: { searchParams: Promise<{ yol?: string }> }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "sistem");
   const { yol } = await searchParams;
   const is = cronIsleri().find((x) => x.yol === yol);
   if (!is) notFound();

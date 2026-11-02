@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
@@ -42,8 +43,9 @@ function kodOku(formData: FormData) {
 }
 
 async function taslagiKaydet__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "urunler");
   const kod = kodOku(formData);
 
   const ham = String(formData.get("tutar") ?? "").trim();
@@ -122,8 +124,9 @@ function fiyatYuzeyleriniTazele() {
   basamak (kurucunun hazırladığı zammı ezerdi).
 */
 async function koddakiDegerleriTaslagaAl__impl() {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "urunler");
 
   /* sınırsız-tamam: fiyat kataloğu: ürün × paket, elle yönetilen onlarca satır */
   const { data, error } = await supabase.from("platform_fiyat_listesi").select("kod,yayimlandi_at,taslak_bekliyor");
@@ -162,8 +165,9 @@ async function koddakiDegerleriTaslagaAl__impl() {
 }
 
 async function fiyatlariYayimla__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "urunler");
 
   /* sınırsız-tamam: fiyat kataloğu: ürün × paket, elle yönetilen onlarca satır */
   const { data, error: okumaHatasi } = await supabase.from("platform_fiyat_listesi").select("*");
@@ -187,8 +191,9 @@ async function fiyatlariYayimla__impl(formData: FormData) {
 
 /* Bekleyen taslağı yayımlamadan bırakır: taslak yayındaki tutara döner. */
 async function taslagiGeriAl__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "urunler");
   const kod = kodOku(formData);
 
   const { data: satir } = await supabase.from("platform_fiyat_listesi")
@@ -204,8 +209,9 @@ async function taslagiGeriAl__impl(formData: FormData) {
 }
 
 async function yayindanKaldir__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "urunler");
   const kod = kodOku(formData);
 
   const { data: userData } = await supabase.auth.getUser();

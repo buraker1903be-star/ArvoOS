@@ -7,7 +7,8 @@ import { PLANS } from "@/lib/site/pricing";
 import { planTutari } from "@/lib/site/fiyat-kaynagi";
 import { paketListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
-import { limitSapmalari } from "@/lib/paket-limitleri";
+import { limitSapmalari, type PaketLimiti } from "@/lib/paket-limitleri";
+import { paketLimitleriOku } from "../paket-limitleri-oku";
 import { KKart, KNot } from "../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { modulErisimiDegistir } from "../modul-actions";
@@ -27,8 +28,8 @@ import { liraYazisi } from "@/lib/turkish-amount";
   kurucu buraya geliyor; sapmanın ne kadar olduğu burada da yazmazsa iki
   ekran arasında gidip gelmek gerekiyor (14.10.2026).
 */
-function kapasiteSapmasi(planCode: string | null, userLimit: number, storageLimitMb: number): string {
-  const sapmalar = limitSapmalari(planCode, { userLimit, storageLimitMb, aiCreditLimit: null });
+function kapasiteSapmasi(planCode: string | null, userLimit: number, storageLimitMb: number, varsayilanlar: Record<string, PaketLimiti>): string {
+  const sapmalar = limitSapmalari(planCode, { userLimit, storageLimitMb, aiCreditLimit: null }, varsayilanlar);
   if (!sapmalar.length) return "";
   return ` · paket ${sapmalar.map((x) => `${x.alan} ${sayi(x.paket)}`).join(", ")}`;
 }
@@ -85,6 +86,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
     depolamalar,
     { kullanim, arvolabKopyasi, arcKopyasi, randevuKopyasi },
     fiyatlar,
+    paketLimitleri,
   ] = await Promise.all([
     Promise.all([
       supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
@@ -101,6 +103,9 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
     lisansOlcumleri(selected.id),
     /* Liste fiyatı satırda (14.10.2026: "Güncel Fiyat" penceresi buraya katıldı). */
     yayimlananFiyatlar(),
+    /* Konsoldan düzenlenen paket varsayılanları (02.11.2026); sapma notu ve
+       formun "uygula" kısayolu bunlara bakıyor. */
+    paketLimitleriOku(supabase),
   ]);
   if (licenseError) throw new Error(`Lisans okunamadı: ${licenseError.message}`);
   const license = licenseData as LicenseRow | null;
@@ -273,6 +278,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
           organizationId={selected.id}
           kurumAdi={label}
           cekirdegiKaydet={updateOrganizationLicense}
+          paketVarsayilanlari={paketLimitleri.limitler}
           urunuKaydet={updateProductLicense}
           urunuYansit={urunuYenidenYansit}
           erisimiDegistir={cekirdekErisimi}
@@ -304,7 +310,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                 */
                 {
                   etiket: "Kapasite",
-                  deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}${kapasiteSapmasi(license.plan_code, license.user_limit, license.storage_limit_mb)}`,
+                  deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}${kapasiteSapmasi(license.plan_code, license.user_limit, license.storage_limit_mb, paketLimitleri.limitler)}`,
                 },
                 /* Ek koltuk kurucunun en çok merak ettiği satır: kurum dahil
                    limiti aşmışsa faturaya eklenen tutar budur. */

@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../../konsol-alani";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -122,8 +123,9 @@ export default async function MusteriDetayi({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ pencere?: string; provisioned?: string; tur?: string }>;
 }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "musteriler");
   const [{ id }, { pencere: pencereParametresi, provisioned, tur: hareketTuru }] = await Promise.all([params, searchParams]);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const sekme: SekmeKodu = SEKMELER.find((x) => x.kod === pencereParametresi)?.kod ?? ESKI_SEKME[pencereParametresi ?? ""] ?? "bilgiler";

@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -11,6 +12,8 @@ import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { KNot } from "../konsol-ui";
 import { konsolKaydiCumlesi } from "@/lib/konsol-degisiklik";
+import { alanAdi, KONSOL_ALANLARI } from "@/lib/konsol-alanlari";
+import { kurucuAlanlariniKaydet } from "./actions";
 import { basHarfleri, KURULUM_ADI, KURULUM_ISLEMI, para, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
@@ -32,8 +35,9 @@ import "../finans.css";
     1. Kurucu yetkileri — konsola kim girebiliyor. Kural tek: ArvoOS'un
        kendi kurumunun (slug arvo-os) etkin Kurum Sahibi (uygulamada
        panel-context isPlatformOwner, veritabanında
-       private.is_arvoos_founder). Kademeli kurucu rolü YOK; bölüm bunu
-       açıkça söylüyor.
+       private.is_arvoos_founder). 02.11.2026'ya kadar kademeli rol yoktu;
+       artık tam yetkili kurucu ötekileri alanlara sınırlayabiliyor
+       (lib/konsol-alanlari, platform_kurucu_alanlari).
     2. Bağlantılar ve sırlar — üstte entegrasyonlar: ödeme, WhatsApp, anlık bildirim, ürün köprüleri,
        e-fatura. Ortam değişkenlerinin yalnızca VAR/YOK bilgisi okunuyor,
        değeri asla (AGENTS.md: sırlar NEXT_PUBLIC_ ile başlamaz, ekrana da
@@ -75,17 +79,27 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   const bolum: Bolum = (BOLUMLER as readonly string[]).includes(istenen ?? "") ? (istenen as Bolum) : ESKI_BOLUM[istenen ?? ""] ?? "baglantilar";
   const sekme = (kod: Bolum) => ({ className: bolum === kod ? "is-active" : undefined });
   const sekmeBag = (kod: Bolum) => ({ href: `/panel/platform/ayarlar?bolum=${kod}`, "aria-current": bolum === kod ? ("page" as const) : undefined });
-  const { supabase, isPlatformOwner, organization } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami, organization, userId } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "sistem");
   const admin = createAdminClient();
 
-  const [uyelikSonucu, paytr, arvolab, arc, randevu] = await Promise.all([
+  const [uyelikSonucu, paytr, arvolab, arc, randevu, kapsamSonucu] = await Promise.all([
     supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", organization.id),
     getPaytrStatus(organization.id),
     getArvolabBridgeHealth(),
     getArcBridgeHealth(),
     getRandevuBridgeHealth(),
+    /* Kademeli kurucu yetkisi (02.11.2026): satırı olmayan tam yetkili. */
+    supabase.from("platform_kurucu_alanlari").select("user_id,alanlar"),
   ]);
+  /* Tablo henüz yoksa (migration öncesi) herkes tam yetkili ve düzenleme
+     kapalı; başka bir hata ekranda yazıyor — "herkes tam yetkili" demek
+     okunamamış bir kısıtı gizlemek olurdu. */
+  const kapsamTablosuYok = kapsamSonucu.error?.code === "42P01" || kapsamSonucu.error?.code === "PGRST205";
+  const kapsamHatasi = kapsamSonucu.error && !kapsamTablosuYok ? kapsamSonucu.error.message : null;
+  const kurucuAlanlari = new Map(((kapsamSonucu.data ?? []) as { user_id: string; alanlar: string[] }[]).map((k) => [k.user_id, k.alanlar]));
+  const tamYetkili = konsolKapsami === null;
   if (uyelikSonucu.error) throw new Error("Konsol üyeleri okunamadı: " + uyelikSonucu.error.message);
   const uyeler = (uyelikSonucu.data ?? []) as { user_id: string; role: string; is_active: boolean }[];
   const kurucular = uyeler.filter((u) => u.role === "owner" && u.is_active).map((u) => u.user_id);
@@ -237,7 +251,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   ];
 
   const BOLUM_ADI: Record<Bolum, { baslik: string; alt: string }> = {
-    yetkiler: { baslik: "Kurucu yetkileri", alt: "Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Sunucu işlemleri ve veritabanı politikaları aynı kuralı uyguluyor." },
+    yetkiler: { baslik: "Kurucu yetkileri", alt: "Konsola ArvoOS kurumunun etkin Kurum Sahibi girer; tam yetkili kurucu ötekileri alanlara (Müşteriler, Finans, Destek, Ürünler, Sistem) sınırlayabilir." },
     baglantilar: { baslik: "Bağlantılar ve sırlar", alt: "Entegrasyonların ve sunucu sırlarının gerçek durumu; eksikse neyin olmadığı yazıyor, sırların değeri gösterilmez." },
     kayitlar: { baslik: "İşlem kayıtları", alt: "Kurulum adımları, lisans ve ayar değişiklikleri, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt." },
   };
@@ -296,26 +310,55 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
       </div>
 
       {bolum === "yetkiler" ? <>
+        {kapsamHatasi ? <KNot ton="tehlike">Kurucu alanları okunamadı ({kapsamHatasi}); aşağıdaki &quot;Tam yetki&quot; yazıları doğru olmayabilir.</KNot> : null}
         <div className="talep-tablo">
           <table className="crm-data-table" data-cols="sy-yetki">
             <thead><tr><th>Kişi</th><th>Kurumdaki rolü</th><th>Konsol</th></tr></thead>
             <tbody>
               {uyeler.filter((u) => u.is_active).map((u) => {
                 const ad = kisiAdi.get(u.user_id) ?? calisanAdi.get(u.user_id) ?? "—";
-                const konsol = { etiket: u.role === "owner" ? "Tam yetki" : "Giremez", ton: u.role === "owner" ? "success" : "neutral" };
+                const kurucu = u.role === "owner";
+                const alanlar = kurucuAlanlari.get(u.user_id) ?? null;
+                const konsol = !kurucu ? { etiket: "Giremez", ton: "neutral" }
+                  : alanlar ? { etiket: "Kısıtlı", ton: "warning" } : { etiket: "Tam yetki", ton: "success" };
+                const alanYazisi = alanlar ? alanlar.map(alanAdi).join(", ") : null;
+                /* Düzenleme: yalnızca tam yetkili, kendisi dışındaki kurucular (kural actions.ts'te). */
+                const duzenlenir = kurucu && tamYetkili && u.user_id !== userId && !kapsamTablosuYok && !kapsamHatasi;
                 return (
-                  <tr key={u.user_id} className={u.role === "owner" ? undefined : "is-pasif"}>
-                    <td data-label="Kişi"><span className="ek-kisi"><span className="ek-avatar" data-tur="bireysel" aria-hidden="true">{basHarfleri(ad)}</span><span className="ek-kisi-metin"><span className="crm-table-title">{ad}</span></span></span></td>
+                  <tr key={u.user_id} className={kurucu ? undefined : "is-pasif"}>
+                    <td data-label="Kişi"><span className="ek-kisi"><span className="ek-avatar" data-tur="bireysel" aria-hidden="true">{basHarfleri(ad)}</span><span className="ek-kisi-metin"><span className="crm-table-title">{ad}</span>{u.user_id === userId ? <span className="crm-table-sub">siz</span> : null}</span></span></td>
                     <td data-label="Kurumdaki rolü"><span className="crm-table-title">{roleNames[u.role] ?? u.role}</span></td>
-                    <td data-label="Konsol"><span className="status-pill" data-tone={konsol.ton}>{konsol.etiket}</span></td>
-                    <MobilSatir baslik={ad} durum={konsol} alt={[roleNames[u.role] ?? u.role]} />
+                    <td data-label="Konsol">
+                      <span className="status-pill" data-tone={konsol.ton}>{konsol.etiket}</span>
+                      {alanYazisi ? <small>{alanYazisi}</small> : null}
+                      {duzenlenir ? (
+                        <details className="sy-alan-duzen">
+                          <summary>Yetkiyi değiştir</summary>
+                          <form action={kurucuAlanlariniKaydet} className="sy-alan-formu">
+                            <input type="hidden" name="user_id" value={u.user_id} />
+                            <label><input type="checkbox" name="tam" value="1" defaultChecked={!alanlar} /> Tam yetki</label>
+                            {KONSOL_ALANLARI.map((a) => (
+                              <label key={a.kod} title={a.aciklama}><input type="checkbox" name="alan" value={a.kod} defaultChecked={Boolean(alanlar?.includes(a.kod))} /> {a.ad}</label>
+                            ))}
+                            <button className="panel-secondary" type="submit">Kaydet</button>
+                          </form>
+                        </details>
+                      ) : null}
+                    </td>
+                    <MobilSatir baslik={ad} durum={konsol} alt={[roleNames[u.role] ?? u.role, alanYazisi]} />
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <KNot>Kademeli kurucu rolü (yalnızca finans, yalnızca kurulum gibi) henüz yok; konsola giren herkes tam yetkili.</KNot>
+        <KNot>
+          Konsola ArvoOS kurumunun Kurum Sahipleri girer. Kısıtlı kurucu yalnızca işaretli alanları görür ve açar
+          (menü, sayfa ve işlemler); ana ekranda yalnızca kendi alanlarının girişleri çıkar. &quot;Tam yetki&quot;
+          işaretliyse alan seçimi yok sayılır. Yetkiyi yalnızca tam yetkili kurucu değiştirir ve kimse kendi yetkisini
+          değiştiremez — böylece en az bir tam yetkili kurucu her zaman kalır. Sınır panelde uygulanıyor; veritabanı
+          politikaları kısıtlı kurucuyu hâlâ kurucu sayıyor, yani bu bir iş bölümü, güven sınırı değil.
+        </KNot>
       </> : null}
 
       {bolum === "baglantilar" ? <>
