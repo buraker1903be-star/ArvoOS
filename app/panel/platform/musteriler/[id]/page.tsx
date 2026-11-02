@@ -1,3 +1,5 @@
+import { kurumAlicisiKur, type KurumResmiBilgisi } from "@/lib/proforma";
+import { resmiBilgiHatirlat } from "./resmi-bilgi-actions";
 import { alanAcik } from "@/lib/konsol-alanlari";
 import { konsolAlaniniAc } from "../../konsol-alani";
 import Link from "next/link";
@@ -142,7 +144,10 @@ export default async function MusteriDetayi({ params, searchParams }: {
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,slug,kind,plan_code,provisioning_state,license_status,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,custom_domain,davet_eposta,grup_markasi")
       .eq("id", id).maybeSingle(),
-    supabase.from("organizations").select("created_at").eq("id", id).maybeSingle(),
+    /* Resmi bilgiler de (02.11.2026): proforma alıcısı bunlardan doluyor; eksikse
+       kart söylüyor ve Kurum Sahiplerine hatırlatma gönderilebiliyor.
+       hata-tamam: okunamazsa yalnızca oluşturma tarihi ve eksik uyarısı çıkmıyor. */
+    supabase.from("organizations").select("created_at,name,display_name,legal_name,legal_address,legal_district,legal_city,tax_office,tax_number,contact_email").eq("id", id).maybeSingle(),
     supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,trial_ends_at").eq("organization_id", id),
     supabase.from("organization_payment_requests").select(ODEME_SECIMI).eq("organization_id", id).order("created_at", { ascending: false }),
     admin
@@ -251,6 +256,8 @@ export default async function MusteriDetayi({ params, searchParams }: {
   }
 
   const olusma = (kayit as { created_at?: string } | null)?.created_at ?? null;
+  /* Arvo'nun kendi kurumuna hatırlatma gönderilmiyor; okuma düştüyse (kayit yok) uyarı da yok. */
+  const resmiEksikler = kayit && tur !== "arvo" ? kurumAlicisiKur(kayit as unknown as KurumResmiBilgisi, []).eksikler : [];
   const sekmeAdresi = (kod: SekmeKodu) => (kod === "bilgiler" ? adres : `${adres}?pencere=${kod}`);
   const sekmeEki = (kod: SekmeKodu) =>
     kod === "odemeler" && bekleyen.length ? <span className="pu-sayi" data-tone="warning">{bekleyen.length}</span>
@@ -305,6 +312,17 @@ export default async function MusteriDetayi({ params, searchParams }: {
         </div>
       </dl>
     </nav>
+
+    {resmiEksikler.length ? (
+      <form action={resmiBilgiHatirlat} className="mk-resmi-eksik">
+        <input type="hidden" name="organization_id" value={kurum.id} />
+        <KNot ton="uyari">
+          <b>Kurum resmi bilgilerini girmemiş:</b> {resmiEksikler.join(", ")}. Proformaya bu hâliyle basılır.
+          Kurum Sahiplerine panel bildirimiyle hatırlatabilirsiniz (Ayarlar → Resmi bilgiler&apos;e götürür).
+        </KNot>
+        <button className="panel-secondary" type="submit">Hatırlat</button>
+      </form>
+    ) : null}
 
     {provisioned === "1" ? (
       <KNot ton="basari"><b>{ad} kuruldu.</b> Davet {kurum.davet_eposta ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse Kurulum sekmesinden giriş bağlantısı oluşturup WhatsApp&apos;tan gönderin.</KNot>

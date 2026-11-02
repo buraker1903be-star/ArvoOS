@@ -64,3 +64,7 @@
 .panel-root .musteri-karti .mu-not-alt small{color:var(--muted)}
 .panel-root .musteri-karti .mu-not-alt form{margin:0}
 .panel-root .musteri-karti .mu-kucuk{min-height:28px;padding:3px 10px;font-size:12px}
+
+/* Resmi bilgi eksik uyarısı ve hatırlatma düğmesi (02.11.2026). */
+.mk-resmi-eksik{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3)}
+.mk-resmi-eksik > :first-of-type{flex:1 1 360px}
