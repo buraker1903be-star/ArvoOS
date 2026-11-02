@@ -12,6 +12,8 @@ import { para, sayi } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { ModulMatrisi } from "./modul-matrisi";
+import { UrunSekmeleri } from "./urun-sekmeleri";
 import "../platform.css";
 import "../../hr/hr.css";
 import "../../crm/crm.css";
@@ -54,14 +56,17 @@ type Kiraci = {
 };
 
 export default async function UrunlerPage({ searchParams }: {
-  searchParams: Promise<{ bolum?: string }>;
+  searchParams: Promise<{ bolum?: string; gorunum?: string; suzgec?: string }>;
 }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const { bolum } = await searchParams;
+  const { bolum, gorunum, suzgec } = await searchParams;
   // Fiyatlandırma kendi sayfasına taşındı; eski bağlantılar kırılmasın.
   if (bolum === "fiyat") redirect("/panel/platform/fiyatlar");
+  /* Modül matrisi 02.11.2026'dan beri bu sayfanın sekmesi; sorguları
+     ayrı, özetinkiler boşuna çalışmasın diye erken dönüyor. */
+  if (gorunum === "moduller") return <ModulMatrisi suzgec={suzgec} />;
 
   const [kiraciSonucu, urunLisansSonucu, aboneSonucu, arvolab, arc, randevu] = await Promise.all([
     /* ÜÇÜ DE SAYFALI. Üçü de müşteri sayısıyla büyüyor ve PostgREST
@@ -155,13 +160,14 @@ export default async function UrunlerPage({ searchParams }: {
         <details className="os-menu talep-menu">
           <summary className="panel-secondary" aria-label="Diğer ekranlar">⋯</summary>
           <div className="os-menu-list" role="menu">
-            <Link className="os-menu-item" role="menuitem" href="/panel/platform/moduller">Modül matrisi</Link>
             <Link className="os-menu-item" role="menuitem" href="/panel/platform/subscribers">Bireysel abone planları</Link>
             <Link className="os-menu-item" role="menuitem" href="/panel/platform/saglik">Sistem sağlığı</Link>
           </div>
         </details>
       </div>
     </header>
+
+    <UrunSekmeleri aktif="ozet" />
 
     <nav className="kayit-serit talep-serit" aria-label="Ürün özeti">
       <dl>

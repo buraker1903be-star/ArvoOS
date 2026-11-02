@@ -166,7 +166,7 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
           <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
           <div className="os-menu-list" role="menu">
             {uygulama ? <a className="os-menu-item" role="menuitem" href={uygulama.url} target="_blank" rel="noreferrer">Ürünü aç ↗</a> : null}
-            <Link className="os-menu-item" role="menuitem" href="/panel/platform/moduller">Modül matrisi</Link>
+            <Link className="os-menu-item" role="menuitem" href="/panel/platform/urunler?gorunum=moduller">Modül matrisi</Link>
             {bireyselVar ? <Link className="os-menu-item" role="menuitem" href="/panel/platform/subscribers">Bireysel abone planları</Link> : null}
             <Link className="os-menu-item" role="menuitem" href="/panel/platform/saglik">Sistem sağlığı</Link>
           </div>

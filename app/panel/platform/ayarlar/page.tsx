@@ -24,20 +24,23 @@ import "../finans.css";
 /*
   SİSTEM AYARLARI (14.10.2026, Kurucu Konsolu'nun ana menüsü).
 
-  Dört bölüm, dördü de GERÇEK durumdan okunuyor:
+  Üç bölüm (02.11.2026'ya kadar dört: Entegrasyonlar ve Güvenlik ayrıydı,
+  ikisi de "hangi anahtar tanımlı" sorusunun yanıtıydı ve birleşti),
+  hepsi GERÇEK durumdan okunuyor:
 
     1. Kurucu yetkileri — konsola kim girebiliyor. Kural tek: ArvoOS'un
        kendi kurumunun (slug arvo-os) etkin Kurum Sahibi (uygulamada
        panel-context isPlatformOwner, veritabanında
        private.is_arvoos_founder). Kademeli kurucu rolü YOK; bölüm bunu
        açıkça söylüyor.
-    2. Entegrasyonlar — ödeme, WhatsApp, anlık bildirim, ürün köprüleri,
+    2. Bağlantılar ve sırlar — üstte entegrasyonlar: ödeme, WhatsApp, anlık bildirim, ürün köprüleri,
        e-fatura. Ortam değişkenlerinin yalnızca VAR/YOK bilgisi okunuyor,
        değeri asla (AGENTS.md: sırlar NEXT_PUBLIC_ ile başlamaz, ekrana da
        çıkmaz).
-    3. Güvenlik — sunucu sırlarının tanımlı olup olmadığı ve yetkinin
-       nerede uygulandığı.
-    4. İşlem kayıtları — kurucu işlemlerinin tek akışı: kurulum adımları,
+       Altta sunucu sırlarının tanımlı olup olmadığı ve yetkinin nerede
+       uygulandığı. Sistem sağlığının "Platform ayarları" sekmesi de buraya
+       katıldı (eksik ayarın bedeli ve son posta gönderim hatası).
+    3. İşlem kayıtları — kurucu işlemlerinin tek akışı: kurulum adımları,
        ödeme ve sözleşme kararları, fiyat değişiklikleri, üye erişimi.
        Lisans ve modül düzenlemeleri bugün ayrı bir kayıt bırakmıyor
        (yalnızca updated_by); bölüm bunu da yazıyor.
@@ -48,7 +51,9 @@ import "../finans.css";
 
 /* Durum rozetinin tonları (panelin status-pill data-tone değerleri). */
 type Ton = "success" | "warning" | "danger" | "info" | "neutral";
-type Entegrasyon = { ad: string; grup: string; durum: "bagli" | "eksik" | "yok"; not: string };
+/* "hata": anahtar tanımlı ama son gönderim düştü — ekranın yeşili işin
+   yapıldığı anlamına gelmeli. bedel: eksikken ne OLMADIĞI. */
+type Entegrasyon = { ad: string; grup: string; durum: "bagli" | "eksik" | "hata" | "yok"; not: string; bedel?: string; hata?: string };
 type Kayit = { anahtar: string; zaman: string; tur: string; ton: Ton; ne: string; kim: string | null };
 
 const var_ = (ad: string) => Boolean(process.env[ad]);
@@ -58,12 +63,14 @@ const var_ = (ad: string) => Boolean(process.env[ad]);
   2.600 piksel tutuyordu. Artık özet şeridindeki dört sayı aynı zamanda
   sekme (?bolum=); her seferinde tek bölüm açık, sayfa İşler gibi tek ekran.
 */
-const BOLUMLER = ["yetkiler", "entegrasyonlar", "guvenlik", "kayitlar"] as const;
+const BOLUMLER = ["yetkiler", "baglantilar", "kayitlar"] as const;
 type Bolum = (typeof BOLUMLER)[number];
+/* Eski bölüm adları (dock, yer imleri, bildirimler) birleşik bölümü açar. */
+const ESKI_BOLUM: Record<string, Bolum> = { entegrasyonlar: "baglantilar", guvenlik: "baglantilar" };
 
 export default async function SistemAyarlariPage({ searchParams }: { searchParams: Promise<{ bolum?: string; tur?: string }> }) {
   const { bolum: istenen, tur: istenenTur } = await searchParams;
-  const bolum: Bolum = (BOLUMLER as readonly string[]).includes(istenen ?? "") ? (istenen as Bolum) : "entegrasyonlar";
+  const bolum: Bolum = (BOLUMLER as readonly string[]).includes(istenen ?? "") ? (istenen as Bolum) : ESKI_BOLUM[istenen ?? ""] ?? "baglantilar";
   const sekme = (kod: Bolum) => ({ className: bolum === kod ? "is-active" : undefined });
   const sekmeBag = (kod: Bolum) => ({ href: `/panel/platform/ayarlar?bolum=${kod}`, "aria-current": bolum === kod ? ("page" as const) : undefined });
   const { supabase, isPlatformOwner, organization } = await getPanelContext();
@@ -101,6 +108,23 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
     admin.from("platform_subscription_requests").select("id,customer_name,contract_no,status,reviewed_by,reviewed_at").not("reviewed_at", "is", null).order("reviewed_at", { ascending: false }).limit(SON),
   ]) : [null, null, null, null, null];
 
+  /*
+    "TANIMLI" İLE "ÇALIŞIYOR" AYNI ŞEY DEĞİL (Sistem sağlığından taşındı,
+    02.11.2026). Ortam değişkeninin varlığı iptal edilmiş bir anahtarı da
+    "Bağlı" gösterir. Tek gerçek kanıt YAPILMIŞ bir gönderim: otomatik
+    proforma her denemenin sonucunu satıra yazıyor, en yeni hata buradan.
+  */
+  const postaHatasi = admin
+    ? await admin.from("platform_proformalari")
+        .select("proforma_no,gonderim_hatasi,duzenleme_tarihi")
+        .not("gonderim_hatasi", "is", null)
+        .order("duzenleme_tarihi", { ascending: false })
+        .limit(1)
+    : null;
+  const sonPostaHatasi = ((postaHatasi?.data ?? []) as { proforma_no: string | null; gonderim_hatasi: string }[])[0] ?? null;
+
+  /* Okunamayan gönderim kaydı "gönderim sorunsuz" değil: Dikkat listesinde yazar. */
+  const postaOkunamadi = postaHatasi?.error?.message ?? null;
   const okumaHatalari = [kurulum, erisim, fiyat, odeme, sozlesme].flatMap((s) => (s?.error ? [s.error.message] : []));
   const kisiIdleri = new Set<string>(kurucular);
   const kurumIdleri = new Set<string>();
@@ -166,16 +190,21 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
        aynı liste Sistem sağlığı ekranında da sayılıyor ve eksik bir anahtar
        orada "açık sorun" oluyor. İki yerde iki ayrı liste tutmak, birinin
        sapması demekti. */
-    ...mesajAyarlari(var_, pushYapilandi()).map((a) => ({
-      ad: a.ad, grup: "Mesaj ve bildirim", durum: (a.bagli ? "bagli" : "eksik") as Entegrasyon["durum"], not: a.not,
-    })),
+    ...mesajAyarlari(var_, pushYapilandi()).map((a) => {
+      const dustu = a.ad.startsWith("E-posta") && a.bagli && sonPostaHatasi;
+      return {
+        ad: a.ad, grup: "Mesaj ve bildirim", not: a.not, bedel: a.bedel,
+        durum: (dustu ? "hata" : a.bagli ? "bagli" : "eksik") as Entegrasyon["durum"],
+        hata: dustu ? `Son deneme düştü${sonPostaHatasi.proforma_no ? ` (${sonPostaHatasi.proforma_no})` : ""}: ${sonPostaHatasi.gonderim_hatasi}` : undefined,
+      };
+    }),
     { ad: "ArvoARC köprüsü", grup: "Ürün köprüsü", durum: arc.ok ? "bagli" : "eksik", not: kopruNotu(arc) },
     { ad: "ArvoCal köprüsü", grup: "Ürün köprüsü", durum: randevu.ok ? "bagli" : "eksik", not: kopruNotu(randevu) },
     { ad: "ArvoLab köprüsü", grup: "Ürün köprüsü", durum: arvolab && !arvolab.broken ? "bagli" : "eksik", not: !arvolab ? "ARVOLAB_SUPABASE_URL / anahtar eksik" : arvolab.broken ? "Yanıt vermiyor" : "Bağlı, yanıt veriyor" },
     { ad: "E-fatura / e-arşiv (Paraşüt)", grup: "Fatura", durum: "yok", not: "Bağlı değil; planlandı. Platform faturası bugün kesilmiyor" },
   ];
-  const DURUM_ADI = { bagli: "Bağlı", eksik: "Eksik", yok: "Yok" } as const;
-  const DURUM_TONU: Record<Entegrasyon["durum"], Ton> = { bagli: "success", eksik: "warning", yok: "neutral" };
+  const DURUM_ADI = { bagli: "Bağlı", eksik: "Eksik", hata: "Gönderim hatası", yok: "Yok" } as const;
+  const DURUM_TONU: Record<Entegrasyon["durum"], Ton> = { bagli: "success", eksik: "warning", hata: "danger", yok: "neutral" };
 
   const sirlar = [
     { ad: "Supabase sunucu anahtarı", var: sunucuAnahtari, not: "Konsolun kiracılar arası okuması, köprüler ve zamanlanmış işler bunu kullanır" },
@@ -186,24 +215,25 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
     { ad: "Randevu köprüsü sırrı", var: var_("RANDEVU_BRIDGE_SECRET"), not: "Randevu'nun ArvoOS'a çağrıları" },
   ];
 
-  const eksikEntegrasyon = entegrasyonlar.filter((e) => e.durum === "eksik").length;
+  /* Gönderim hatası da eksik sayılır: Sistem sağlığının "açık sorun" sayısıyla aynı kural. */
+  const eksikEntegrasyon = entegrasyonlar.filter((e) => e.durum === "eksik" || e.durum === "hata").length;
   const KAYIT_TURLERI = ["Kurulum", "Üye erişimi", "Fiyat", "Ödeme kararı", "Sözleşme onayı"];
   const seciliTur = KAYIT_TURLERI.includes(istenenTur ?? "") ? istenenTur! : "";
   const gorunenKayitlar = seciliTur ? kayitlar.filter((k) => k.tur === seciliTur) : kayitlar;
   const eksikSir = sirlar.filter((s) => !s.var).length;
   const dikkat: { ad: string; not: string; bolum: Bolum; etiket: string; ton: Ton }[] = [
-    ...sirlar.filter((x) => !x.var).map((x) => ({ ad: x.ad, not: x.not, bolum: "guvenlik" as Bolum, etiket: "Eksik", ton: "danger" as Ton })),
-    ...entegrasyonlar.filter((e) => e.durum === "eksik").map((e) => ({ ad: e.ad, not: e.not, bolum: "entegrasyonlar" as Bolum, etiket: "Eksik", ton: "warning" as Ton })),
+    ...sirlar.filter((x) => !x.var).map((x) => ({ ad: x.ad, not: x.not, bolum: "baglantilar" as Bolum, etiket: "Eksik", ton: "danger" as Ton })),
+    ...entegrasyonlar.filter((e) => e.durum === "eksik" || e.durum === "hata").map((e) => ({ ad: e.ad, not: e.hata ?? e.bedel ?? e.not, bolum: "baglantilar" as Bolum, etiket: DURUM_ADI[e.durum], ton: DURUM_TONU[e.durum] })),
+    ...(postaOkunamadi ? [{ ad: "Proforma gönderim kayıtları", not: postaOkunamadi, bolum: "baglantilar" as Bolum, etiket: "Okunamadı", ton: "danger" as Ton }] : []),
     ...(okumaHatalari.length ? [{ ad: "İşlem kayıtları", not: okumaHatalari.join(" · "), bolum: "kayitlar" as Bolum, etiket: "Okunamadı", ton: "danger" as Ton }] : []),
   ];
 
   const BOLUM_ADI: Record<Bolum, { baslik: string; alt: string }> = {
     yetkiler: { baslik: "Kurucu yetkileri", alt: "Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Sunucu işlemleri ve veritabanı politikaları aynı kuralı uyguluyor." },
-    entegrasyonlar: { baslik: "Entegrasyonlar", alt: "Ortam değişkenlerinin ve kayıtlı bağlantıların gerçek durumu; sırların değeri gösterilmez." },
-    guvenlik: { baslik: "Güvenlik", alt: "Sırlar yalnızca sunucuda; burada yalnızca tanımlı olup olmadıkları yazıyor." },
+    baglantilar: { baslik: "Bağlantılar ve sırlar", alt: "Entegrasyonların ve sunucu sırlarının gerçek durumu; eksikse neyin olmadığı yazıyor, sırların değeri gösterilmez." },
     kayitlar: { baslik: "İşlem kayıtları", alt: "Kurulum adımları, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt." },
   };
-  const SEKME_ADI: Record<Bolum, string> = { yetkiler: "Kurucu yetkileri", entegrasyonlar: "Entegrasyonlar", guvenlik: "Güvenlik", kayitlar: "İşlem kayıtları" };
+  const SEKME_ADI: Record<Bolum, string> = { yetkiler: "Kurucu yetkileri", baglantilar: "Bağlantılar ve sırlar", kayitlar: "İşlem kayıtları" };
   const bas = BOLUM_ADI[bolum];
   const bos = (baslik: string, aciklama: string) => (
     <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
@@ -231,22 +261,22 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
     <nav className="kayit-serit talep-serit" aria-label="Sistem özeti">
       <dl>
         <div {...sekme("yetkiler")}><dt>Kurucu</dt><dd><Link {...sekmeBag("yetkiler")}>{kurucular.length}</Link></dd><small>konsola girebilen kişi</small></div>
-        <div {...sekme("entegrasyonlar")}>
+        <div {...sekme("baglantilar")}>
           <dt>Entegrasyon</dt>
-          <dd><Link {...sekmeBag("entegrasyonlar")}>{entegrasyonlar.filter((e) => e.durum === "bagli").length} / {entegrasyonlar.length}</Link></dd>
+          <dd><Link {...sekmeBag("baglantilar")}>{entegrasyonlar.filter((e) => e.durum === "bagli").length} / {entegrasyonlar.length}</Link></dd>
           <small>{eksikEntegrasyon ? `${eksikEntegrasyon} eksik ayar` : "bağlı olanlar çalışıyor"}</small>
         </div>
-        <div {...sekme("guvenlik")}>
+        <div {...sekme("baglantilar")}>
           <dt>Sunucu sırları</dt>
-          <dd className={eksikSir ? "talep-uyari" : undefined}><Link {...sekmeBag("guvenlik")}>{sirlar.filter((s) => s.var).length} / {sirlar.length}</Link></dd>
+          <dd className={eksikSir ? "talep-uyari" : undefined}><Link {...sekmeBag("baglantilar")}>{sirlar.filter((s) => s.var).length} / {sirlar.length}</Link></dd>
           <small>{eksikSir ? "eksik sır var" : "hepsi tanımlı"}</small>
         </div>
         <div {...sekme("kayitlar")}><dt>İşlem kaydı</dt><dd><Link {...sekmeBag("kayitlar")}>{kayitlar.length}</Link></dd><small>son kurucu işlemleri</small></div>
       </dl>
     </nav>
 
-    {/* Bölüm kimlikleri (#yetkiler, #entegrasyonlar, #guvenlik, #kayitlar)
-        dock'taki ve şeritteki bağlantıların hedefi: değiştirilmez. */}
+    {/* Bölüm kimlikleri (#yetkiler, #baglantilar, #kayitlar) şeritteki
+        bağlantıların hedefi. */}
     <div className="talep-izgara personel-iki ekip-izgara">
     <section className="panel-card talep-bilgi" id={bolum} aria-label={bas.baslik}>
       <div className="ekip-suzgec talep-suzgec ek-arac">
@@ -280,30 +310,33 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
         <KNot>Kademeli kurucu rolü (yalnızca finans, yalnızca kurulum gibi) henüz yok; konsola giren herkes tam yetkili.</KNot>
       </> : null}
 
-      {bolum === "entegrasyonlar" ? (
+      {bolum === "baglantilar" ? <>
         <div className="talep-tablo">
           <table className="crm-data-table" data-cols="sy-entegrasyon">
             <thead><tr><th>Bağlantı</th><th>Grup</th><th>Ayrıntı</th><th>Durum</th></tr></thead>
             <tbody>
               {/* Gruba göre, grubun içinde önce eksik (bakılacak olan) en üstte. */}
-              {[...entegrasyonlar].sort((a, b) => a.grup.localeCompare(b.grup, "tr") || Number(a.durum !== "eksik") - Number(b.durum !== "eksik")).map((e) => {
+              {[...entegrasyonlar].sort((a, b) => a.grup.localeCompare(b.grup, "tr") || Number(a.durum !== "eksik" && a.durum !== "hata") - Number(b.durum !== "eksik" && b.durum !== "hata")).map((e) => {
                 const durum = { etiket: DURUM_ADI[e.durum], ton: DURUM_TONU[e.durum] };
                 return (
                   <tr key={e.ad} className={e.durum === "yok" ? "is-pasif" : undefined}>
                     <td data-label="Bağlantı"><span className="crm-table-title">{e.ad}</span></td>
                     <td data-label="Grup"><span className="crm-table-sub">{e.grup}</span></td>
-                    <td data-label="Ayrıntı"><span className="crm-table-sub" title={e.not}>{e.not}</span></td>
-                    <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
-                    <MobilSatir baslik={e.ad} durum={durum} alt={[e.not]} />
+                    <td data-label="Ayrıntı">
+                      <span className="crm-table-sub" title={e.not}>{e.not}</span>
+                      {/* Bedel BAĞLIYKEN DE yazılıyor: anahtarı kaldırmayı düşünen
+                          kişinin görmesi gereken şey ne işe yaradığı. */}
+                      {e.bedel ? <small>Eksikse: {e.bedel}</small> : null}
+                      {e.hata ? <small className="sy-posta-hatasi">{e.hata}</small> : null}
+                    </td>
+                    <td data-label="Durum"><span className="status-pill" data-tone={durum.ton} title={e.hata}>{durum.etiket}</span></td>
+                    <MobilSatir baslik={e.ad} durum={durum} alt={[e.hata ?? e.not]} />
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-      ) : null}
-
-      {bolum === "guvenlik" ? <>
         <div className="talep-tablo">
           <table className="crm-data-table" data-cols="sy-sir">
             <thead><tr><th>Sır</th><th>Ne için</th><th>Durum</th></tr></thead>

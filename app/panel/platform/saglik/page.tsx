@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
 import { eksikMesajAyarlari, mesajAyarlari } from "@/lib/platform-mesaj-ayarlari";
 import { pushYapilandi } from "@/lib/anlik-bildirim-gonder";
@@ -87,6 +87,8 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   const { sekme: istenenSekme } = await searchParams;
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  /* Eski "Platform ayarları" sekmesinin bağlantıları Ayarlar'a gider (02.11.2026). */
+  if (istenenSekme === "ayar") redirect("/panel/platform/ayarlar?bolum=baglantilar");
   const admin = createAdminClient();
 
   const [
@@ -404,11 +406,16 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     { kod: "kopru", ad: "Köprü ve kopyalar", adet: kopruSorunu },
     { kod: "kota", ad: "Kota ve limitler", adet: kotaSorunu },
     { kod: "odeme", ad: "Ödeme ve kredi", adet: odemeSorunu },
-    { kod: "ayar", ad: "Platform ayarları", adet: ayarSorunu },
+    /* "Platform ayarları" sekmesi 02.11.2026'da kalktı: aynı liste Ayarlar →
+       Bağlantılar ve sırlar'da da vardı (bağlantısı da yanlış adrese,
+       ?sekme=entegrasyon'a gidiyordu). Sayı açık sorunda kalıyor, sorun
+       özetinin satırı oraya götürüyor. */
   ] as const;
   type SekmeKodu = (typeof sekmeler)[number]["kod"];
   /* Adres sekme söylemiyorsa sorunlu ilk sekme: kurucu boş bir sekmeye inip doluyu aramasın. */
   const sekme: SekmeKodu = sekmeler.find((x) => x.kod === istenenSekme)?.kod ?? sekmeler.find((x) => x.adet > 0)?.kod ?? "isler";
+  /* Eksik ayarın ayrıntısı Ayarlar'da (tek liste, 02.11.2026). */
+  const AYAR_ADRESI = "/panel/platform/ayarlar?bolum=baglantilar";
   const sekmeAdresi = (kod: SekmeKodu) => `/panel/platform/saglik?sekme=${kod}`;
 
   return <main className="plt talep cari ekip sistem-sayfa">
@@ -474,6 +481,11 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
           <dt>Ödeme ve kredi</dt>
           <dd className={odemeSorunu ? "talep-uyari" : undefined}><Link href={sekmeAdresi("odeme")}>{krediSonucu.hata ? "—" : sayi(odemeSorunu)}</Link></dd>
           <small>{odemeSorunu ? "İşlenemeyen ödeme ya da yüklenemeyen kredi" : "Ödeme tarafı temiz"}</small>
+        </div>
+        <div>
+          <dt>Platform ayarı</dt>
+          <dd className={ayarSorunu ? "talep-uyari" : undefined}><Link href={AYAR_ADRESI}>{postaHatasiHatasi ? "—" : sayi(ayarSorunu)}</Link></dd>
+          <small>{ayarSorunu ? "Eksik anahtar ya da düşen gönderim" : "Mesaj ve bildirim tamam"}</small>
         </div>
       </dl>
     </nav>
@@ -727,46 +739,6 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
           ) : bos("İşlenemeyen ödeme yok", "İşlenemeyen ödeme bildirimi yok.")}
         </section> : null}
 
-        {sekme === "ayar" ? <section>
-          {bolumBasi(
-            "Platform ayarları",
-            "Mesaj ve bildirim anahtarları. Eksik olmaları hiçbir akışı DÜŞÜRMÜYOR (AGENTS.md) ama sessizce kapatıyor: aşağıdaki satır neyin gitmeyeceğini yazıyor.",
-          )}
-          <div className="talep-tablo fn-ic-tablo">
-            <table className="crm-data-table" data-cols="sy-ayar">
-              <thead><tr><th>Ayar</th><th>Durum</th><th>Eksikse ne olmuyor</th></tr></thead>
-              <tbody>
-                {mesajAyarListesi.map((ayar) => (
-                  <tr key={ayar.ad}>
-                    <td data-label="Ayar">{kisi(ayar.ad, ayar.not, "/panel/platform/ayarlar?sekme=entegrasyon")}</td>
-                    <td data-label="Durum">
-                      {/* Anahtarı tanımlı ama son gönderimi düşmüş ayar
-                          "Bağlı" değil: ekranın yeşili, işin yapıldığı
-                          anlamına gelmeli. */}
-                      {ayar.ad.startsWith("E-posta") && ayar.bagli && sonPostaHatasi ? (
-                        <span className="status-pill" data-tone="danger" title={sonPostaHatasi.gonderim_hatasi}>Gönderim hatası</span>
-                      ) : (
-                        <span className="status-pill" data-tone={ayar.bagli ? "success" : "warning"}>{ayar.bagli ? "Bağlı" : "Eksik"}</span>
-                      )}
-                    </td>
-                    {/* Bedel BAĞLIYKEN DE yazılıyor: "bu anahtar ne işe
-                        yarıyor" sorusunun cevabı, onu kaldırmayı düşünen
-                        kişinin görmesi gereken şey. */}
-                    <td data-label="Eksikse ne olmuyor">
-                      <small>{ayar.bedel}</small>
-                      {ayar.ad.startsWith("E-posta") && ayar.bagli && sonPostaHatasi ? (
-                        <small className="sy-posta-hatasi">
-                          Son deneme düştü{sonPostaHatasi.proforma_no ? ` (${sonPostaHatasi.proforma_no})` : ""}: {sonPostaHatasi.gonderim_hatasi}
-                        </small>
-                      ) : null}
-                    </td>
-                    <MobilSatir baslik={ayar.ad} durum={{ etiket: ayar.bagli ? "Bağlı" : "Eksik", ton: ayar.bagli ? "success" : "warning" }} alt={[ayar.not]} />
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section> : null}
         </div>
       </section>
 
@@ -786,10 +758,11 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
                 { ad: "Kurulum hatası", adet: kurulumHatalari.length, kod: "kurulum", href: "/panel/platform/kurulumlar" },
                 { ad: "Yüklenemeyen AI kredisi", adet: krediSonucu.hata ? null : krediSonucu.veri.length, kod: "odeme" },
                 { ad: "İşlenemeyen ödeme", adet: odemeOlaylari.length, kod: "odeme" },
+                { ad: "Eksik ayar ya da posta hatası", adet: ayarSorunu, kod: "ayar", href: AYAR_ADRESI, yer: "Ayarlar" },
               ].map((satir) => (
                 <li key={satir.ad}>
                   <Link href={"href" in satir && satir.href ? satir.href : sekmeAdresi(satir.kod as SekmeKodu)} scroll={false} replace={!("href" in satir && satir.href)} aria-current={sekme === satir.kod ? "true" : undefined}>
-                    <span className="pu-govde"><b>{satir.ad}</b><small>{sekmeler.find((x) => x.kod === satir.kod)?.ad ?? "Kurulumlar"}</small></span>
+                    <span className="pu-govde"><b>{satir.ad}</b><small>{sekmeler.find((x) => x.kod === satir.kod)?.ad ?? ("yer" in satir ? satir.yer : "Kurulumlar")}</small></span>
                     <span className="status-pill" data-tone={satir.adet === null ? "danger" : satir.adet ? "warning" : "success"}>{satir.adet === null ? "okunamadı" : satir.adet ? sayi(satir.adet) : "yok"}</span>
                   </Link>
                 </li>
