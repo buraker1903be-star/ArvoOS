@@ -353,6 +353,19 @@ damgalarda "…250000" gibi geçersiz saatler oluştu). `npm run check:migration
 CI'da çalışır. Mevcut bir migration düzenlenmez; yenisi eklenir. Yeni tablo eklerken RLS'i açıp
 politikalarını aynı migration'da yazın.
 
+**Uygulanmamış migration denetimi** (02.11.2026). Migration'lar SQL
+Editor'den elle uygulanıyor ve 29.10.2026'daki otomatik proforma
+migration'ı canlıya dört gün uygulanmadan kaldı: proforma müşteriye
+gitmedi, sebep yalnızca sunucu günlüğündeydi. Artık Sistem sağlığı →
+Veritabanı (ve konsol ana sayfasının Sorunlar kuyruğu) kodun beklediği
+tabloları, sütunları, işlevleri ve tetikleyicileri canlıda arıyor
+(`platform_sema_eksikleri`). Bakılan nesneler `lib/migration-izleri.json`'da,
+`tests/db/ortam.mjs`'teki `BEKLEYEN_MIGRATIONLAR`'dan üretiliyor: listeye bir
+migration ekleyince **`npm run migration:izleri`** çalıştırın —
+`check:migrations` dosya güncel değilse CI'ı düşürüyor. Denetim yalnızca
+YARATILAN nesneye bakar; kısıt/politika değişikliği ya da var olan bir
+işlevin yeniden yazılması buradan görünmez.
+
 **ArvoARC 19 Eylül 2026'dan beri ayrı Supabase projesinde** (`obaskcdxaaezjglayash`;
 ArvoOS `oahshpkgdzrraqdzjqau`'da kaldı). Bu projedeki `arc_*` tabloları geçişten
 kalma salt okunur yedek: onlara migration yazmayın, kod eklemeyin. ArvoARC'ın kurum,

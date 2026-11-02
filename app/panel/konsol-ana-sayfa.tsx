@@ -1,3 +1,4 @@
+import MIGRATION_IZLERI from "@/lib/migration-izleri.json";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
@@ -155,6 +156,13 @@ export async function KonsolAnaSayfa() {
   */
   if (konsolKapsami !== null) return <KisitliKonsol kapsam={konsolKapsami} />;
   const admin = createAdminClient();
+  /* Uygulanmamış migration (02.11.2026, ayrıntı Sistem sağlığı → Veritabanı).
+     Şimdi başlatılıyor, Sorunlar kuyruğunu kurarken bekleniyor: öteki
+     okumalarla paralel koşsun. Denetim kurulmamışsa ya da okunamazsa burada
+     satır çıkmıyor; sağlık ekranı onu ayrıca söylüyor. */
+  const semaIstegi = admin
+    ? Promise.resolve(admin.rpc("platform_sema_eksikleri", { p_izler: MIGRATION_IZLERI })).catch(() => null)
+    : Promise.resolve(null);
 
   const [
     { data: kiraciSatirlari, error: kiraciHatasi },
@@ -534,7 +542,13 @@ export async function KonsolAnaSayfa() {
     kiracının dosyasına gidiyor. Köprü kopması yerinde kaldı: o tek bir
     kiracının değil bütün ürünün sorunu.
   */
+  const semaSonucu = await semaIstegi;
+  const eksikMigrationlar = [...new Set(((semaSonucu?.error ? [] : semaSonucu?.data) ?? []).map((e: { eksik_migration: string }) => e.eksik_migration))].sort();
   const sorunlar = [
+    ...eksikMigrationlar.map((ad) => ({
+      id: `m-${ad}`, href: "/panel/platform/saglik?sekme=veritabani", ad: `${ad}.sql`,
+      alt: "Canlı veritabanına uygulanmamış; SQL Editor'de çalıştırın", rozet: "Migration eksik",
+    })),
     ...odemeOlaylari.map((olay) => ({
       id: `o-${olay.id}`,
       href: olay.organizationId ? `/panel/platform/musteriler/${olay.organizationId}?pencere=odemeler` : "/panel/platform/payments#karsiliksiz",

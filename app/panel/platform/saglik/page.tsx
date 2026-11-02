@@ -1,3 +1,4 @@
+import MIGRATION_IZLERI from "@/lib/migration-izleri.json";
 import { paketLimitleriOku } from "../paket-limitleri-oku";
 import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
@@ -85,6 +86,9 @@ type Kiraci = {
   user_limit: number | null; storage_limit_mb: number | null; aktif_uye: number;
 };
 
+/* Eksik nesnenin türü ekranda Türkçe (lib/migration-izleri). */
+const TUR_ADI: Record<string, string> = { tablo: "tablo", sutun: "sütun", islev: "işlev", tetikleyici: "tetikleyici" };
+
 export default async function SistemSagligiPage({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
   const { sekme: istenenSekme } = await searchParams;
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
@@ -136,7 +140,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     paketLimitleriOku(supabase),
   ]);
 
-  const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya, odemeOlaylari] = await Promise.all([
+  const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya, odemeOlaylari, semaSonucu] = await Promise.all([
     getArvolabBridgeHealth(),
     getArcBridgeHealth(),
     getRandevuBridgeHealth(),
@@ -144,6 +148,13 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     arcKopyalari(),
     randevuKopyalari(),
     getPaymentIncidents(),
+    /*
+      UYGULANMAMIŞ MIGRATION (02.11.2026). Otomatik proforma migration'ı
+      canlıya dört gün uygulanmadan kaldı ve kimse fark etmedi; sebep
+      yalnızca sunucu günlüğündeydi. Kodun beklediği nesneler
+      (lib/migration-izleri.json) canlıda var mı, burada soruluyor.
+    */
+    admin ? admin.rpc("platform_sema_eksikleri", { p_izler: MIGRATION_IZLERI }) : Promise.resolve(null),
   ]);
 
   /*
@@ -353,6 +364,15 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   if (okunamayan.length)
     console.error("[konsol] sağlık sayfası sorguları okunamadı", okunamayan.map(([ad, h]) => `${ad}: ${h.message}`));
 
+  /* Denetimin kendisi kurulmamışsa (işlev yok) bu da bir eksik migration:
+     sekme onu adıyla söylüyor, "eksik yok" demiyor. */
+  const semaHatasi = semaSonucu?.error ?? null;
+  const semaKurulmamis = Boolean(semaHatasi && (semaHatasi.code === "PGRST202" || semaHatasi.code === "42883"));
+  const semaEksikleri = (semaSonucu?.data ?? []) as { eksik_migration: string; eksik_tur: string; eksik_ad: string }[];
+  const eksikMigrationlar = [...new Map(semaEksikleri.map((e) => [e.eksik_migration, semaEksikleri.filter((x) => x.eksik_migration === e.eksik_migration)])).entries()]
+    .sort(([a], [b]) => a.localeCompare(b));
+  if (semaHatasi && !semaKurulmamis) console.error("[konsol] migration denetimi okunamadı", semaHatasi.message);
+  const veritabaniSorunu = !admin || (semaHatasi && !semaKurulmamis) ? null : semaKurulmamis ? 1 : eksikMigrationlar.length;
   const kopukKopru = kopruler.filter((k) => k.bozuk).length;
   /* Limit sapması da sayılıyor: şeritteki "açık sorun" ile aşağıdaki
      bölümlerin toplamı ayrışırsa rozet yanıltıcı olur. */
@@ -375,7 +395,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   /* Gönderim hatası da açık sorun: anahtar tanımlıyken bile posta
      gitmiyorsa kurucunun bunu bilmesi gerekiyor. */
   const ayarSorunu = eksikAyarlar.length + (sonPostaHatasi ? 1 : 0);
-  const toplamSorun = krediSonucu.veri.length + cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length + ayarSorunu;
+  const toplamSorun = krediSonucu.veri.length + cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length + ayarSorunu + (veritabaniSorunu ?? 0);
 
   const kisi = (ad: string, alt: string, href: string | null) => {
     const ic = <>
@@ -414,6 +434,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     { kod: "kopru", ad: "Köprü ve kopyalar", adet: kopruSorunu },
     { kod: "kota", ad: "Kota ve limitler", adet: kotaSorunu },
     { kod: "odeme", ad: "Ödeme ve kredi", adet: odemeSorunu },
+    { kod: "veritabani", ad: "Veritabanı", adet: veritabaniSorunu ?? 0 },
     /* "Platform ayarları" sekmesi 02.11.2026'da kalktı: aynı liste Ayarlar →
        Bağlantılar ve sırlar'da da vardı (bağlantısı da yanlış adrese,
        ?sekme=entegrasyon'a gidiyordu). Sayı açık sorunda kalıyor, sorun
@@ -747,6 +768,32 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
           ) : bos("İşlenemeyen ödeme yok", "İşlenemeyen ödeme bildirimi yok.")}
         </section> : null}
 
+        {sekme === "veritabani" ? <section>
+          {bolumBasi("Uygulanmamış migration", <>Kodun beklediği tablo, sütun, işlev ve tetikleyiciler canlı veritabanında aranıyor. Eksik çıkan migration&apos;ı Supabase SQL Editor&apos;de çalıştırın (dosya: <code>supabase/migrations/&lt;ad&gt;.sql</code>), sonra bu sekmeyi yenileyin.</>)}
+          {!admin ? <KNot ton="uyari">Sunucu anahtarı tanımlı değil; denetim çalışmıyor.</KNot>
+            : semaKurulmamis ? <KNot ton="tehlike"><b>Denetimin kendisi kurulmamış:</b> 20261102192458_platform_sema_eksikleri migration&apos;ı uygulanmamış. Onu uyguladıktan sonra öteki migration&apos;lar da burada denetlenir.</KNot>
+            : semaHatasi ? <KNot ton="tehlike">Denetim okunamadı: {semaHatasi.message} — &quot;eksik yok&quot; demek değil.</KNot>
+            : eksikMigrationlar.length ? (
+              <div className="talep-tablo fn-ic-tablo">
+                <table className="crm-data-table" data-cols="sy-sema">
+                  <thead><tr><th>Migration</th><th>Canlıda olmayan</th></tr></thead>
+                  <tbody>
+                    {eksikMigrationlar.map(([ad, eksikler]) => (
+                      <tr key={ad}>
+                        <td data-label="Migration"><span className="crm-table-title plt-mono">{ad}.sql</span></td>
+                        <td data-label="Canlıda olmayan">{eksikler.map((e) => <small key={`${e.eksik_tur}-${e.eksik_ad}`} className="sy-sema-eksik">{TUR_ADI[e.eksik_tur] ?? e.eksik_tur} {e.eksik_ad}</small>)}</td>
+                        <MobilSatir baslik={`${ad}.sql`} durum={{ etiket: "Uygulanmamış", ton: "danger" }} alt={eksikler.map((e) => `${TUR_ADI[e.eksik_tur] ?? e.eksik_tur} ${e.eksik_ad}`)} />
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : bos("Eksik migration yok", `Döküm tarihinden sonraki ${sayi(MIGRATION_IZLERI.length)} migration'ın izleri canlıda var.`)}
+          <KNot>
+            Denetim yalnızca YARATILAN nesneye bakıyor. Kısıt ya da politika değiştiren ve var olan bir işlevi yeniden yazan
+            migration&apos;ın uygulanıp uygulanmadığı buradan anlaşılamaz; onlar için Supabase&apos;teki kendi kontrol sorgusunu kullanın.
+          </KNot>
+        </section> : null}
         </div>
       </section>
 
@@ -766,6 +813,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
                 { ad: "Kurulum hatası", adet: kurulumHatalari.length, kod: "kurulum", href: "/panel/platform/kurulumlar" },
                 { ad: "Yüklenemeyen AI kredisi", adet: krediSonucu.hata ? null : krediSonucu.veri.length, kod: "odeme" },
                 { ad: "İşlenemeyen ödeme", adet: odemeOlaylari.length, kod: "odeme" },
+                { ad: "Uygulanmamış migration", adet: veritabaniSorunu, kod: "veritabani" },
                 { ad: "Eksik ayar ya da posta hatası", adet: ayarSorunu, kod: "ayar", href: AYAR_ADRESI, yer: "Ayarlar" },
               ].map((satir) => (
                 <li key={satir.ad}>
