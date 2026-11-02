@@ -18,6 +18,7 @@ import { OdemeBolumu, type Odeme, type UrunSatiri } from "./bolumler";
 import { BelgeBolumu } from "./belgeler";
 import { HareketBolumu } from "./hareketler";
 import { DestekBolumu } from "./destek";
+import { NotBolumu } from "./notlar";
 import { gecikmisMi, YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import { etkinlikHali, kurumEtkinligi, type VarlikSatiri } from "@/lib/musteri-etkinligi";
 import { musteriSagligi, SAGLIK_ADI, SAGLIK_TONU } from "@/lib/musteri-sagligi";
@@ -77,6 +78,8 @@ const SEKMELER = [
   { kod: "hareketler", ad: "Hareketler" },
   /* Kurumun destek talepleri (02.11.2026); rozet yanıt bekleyen sayısı. */
   { kod: "destek", ad: "Destek" },
+  /* Kurucunun iç notları ve takip hatırlatması (02.11.2026). */
+  { kod: "notlar", ad: "Notlar" },
   /* Kiracı dosyası: kurum ayarları formu, modüller, kurulum adımları ve
      sahibe giriş bağlantısı. */
   { kod: "kurulum", ad: "Kurulum" },
@@ -220,6 +223,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
       <OdemeBolumu supabase={supabase} odemeler={odemeler} kurumAdi={ad} urunler={urunler} grup={grup} />
       <BelgeBolumu organizationId={id} />
     </>;
+    if (kod === "notlar") return <NotBolumu supabase={supabase} organizationId={id} />;
     if (kod === "destek") return <DestekBolumu supabase={supabase} organizationId={id} />;
     if (kod === "hareketler") return <HareketBolumu admin={admin} organizationId={id} odemeler={odemeler} kayitAcildi={olusma} tur={hareketTuru} adres={adres} />;
     if (kod === "kurulum") {

@@ -15,6 +15,7 @@ import { getPaymentIncidents, incidentLabels } from "@/lib/payment-incidents";
 import { havaleDenetimleri } from "@/lib/beklenen-odeme";
 import { reviewBankTransferPayment } from "./platform/payments/actions";
 import { HizliOnay } from "./platform/payments/hizli-onay";
+import { notTamamla } from "./platform/musteriler/[id]/not-actions";
 import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
 import { gunFarki } from "@/lib/is-adimlari";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -244,6 +245,34 @@ export async function KonsolAnaSayfa() {
     talepler konsolun hiçbir yerinde görünmüyordu (lib/destek-kuyrugu).
     Kurucunun oturumuyla; RLS kurucuya bütün kurumların talebini açıyor.
   */
+  /*
+    TAKİP EDİLECEKLER (02.11.2026): müşteri notlarından takip tarihi
+    gelmiş ya da geçmiş, tamamlanmamış olanlar (migration 20261102131114).
+    Tablo henüz kurulmadıysa (PGRST205 / 42P01) sekme hiç çizilmiyor:
+    migration uygulanmadan ana ekranın en üstünde "okunamadı" uyarısı
+    çıkması yanlış alarm olurdu. Başka her hata "okunamadı".
+  */
+  /*
+    BU AYIN YENİ MÜŞTERİSİ (02.11.2026): şeritte, aylık rapora bağlantı.
+    Türkiye ayının başından (UTC'de ayın ilk gecesi 00:00–03:00 arası
+    önceki aya düşmesin). Arvo'nun kendisi ve grup markaları müşteri değil
+    (lib/kurum-turu kuralının sorgu karşılığı). Sayım head sorgusuyla.
+  */
+  const ayBasi = `${todayInIstanbul().slice(0, 7)}-01T00:00:00+03:00`;
+  const yeniSayimi = await (admin ?? supabase).from("organizations").select("id", { count: "exact", head: true })
+    .gte("created_at", ayBasi).neq("kind", "internal").eq("grup_markasi", false);
+  if (yeniSayimi.error) console.error("[konsol] bu ayın yeni müşteri sayısı okunamadı", yeniSayimi.error.message);
+
+  /* sınırsız-tamam: zamanı gelen takipler — kurucunun temizlediği iş listesi, sayısı küçük. */
+  const takipSonucu = await supabase.from("platform_musteri_notlari")
+    .select("id,organization_id,metin,takip_tarihi")
+    .lte("takip_tarihi", todayInIstanbul())
+    .is("tamamlandi_at", null)
+    .order("takip_tarihi", { ascending: true });
+  const takipKurulu = !(takipSonucu.error && (takipSonucu.error.code === "PGRST205" || takipSonucu.error.code === "42P01"));
+  const takipHatasi = takipKurulu ? takipSonucu.error : null;
+  const takipler = (takipSonucu.data ?? []) as { id: string; organization_id: string; metin: string; takip_tarihi: string }[];
+
   /* sınırsız-tamam: yanıt bekleyen talepler — kurucunun temizlediği iş listesi, sayısı küçük. */
   const { data: destekSatirlari, error: destekHatasi } = await supabase.from("support_tickets")
     .select("id,subject,priority,status,last_message_at,organization_id")
@@ -313,6 +342,7 @@ export async function KonsolAnaSayfa() {
     ["Kurulum günlüğü", kurulumHatasi],
     ["Bekleyen proformalar", proformaHatasi],
     ["Destek talepleri", destekHatasi],
+    ["Takip notları", takipHatasi],
   ] as [string, { message: string } | null][])
     .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
   if (okunamayan.length)
@@ -545,6 +575,7 @@ export async function KonsolAnaSayfa() {
   const sekmeler = [
     { ad: "Ödeme onayları", sayi: odemeler.length, hata: Boolean(bekleyenOdeme.error) },
     { ad: "Destek", sayi: destekTalepleri.length, hata: Boolean(destekHatasi) },
+    ...(takipKurulu ? [{ ad: "Takip", sayi: takipler.length, hata: Boolean(takipHatasi) }] : []),
     ...(sozlesmeler ? [{ ad: "Sözleşmeler", sayi: sozlesmeler.length, hata: Boolean(sozlesmeHatasi) }] : []),
     ...(admin ? [{ ad: "Proformalar", sayi: proformalar.length, hata: Boolean(proformaHatasi) }] : []),
     { ad: "Kurulumlar", sayi: kurulumdakiler.length, hata: Boolean(kiraciHatasi) },
@@ -574,6 +605,7 @@ export async function KonsolAnaSayfa() {
     { ad: "Müşteri kurum", deger: `${kullanimda} / ${musteriler.length}`, alt: "Kullanımda / toplam", href: "/panel/platform/musteriler?tur=kurumsal" },
     ...(grupMarkalari.length ? [{ ad: "Grup markası", deger: String(grupMarkalari.length), alt: "Müşteri sayılmaz", href: "/panel/platform/musteriler" }] : []),
     { ad: "Son 14 gün tahsilat", deger: para(tahsilatSerisi.total), alt: tahsilatSerisi.delta === null ? undefined : `${tahsilatSerisi.delta >= 0 ? "+" : ""}${tahsilatSerisi.delta}% önceki döneme göre`, href: "/panel/platform/tahsilat" },
+    { ad: "Bu ay yeni müşteri", deger: yeniSayimi.error ? "—" : String(yeniSayimi.count ?? 0), alt: yeniSayimi.error ? "okunamadı" : "aylık rapora git", href: `/panel/platform/rapor?ay=${todayInIstanbul().slice(0, 7)}-01` },
     { ad: "Bekleyen iş", deger: String(bekleyenIs), alt: bekleyenIs ? "Aşağıdaki kuyrukta" : "Kuyruk boş", href: "#bugunun-isleri", ton: bekleyenIs ? "gold" : undefined },
   ];
 
@@ -669,6 +701,31 @@ export async function KonsolAnaSayfa() {
               </ul>
             ) : bos("Yanıt bekleyen destek talebi yok.")}
           </section>
+
+          {takipKurulu ? (
+            <section>
+              {bas("Müşteri notlarından takip tarihi gelen ya da geçenler; tamamlayınca listeden düşer.", "/panel/platform/musteriler", "Müşteriler")}
+              {takipHatasi ? okunamadi : takipler.length ? (
+                <ul className="pu-liste">
+                  {takipler.map((t) => {
+                    const gecikme = gunFarki(t.takip_tarihi, bugun);
+                    return (
+                      <li key={t.id} className="pu-eylemli">
+                        <Link href={`/panel/platform/musteriler/${t.organization_id}?pencere=notlar`}>
+                          <span className="pu-govde">
+                            <b>{kurumAdi.get(t.organization_id) ?? "Kurum"}</b>
+                            <small>{t.metin.length > 120 ? `${t.metin.slice(0, 117)}…` : t.metin}</small>
+                          </span>
+                          <span className="status-pill" data-tone={gecikme > 0 ? "danger" : "gold"}>{gecikme > 0 ? `${gecikme} gün geçti` : "Bugün"}</span>
+                        </Link>
+                        <form action={notTamamla}><input type="hidden" name="id" value={t.id} /><button type="submit" className="panel-secondary konsol-takip-kapat">Tamamlandı</button></form>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : bos("Bugün takip edilecek not yok.")}
+            </section>
+          ) : null}
 
           {sozlesmeler ? (
             <section>
