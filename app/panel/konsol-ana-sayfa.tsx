@@ -1,3 +1,4 @@
+import { GONDERIM_ADI, gonderimDurumu, gonderimSirasi } from "@/lib/proforma-gonderim";
 import MIGRATION_IZLERI from "@/lib/migration-izleri.json";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -251,7 +252,7 @@ export async function KonsolAnaSayfa() {
           aradığı "hangisinin süresi dolmak üzere".
         */
         /* sınırsız-tamam: bekleyen proforma kuyruğu — kurucunun temizlediği iş listesi, sayısı küçük. */
-        admin.from("platform_proformalari").select("id,proforma_no,musteri_adi,product,toplam,para_birimi,gecerlilik_tarihi")
+        admin.from("platform_proformalari").select("id,proforma_no,musteri_adi,product,toplam,para_birimi,gecerlilik_tarihi,gonderildi_at,bildirildi_at,gonderim_hatasi")
           .eq("durum", "bekliyor").order("gecerlilik_tarihi", { ascending: true }),
       ])
     : [{ data: null, error: null }, { data: [], error: null }, { data: null, error: null }];
@@ -580,8 +581,12 @@ export async function KonsolAnaSayfa() {
     `okunamayan` da aynı adı en üstte yazıyor).
   */
   const bugun = todayInIstanbul();
-  const proformalar = ((proformaSatirlari ?? []) as { id: string; proforma_no: string; musteri_adi: string; product: string; toplam: number; para_birimi: string | null; gecerlilik_tarihi: string }[])
-    .map((p) => ({ ...p, kalan: gunFarki(bugun, p.gecerlilik_tarihi) }));
+  /* Müşteriye ULAŞMAYAN önce (02.11.2026, lib/proforma-gonderim): bu kuyruk
+     "gönderilmiş, ödemesi gelmemiş" diyordu ama gönderime hiç bakmıyordu;
+     29.10–02.11 arasında kesilenler müşteriye gitmediği hâlde öyle görünüyordu. */
+  const proformalar = gonderimSirasi((proformaSatirlari ?? []) as { id: string; proforma_no: string; musteri_adi: string; product: string; toplam: number; para_birimi: string | null; gecerlilik_tarihi: string; gonderildi_at: string | null; bildirildi_at: string | null; gonderim_hatasi: string | null }[])
+    .map((p) => ({ ...p, kalan: gunFarki(bugun, p.gecerlilik_tarihi), gonderim: gonderimDurumu(p) }));
+  const gitmeyenProforma = proformalar.filter((p) => p.gonderim !== "gitti").length;
   /*
     YENİLEME RİSKİ (02.11.2026): ArvoOS lisansı açık, yenilemesi 30 gün
     içinde ve son 7 günde panele kimse girmemiş müşteriler
@@ -796,7 +801,9 @@ export async function KonsolAnaSayfa() {
 
           {admin ? (
             <section>
-              {bas("Gönderilmiş, ödemesi gelmemiş proformalar; geçerliliği en yakın olan başta.", "/panel/platform/tahsilat?kanal=proforma", "Proformalar")}
+              {bas(gitmeyenProforma
+                ? `Ödemesi gelmemiş proformalar; ${gitmeyenProforma} tanesi müşteriye ulaşmamış ve en üstte. Tahsilat → Proforma'dan toplu gönderilir.`
+                : "Gönderilmiş, ödemesi gelmemiş proformalar; geçerliliği en yakın olan başta.", "/panel/platform/tahsilat?kanal=proforma", "Proformalar")}
               {proformaHatasi ? okunamadi : proformalar.length ? (
                 <ul className="pu-liste">
                   {proformalar.map((p) => (
@@ -804,12 +811,16 @@ export async function KonsolAnaSayfa() {
                       <Link href={`/panel/platform/tahsilat/proforma/${p.id}`}>
                         <span className="pu-govde">
                           <b>{p.musteri_adi}</b>
-                          <small>{[p.proforma_no, productName(p.product)].join(" · ")}</small>
+                          <small>{[p.proforma_no, productName(p.product), p.gonderim !== "gitti" ? GONDERIM_ADI[p.gonderim] : null].filter(Boolean).join(" · ")}</small>
                         </span>
                         <span className="konsol-tutar">{para(Number(p.toplam), p.para_birimi ?? "TRY")}</span>
-                        <span className="status-pill" data-tone={p.kalan < 0 ? "danger" : p.kalan <= 3 ? "gold" : "neutral"}>
-                          {p.kalan < 0 ? `${-p.kalan} gün geçti` : p.kalan === 0 ? "Bugün son gün" : `${p.kalan} gün kaldı`}
-                        </span>
+                        {p.gonderim === "gitmedi" ? (
+                          <span className="status-pill" data-tone="danger" title={p.gonderim_hatasi ?? undefined}>Gitmedi</span>
+                        ) : (
+                          <span className="status-pill" data-tone={p.kalan < 0 ? "danger" : p.kalan <= 3 ? "gold" : "neutral"}>
+                            {p.kalan < 0 ? `${-p.kalan} gün geçti` : p.kalan === 0 ? "Bugün son gün" : `${p.kalan} gün kaldı`}
+                          </span>
+                        )}
                       </Link>
                     </li>
                   ))}

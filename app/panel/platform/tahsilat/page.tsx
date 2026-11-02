@@ -9,7 +9,8 @@ import { KNot } from "../konsol-ui";
 import { basHarfleri, para, sayi, tarih } from "../bicim";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PanelModal } from "../../components/panel-modal";
-import { bankaHesabiDurumu, bankaHesabiKaydet, faturaYukle, proformaEsle, proformaIptal, proformaOlustur } from "./actions";
+import { bankaHesabiDurumu, bankaHesabiKaydet, faturaYukle, gitmeyenleriGonder, proformaEsle, proformaIptal, proformaOlustur } from "./actions";
+import { GONDERIM_ADI, GONDERIM_TONU, gonderimDurumu } from "@/lib/proforma-gonderim";
 import { ibanYazisi } from "@/lib/iban";
 import { eslesmeSirasi, kalemleriCoz, PROFORMA_DURUM_ADI, proformaGorunumu, VARSAYILAN_KDV_ORANI, type ProformaAlici } from "@/lib/proforma";
 import { productName } from "@/lib/products";
@@ -101,6 +102,7 @@ type Proforma = {
   id: string; proforma_no: string; product: string; organization_id: string | null; subscriber_id: string | null; musteri_adi: string;
   alici: ProformaAlici | null; kalemler: unknown; ara_toplam: number; kdv_orani: number; kdv: number; toplam: number; para_birimi: string;
   duzenleme_tarihi: string; gecerlilik_tarihi: string; durum: string;
+  gonderildi_at: string | null; bildirildi_at: string | null; gonderim_hatasi: string | null;
 };
 type Aday = { id: string; tutar: number; tarih: string | null };
 
@@ -256,21 +258,30 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
   );
 
   let proformalar: Proforma[] = [];
+  /* Müşteriye ulaşmamış bekleyen proforma sayısı (veritabanından, aşağıda). */
+  let gitmeyenProforma = 0;
   let proformaMusterileri: ProformaMusterisi[] = [];
   let kisayollar: ProformaFiyatKisayolu[] = [];
   const adaylar = new Map<string, (Aday & { tutarTutuyor: boolean })[]>();
   if (admin && secili === "proforma") {
-    const [pYaniti, aYaniti] = await Promise.all([
+    const [pYaniti, aYaniti, gYaniti] = await Promise.all([
       admin.from("platform_proformalari")
-        .select("id,proforma_no,product,organization_id,subscriber_id,musteri_adi,alici,kalemler,ara_toplam,kdv_orani,kdv,toplam,para_birimi,duzenleme_tarihi,gecerlilik_tarihi,durum")
+        .select("id,proforma_no,product,organization_id,subscriber_id,musteri_adi,alici,kalemler,ara_toplam,kdv_orani,kdv,toplam,para_birimi,duzenleme_tarihi,gecerlilik_tarihi,durum,gonderildi_at,bildirildi_at,gonderim_hatasi")
         .order("created_at", { ascending: false }).limit(LISTE),
       // Seçim kutusu için; kuruma geçmiş abone de kendi adına proforma alabilir (eski dönem borcu).
       admin.from("product_subscribers").select("id,full_name,email,external_user_id").eq("product", "arvolab").is("closed_at", null)
         .order("created_at", { ascending: false }).limit(500),
+      /* Müşteriye ulaşmamış bekleyenlerin SAYISI veritabanından: liste son
+         LISTE proformayla sınırlı, sayım ondan yapılsaydı eskileri kaçırırdı.
+         Toplu gönder düğmesi de aynı süzgeçle arıyor (actions gitmeyenleriGonder). */
+      admin.from("platform_proformalari").select("id", { count: "exact", head: true })
+        .eq("durum", "bekliyor").or("gonderildi_at.is.null,bildirildi_at.is.null"),
     ]);
+    if (gYaniti.error) throw new Error("Proforma gönderim durumu okunamadı: " + gYaniti.error.message);
     if (pYaniti.error) throw new Error("Proformalar okunamadı: " + pYaniti.error.message);
     if (aYaniti.error) throw new Error("Aboneler okunamadı: " + aYaniti.error.message);
     proformalar = (pYaniti.data ?? []) as Proforma[];
+    gitmeyenProforma = gYaniti.count ?? 0;
     const aboneSatirlari = (aYaniti.data ?? []) as { id: string; full_name: string | null; email: string; external_user_id: string }[];
     const [kurumAlici, aboneAdlari, fiyatlar] = await Promise.all([
       kurumAlicilari(admin),
@@ -521,7 +532,13 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
           ) : bosKutu("Banka hesabı yok", "Havaleyle ödeyecek müşteriler için en az bir hesap ekleyin; proformada ödeme bilgileri bölümü buradan dolar.")}
         </>
       ) : secili === "proforma" ? (
-        proformalar.length ? (
+        proformalar.length ? (<>
+          {gitmeyenProforma ? (
+            <form action={gitmeyenleriGonder} className="fn-gonderim-serit">
+              <KNot ton="uyari"><b>{sayi(gitmeyenProforma)} proforma müşteriye ulaşmamış.</b> Ödeme bekliyorlar ama e-posta ya da bildirim gitmemiş; müşteri belgeden haberdar olmayabilir. Yalnızca eksik kanal yeniden denenir.</KNot>
+              <button className="panel-primary" type="submit">Gitmeyenleri gönder</button>
+            </form>
+          ) : null}
           <div className="talep-tablo">
             <table className="crm-data-table" data-cols="fn-proforma">
               <thead><tr><th>Proforma</th><th>Müşteri</th><th className="crm-col-date">Geçerlilik</th><th className="crm-col-amount">Tutar</th><th>Durum</th><th></th></tr></thead>
@@ -547,7 +564,14 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
                       </td>
                       <td className="crm-col-date" data-label="Geçerlilik">{tarih(p.gecerlilik_tarihi)}<small>düzenleme {tarih(p.duzenleme_tarihi)}</small></td>
                       <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{para(Number(p.toplam), p.para_birimi)}</span><small>KDV %{Number(p.kdv_orani)} dahil</small></td>
-                      <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                      <td data-label="Durum">
+                        <span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span>
+                        {/* Ödeme bekleyen proformanın müşteriye ulaşıp ulaşmadığı (lib/proforma-gonderim):
+                            gitmeyen "bekliyor" görünüyordu, müşteri ise hiç haberdar değildi. */}
+                        {p.durum === "bekliyor" && gonderimDurumu(p) !== "gitti" ? (
+                          <small className="fn-gonderim" data-tone={GONDERIM_TONU[gonderimDurumu(p)]} title={p.gonderim_hatasi ?? undefined}>{GONDERIM_ADI[gonderimDurumu(p)]}</small>
+                        ) : null}
+                      </td>
                       <td className="crm-table-actions">
                         {p.durum === "bekliyor" ? (
                           <PanelModal triggerLabel="Ödemeyle eşleştir" kicker={p.proforma_no} title={`${p.musteri_adi} · ${para(Number(p.toplam), p.para_birimi)}`}
@@ -584,7 +608,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
             </table>
             <SatirTiklama />
           </div>
-        ) : bosKutu("Henüz proforma yok", "Ödeme almadan önce müşteriye proforma düzenleyin; müşteri ödedikten sonra burada ödemeyle eşleştirin, faturayı da tahsilatın yanından yükleyin.")
+        </>) : bosKutu("Henüz proforma yok", "Ödeme almadan önce müşteriye proforma düzenleyin; müşteri ödedikten sonra burada ödemeyle eşleştirin, faturayı da tahsilatın yanından yükleyin.")
       ) : secili === "otomatik" ? (
         <>
           <header className="phr-bas fn-alt-bas"><h2>Açık otomatik yenilemeler <span className="pu-sayi">{sayi(acikYenilemeler.length)}</span></h2><small>Kayıtlı karttan her dönem sonunda çekilir; 3 gün önce hatırlatma gider.</small></header>

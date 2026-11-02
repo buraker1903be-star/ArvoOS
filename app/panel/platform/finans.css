@@ -114,3 +114,12 @@
 .panel-root .sy-kosular i[data-sonuc="eksik"]{background:var(--warning)}
 .panel-root .sy-kosular i[data-sonuc="hata"]{background:var(--danger)}
 .panel-root .sy-ayrinti{display:block;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--muted)}
+
+/* Proformanın müşteriye ulaşıp ulaşmadığı (Tahsilat → Proforma, 02.11.2026). */
+/* Tablo hücresindeki small genel olarak soluk (yukarıdaki kural); bu satır
+   uyarı olduğu için onu özgüllükte yenmeli. */
+.os-root .talep-tablo .crm-data-table td small.fn-gonderim{margin-top:4px;font-size:var(--fs-sm)}
+.os-root .talep-tablo .crm-data-table td small.fn-gonderim[data-tone="danger"]{color:var(--danger)}
+.os-root .talep-tablo .crm-data-table td small.fn-gonderim[data-tone="warning"]{color:var(--warning)}
+.fn-gonderim-serit{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+.fn-gonderim-serit > :first-child{flex:1 1 320px}
