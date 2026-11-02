@@ -20,7 +20,7 @@ import type { Odeme } from "./bolumler";
 */
 const SINIR = 200;
 const GOSTERILEN = 150;
-const TURLER: HareketTuru[] = ["odeme", "proforma", "fatura", "kurulum", "konsol"];
+const TURLER: HareketTuru[] = ["odeme", "proforma", "fatura", "kurulum", "konsol", "destek", "not"];
 
 export async function HareketBolumu({ admin, organizationId, odemeler, kayitAcildi, tur, adres }: {
   admin: SupabaseClient | null; organizationId: string; odemeler: Odeme[]; kayitAcildi: string | null;
@@ -28,7 +28,7 @@ export async function HareketBolumu({ admin, organizationId, odemeler, kayitAcil
 }) {
   if (!admin) return <KBos baslik="Hareketler okunamıyor" aciklama="Sunucu anahtarı tanımlı değil; proforma ve kurulum kayıtları yalnızca onunla okunuyor." />;
   const odemeIdleri = odemeler.map((o) => o.id);
-  const [proformaSonucu, faturaSonucu, kurulumSonucu, konsolSonucu] = await Promise.all([
+  const [proformaSonucu, faturaSonucu, kurulumSonucu, konsolSonucu, destekSonucu, notSonucu] = await Promise.all([
     admin.from("platform_proformalari").select("id,proforma_no,durum,toplam,para_birimi,product,created_at,odendi_at,updated_at")
       .eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(SINIR),
     // Faturalar ödemeye bağlı; ödemeler zaten bu kurumla sınırlı ve tam.
@@ -41,7 +41,14 @@ export async function HareketBolumu({ admin, organizationId, odemeler, kayitAcil
        sağ sütundaki "Son etkinlik"te, burası müşteriyle Arvo arasındaki iş. */
     admin.from("activity_logs").select("id,action,entity_type,metadata,created_at")
       .eq("organization_id", organizationId).eq("metadata->>by", "founder_console").order("created_at", { ascending: false }).limit(SINIR),
+    /* Destek talepleri ve kurucunun notları (02.11.2026). */
+    admin.from("support_tickets").select("id,subject,priority,status,created_at,resolved_at")
+      .eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(SINIR),
+    admin.from("platform_musteri_notlari").select("id,metin,takip_tarihi,tamamlandi_at,olusturuldu")
+      .eq("organization_id", organizationId).order("olusturuldu", { ascending: false }).limit(SINIR),
   ]);
+  const destek = zorunlu(destekSonucu, "Destek talepleri") ?? [];
+  const notlar = zorunlu(notSonucu, "Müşteri notları") ?? [];
   const proformalar = zorunlu(proformaSonucu, "Proformalar") ?? [];
   const kurulum = zorunlu(kurulumSonucu, "Kurulum kayıtları") ?? [];
   const konsol = zorunlu(konsolSonucu, "Konsol işlemleri") ?? [];
@@ -53,6 +60,8 @@ export async function HareketBolumu({ admin, organizationId, odemeler, kayitAcil
     faturalar: (zorunlu(faturaSonucu, "Faturalar") ?? []) as Parameters<typeof musteriHareketleri>[0]["faturalar"],
     kurulum: kurulum as Parameters<typeof musteriHareketleri>[0]["kurulum"],
     konsol: konsol as Parameters<typeof musteriHareketleri>[0]["konsol"],
+    destek: destek as NonNullable<Parameters<typeof musteriHareketleri>[0]["destek"]>,
+    notlar: notlar as NonNullable<Parameters<typeof musteriHareketleri>[0]["notlar"]>,
     urunAdi: productName,
     kurulumIslemi: (k) => KURULUM_ISLEMI[k] ?? k,
     kurulumAsamasi: (k) => KURULUM_ADI[k] ?? k,
@@ -65,11 +74,13 @@ export async function HareketBolumu({ admin, organizationId, odemeler, kayitAcil
     proformalar.length >= SINIR ? "proformalar" : null,
     kurulum.length >= SINIR ? "kurulum kayıtları" : null,
     konsol.length >= SINIR ? "konsol işlemleri" : null,
+    destek.length >= SINIR ? "destek talepleri" : null,
+    notlar.length >= SINIR ? "notlar" : null,
   ].filter(Boolean);
   const turAdresi = (t: HareketTuru | null) => `${adres}?pencere=hareketler${t ? `&tur=${t}` : ""}`;
 
   return (
-    <KKart baslik="Hareketler" aciklama="Ödeme, proforma, fatura, kurulum ve konsol işlemleri tek çizelgede; en yeni üstte."
+    <KKart baslik="Hareketler" aciklama="Ödeme, proforma, fatura, kurulum, konsol işlemleri, destek talepleri ve notlarınız tek çizelgede; en yeni üstte."
       sag={<span className="status-pill">{sayi(suzulen.length)} olay</span>}>
       <div className="ekip-suzgec talep-suzgec ek-arac">
         <nav className="ek-segment" aria-label="Hareket türü">
@@ -91,7 +102,10 @@ export async function HareketBolumu({ admin, organizationId, odemeler, kayitAcil
             <thead><tr><th className="crm-col-date">Zaman</th><th>Olay</th><th>Tür</th><th className="crm-col-amount">Tutar</th><th></th></tr></thead>
             <tbody>
               {gorunen.map((h) => {
-                const href = h.proformaId ? `/panel/platform/tahsilat/proforma/${h.proformaId}` : null;
+                const href = h.proformaId ? `/panel/platform/tahsilat/proforma/${h.proformaId}`
+                  : h.destekId ? `/panel/platform/destek/${h.destekId}`
+                  : h.tur === "not" ? `${adres}?pencere=notlar`
+                  : null;
                 /* Türün rozeti olayın sonucunun renginde: reddedilen ödeme kırmızı, onaylanan yeşil. */
                 const durum = { etiket: HAREKET_TURU_ADI[h.tur], ton: h.ton };
                 const tutar = h.tutar === null ? null : para(h.tutar, h.paraBirimi);
