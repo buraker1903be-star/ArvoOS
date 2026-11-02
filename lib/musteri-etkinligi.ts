@@ -63,3 +63,19 @@ export function yenilemeRiski(girdi: { acik: boolean; yenileme: string | null; s
   const kalan = (Date.parse(girdi.yenileme) - simdi) / GUN;
   return kalan <= RISK_PENCERESI_GUN && etkinlikHali(girdi.son, simdi) !== "aktif";
 }
+
+/**
+ * Kurulup KULLANILMAYAN müşteri (02.11.2026): kurulumu bitmiş ve
+ *  - denemede olup son 7 günde kimse girmemiş (deneme boşa gidiyor,
+ *    ödemeye dönmeyecek), ya da
+ *  - ödüyor (aktif / gecikmiş) ama panele HİÇ girilmemiş (kurulum
+ *    yapıldı, kullanıcı başlamadı).
+ * Yenileme riski ayrı bir soru (yenileme tarihine bağlı); çağıran iki
+ * listeyi birbirinden ayıklıyor.
+ */
+export function kullanilmayanMi(girdi: { kurulum: string; durum: string | null; son: string | null }, simdi: number): boolean {
+  if (girdi.kurulum !== "active") return false;
+  if (girdi.durum === "trialing") return etkinlikHali(girdi.son, simdi) !== "aktif";
+  if (girdi.durum === "active" || girdi.durum === "past_due") return !girdi.son;
+  return false;
+}

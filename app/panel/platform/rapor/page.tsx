@@ -9,6 +9,9 @@ import { ayEtiketi, aySecenekleri } from "@/lib/personel-hedefi";
 import { productName } from "@/lib/products";
 import { aylikRapor, degisimYuzdesi, type RaporAbonesi, type RaporKurumu, type RaporLisansi } from "@/lib/aylik-musteri-raporu";
 import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
+import { CsvIndir } from "../../components/csv-indir";
+import { csvTutar } from "@/lib/csv";
+import { turkiyeGunu } from "@/lib/otomatik-proforma";
 import { para, sayi, tarih } from "../bicim";
 import "../platform.css";
 import "../../crm/crm.css";
@@ -92,12 +95,28 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
   const yeni = r.yeniKurumlar.length + r.yeniAboneler.length;
   const kayip = r.kaybedilenKurumlar.length + r.kaybedilenAboneler.length;
 
+  /* Rapor dosyası: her hareket bir satır, tür sütunuyla; en sonda ayın özeti. */
+  const gun = (d: string) => turkiyeGunu(d);
+  const csvSatirlari: (string | number | null)[][] = [
+    ...r.yeniKurumlar.map((k) => ["Yeni müşteri", "Kurumsal", k.ad, null, gun(k.created_at)]),
+    ...r.yeniAboneler.map((a) => ["Yeni müşteri", "Bireysel", a.ad, URUN(a.product), gun(a.created_at)]),
+    ...r.kaybedilenKurumlar.map((k) => ["Kaybedilen", "Kurumsal", k.ad, null, k.bitis]),
+    ...r.kaybedilenAboneler.map((a) => ["Kaybedilen", "Bireysel", a.ad, URUN(a.product), a.bitis]),
+    ...r.ekUrunler.map((l) => ["Ek ürün", "Kurumsal", l.kurumAdi, URUN(l.product), gun(l.created_at)]),
+    ["Özet", null, `Tahsilat ${ayEtiketi(ay)}`, csvTutar(buGelir), null],
+    ["Özet", null, `Tahsilat ${ayEtiketi(oncekiAy)}`, csvTutar(oncekiGelir), null],
+  ];
+
   return <main className="plt talep cari ekip finans-sayfa konsol-rapor">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker"><Link href="/panel/platform/musteriler">MÜŞTERİLER</Link></small>
         <h1>Aylık müşteri raporu</h1>
         <p className="ek-alt">{ayEtiketi(ay)}{ay === buAy ? " · ay sürüyor, sayılar kesin değil" : ""} · yeni ve kaybedilen müşteriler, ek ürünler ve tahsilat.</p>
+      </div>
+      <div className="talep-bas-eylem">
+        <CsvIndir basliklar={["Tür", "Müşteri türü", "Müşteri", "Ürün / tutar", "Tarih"]} satirlar={csvSatirlari}
+          dosyaAdi={`musteri-raporu-${ay.slice(0, 7)}.csv`} etiket="Raporu indir (CSV)" aciklama="Ayın bütün hareketleri ve tahsilat özeti, Excel'de açılır" />
       </div>
     </header>
 

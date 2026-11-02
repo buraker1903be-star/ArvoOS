@@ -21,7 +21,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { tumSatirlar } from "@/lib/rapor-okuma";
 import { musteriEtkinlikleri } from "@/lib/musteri-etkinligi-oku";
-import { etkinlikYazisi, yenilemeRiski } from "@/lib/musteri-etkinligi";
+import { etkinlikYazisi, kullanilmayanMi, yenilemeRiski } from "@/lib/musteri-etkinligi";
 import { beklemeSuresi, gecikmisMi, kuyrukSirala, ONCELIK_ADI, YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import Link from "next/link";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
@@ -526,6 +526,20 @@ export async function KonsolAnaSayfa() {
         .filter((k) => k.risk)
         .sort((a, b) => (a.yenileme ?? "").localeCompare(b.yenileme ?? ""))
     : [];
+  /*
+    KURULUP KULLANILMAYANLAR (02.11.2026, lib/musteri-etkinligi
+    kullanilmayanMi): denemesi boşa giden ya da ödediği hâlde panele hiç
+    girilmemiş müşteriler. Yeni müşteriyi ilk haftalarda kaybetmenin en
+    sık yolu bu; yenileme riskinde olanlar orada, burada tekrar edilmiyor.
+  */
+  const riskliIdler = new Set(riskliler.map((k) => k.id));
+  const kullanmayanlar = etkinlik.harita
+    ? kiracilar
+        .filter((k) => musteriMi(k) && !riskliIdler.has(k.id))
+        .map((k) => ({ id: k.id, ad: k.display_name || k.name, durum: k.license_status, son: etkinlik.harita!.get(k.id)?.son ?? null, kurulum: k.provisioning_state }))
+        .filter((k) => kullanilmayanMi({ kurulum: k.kurulum, durum: k.durum, son: k.son }, etkinlik.simdi))
+        .sort((a, b) => (a.son ?? "").localeCompare(b.son ?? "") || a.ad.localeCompare(b.ad, "tr"))
+    : [];
   const destekTalepleri = kuyrukSirala((destekSatirlari ?? []) as { id: string; subject: string; priority: string; status: string; last_message_at: string; organization_id: string }[]);
   const destekAni = new Date(simdi());
   const sekmeler = [
@@ -536,6 +550,7 @@ export async function KonsolAnaSayfa() {
     { ad: "Kurulumlar", sayi: kurulumdakiler.length, hata: Boolean(kiraciHatasi) },
     { ad: "Dönemi dolanlar", sayi: hatirlatmalar.length, hata: Boolean(urunHatasi) },
     { ad: "Yenileme riski", sayi: riskliler.length, hata: !etkinlik.harita || Boolean(kiraciHatasi) },
+    { ad: "Kullanmayanlar", sayi: kullanmayanlar.length, hata: !etkinlik.harita || Boolean(kiraciHatasi) },
     { ad: "Sorunlar", sayi: sorunlar.length, hata: Boolean(kiraciHatasi) },
   ];
   const bekleyenIs = sekmeler.reduce((toplam, sekme) => toplam + sekme.sayi, 0);
@@ -754,6 +769,25 @@ export async function KonsolAnaSayfa() {
                 ))}
               </ul>
             ) : bos("Yenilemesi yaklaşan bütün müşteriler paneli kullanıyor.")}
+          </section>
+
+          <section>
+            {bas("Denemesi boşa giden (son 7 günde kimse girmedi) ya da ödediği hâlde panele hiç girilmemiş müşteriler; arayıp başlamalarına yardım edin.", "/panel/platform/musteriler?etkinlik=sessiz", "Müşteriler")}
+            {!etkinlik.harita || kiraciHatasi ? okunamadi : kullanmayanlar.length ? (
+              <ul className="pu-liste">
+                {kullanmayanlar.map((k) => (
+                  <li key={k.id}>
+                    <Link href={`/panel/platform/musteriler/${k.id}?pencere=kullanicilar`}>
+                      <span className="pu-govde">
+                        <b>{k.ad}</b>
+                        <small>Son kullanım: {etkinlikYazisi(k.son, etkinlik.simdi).toLocaleLowerCase("tr-TR")}</small>
+                      </span>
+                      <span className="status-pill" data-tone={k.durum === "trialing" ? "gold" : "info"}>{k.durum === "trialing" ? "Denemede" : "Ödüyor, girmedi"}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : bos("Kurulan bütün müşteriler paneli kullanıyor.")}
           </section>
 
           <section>

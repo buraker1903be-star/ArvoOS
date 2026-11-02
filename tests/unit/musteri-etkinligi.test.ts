@@ -46,3 +46,17 @@ test("risk: yenilemesi 30 gün içinde ve etkin değil", () => {
   assert.equal(yenilemeRiski({ acik: false, yenileme: yakin, son: null }, SIMDI), false);
   assert.equal(yenilemeRiski({ acik: true, yenileme: null, son: null }, SIMDI), false);
 });
+
+test("kurulup kullanılmayan: deneme boşa gidiyor ya da ödeyen hiç girmemiş", async () => {
+  const { kullanilmayanMi } = await import("@/lib/musteri-etkinligi");
+  const k = (kurulum: string, durum: string | null, son: string | null) => kullanilmayanMi({ kurulum, durum, son }, SIMDI);
+  assert.equal(k("active", "trialing", null), true);
+  assert.equal(k("active", "trialing", gunOnce(10)), true);
+  assert.equal(k("active", "trialing", gunOnce(2)), false);
+  assert.equal(k("active", "active", null), true);
+  // Ödeyen ve bir kez bile girmiş: bu soru değil (yenileme riski bakıyor).
+  assert.equal(k("active", "active", gunOnce(40)), false);
+  // Kurulumu bitmemiş kurum kurulum kuyruğunda, burada değil.
+  assert.equal(k("invited", "trialing", null), false);
+  assert.equal(k("active", "canceled", null), false);
+});
