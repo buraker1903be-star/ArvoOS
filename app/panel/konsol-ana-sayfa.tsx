@@ -20,12 +20,14 @@ import { gunFarki } from "@/lib/is-adimlari";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { tumSatirlar } from "@/lib/rapor-okuma";
+import { musteriEtkinlikleri } from "@/lib/musteri-etkinligi-oku";
+import { etkinlikYazisi, yenilemeRiski } from "@/lib/musteri-etkinligi";
 import { beklemeSuresi, gecikmisMi, kuyrukSirala, ONCELIK_ADI, YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import Link from "next/link";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { TalepAkis } from "./crm/kayit-detay/kayit-akis";
 import { StgIcon } from "./settings/settings-ui";
-import { KURULUM_ADI, KURULUM_ISLEMI, para } from "./platform/bicim";
+import { KURULUM_ADI, KURULUM_ISLEMI, para, tarih } from "./platform/bicim";
 import { relativeTime } from "./crm/last-contact";
 import "./dashboard.css";
 import "./hr/hr.css";
@@ -151,10 +153,10 @@ export async function KonsolAnaSayfa() {
     */
     /* Kiracı başına tek satır, yine de sayfalı: 1.000 müşteride tavan
        sessizce vurur ve konsolun bütün sayıları o gün eksilirdi. */
-    tumSatirlar<Kurum & { license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number; aktif_uye: number }>(
+    tumSatirlar<Kurum & { license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number; aktif_uye: number; current_period_end: string | null; trial_ends_at: string | null }>(
       "kiracılar",
       (bas, son) => supabase.from("platform_kiraci_liste")
-        .select("id,name,display_name,kind,provisioning_state,contact_phone,license_status,monthly_fee,user_limit,storage_limit_mb,aktif_uye,grup_markasi")
+        .select("id,name,display_name,kind,provisioning_state,contact_phone,license_status,monthly_fee,user_limit,storage_limit_mb,aktif_uye,grup_markasi,current_period_end,trial_ends_at")
         .order("name")
         .range(bas, son))
       .then((data) => ({ data, error: null as { message: string } | null }))
@@ -227,12 +229,14 @@ export async function KonsolAnaSayfa() {
     getPaymentIncidents okunamazsa kendi içinde boş döner (günlüğe yazar);
     kredi okuması düşerse satırı "okunamadı" olarak işaretliyoruz.
   */
-  const [odemeOlaylari, krediSonucu] = await Promise.all([
+  const [odemeOlaylari, krediSonucu, etkinlik] = await Promise.all([
     getPaymentIncidents(),
     admin
       ? bekleyenKrediler(admin).then((veri) => ({ veri, hata: null as string | null }))
           .catch((hata: unknown) => ({ veri: [], hata: hata instanceof Error ? hata.message : String(hata) }))
       : Promise.resolve({ veri: [], hata: null as string | null }),
+    /* Panel etkinliği (lib/musteri-etkinligi-oku): okunamazsa harita null, risk sekmesi "okunamadı". */
+    musteriEtkinlikleri(),
   ]);
 
   /*
@@ -315,6 +319,7 @@ export async function KonsolAnaSayfa() {
     console.error("[konsol] ana ekran sorguları okunamadı", okunamayan.map(([ad, h]) => `${ad}: ${h.message}`));
 
   const kiracilar = (kiraciSatirlari ?? []) as unknown as (Kurum & {
+    current_period_end: string | null; trial_ends_at: string | null;
     license_status: string | null; monthly_fee: number | null;
     user_limit: number | null; storage_limit_mb: number | null; aktif_uye: number;
   })[];
@@ -501,6 +506,26 @@ export async function KonsolAnaSayfa() {
   const bugun = todayInIstanbul();
   const proformalar = ((proformaSatirlari ?? []) as { id: string; proforma_no: string; musteri_adi: string; product: string; toplam: number; para_birimi: string | null; gecerlilik_tarihi: string }[])
     .map((p) => ({ ...p, kalan: gunFarki(bugun, p.gecerlilik_tarihi) }));
+  /*
+    YENİLEME RİSKİ (02.11.2026): ArvoOS lisansı açık, yenilemesi 30 gün
+    içinde ve son 7 günde panele kimse girmemiş müşteriler
+    (lib/musteri-etkinligi). Müşteriler listesinin "Dikkat" sekmesindeki
+    kuralın aynısı; ana ekranda da çünkü "kimi arayayım" sorusu bugünün işi.
+    Grup markaları ve Arvo'nun kendisi dışarıda: ödemeyi yenileyecek
+    bir müşteri değiller.
+  */
+  const riskliler = etkinlik.harita
+    ? kiracilar
+        .filter((k) => musteriMi(k))
+        .map((k) => {
+          const son = etkinlik.harita!.get(k.id)?.son ?? null;
+          const yenileme = k.license_status === "trialing" ? k.trial_ends_at : k.current_period_end;
+          const acik = k.license_status === "active" || k.license_status === "trialing" || k.license_status === "past_due";
+          return { id: k.id, ad: k.display_name || k.name, son, yenileme, risk: yenilemeRiski({ acik, yenileme, son }, etkinlik.simdi) };
+        })
+        .filter((k) => k.risk)
+        .sort((a, b) => (a.yenileme ?? "").localeCompare(b.yenileme ?? ""))
+    : [];
   const destekTalepleri = kuyrukSirala((destekSatirlari ?? []) as { id: string; subject: string; priority: string; status: string; last_message_at: string; organization_id: string }[]);
   const destekAni = new Date(simdi());
   const sekmeler = [
@@ -510,6 +535,7 @@ export async function KonsolAnaSayfa() {
     ...(admin ? [{ ad: "Proformalar", sayi: proformalar.length, hata: Boolean(proformaHatasi) }] : []),
     { ad: "Kurulumlar", sayi: kurulumdakiler.length, hata: Boolean(kiraciHatasi) },
     { ad: "Dönemi dolanlar", sayi: hatirlatmalar.length, hata: Boolean(urunHatasi) },
+    { ad: "Yenileme riski", sayi: riskliler.length, hata: !etkinlik.harita || Boolean(kiraciHatasi) },
     { ad: "Sorunlar", sayi: sorunlar.length, hata: Boolean(kiraciHatasi) },
   ];
   const bekleyenIs = sekmeler.reduce((toplam, sekme) => toplam + sekme.sayi, 0);
@@ -709,6 +735,25 @@ export async function KonsolAnaSayfa() {
                 ))}
               </ul>
             ) : bos("Yakında dolan abonelik yok.")}
+          </section>
+
+          <section>
+            {bas("Yenilemesi 30 gün içinde ve son 7 günde paneli kullanmamış müşteriler; yenilemeden önce arayın.", "/panel/platform/musteriler", "Müşteriler")}
+            {!etkinlik.harita || kiraciHatasi ? okunamadi : riskliler.length ? (
+              <ul className="pu-liste">
+                {riskliler.map((k) => (
+                  <li key={k.id}>
+                    <Link href={`/panel/platform/musteriler/${k.id}`}>
+                      <span className="pu-govde">
+                        <b>{k.ad}</b>
+                        <small>Son kullanım: {etkinlikYazisi(k.son, etkinlik.simdi).toLocaleLowerCase("tr-TR")}</small>
+                      </span>
+                      <span className="status-pill" data-tone="gold">{k.yenileme ? `Yenileme ${tarih(k.yenileme)}` : "Yenileme"}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : bos("Yenilemesi yaklaşan bütün müşteriler paneli kullanıyor.")}
           </section>
 
           <section>
