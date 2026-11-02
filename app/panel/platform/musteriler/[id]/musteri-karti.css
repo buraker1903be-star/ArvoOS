@@ -52,3 +52,15 @@
 @media (max-width:760px){
   .os-root .musteri-karti .k-kart .talep-tablo.fn-ic-tablo{margin:0 calc(var(--sp-4) * -1)}
 }
+
+/* Notlar sekmesi (notlar.tsx): form ve not listesi. */
+.panel-root .musteri-karti .mu-not-form{margin-bottom:var(--sp-3)}
+.panel-root .musteri-karti .mu-notlar{display:grid;gap:var(--sp-2);margin:0;padding:0;list-style:none}
+.panel-root .musteri-karti .mu-notlar li{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.panel-root .musteri-karti .mu-notlar li[data-durum="zamani"]{border-color:var(--warning)}
+.panel-root .musteri-karti .mu-notlar li[data-durum="kapandi"]{opacity:.7}
+.panel-root .musteri-karti .mu-notlar p{margin:0 0 6px;white-space:pre-wrap;word-break:break-word;font-size:var(--fs-base);line-height:1.5;color:var(--ink)}
+.panel-root .musteri-karti .mu-not-alt{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.panel-root .musteri-karti .mu-not-alt small{color:var(--muted)}
+.panel-root .musteri-karti .mu-not-alt form{margin:0}
+.panel-root .musteri-karti .mu-kucuk{min-height:28px;padding:3px 10px;font-size:12px}

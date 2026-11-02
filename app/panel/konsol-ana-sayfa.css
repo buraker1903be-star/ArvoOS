@@ -56,3 +56,6 @@
   .os-root .konsol-isler .talep-akis-sekmeler{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
   .os-root .konsol-isler .talep-akis-sekmeler button{flex:none}
 }
+
+/* Takip edilecekler: satırın yanındaki "Tamamlandı" düğmesi (konsol-ana-sayfa.tsx). */
+.panel-root .konsol-takip-kapat{min-height:30px;padding:4px 10px;font-size:12px;white-space:nowrap}
