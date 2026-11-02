@@ -18,7 +18,7 @@ import { fazlaVerilen, limitSapmalari } from "@/lib/paket-limitleri";
 import { musteriMi } from "@/lib/kurum-turu";
 import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { cronAralikMetni, cronDurumlari, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
+import { cronAralikMetni, cronDurumlari, cronIsleri, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
 import type { ReactNode } from "react";
 import { hataTeshisi, ZAMANLAYICI_TESHISI } from "@/lib/hata-teshisi";
 import { TeshisKarti } from "./teshis-karti";
@@ -98,6 +98,86 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   if (istenenSekme === "ayar") redirect("/panel/platform/ayarlar?bolum=baglantilar");
   const admin = createAdminClient();
 
+  /*
+    TEK TUR (02.11.2026, hızlandırma). Sayfa altı ayrı turda bekliyordu:
+    veritabanı okumaları, sonra köprü ve kopyalar, sonra kredi siparişleri,
+    sonra kurulum günlüğü, sonra iş başına geçmiş, sonra son posta hatası —
+    her biri öncekinin bitmesini bekliyordu ama hiçbiri öncekinin SONUCUNA
+    bakmıyordu. Canlıda p75 1,7 sn'ye çıkıyordu (köprüler uzak veritabanı).
+    Hepsi şimdi aynı anda başlıyor; sayfa en yavaş tek okuma kadar sürüyor.
+    İş başına geçmişin listesi veritabanından değil vercel.json'dan
+    (cronIsleri), o yüzden o da baştan başlayabiliyor.
+  */
+  const ikinciTur = Promise.all([
+    getArvolabBridgeHealth(),
+    getArcBridgeHealth(),
+    getRandevuBridgeHealth(),
+    arvolabKopyalari(),
+    arcKopyalari(),
+    randevuKopyalari(),
+    getPaymentIncidents(),
+    /*
+      UYGULANMAMIŞ MIGRATION (02.11.2026). Otomatik proforma migration'ı
+      canlıya dört gün uygulanmadan kaldı ve kimse fark etmedi; sebep
+      yalnızca sunucu günlüğündeydi. Kodun beklediği nesneler
+      (lib/migration-izleri.json) canlıda var mı, burada soruluyor.
+    */
+    admin ? admin.rpc("platform_sema_eksikleri", { p_izler: MIGRATION_IZLERI }) : Promise.resolve(null),
+  ]);
+  /*
+    ÖDENMİŞ AMA YÜKLENEMEMİŞ AI KREDİSİ (lib/ai-kredi-yukleme). Kurtarma
+    işi on dakikada bir deniyor; burada görünen satır, denemenin hâlâ
+    başarısız olduğu anlamına geliyor. Okuma düşerse LİSTE DEĞİL HATA
+    tutuluyor: "bekleyen kredi yok" ile "bakamadım" aynı şey değil.
+  */
+  const krediIstegi = admin
+    ? bekleyenKrediler(admin).then((veri) => ({ veri, hata: null as string | null }))
+      .catch((hata: unknown) => ({ veri: [], hata: hata instanceof Error ? hata.message : String(hata) }))
+    : Promise.resolve({ veri: [], hata: null as string | null });
+  /* Kurulum günlüğü yalnızca sunucu anahtarıyla okunuyor; anahtar yoksa
+     satır hiç çizilmiyor ("0 hata" yazmak okunamayanı temiz göstermek). */
+  /* Promise.resolve: Supabase sorgusu tembel, then çağrılana kadar istek
+     gitmiyor; sarmalamadan atamak isteği aşağıdaki await'e kadar BAŞLATMAZDI. */
+  const kurulumIstegi = admin
+    ? Promise.resolve(admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at,details")
+        /*
+          DEĞER 'failed', 'error' DEĞİL (14.10.2026). Sütunun kısıtı
+          ('started','success','failed') 'error'a hiç izin vermiyor:
+          sorgu hata vermiyor, sessizce SIFIR satır dönüyordu ve kart
+          "Kurulum hatası yok" demeyi hiçbir koşulda bırakamıyordu.
+          Yanlış sütun adı üretimde hata verir ve bir yerde yakalanır,
+          yanlış DEĞER hiç iz bırakmaz — bu yüzden daha sinsi.
+        */
+        .eq("result", "failed").order("created_at", { ascending: false }).limit(10))
+    : Promise.resolve({ data: null, error: null });
+  /*
+    "TANIMLI" İLE "ÇALIŞIYOR" AYNI ŞEY DEĞİL. Denetim yalnızca ortam
+    değişkeninin varlığına bakıyor: iptal edilmiş ya da yanlış
+    kopyalanmış bir anahtar da "Bağlı" görünür, gönderim ise sessizce
+    düşer. Tek gerçek kanıt, YAPILMIŞ bir gönderim: otomatik proforma her
+    denemenin sonucunu satıra yazıyor (gonderim_hatasi); en yeni hata.
+  */
+  const postaIstegi = admin
+    ? Promise.resolve(admin.from("platform_proformalari")
+        .select("proforma_no,gonderim_hatasi,duzenleme_tarihi")
+        .not("gonderim_hatasi", "is", null)
+        .order("duzenleme_tarihi", { ascending: false })
+        .limit(1))
+    : Promise.resolve({ data: null, error: null });
+  /*
+    ÇALIŞMA GEÇMİŞİ (02.11.2026, lib/cron-gecmisi): her işin son 20
+    çalışması — "ne zamandan beri düşüyor, sürekli mi arada bir mi".
+    İş başına bir sorgu (iş sayısı vercel.json kadar, bir düzine altı),
+    dizin (is_adi, basladi_at desc) başından yürüyor. Okunamazsa satır
+    noktasız kalıyor; tablonun geri kalanı çiziliyor.
+  */
+  const gecmisIstegi = Promise.all(cronIsleri().map(async (is) => {
+    const { data, error } = await supabase.from("platform_cron_kayitlari").select("sonuc,basladi_at,sure_ms")
+      .eq("is_adi", is.yol).order("basladi_at", { ascending: false }).limit(20);
+    if (error) console.error("[sağlık] çalışma geçmişi okunamadı", is.yol, error.message);
+    return [is.yol, error ? null : ((data ?? []) as Kosu[])] as const;
+  }));
+
   const [
     { data: kiraciSatirlari, error: kiraciHatasi },
     { data: urunSatirlari, error: urunHatasi },
@@ -140,48 +220,11 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     paketLimitleriOku(supabase),
   ]);
 
-  const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya, odemeOlaylari, semaSonucu] = await Promise.all([
-    getArvolabBridgeHealth(),
-    getArcBridgeHealth(),
-    getRandevuBridgeHealth(),
-    arvolabKopyalari(),
-    arcKopyalari(),
-    randevuKopyalari(),
-    getPaymentIncidents(),
-    /*
-      UYGULANMAMIŞ MIGRATION (02.11.2026). Otomatik proforma migration'ı
-      canlıya dört gün uygulanmadan kaldı ve kimse fark etmedi; sebep
-      yalnızca sunucu günlüğündeydi. Kodun beklediği nesneler
-      (lib/migration-izleri.json) canlıda var mı, burada soruluyor.
-    */
-    admin ? admin.rpc("platform_sema_eksikleri", { p_izler: MIGRATION_IZLERI }) : Promise.resolve(null),
-  ]);
+  const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya, odemeOlaylari, semaSonucu] = await ikinciTur;
 
-  /*
-    ÖDENMİŞ AMA YÜKLENEMEMİŞ AI KREDİSİ (lib/ai-kredi-yukleme). Kurtarma
-    işi on dakikada bir deniyor; burada görünen satır, denemenin hâlâ
-    başarısız olduğu anlamına geliyor. Okuma düşerse LİSTE DEĞİL HATA
-    tutuluyor: "bekleyen kredi yok" ile "bakamadım" aynı şey değil.
-  */
-  const krediSonucu = admin
-    ? await bekleyenKrediler(admin).then((veri) => ({ veri, hata: null as string | null }))
-      .catch((hata: unknown) => ({ veri: [], hata: hata instanceof Error ? hata.message : String(hata) }))
-    : { veri: [], hata: null };
+  const krediSonucu = await krediIstegi;
 
-  /* Kurulum günlüğü yalnızca sunucu anahtarıyla okunuyor; anahtar yoksa
-     satır hiç çizilmiyor ("0 hata" yazmak okunamayanı temiz göstermek). */
-  const { data: kurulumKayitlari, error: kurulumHatasi } = admin
-    ? await admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at,details")
-        /*
-          DEĞER 'failed', 'error' DEĞİL (14.10.2026). Sütunun kısıtı
-          ('started','success','failed') 'error'a hiç izin vermiyor:
-          sorgu hata vermiyor, sessizce SIFIR satır dönüyordu ve kart
-          "Kurulum hatası yok" demeyi hiçbir koşulda bırakamıyordu.
-          Yanlış sütun adı üretimde hata verir ve bir yerde yakalanır,
-          yanlış DEĞER hiç iz bırakmaz — bu yüzden daha sinsi.
-        */
-        .eq("result", "failed").order("created_at", { ascending: false }).limit(10)
-    : { data: null, error: null };
+  const { data: kurulumKayitlari, error: kurulumHatasi } = await kurulumIstegi;
 
   const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]);
   const musteriler = kiracilar.filter((kurum) => kurum.kind !== "internal");
@@ -278,12 +321,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     noktasız kalıyor; tablonun geri kalanı çiziliyor.
   */
   const gecmisler = new Map<string, Kosu[]>();
-  await Promise.all(cronDurum.map(async (is) => {
-    const { data, error } = await supabase.from("platform_cron_kayitlari").select("sonuc,basladi_at,sure_ms")
-      .eq("is_adi", is.yol).order("basladi_at", { ascending: false }).limit(20);
-    if (error) console.error("[sağlık] çalışma geçmişi okunamadı", is.yol, error.message);
-    else gecmisler.set(is.yol, (data ?? []) as Kosu[]);
-  }));
+  for (const [yol, kosular] of await gecmisIstegi) if (kosular) gecmisler.set(yol, kosular);
   /* KAYDI OLMAYAN İŞ "ZAMANINDA KOŞUYOR" DEĞİL. Şerit sorunsuz iş sayısını
      yazıyordu ve kayıt tutmanın ilk gününde "5 / 5 · hepsi zamanında
      koşuyor" diyordu — oysa beşinin hiçbiri henüz koşmamıştı. Pay yalnızca
@@ -339,13 +377,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     buradan okunuyor ve ayar satırı "Bağlı ama son gönderim hata
     verdi" diyor. Tek satır, en yeni hata: kuyruk değil, kanıt.
   */
-  const { data: postaHatasiSatiri, error: postaHatasiHatasi } = admin
-    ? await admin.from("platform_proformalari")
-        .select("proforma_no,gonderim_hatasi,duzenleme_tarihi")
-        .not("gonderim_hatasi", "is", null)
-        .order("duzenleme_tarihi", { ascending: false })
-        .limit(1)
-    : { data: null, error: null };
+  const { data: postaHatasiSatiri, error: postaHatasiHatasi } = await postaIstegi;
   const sonPostaHatasi = ((postaHatasiSatiri ?? []) as { proforma_no: string | null; gonderim_hatasi: string }[])[0] ?? null;
 
   const okunamayan = ([
