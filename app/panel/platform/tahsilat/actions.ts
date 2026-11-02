@@ -4,7 +4,7 @@ import { konsolAlaniniDogrula } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { runPanelAction } from "@/lib/panel-action";
+import { flashError, flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { kurusOku } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { ibanHatasi, ibanTemizle } from "@/lib/iban";
@@ -169,7 +169,7 @@ async function proformaOlustur__impl(formData: FormData) {
   if (gecerlilik < bugun) throw new Error("Geçerlilik tarihi bugünden önce olamaz.");
   const notlar = String(formData.get("notlar") ?? "").trim().slice(0, 1000) || null;
 
-  const { error } = await admin.from("platform_proformalari").insert({
+  const { data: yeni, error } = await admin.from("platform_proformalari").insert({
     product: urun,
     organization_id: tur === "kurum" ? musteriId : null,
     subscriber_id: tur === "abone" ? musteriId : null,
@@ -185,7 +185,7 @@ async function proformaOlustur__impl(formData: FormData) {
     gecerlilik_tarihi: gecerlilik,
     notlar,
     olusturan: userId,
-  });
+  }).select("id").single();
   if (error) throw new Error(`Proforma kaydedilemedi: ${error.message}`);
 
   /* Abonenin adı ArvoLab profilinde boşsa abone kaydı e-postayla kalıyordu
@@ -194,11 +194,24 @@ async function proformaOlustur__impl(formData: FormData) {
   if (tur === "abone" && alici.adSoyad) {
     await admin.from("product_subscribers").update({ full_name: alici.adSoyad }).eq("id", musteriId).is("full_name", null);
   }
+
+  /*
+    OLUŞTURULUNCA MÜŞTERİYE GİDİYOR (02.11.2026). Eskiden proforma yalnızca
+    kaydediliyordu; e-posta ve bildirim için belge sayfasındaki "Müşteriye
+    gönder" düğmesine ayrıca basmak gerekiyordu ve kurucu "düzenledim ama
+    müşteriye gitmedi" ile kaldı. Otomatik proformanın yolu (proformayiUlastir).
+    Gönderim düşerse proforma geri alınmıyor: belge kesildi, müşteri panelinde
+    görüyor; kurucu nedeni okuyup düğmeyle yeniden deniyor.
+  */
+  const sonuc = await proformayiUlastir(admin, (yeni as { id: string }).id);
   revalidatePath("/panel/platform/tahsilat");
+  const hatalar = [sonuc.eposta && !sonuc.eposta.ok ? sonuc.eposta.hata : null, sonuc.bildirim && !sonuc.bildirim.ok ? sonuc.bildirim.hata : null].filter(Boolean);
+  if (hatalar.length) await flashError(`Proforma oluşturuldu ama müşteriye gönderilemedi: ${hatalar.join(" · ")}`);
+  else await flashSuccess("Proforma oluşturuldu ve müşteriye e-posta ve bildirimle gönderildi.");
 }
 
 export async function proformaOlustur(...args: Parameters<typeof proformaOlustur__impl>) {
-  return runPanelAction(() => proformaOlustur__impl(...args), "Proforma oluşturuldu; müşteri kendi panelinde görüp yazdırabilir.");
+  return runPanelAction(() => proformaOlustur__impl(...args));
 }
 
 async function proformaIptal__impl(formData: FormData) {
