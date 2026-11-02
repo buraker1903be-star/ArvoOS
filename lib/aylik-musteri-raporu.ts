@@ -6,12 +6,14 @@
   geldi, kaçı gitti, gelir ne oldu. Gelir tahsilat işlevinden
   (platform_tahsilat_aylik), müşteri hareketleri buradan.
 
-  "KAYBEDİLDİ" NASIL ÖLÇÜLÜYOR: lisans tablolarında iptal TARİHİ yok
-  (yalnızca durum ve dönem sonu var; updated_at her düzenlemede
-  değişiyor, o yüzden kullanılmıyor). Kayıp = bugün AÇIK HİÇBİR lisansı
-  olmayan ve son lisans döneminin (ya da denemesinin) bittiği gün o ay
-  içinde olan müşteri — "dönemi bu ay bitti ve yenilenmedi". Bireysel
-  abonede kapanış anı (closed_at) varsa o esas.
+  "KAYBEDİLDİ" NASIL ÖLÇÜLÜYOR: kayıp = bugün AÇIK HİÇBİR lisansı
+  olmayan müşteri; kaybın günü lisanslarının EN SON kapandığı gün.
+  Lisansın kapandığı an 02.11.2026'dan beri tutuluyor (closed_at,
+  migration 20261102101259 — tetikleyici yazıyor). Ondan önce kapanan
+  lisansta bu an bilinmiyor; orada dönem sonu (ya da deneme sonu)
+  kullanılıyor — "dönemi bu ay bitti ve yenilenmedi". updated_at
+  kullanılmıyor: her düzenlemede değişiyor. Bireysel abonede de
+  kapanış anı (closed_at) esas.
 
   Türkiye günü: sunucu UTC; ayın ilk gecesi 00:00–03:00 arasında açılan
   kayıt önceki aya düşmesin (turkiyeGunu).
@@ -26,8 +28,10 @@ const ACIK = new Set(["active", "trialing", "past_due"]);
 export type RaporKurumu = {
   id: string; ad: string; kind: string | null; grup_markasi: boolean | null; created_at: string;
   license_status: string | null; current_period_end: string | null; trial_ends_at: string | null;
+  /** Lisansın kapandığı an (02.11.2026'dan beri tutuluyor); bilinmiyorsa null. */
+  closed_at?: string | null;
 };
-export type RaporLisansi = { organization_id: string; product: string; status: string; current_period_end: string | null; trial_ends_at: string | null; created_at: string };
+export type RaporLisansi = { organization_id: string; product: string; status: string; current_period_end: string | null; trial_ends_at: string | null; created_at: string; closed_at?: string | null };
 export type RaporAbonesi = { id: string; ad: string; product: string; status: string; created_at: string; closed_at: string | null; current_period_end: string | null; trial_ends_at: string | null };
 
 /** "2026-11-01" → ["2026-11-01", "2026-11-30"]. */
@@ -70,9 +74,10 @@ export function aylikRapor(ay: string, kurumlar: RaporKurumu[], lisanslar: Rapor
     const acikVar = ACIK.has(k.license_status ?? "") || ekler.some((l) => ACIK.has(l.status));
     if (acikVar) return [];
     /* Hiç lisansı olmamış (inactive) ürünler bitiş saymıyor: "kullanmıyor" bir kayıp değil. */
+    /* Kapanış anı biliniyorsa o, bilinmiyorsa dönem sonu. */
     const bitisler = [
-      k.license_status ? bitis(k.license_status, k.current_period_end, k.trial_ends_at) : null,
-      ...ekler.filter((l) => l.status !== "inactive").map((l) => bitis(l.status, l.current_period_end, l.trial_ends_at)),
+      k.license_status ? k.closed_at ?? bitis(k.license_status, k.current_period_end, k.trial_ends_at) : null,
+      ...ekler.filter((l) => l.status !== "inactive").map((l) => l.closed_at ?? bitis(l.status, l.current_period_end, l.trial_ends_at)),
     ].filter((d): d is string => Boolean(d)).map(turkiyeGunu).sort();
     const son = bitisler.at(-1);
     return son && icinde(son, aralik) ? [{ ...k, bitis: son }] : [];

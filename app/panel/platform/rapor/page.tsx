@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { tumSatirlar } from "@/lib/rapor-okuma";
+import { sayfaliSonuc, tumSatirlar, type SayfaliSonuc } from "@/lib/rapor-okuma";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { ayEtiketi, aySecenekleri } from "@/lib/personel-hedefi";
 import { productName } from "@/lib/products";
@@ -30,6 +30,23 @@ export const dynamic = "force-dynamic";
   Kurumlar ve lisanslar sunucu anahtarıyla: kurum ayrıntısı ve abone
   kayıtları istemciye kapalı; kurucu sayfanın başında doğrulanıyor.
 */
+/*
+  closed_at migration 20261102101259 ile geldi. Migration canlıya
+  uygulanmadan önce sütun yok ve sorgu 42703 ("sütun yok") veriyor;
+  rapor o durumda sütunsuz okuyup dönem sonuna düşüyor — eksik sütun
+  ekranı kapatmasın (AGENTS.md: eksik yapılandırma özelliği kısar,
+  uygulamayı düşürmez). Başka her hata fırlatılıyor.
+*/
+/* Seçim metni çalışma anında kuruluyor; tipli istemcinin sütun ayrıştırıcısı şablon metni okuyamıyor. */
+const alanlar = (temel: string, ek: string): string => temel + ek;
+type Sayfala<T> = (bas: number, son: number) => PromiseLike<SayfaliSonuc<T>>;
+async function kapanisliOku<T>(ad: string, kur: (secim: string) => (bas: number, son: number) => PromiseLike<unknown>): Promise<T[]> {
+  const ilk = await sayfaliSonuc<T>(ad, kur(",closed_at") as Sayfala<T>);
+  const sonuc = ilk.error?.code === "42703" ? await sayfaliSonuc<T>(ad, kur("") as Sayfala<T>) : ilk;
+  if (sonuc.error) throw new Error(`${ad} okunamadı: ${sonuc.error.message}`);
+  return sonuc.data ?? [];
+}
+
 const URUN = (kod: string) => productName(kod as Parameters<typeof productName>[0]);
 
 export default async function AylikRaporSayfasi({ searchParams }: { searchParams: Promise<{ ay?: string }> }) {
@@ -49,21 +66,21 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
   const [kurumSatirlari, cekirdek, lisanslar, aboneler, gelirSonucu] = await Promise.all([
     tumSatirlar<{ id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null; created_at: string }>("kurumlar", (bas, son) =>
       admin.from("organizations").select("id,name,display_name,kind,grup_markasi,created_at").order("id").range(bas, son)),
-    tumSatirlar<{ id: string; license_status: string | null; current_period_end: string | null; trial_ends_at: string | null }>("çekirdek lisanslar", (bas, son) =>
-      admin.from("platform_kiraci_liste").select("id,license_status,current_period_end,trial_ends_at").order("id").range(bas, son)),
-    tumSatirlar<RaporLisansi>("ürün lisansları", (bas, son) =>
-      admin.from("organization_product_licenses").select("organization_id,product,status,current_period_end,trial_ends_at,created_at").order("organization_id").order("product").range(bas, son)),
+    kapanisliOku<{ organization_id: string; license_status: string | null; current_period_end: string | null; trial_ends_at: string | null; closed_at?: string | null }>("çekirdek lisanslar",
+      (secim) => (bas, son) => admin.from("organization_licenses").select(alanlar("organization_id,license_status,current_period_end,trial_ends_at", secim)).order("organization_id").range(bas, son)),
+    kapanisliOku<RaporLisansi>("ürün lisansları",
+      (secim) => (bas, son) => admin.from("organization_product_licenses").select(alanlar("organization_id,product,status,current_period_end,trial_ends_at,created_at", secim)).order("organization_id").order("product").range(bas, son)),
     tumSatirlar<{ id: string; email: string; full_name: string | null; product: string; status: string; created_at: string; closed_at: string | null; current_period_end: string | null; trial_ends_at: string | null }>("bireysel aboneler", (bas, son) =>
       admin.from("product_subscribers").select("id,email,full_name,product,status,created_at,closed_at,current_period_end,trial_ends_at").is("kurum_id", null).order("id").range(bas, son)),
     admin.rpc("platform_tahsilat_aylik", { p_ay: 13 }),
   ]);
   if (gelirSonucu.error) throw new Error("Aylık tahsilat okunamadı: " + gelirSonucu.error.message);
 
-  const lisans = new Map(cekirdek.map((c) => [c.id, c]));
+  const lisans = new Map(cekirdek.map((c) => [c.organization_id, c]));
   const kurumlar: RaporKurumu[] = kurumSatirlari.map((k) => {
     const c = lisans.get(k.id);
     return { id: k.id, ad: k.display_name || k.name, kind: k.kind, grup_markasi: k.grup_markasi, created_at: k.created_at,
-      license_status: c?.license_status ?? null, current_period_end: c?.current_period_end ?? null, trial_ends_at: c?.trial_ends_at ?? null };
+      license_status: c?.license_status ?? null, current_period_end: c?.current_period_end ?? null, trial_ends_at: c?.trial_ends_at ?? null, closed_at: c?.closed_at ?? null };
   });
   const aboneListesi: RaporAbonesi[] = aboneler.map((a) => ({ ...a, ad: a.full_name?.trim() || a.email }));
   const r = aylikRapor(ay, kurumlar, lisanslar, aboneListesi);
@@ -106,8 +123,8 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
     </nav>
 
     <KNot>
-      &quot;Kaybedilen&quot;: bugün açık hiçbir lisansı olmayan ve son dönemi (ya da denemesi) bu ay biten müşteri. Lisanslarda iptal tarihi
-      tutulmadığı için dönem sonu esas alınıyor; bireysel abonede kapanış anı varsa o. Tahsilat, Tahsilat ekranının aylık grafiğiyle aynı sayı.
+      &quot;Kaybedilen&quot;: bugün açık hiçbir lisansı olmayan ve lisansları bu ay kapanan müşteri. Kapanış anı 2 Kasım 2026&apos;dan beri
+      kaydediliyor; daha önce kapanan lisanslarda dönem (ya da deneme) sonu esas alınıyor. Tahsilat, Tahsilat ekranının aylık grafiğiyle aynı sayı.
     </KNot>
 
     <div className="rapor-izgara">
