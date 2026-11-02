@@ -115,11 +115,11 @@ function onBesGunSonra(bugun: string) {
   return d.toISOString().slice(0, 10);
 }
 
-export default async function TahsilatPage({ searchParams }: { searchParams: Promise<{ kanal?: string }> }) {
+export default async function TahsilatPage({ searchParams }: { searchParams: Promise<{ kanal?: string; yeni?: string }> }) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "finans");
-  const { kanal } = await searchParams;
+  const { kanal, yeni } = await searchParams;
   const secili = KANALLAR.some((k) => k.kod === kanal) ? kanal! : "";
 
   const [
@@ -259,6 +259,8 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
 
   let proformalar: Proforma[] = [];
   /* Müşteriye ulaşmamış bekleyen proforma sayısı (veritabanından, aşağıda). */
+  /* Müşteri kartından gelen ön seçim; listede yoksa (silinmiş kurum, bozuk adres) yok sayılır. */
+  let yeniMusteri: string | null = null;
   let gitmeyenProforma = 0;
   let proformaMusterileri: ProformaMusterisi[] = [];
   let kisayollar: ProformaFiyatKisayolu[] = [];
@@ -301,6 +303,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
       }),
     ];
     kisayollar = fiyatKisayollari(fiyatlar);
+    yeniMusteri = proformaMusterileri.some((m) => m.deger === yeni) ? yeni! : null;
 
     const bekleyen = proformalar.filter((p) => p.durum === "bekliyor");
     const kurumIdleri = [...new Set(bekleyen.flatMap((p) => (p.organization_id ? [p.organization_id] : [])))];
@@ -434,9 +437,12 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
       <div className="talep-bas-eylem">
         {secili === "proforma" ? (
           <PanelModal triggerLabel="Yeni proforma" triggerClassName="panel-primary" kicker="Proforma" title="Yeni proforma" boy="genis"
+            /* Müşteri kartındaki "Proforma kes" buraya ?yeni=kurum:<id> ile geliyor (02.11.2026):
+               pencere açık ve müşteri seçili başlar; kapanınca adres temizlenir ki yenileyince yeniden açılmasın. */
+            baslangicAcik={Boolean(yeniMusteri)} kapaninca={yeniMusteri ? "/panel/platform/tahsilat?kanal=proforma" : undefined}
             description="Müşteriyi seçin; alıcı bilgileri kayıttan dolar. Kurum ArvoOS ve ArvoCal proformasını ArvoOS panelinde, ArvoLab proformasını ArvoLab'da görür ve yazdırır." basaridaKapan>
             <ProformaFormu musteriler={proformaMusterileri} kisayollar={kisayollar} bugun={bugun} gecerlilik={onBesGunSonra(bugun)}
-              kdvOrani={VARSAYILAN_KDV_ORANI} action={proformaOlustur} />
+              kdvOrani={VARSAYILAN_KDV_ORANI} action={proformaOlustur} baslangicMusteri={yeniMusteri ?? undefined} />
           </PanelModal>
         ) : secili === "banka" ? (
           <PanelModal triggerLabel="Yeni banka hesabı" triggerClassName="panel-primary" kicker="Banka hesapları" title="Yeni banka hesabı" basaridaKapan

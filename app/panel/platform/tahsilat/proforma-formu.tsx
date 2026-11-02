@@ -54,18 +54,24 @@ const BOS_SATIR = { aciklama: "", miktar: "", fiyat: "" };
 
 const tl = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(kurus / 100);
 
-export function ProformaFormu({ musteriler, kisayollar, bugun, gecerlilik, kdvOrani, action }: {
+export function ProformaFormu({ musteriler, kisayollar, bugun, gecerlilik, kdvOrani, action, baslangicMusteri }: {
   musteriler: ProformaMusterisi[];
+  /** Müşteri kartından gelindiyse seçili başlayacak müşteri ("kurum:<id>" / "abone:<id>"). */
+  baslangicMusteri?: string;
   kisayollar: ProformaFiyatKisayolu[];
   bugun: string;
   gecerlilik: string;
   kdvOrani: number;
   action: (formData: FormData) => void | Promise<void>;
 }) {
+  /* Müşteri kartından gelindiyse (02.11.2026) müşteri seçili ve alıcı bilgileri
+     dolu başlıyor: eskiden kurucu kartı bırakıp Tahsilat'ta aynı kurumu
+     yeniden arıyordu. Listede olmayan değer yok sayılır. */
+  const ilk = musteriler.find((m) => m.deger === baslangicMusteri) ?? null;
   const [arama, setArama] = useState("");
-  const [secili, setSecili] = useState("");
-  const [urun, setUrun] = useState("arvoos");
-  const [alici, setAlici] = useState<ProformaAlici>(BOS_ALICI);
+  const [secili, setSecili] = useState(ilk?.deger ?? "");
+  const [urun, setUrun] = useState(ilk?.tur === "abone" ? "arvolab" : "arvoos");
+  const [alici, setAlici] = useState<ProformaAlici>(ilk?.alici ?? BOS_ALICI);
   const [satirlar, setSatirlar] = useState([BOS_SATIR]);
   const [kdvDahil, setKdvDahil] = useState(true);
   const [oran, setOran] = useState(String(kdvOrani));
