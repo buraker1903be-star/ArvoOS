@@ -368,6 +368,11 @@ export async function describeNotifications(
       }
       case "support_message":
         return { ...base, label: "Destek", tone: "info", icon: "lifebuoy", headline: row.title, detail: row.message, actionLabel: "Talebi aç" };
+      /* ArvoOS'un konsoldan bütün kurumlara gönderdiği duyuru (02.11.2026,
+         lib/platform-duyuru). Kurumun kendi iç duyurusundan ayrı: gönderen
+         ArvoOS ve bir panel sayfasına bağlantı taşıyabiliyor. */
+      case "platform_duyurusu":
+        return { ...base, label: "ArvoOS duyurusu", tone: "info", icon: "megaphone", headline: row.title, detail: row.message, context: "Gönderen: ArvoOS", actionLabel: "Ayrıntı" };
       case "management_announcement": {
         const sender = meta(row, "sender_name");
         return {

@@ -61,13 +61,15 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
     { key: "home", label: "Genel Bakış", href: "/panel", ikon: "home", yollar: [] },
     {
       key: "musteriler", label: "Müşteriler", href: "/panel/platform/musteriler", ikon: "crm",
-      yollar: ["/panel/platform/musteriler", "/panel/platform/kullanicilar", "/panel/platform/subscribers"],
+      yollar: ["/panel/platform/musteriler", "/panel/platform/kullanicilar", "/panel/platform/subscribers", "/panel/platform/duyuru"],
       bolumler: [
         { key: "musteriler", href: "/panel/platform/musteriler", label: "Müşteriler" },
         /* Tek "Kullanıcılar" (14.10.2026): aktif, pasif ve davet bekleyenler
            sayfanın kendi sekmeleri. */
         { key: "kullanicilar", href: "/panel/platform/kullanicilar", label: "Kullanıcılar" },
         { key: "bireysel", href: "/panel/platform/subscribers", label: "Bireysel aboneler" },
+        /* Kurumlara duyuru (02.11.2026): bakım, yeni özellik — lib/platform-duyuru. */
+        { key: "duyuru", href: "/panel/platform/duyuru", label: "Duyuru gönder" },
       ],
     },
     {

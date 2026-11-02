@@ -34,6 +34,8 @@ describe("kurucu konsolu uygulamaları", () => {
     assert.equal(etkin("/panel/platform/kullanicilar"), "musteriler");
     /* 29.10.2026: bireysel abone bir müşteri, ürünün ayarı değil. */
     assert.equal(etkin("/panel/platform/subscribers"), "musteriler");
+    /* 02.11.2026: kurumlara duyuru müşterilerle konuşmak; Müşteriler'in bölümü. */
+    assert.equal(etkin("/panel/platform/duyuru"), "musteriler");
 
     assert.equal(etkin("/panel/platform/urunler"), "urunler");
     assert.equal(etkin("/panel/platform/urunler/arc"), "urunler");

@@ -9,7 +9,7 @@ export const notificationFilters = [
   { key: "musteri", label: "Müşteri", categories: ["customer_message", "contract_addendum_accepted", "contract_addendum_rejected", "proposal_customer_decision", "contract_signed"] },
   { key: "yorumlar", label: "Yorumlar", categories: ["internal_comment"] },
   { key: "posta", label: "Posta", categories: ["posta_gelen", "posta_esitleme"] },
-  { key: "duyurular", label: "Duyurular", categories: ["management_announcement"] },
+  { key: "duyurular", label: "Duyurular", categories: ["management_announcement", "platform_duyurusu"] },
   { key: "odemeler", label: "Ödemeler", categories: ["payment_submitted", "payment_approved", "payment_rejected", "subscription_reminder"] },
   { key: "destek", label: "Destek", categories: ["support_message"] },
   { key: "diger", label: "Diğer", categories: [] },

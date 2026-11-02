@@ -76,6 +76,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261030062700_proforma_arc_urunu.sql",
   "20261030065444_maas_ve_hakedis.sql",
   "20261030080627_teklif_revizyonu_kapat.sql",
+  "20261102083212_platform_duyurulari.sql",
 ];
 
 /*

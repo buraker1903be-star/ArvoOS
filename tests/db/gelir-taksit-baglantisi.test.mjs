@@ -26,9 +26,12 @@ const tek = async (sql, p = []) => (await sorgu(sql, p))[0];
 
 /** Üç taksitli ödeme takvimi; toplam 30.000 TL (kuruş). */
 const TAKVIM = JSON.stringify([
-  { sequence: 1, due_date: "2026-11-01", amount: 1000000 },
-  { sequence: 2, due_date: "2026-12-01", amount: 1000000 },
-  { sequence: 3, due_date: "2027-01-01", amount: 1000000 },
+  /* Tarihler UZAK GELECEKTE: imza işi BUGÜN başlatıyor ve termin
+     başlangıçtan önce olamaz (operation_workflows_check). Eskiden
+     2026-11-01 yazıyordu ve test 02.11.2026'da kendiliğinden kırıldı. */
+  { sequence: 1, due_date: "2099-11-01", amount: 1000000 },
+  { sequence: 2, due_date: "2099-12-01", amount: 1000000 },
+  { sequence: 3, due_date: "2100-01-01", amount: 1000000 },
 ]);
 
 async function tohum({ takvim = TAKVIM } = {}) {
@@ -57,7 +60,7 @@ async function tohum({ takvim = TAKVIM } = {}) {
        (id, organization_id, opportunity_id, proposal_id, contract_no, title, amount,
         currency, status, access_token_hash, due_date, created_by)
      values ($1, $2, $3, $4, 'SOZ-1', 'Tez', 3000000, 'TRY', 'sent',
-             encode(extensions.digest($5, 'sha256'), 'hex'), '2026-11-01', $6)`,
+             encode(extensions.digest($5, 'sha256'), 'hex'), '2099-11-01', $6)`,
     [SOZLESME, KURUM, TALEP, TEKLIF, JETON, SAHIP],
   );
 }

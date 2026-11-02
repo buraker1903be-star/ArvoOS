@@ -230,7 +230,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
                   {/* Duyuru tek okunası metin; kesilirse açılabiliyor.
                       Otomatik bildirimler zaten tek satır, onlarda kırpma
                       listeyi taranabilir tutuyor. */}
-                  {item.category === "management_announcement"
+                  {item.category === "management_announcement" || item.category === "platform_duyurusu"
                     ? <DuyuruMetni metin={item.detail} />
                     : <p className="ntf-detail">{item.detail}</p>}
                   {item.context ? <p className="ntf-context">{item.context}</p> : null}
