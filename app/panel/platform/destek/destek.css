@@ -1,0 +1,14 @@
+/* Konsol → Destek talebi (destek/[id]/page.tsx): konuşma ve yanıt. */
+.panel-root .destek-talebi{display:flex;flex-direction:column;gap:var(--sp-4);max-width:920px}
+.panel-root .destek-konusma{display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4) var(--sp-5)}
+.panel-root .destek-mesaj{max-width:80%;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.panel-root .destek-mesaj[data-kim="ekip"]{align-self:flex-end;background:var(--primary-soft);border-color:transparent}
+.panel-root .destek-mesaj header{display:flex;justify-content:space-between;gap:var(--sp-3);margin-bottom:4px;font-size:var(--fs-sm)}
+.panel-root .destek-mesaj header small{color:var(--muted)}
+.panel-root .destek-mesaj p{margin:0;white-space:pre-wrap;word-break:break-word;font-size:var(--fs-base);line-height:1.55;color:var(--ink)}
+.panel-root .destek-bos{margin:0;color:var(--muted)}
+.panel-root .destek-yanit{padding:var(--sp-4) var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-3)}
+.panel-root .destek-durum{display:flex;align-items:flex-end;gap:var(--sp-2);flex-wrap:wrap;padding-top:var(--sp-3);border-top:1px solid var(--line-soft)}
+.panel-root .destek-durum label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-sm);color:var(--muted)}
+.panel-root .destek-durum select{min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+@media (max-width:760px){.panel-root .destek-mesaj{max-width:100%}}
