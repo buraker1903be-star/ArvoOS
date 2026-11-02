@@ -1,3 +1,4 @@
+import { kurumAlicisiKur, type KurumResmiBilgisi } from "@/lib/proforma";
 import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -120,6 +121,8 @@ type Satir = {
   /** Dışa aktarımda: kurumun davet adresi ya da abonenin e-postası, telefon. */
   eposta?: string | null;
   telefon?: string | null;
+  /** Kurumsal: Ayarlar → Resmi bilgiler'de girilmemiş alanlar (proformaya eksik basılır). */
+  resmiEksikler?: string[];
   /** Kurumsal: "Profesyonel paket"; bireyselde yok. */
   paket?: string | null;
   /** Kurumsal: "4 / 10"; bireyselde yok. */
@@ -219,13 +222,15 @@ const ETKINLIKLER = [
 ] as const;
 
 export default async function MusterilerPage({ searchParams }: {
-  searchParams: Promise<{ tur?: string; ara?: string; urun?: string; sira?: string; etkinlik?: string }>;
+  searchParams: Promise<{ tur?: string; ara?: string; urun?: string; sira?: string; etkinlik?: string; resmi?: string }>;
 }) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "musteriler");
 
-  const { tur, ara, urun, sira, etkinlik: etkinlikParam } = await searchParams;
+  const { tur, ara, urun, sira, etkinlik: etkinlikParam, resmi } = await searchParams;
+  /* Yalnızca resmi bilgisi eksik kurumlar (02.11.2026): proformaya eksik basılanlar. */
+  const resmiEksikSuzgeci = resmi === "eksik";
   const secilenEtkinlik = ETKINLIKLER.some((x) => x.kod === etkinlikParam) ? etkinlikParam! : null;
   const secilenUrun = PRODUCTS.some((p) => p.code === urun) ? urun! : null;
   const secilenSira = SIRALAR.some((x) => x.kod === sira) ? sira! : "ad";
@@ -281,9 +286,13 @@ export default async function MusterilerPage({ searchParams }: {
       supabase.from("organization_product_licenses")
         .select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at")
         .order("organization_id").range(bas, son)),
-    // Kayıt tarihi görünümde yok; kiracı sayısı kadar, yine de sayfalı.
-    sayfaliSonuc<{ id: string; created_at: string; slug: string | null }>("kurumlar", (bas, son) =>
-      supabase.from("organizations").select("id,created_at,slug").order("id").range(bas, son)),
+    /* Kayıt tarihi görünümde yok; kiracı sayısı kadar, yine de sayfalı.
+       Resmi bilgiler de buradan (02.11.2026): "Resmi bilgi eksik" süzgeci,
+       proforma formuyla aynı kural (lib/proforma kurumAlicisiKur). */
+    sayfaliSonuc<{ id: string; created_at: string; slug: string | null } & KurumResmiBilgisi>("kurumlar", (bas, son) =>
+      supabase.from("organizations")
+        .select("id,created_at,slug,name,display_name,legal_name,legal_address,legal_district,legal_city,tax_office,tax_number,contact_email")
+        .order("id").range(bas, son)),
     // ArvoARC'ın bireysel fiyatı listede değil, ürün planında.
     supabase.from("product_plans").select("product,individual_monthly_fee"),
     yayimlananFiyatlar(),
@@ -317,6 +326,8 @@ export default async function MusterilerPage({ searchParams }: {
   if (urunHatasi) throw new Error(`Ürün lisansları okunamadı: ${urunHatasi.message}`);
   const urunLisanslari = (urunSatirlari ?? []) as UrunLisansi[];
   const kayitTarihi = new Map(((kayitTarihleri ?? []) as { id: string; created_at: string }[]).map((k) => [k.id, k.created_at]));
+  const resmiEksikleri = new Map(((kayitTarihleri ?? []) as ({ id: string } & KurumResmiBilgisi)[])
+    .map((k) => [k.id, kurumAlicisiKur(k, []).eksikler]));
   const planUcreti = new Map(((planSatirlari ?? []) as { product: string; individual_monthly_fee: number | null }[]).map((p) => [p.product, p.individual_monthly_fee === null ? null : Number(p.individual_monthly_fee)]));
   const bireyselFiyat = (urunKodu: string) => {
     const liste = bireyselListeFiyatiKurus(urunKodu, fiyatlar);
@@ -416,6 +427,8 @@ export default async function MusterilerPage({ searchParams }: {
       etkinlik,
       risk,
       saglik,
+      /* Arvo'nun kendi kurumu sayılmıyor: proforma ona kesilmiyor. */
+      resmiEksikler: kurumTuru(kurum) === "arvo" ? [] : resmiEksikleri.get(kurum.id) ?? [],
       anahtar: `k-${kurum.id}`,
       secim: `kurum:${kurum.id}`,
       eposta: kurum.davet_eposta ?? null,
@@ -479,6 +492,7 @@ export default async function MusterilerPage({ searchParams }: {
     .filter((satir) => (desen ? sadelestir(`${satir.ad} ${satir.alt} ${satir.arama ?? ""} ${satir.urunler.map((u) => u.etiket).join(" ")}`).includes(desen) : true))
     /* Etkinlik süzgeci etkinliği ölçülemeyen satırları (bireysel, ArvoOS'suz kurum) dışarıda bırakıyor. */
     .filter((satir) => (secilenEtkinlik ? satir.etkinlik?.hal === secilenEtkinlik : true))
+    .filter((satir) => (resmiEksikSuzgeci ? Boolean(satir.resmiEksikler?.length) : true))
     .sort((a, b) => secilenSira === "gelir" ? b.ucret - a.ucret || a.ad.localeCompare(b.ad, "tr")
       : secilenSira === "yeni" ? (b.olusma ?? "").localeCompare(a.olusma ?? "")
       /* En az kullanan önce: hiç girilmemiş en başta, sonra en eski son
@@ -510,6 +524,7 @@ export default async function MusterilerPage({ searchParams }: {
     if (r && r !== "ad") p.set("sira", r);
     const e = yeni.etkinlik === undefined ? secilenEtkinlik : yeni.etkinlik;
     if (e) p.set("etkinlik", e);
+    if (resmiEksikSuzgeci) p.set("resmi", "eksik");
     if (a) p.set("ara", a);
     const q = p.toString();
     return q ? `/panel/platform/musteriler?${q}` : "/panel/platform/musteriler";
@@ -615,6 +630,10 @@ export default async function MusterilerPage({ searchParams }: {
               <option value="">Bütün kullanım</option>
               {ETKINLIKLER.map((x) => <option key={x.kod} value={x.kod}>{x.ad} ({sayi(tumSatirlar.filter((satir) => satir.etkinlik?.hal === x.kod).length)})</option>)}
             </OtomatikSecim>
+            <OtomatikSecim name="resmi" defaultValue={resmiEksikSuzgeci ? "eksik" : ""} className="talep-temsilci-sec" label="Resmi bilgi">
+              <option value="">Bütün resmi bilgi</option>
+              <option value="eksik">Eksik olanlar ({sayi(tumSatirlar.filter((satir) => satir.resmiEksikler?.length).length)})</option>
+            </OtomatikSecim>
             <OtomatikSecim name="sira" defaultValue={secilenSira} className="talep-temsilci-sec" label="Sıralama">
               {SIRALAR.map((x) => <option key={x.kod} value={x.kod}>{x.ad}</option>)}
             </OtomatikSecim>
@@ -661,7 +680,7 @@ export default async function MusterilerPage({ searchParams }: {
                         <span className="ek-avatar" data-tur={satir.tur} aria-hidden="true">{basHarfleri(satir.ad)}</span>
                         <span className="ek-kisi-metin">
                           <span className="crm-table-title" title={satir.ad}>{satir.ad}</span>
-                          <span className="crm-table-sub">{[TUR_ADI[satir.tur], satir.tur === "bireysel" ? satir.alt : satir.paket].filter(Boolean).join(" · ")}</span>
+                          <span className="crm-table-sub">{[TUR_ADI[satir.tur], satir.tur === "bireysel" ? satir.alt : satir.paket, satir.resmiEksikler?.length ? "resmi bilgi eksik" : null].filter(Boolean).join(" · ")}</span>
                         </span>
                       </Link>
                     </td>
