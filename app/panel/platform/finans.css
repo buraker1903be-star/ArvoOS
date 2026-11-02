@@ -95,3 +95,14 @@
 .os-root .sistem-sayfa .sy-tur{flex:none;align-self:flex-start;margin:0 0 var(--sp-3)}
 /* Kişi sayfası (kullanicilar/[id]): sol sütun iki kart alt alta. */
 .os-root .kisi-sayfa .kisi-govde{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+
+/* Sistem sağlığı → arıza kartı (saglik/teshis-karti.tsx). */
+.panel-root .sy-teshisler{display:grid;gap:var(--sp-3);margin:0 0 var(--sp-4)}
+.panel-root .sy-teshis{padding:var(--sp-3) var(--sp-4);border:1px solid var(--line);border-left:3px solid var(--danger);border-radius:10px;background:var(--surface)}
+.panel-root .sy-teshis header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--sp-2);margin-bottom:6px}
+.panel-root .sy-teshis header small{color:var(--muted)}
+.panel-root .sy-teshis p{margin:6px 0;font-size:var(--fs-base);line-height:1.5;color:var(--ink)}
+.panel-root .sy-teshis ol{margin:4px 0 6px;padding-left:20px;display:grid;gap:3px;font-size:var(--fs-base);line-height:1.5}
+.panel-root .sy-teshis-hata{margin:6px 0;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+.panel-root .sy-teshis-not{color:var(--muted)!important;font-size:var(--fs-sm)!important}
+.panel-root .sy-teshis code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}

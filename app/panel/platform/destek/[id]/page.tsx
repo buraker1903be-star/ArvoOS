@@ -78,7 +78,7 @@ export default async function DestekTalebi({ params }: { params: Promise<{ id: s
       <form action={replySupportTicket} className="panel-form kayit-formu">
         <input type="hidden" name="ticket_id" value={data.id} />
         <YanitKutusu hazirlar={hazirlar} kurum={kurum}
-          placeholder={kapali ? "Yanıt yazarsanız talep yeniden açılmaz; durumu aşağıdan değiştirin." : "Kuruma görünecek yanıt"} />
+          placeholder={kapali ? "Yanıt yazarsanız talep \"Müşteri bekleniyor\"a geçer; kapalı kalsın istiyorsanız durumu sonra yeniden kapatın." : "Kuruma görünecek yanıt"} />
         <div className="wide panel-form-actions kayit-formu-eylem">
           <p>Gönderince talep &quot;Müşteri bekleniyor&quot; olur ve kuruma panel bildirimi gider.</p>
           <button className="panel-primary" type="submit">Yanıtı gönder</button>

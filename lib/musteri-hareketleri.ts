@@ -154,7 +154,10 @@ export function musteriHareketleri(g: HareketGirdisi): Hareket[] {
     const acil = d.priority === "urgent" || d.priority === "high";
     ekle({ anahtar: `destek-${d.id}`, zaman: d.created_at, tur: "destek", olay: "Destek talebi açıldı", ayrinti: d.subject, tutar: null, ton: acil ? "warning" : "info", destekId: d.id });
     /* resolved_at durum "çözüldü" ya da "kapalı"ya çekilince yazılıyor (support/actions). */
-    if (d.resolved_at) ekle({ anahtar: `destek-${d.id}-kapandi`, zaman: d.resolved_at, tur: "destek", olay: d.status === "closed" ? "Destek talebi kapatıldı" : "Destek talebi çözüldü", ayrinti: d.subject, tutar: null, ton: "success", destekId: d.id });
+    /* Yalnızca hâlâ kapalıysa: kapanan talebe yanıt yazılınca veritabanı onu yeniden
+       açıyor (touch_support_ticket) ama resolved_at kalıyor; eskiden çizelge yeniden
+       açılan talebi "çözüldü" gösteriyordu. */
+    if (d.resolved_at && (d.status === "resolved" || d.status === "closed")) ekle({ anahtar: `destek-${d.id}-kapandi`, zaman: d.resolved_at, tur: "destek", olay: d.status === "closed" ? "Destek talebi kapatıldı" : "Destek talebi çözüldü", ayrinti: d.subject, tutar: null, ton: "success", destekId: d.id });
   }
 
   for (const n of g.notlar ?? []) {

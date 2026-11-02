@@ -56,6 +56,14 @@ test("kapanış anı biliniyorsa dönem sonunun yerine o kullanılır", () => {
   assert.deepEqual(r.kaybedilenKurumlar.map((k) => [k.id, k.bitis]), [["erken", "2026-10-04"]]);
 });
 
+test("ürünü \"Kapalı\" (inactive) yapılarak kapatılan müşteri de kayıp; hiç açılmamış ürün sayılmaz", () => {
+  const r = aylikRapor(AY, [kurum("kapali", { license_status: null, current_period_end: null })], [
+    { organization_id: "kapali", product: "arvolab", status: "inactive", current_period_end: "2026-12-01", trial_ends_at: null, created_at: "2026-01-10T10:00:00Z", closed_at: "2026-10-12T09:00:00Z" },
+    { organization_id: "kapali", product: "randevu", status: "inactive", current_period_end: null, trial_ends_at: null, created_at: "2026-01-10T10:00:00Z", closed_at: null },
+  ], []);
+  assert.deepEqual(r.kaybedilenKurumlar.map((k) => [k.id, k.bitis]), [["kapali", "2026-10-12"]]);
+});
+
 test("ek ürün: mevcut müşterinin bu ay açtığı ürün; yeni müşterinin ilk ürünü sayılmaz", () => {
   const r = aylikRapor(AY, [kurum("eski"), kurum("yeni", { created_at: "2026-10-03T10:00:00Z" })], [
     { organization_id: "eski", product: "randevu", status: "trialing", current_period_end: null, trial_ends_at: "2026-11-10", created_at: "2026-10-12T10:00:00Z" },
