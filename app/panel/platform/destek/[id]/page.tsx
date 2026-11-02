@@ -5,6 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { DURUM_ADI, KATEGORI_ADI, ONCELIK_ADI } from "@/lib/destek-kuyrugu";
 import { replySupportTicket, updateSupportTicketStatus } from "../../../support/actions";
 import { tarihSaat } from "../../bicim";
+import { YanitKutusu } from "../yanit-kutusu";
 import "../../platform.css";
 import "../../../crm/crm.css";
 import "../../../crm/kayit-detay/kayit-detay.css";
@@ -41,6 +42,12 @@ export default async function DestekTalebi({ params }: { params: Promise<{ id: s
   const kurum = org?.display_name || org?.name || "Kurum";
   const mesajlar = [...((data.support_messages ?? []) as Mesaj[])].sort((a, b) => a.created_at.localeCompare(b.created_at));
   const kapali = data.status === "resolved" || data.status === "closed";
+  /* Hazır yanıtlar (migration 20261102134522). Tablo yoksa ya da okunamazsa
+     seçici çizilmiyor; yanıt yazmak bunsuz da çalışıyor. */
+  /* sınırsız-tamam: kurucunun kendi şablon listesi, birkaç düzine satır. */
+  const hazirSonuc = await supabase.from("platform_hazir_yanitlar").select("id,baslik,metin").order("baslik");
+  if (hazirSonuc.error) console.error("[destek] hazır yanıtlar okunamadı", hazirSonuc.error.message);
+  const hazirlar = (hazirSonuc.data ?? []) as { id: string; baslik: string; metin: string }[];
 
   return <main className="plt talep cari ekip destek-talebi">
     <header className="talep-bas">
@@ -70,9 +77,8 @@ export default async function DestekTalebi({ params }: { params: Promise<{ id: s
     <section className="panel-card destek-yanit" aria-label="Yanıt">
       <form action={replySupportTicket} className="panel-form kayit-formu">
         <input type="hidden" name="ticket_id" value={data.id} />
-        <label className="wide">Yanıtınız
-          <textarea name="body" required maxLength={5000} rows={5} placeholder={kapali ? "Yanıt yazarsanız talep yeniden açılmaz; durumu aşağıdan değiştirin." : "Kuruma görünecek yanıt"} />
-        </label>
+        <YanitKutusu hazirlar={hazirlar} kurum={kurum}
+          placeholder={kapali ? "Yanıt yazarsanız talep yeniden açılmaz; durumu aşağıdan değiştirin." : "Kuruma görünecek yanıt"} />
         <div className="wide panel-form-actions kayit-formu-eylem">
           <p>Gönderince talep &quot;Müşteri bekleniyor&quot; olur ve kuruma panel bildirimi gider.</p>
           <button className="panel-primary" type="submit">Yanıtı gönder</button>

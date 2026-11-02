@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPanelContext } from "@/lib/panel-context";
-import { DUYURU_HEDEFLERI } from "@/lib/platform-duyuru";
+import { DUYURU_HEDEFLERI, hedefAdi, SECILI_SINIR } from "@/lib/platform-duyuru";
 import { tarihSaat, sayi } from "../bicim";
 import { duyuruGonder } from "./actions";
 import "../platform.css";
@@ -23,9 +23,24 @@ export const dynamic = "force-dynamic";
 */
 type Duyuru = { id: string; baslik: string; metin: string; baglanti: string | null; hedef: string; alici_sayisi: number; olusturuldu: string };
 
-export default async function DuyuruSayfasi() {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function DuyuruSayfasi({ searchParams }: { searchParams: Promise<{ kurumlar?: string }> }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  /*
+    SEÇİLİ KURUMLAR (02.11.2026): Müşteriler listesinin toplu işlem
+    çubuğundaki "Duyuru gönder" buraya ?kurumlar=<kimlik,…> ile geliyor.
+    Adlar gösterim için okunuyor; asıl alıcı kümesini sunucu işlemi
+    gerçek kiracılarla kesiştirerek kuruyor.
+  */
+  const { kurumlar: kurumParam } = await searchParams;
+  const seciliIdler = [...new Set((kurumParam ?? "").split(",").filter((x) => UUID.test(x)))].slice(0, SECILI_SINIR);
+  const seciliSonuc = seciliIdler.length
+    ? await supabase.from("organizations").select("id,name,display_name").in("id", seciliIdler)
+    : { data: [], error: null };
+  if (seciliSonuc.error) throw new Error("Seçili kurumlar okunamadı: " + seciliSonuc.error.message);
+  const seciliKurumlar = ((seciliSonuc.data ?? []) as { id: string; name: string; display_name: string | null }[]).map((k) => ({ id: k.id, ad: k.display_name || k.name }));
 
   /* Son 30 duyuru: yalnızca listeleniyor, toplam ya da sayım yok. */
   const { data, error } = await supabase.from("platform_duyurulari")
@@ -33,7 +48,6 @@ export default async function DuyuruSayfasi() {
     .order("olusturuldu", { ascending: false }).limit(30);
   if (error) throw new Error("Duyuru geçmişi okunamadı: " + error.message);
   const gecmis = (data ?? []) as Duyuru[];
-  const hedefAdi = (kod: string) => DUYURU_HEDEFLERI.find((h) => h.kod === kod)?.ad ?? kod;
 
   return <main className="plt talep cari ekip finans-sayfa">
     <header className="talep-bas">
@@ -55,11 +69,21 @@ export default async function DuyuruSayfasi() {
         <label className="wide">Metin
           <textarea name="metin" required minLength={3} maxLength={2000} rows={5} placeholder="Kurumların okuyacağı açıklama" />
         </label>
-        <label>Kime
-          <select name="hedef" defaultValue="tum">
-            {DUYURU_HEDEFLERI.map((h) => <option key={h.kod} value={h.kod}>{h.ad}</option>)}
-          </select>
-        </label>
+        {seciliKurumlar.length ? (
+          <div className="wide duyuru-secili">
+            <input type="hidden" name="hedef" value="secili" />
+            {seciliKurumlar.map((k) => <input key={k.id} type="hidden" name="kurum" value={k.id} />)}
+            <b>Kime: {seciliKurumlar.length} seçili kurum</b>
+            <small>{seciliKurumlar.map((k) => k.ad).join(", ")}</small>
+            <Link href="/panel/platform/duyuru">Bütün kurumlara ya da bir ürüne gönder</Link>
+          </div>
+        ) : (
+          <label>Kime
+            <select name="hedef" defaultValue="tum">
+              {DUYURU_HEDEFLERI.map((h) => <option key={h.kod} value={h.kod}>{h.ad}</option>)}
+            </select>
+          </label>
+        )}
         <label>Bağlantı (isteğe bağlı)
           <input name="baglanti" maxLength={200} placeholder="/panel/kilavuz" pattern="/panel.*" title="Panel içinde bir yol, ör. /panel/kilavuz" />
         </label>

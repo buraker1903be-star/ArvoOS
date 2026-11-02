@@ -6,7 +6,7 @@ import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { tumSatirlar } from "@/lib/rapor-okuma";
 import { panelBildirimiYaz } from "@/lib/panel-bildirimi";
-import { DUYURU_HEDEFLERI, duyuruAlicilari, duyuruDogrula, duyuruPostasi, type DuyuruKiracisi, type DuyuruLisansi } from "@/lib/platform-duyuru";
+import { duyuruAlicilari, duyuruDogrula, duyuruPostasi, hedefAdi as hedefAdiBul, SECILI_SINIR, type DuyuruKiracisi, type DuyuruLisansi } from "@/lib/platform-duyuru";
 import { epostaAyarli, epostaTopluGonder } from "@/lib/eposta-gonder";
 import { alicilariTopla } from "@/lib/otomatik-proforma";
 import { satici } from "@/lib/faturalama-koprusu";
@@ -77,7 +77,10 @@ async function duyuruGonder__impl(f: FormData) {
     tumSatirlar<DuyuruLisansi>("ürün lisansları", (bas, son) =>
       admin.from("organization_product_licenses").select("organization_id,product,status").order("organization_id").order("product").range(bas, son)),
   ]);
-  const alicilar = duyuruAlicilari(kiracilar, lisanslar, girdi.hedef);
+  /* Seçili hedefte kimlikler formdan; duyuruAlicilari yalnızca gerçek kiracılarla kesiştiriyor. */
+  const secili = [...new Set(f.getAll("kurum").map(String))];
+  if (girdi.hedef === "secili" && secili.length > SECILI_SINIR) throw new Error(`Seçili hedefte en çok ${SECILI_SINIR} kurum olabilir; bütün kurumlar için "Bütün kurumlar" hedefini seçin.`);
+  const alicilar = duyuruAlicilari(kiracilar, lisanslar, girdi.hedef, secili);
   if (!alicilar.length) throw new Error("Bu hedefte duyurunun gideceği kurum yok.");
 
   const { data: kayit, error } = await supabase.from("platform_duyurulari")
@@ -123,7 +126,7 @@ async function duyuruGonder__impl(f: FormData) {
     }
   }
 
-  const hedefAdi = DUYURU_HEDEFLERI.find((h) => h.kod === girdi.hedef)?.ad ?? girdi.hedef;
+  const hedefAdi = hedefAdiBul(girdi.hedef);
   if (dusen) throw new Error([`Duyuru ${yazilan} kuruma gitti, ${dusen} kurumda yazılamadı (${hedefAdi}). Günlüğe bakın.`, postaOzeti].filter(Boolean).join(" · "));
   await flashSuccess([`Duyuru ${yazilan} kurumun bildirimlerine düştü`, postaOzeti].filter(Boolean).join(" · "));
 }
