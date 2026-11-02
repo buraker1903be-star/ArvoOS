@@ -77,6 +77,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261030065444_maas_ve_hakedis.sql",
   "20261030080627_teklif_revizyonu_kapat.sql",
   "20261102083212_platform_duyurulari.sql",
+  "20261102101259_lisans_kapanis_tarihi.sql",
 ];
 
 /*

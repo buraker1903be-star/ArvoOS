@@ -46,6 +46,16 @@ test("kayıp: açık lisansı kalmamış ve son dönemi bu ay bitmiş", () => {
   assert.deepEqual(r.kaybedilenKurumlar.map((k) => [k.id, k.bitis]), [["giden", "2026-10-28"], ["deneme", "2026-10-20"]]);
 });
 
+test("kapanış anı biliniyorsa dönem sonunun yerine o kullanılır", () => {
+  const r = aylikRapor(AY, [
+    // Dönemi Kasım'da bitecekti ama Ekim'de iptal edildi: Ekim'in kaybı.
+    kurum("erken", { license_status: "canceled", current_period_end: "2026-11-20", closed_at: "2026-10-04T09:00:00Z" }),
+    // Dönemi Ekim'de bitti ama kapanış Kasım'da işlendi: Ekim'in kaybı değil.
+    kurum("gec", { license_status: "canceled", current_period_end: "2026-10-10", closed_at: "2026-11-02T09:00:00Z" }),
+  ], [], []);
+  assert.deepEqual(r.kaybedilenKurumlar.map((k) => [k.id, k.bitis]), [["erken", "2026-10-04"]]);
+});
+
 test("ek ürün: mevcut müşterinin bu ay açtığı ürün; yeni müşterinin ilk ürünü sayılmaz", () => {
   const r = aylikRapor(AY, [kurum("eski"), kurum("yeni", { created_at: "2026-10-03T10:00:00Z" })], [
     { organization_id: "eski", product: "randevu", status: "trialing", current_period_end: null, trial_ends_at: "2026-11-10", created_at: "2026-10-12T10:00:00Z" },
