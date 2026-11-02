@@ -358,6 +358,51 @@ export async function proformaGonder(...args: Parameters<typeof proformaGonder__
 }
 
 /*
+  GİTMEYENLERİ TOPLU GÖNDER (02.11.2026). 29.10–02.11.2026 arasında
+  otomatik proforma migration'ı canlıda yoktu ve kesilen proformalar
+  müşteriye hiç gitmedi; kurucu bunları tek tek açıp "Müşteriye gönder"e
+  basmak zorundaydı. Ödeme bekleyen ve en az bir kanalı ulaşmamış
+  proformalar YALNIZ EKSİK KANALDAN yeniden deneniyor: e-postası gitmiş
+  müşteri aynı e-postayı ikinci kez almaz.
+
+  Bir turda en çok TOPLU_SINIR proforma: her biri bir e-posta ve birkaç
+  sorgu; sunucu işleminin süresi sınırsız değil. Kalan varsa ekran sayıyı
+  yazar, düğmeye yeniden basılır.
+*/
+const TOPLU_SINIR = 20;
+
+async function gitmeyenleriGonder__impl() {
+  const { admin } = await kurucuYoneticisi();
+  const { data, error } = await admin.from("platform_proformalari").select("id")
+    .eq("durum", "bekliyor").or("gonderildi_at.is.null,bildirildi_at.is.null")
+    .order("gecerlilik_tarihi", { ascending: true }).limit(TOPLU_SINIR);
+  if (error) throw new Error(`Proformalar okunamadı: ${error.message}`);
+  const idler = ((data ?? []) as { id: string }[]).map((p) => p.id);
+  if (!idler.length) {
+    await flashSuccess("Gönderilecek proforma yok: ödeme bekleyenlerin hepsi müşteriye gitmiş.");
+    return;
+  }
+  let giden = 0;
+  const hatalar: string[] = [];
+  /* Sırayla: aynı e-posta sağlayıcısına yirmi eşzamanlı istek hız sınırına takılabilir.
+     tuzak-tamam: sayılan bu TURDA gönderilenler; tur bilerek TOPLU_SINIR'la sınırlı ve ekran "kalan olabilir" diyor. */
+  for (const id of idler) {
+    const sonuc = await proformayiUlastir(admin, id, true);
+    const hata = [sonuc.eposta && !sonuc.eposta.ok ? sonuc.eposta.hata : null, sonuc.bildirim && !sonuc.bildirim.ok ? sonuc.bildirim.hata : null].filter(Boolean).join(" · ");
+    if (hata) hatalar.push(hata); else giden += 1;
+  }
+  revalidatePath("/panel/platform/tahsilat");
+  revalidatePath("/panel");
+  const ozet = `${giden} proforma müşteriye gönderildi`;
+  if (hatalar.length) await flashError(`${ozet}; ${hatalar.length} tanesi gönderilemedi: ${[...new Set(hatalar)].join(" · ")}`);
+  else await flashSuccess(idler.length === TOPLU_SINIR ? `${ozet}. Kalan olabilir; düğmeye yeniden basın.` : `${ozet}.`);
+}
+
+export async function gitmeyenleriGonder(): Promise<void> {
+  await runPanelAction(() => gitmeyenleriGonder__impl());
+}
+
+/*
   BANKA HESAPLARI (29.10.2026). Proformada ve Abonelik sayfasının
   Havale / EFT sekmesinde müşteriye giden hesaplar platform_bank_accounts
   tablosundan geliyor; ama tabloyu düzenleyen bir ekran yoktu — tek
