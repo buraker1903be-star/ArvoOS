@@ -54,3 +54,38 @@ export async function epostaGonder(girdi: {
     return { ok: false, hata: `E-posta sağlayıcısına ulaşılamadı: ${hata instanceof Error ? hata.message : String(hata)}`.slice(0, 500) };
   }
 }
+
+/*
+  TOPLU GÖNDERİM (02.11.2026, konsol duyurusu). Yüzlerce kuruma tek tek
+  istek atmak sağlayıcının hız sınırına (saniyede birkaç istek) takılıyor
+  ve sunucu işlemi zaman aşımına düşebiliyordu. Resend'in toplu ucu tek
+  istekte 100 mektup kabul ediyor; liste 100'lük dilimlerle gönderiliyor.
+  Bir dilim düşerse ötekiler devam ediyor; sonuç kaç mektubun gittiğini
+  ve düşen dilimlerin hatasını söylüyor.
+*/
+export const TOPLU_DILIM = 100;
+
+export async function epostaTopluGonder(mektuplar: { kime: string[]; konu: string; metin: string; html: string }[]): Promise<{ gonderilen: number; hatalar: string[] }> {
+  const anahtar = process.env.RESEND_API_KEY;
+  if (!anahtar) return { gonderilen: 0, hatalar: ["E-posta gönderimi ayarlı değil (RESEND_API_KEY tanımlı değil)."] };
+  const gecerli = mektuplar.filter((m) => m.kime.length);
+  let gonderilen = 0;
+  const hatalar: string[] = [];
+  for (let i = 0; i < gecerli.length; i += TOPLU_DILIM) {
+    const dilim = gecerli.slice(i, i + TOPLU_DILIM);
+    try {
+      const yanit = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${anahtar}`, "Content-Type": "application/json" },
+        body: JSON.stringify(dilim.map((m) => ({ from: GONDEREN, to: m.kime, subject: m.konu, text: m.metin, html: m.html }))),
+        signal: AbortSignal.timeout(30_000),
+      });
+      const govde = (await yanit.json().catch(() => null)) as { message?: string } | null;
+      if (yanit.ok) gonderilen += dilim.length;
+      else hatalar.push(`E-posta gönderilemedi (${yanit.status}): ${govde?.message ?? "sağlayıcı yanıtı okunamadı"}`.slice(0, 300));
+    } catch (hata) {
+      hatalar.push(`E-posta sağlayıcısına ulaşılamadı: ${hata instanceof Error ? hata.message : String(hata)}`.slice(0, 300));
+    }
+  }
+  return { gonderilen, hatalar };
+}

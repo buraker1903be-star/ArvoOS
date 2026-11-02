@@ -11,6 +11,7 @@ import "../../crm/kayit-detay/kayit-detay.css";
 import "../../hr/hr.css";
 import "../../components/kayit-formu.css";
 import "../finans.css";
+import "./duyuru.css";
 
 export const metadata: Metadata = { title: "Kurumlara duyuru", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -61,6 +62,10 @@ export default async function DuyuruSayfasi() {
         </label>
         <label>Bağlantı (isteğe bağlı)
           <input name="baglanti" maxLength={200} placeholder="/panel/kilavuz" pattern="/panel.*" title="Panel içinde bir yol, ör. /panel/kilavuz" />
+        </label>
+        <label className="wide duyuru-eposta">
+          <input type="checkbox" name="eposta" value="1" />
+          <span>Kurum yetkililerine <b>e-postayla da gönder</b> (Kurum Sahipleri; sahip adresi yoksa kurumun iletişim adresi). Panele uzun süredir girmeyen kurumlar da görsün diye.</span>
         </label>
         <div className="wide panel-form-actions kayit-formu-eylem">
           <p>Ürün hedeflerinde yalnızca o ürünün lisansı açık kurumlar alır. Bireysel ArvoLab abonelerine gitmez; onlar ArvoOS panelini kullanmıyor.</p>

@@ -17,6 +17,8 @@ import { kiraciDosyasiVerisi } from "../../kiraci-dosyasi-verisi";
 import { OdemeBolumu, type Odeme, type UrunSatiri } from "./bolumler";
 import { BelgeBolumu } from "./belgeler";
 import { HareketBolumu } from "./hareketler";
+import { DestekBolumu } from "./destek";
+import { YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import "../../platform.css";
 import "../../../hr/hr.css";
 import "../../../crm/kayit-detay/kayit-detay.css";
@@ -71,6 +73,8 @@ const SEKMELER = [
   { kod: "odemeler", ad: "Ödemeler ve proformalar" },
   /* Bütün kayıtlar tek zaman çizelgesinde (lib/musteri-hareketleri). */
   { kod: "hareketler", ad: "Hareketler" },
+  /* Kurumun destek talepleri (02.11.2026); rozet yanıt bekleyen sayısı. */
+  { kod: "destek", ad: "Destek" },
   /* Kiracı dosyası: kurum ayarları formu, modüller, kurulum adımları ve
      sahibe giriş bağlantısı. */
   { kod: "kurulum", ad: "Kurulum" },
@@ -107,7 +111,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
     bir sınır koymak toplamı sessizce eksiltirdi (check:rakamlar). Kurum
     başına ayda bir-iki satır.
   */
-  const [{ data: kurumSatiri, error: kurumHatasi }, { data: kayit }, { data: urunSatirlari, error: urunHatasi }, { data: odemeSatirlari, error: odemeHatasi }, { data: etkinlikSatirlari }] = await Promise.all([
+  const [{ data: kurumSatiri, error: kurumHatasi }, { data: kayit }, { data: urunSatirlari, error: urunHatasi }, { data: odemeSatirlari, error: odemeHatasi }, { data: etkinlikSatirlari }, { count: yanitBekleyen }] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,slug,kind,plan_code,provisioning_state,license_status,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,custom_domain,davet_eposta,grup_markasi")
       .eq("id", id).maybeSingle(),
@@ -120,6 +124,8 @@ export default async function MusteriDetayi({ params, searchParams }: {
          tekrarlıyordu — kurucu için tek bir "bir şeyler oldu". */
       ? admin.from("activity_logs").select("action,entity_type,created_at,metadata").eq("organization_id", id).order("created_at", { ascending: false }).limit(6)
       : Promise.resolve({ data: [] }),
+    // hata-tamam: sekme rozeti; okunamazsa rozet çizilmiyor, sekmenin kendisi hatayı söylüyor
+    supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("organization_id", id).in("status", YANIT_BEKLEYEN_DURUMLAR),
   ]);
   if (kurumHatasi) throw new Error(`Müşteri okunamadı: ${kurumHatasi.message}`);
   if (!kurumSatiri) notFound();
@@ -177,6 +183,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
       <OdemeBolumu supabase={supabase} odemeler={odemeler} kurumAdi={ad} urunler={urunler} grup={grup} />
       <BelgeBolumu organizationId={id} />
     </>;
+    if (kod === "destek") return <DestekBolumu supabase={supabase} organizationId={id} />;
     if (kod === "hareketler") return <HareketBolumu admin={admin} organizationId={id} odemeler={odemeler} kayitAcildi={olusma} tur={hareketTuru} adres={adres} />;
     if (kod === "kurulum") {
       const veri = await kiraciDosyasiVerisi(supabase, id);
@@ -203,6 +210,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
   const sekmeAdresi = (kod: SekmeKodu) => (kod === "bilgiler" ? adres : `${adres}?pencere=${kod}`);
   const sekmeEki = (kod: SekmeKodu) =>
     kod === "odemeler" && bekleyen.length ? <span className="pu-sayi" data-tone="warning">{bekleyen.length}</span>
+      : kod === "destek" && yanitBekleyen ? <span className="pu-sayi" data-tone="warning">{yanitBekleyen}</span>
       : kod === "kullanicilar" ? <span className="pu-sayi">{sayi(Number(kurum.aktif_uye))}</span>
       : kod === "urunler" && kullandigi.length ? <span className="pu-sayi">{kullandigi.length}</span>
       : null;
