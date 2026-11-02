@@ -61,6 +61,11 @@ function licenseOpen(status: string | undefined, periodEnd: string | null) {
  * da e-postası olmayanları kimliğe göre ayrı kişi sayıp şişiyordu. Eksik
  * olduğunu bilmediğimiz bir liste, dolu bir liste gibi görünür.
  */
+/** Kullanıcıların auth e-postası ve metadata adı (proforma alıcısı da bunu kullanıyor). */
+export async function kullaniciEpostalari(client: SupabaseClient) {
+  return emailMap(client);
+}
+
 async function emailMap(client: SupabaseClient) {
   const map = new Map<string, { email: string | null; name: string | null }>();
   const perPage = 1000;

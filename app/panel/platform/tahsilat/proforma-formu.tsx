@@ -42,6 +42,10 @@ export type ProformaMusterisi = {
   /** Aramada eşleşen ek metin (unvan, e-posta, yetkili). */
   arama: string;
   alici: ProformaAlici;
+  /** Kurumda: belgenin gideceği etkin Kurum Sahipleri (lib/proforma kurumAlicisiKur). */
+  sahipler?: { ad: string | null; eposta: string | null }[];
+  /** Kurumda: Ayarlar → Resmi bilgiler'de girilmemiş alanlar. */
+  eksikler?: string[];
 };
 
 export type ProformaFiyatKisayolu = { urun: string; etiket: string; aciklama: string; kurus: number };
@@ -170,7 +174,21 @@ export function ProformaFormu({ musteriler, kisayollar, bugun, gecerlilik, kdvOr
       </section>
 
       <section className="wide pfo-bolum" aria-labelledby="pfo-2">
-        <h3 id="pfo-2"><i>2</i>Alıcı bilgileri<small>{musteri ? "Müşteri kaydından dolduruldu; belgeye bu hâliyle yazılır." : "Önce müşteriyi seçin."}</small></h3>
+        <h3 id="pfo-2"><i>2</i>Alıcı bilgileri<small>{musteri ? (kurumMu ? "Kurumun kendi girdiği resmi bilgilerden dolduruldu (Ayarlar → Resmi bilgiler); belgeye bu hâliyle yazılır." : "Müşteri kaydından dolduruldu; belgeye bu hâliyle yazılır.") : "Önce müşteriyi seçin."}</small></h3>
+        {/* Kime gidecek ve neyi eksik (02.11.2026): belge kaydedilince Kurum Sahiplerine
+            e-posta ve bildirimle gidiyor; eskiden bu hiçbir yerde yazmıyordu. */}
+        {kurumMu && musteri ? (
+          <div className="pfo-alici-bilgi">
+            {musteri.sahipler?.length ? (
+              <p><b>Gidecek:</b> {musteri.sahipler.map((s) => [s.ad, s.eposta ? `<${s.eposta}>` : "e-postası yok"].filter(Boolean).join(" ")).join(", ")} · Kurum Sahibi, e-posta ve panel bildirimi</p>
+            ) : (
+              <p className="pfo-uyari"><b>Etkin Kurum Sahibi yok:</b> panel bildirimi gitmez; e-posta {alici.eposta ? `kurumun iletişim adresine (${alici.eposta})` : "da gidemez — iletişim adresi de yok"}.</p>
+            )}
+            {musteri.eksikler?.length ? (
+              <p className="pfo-uyari"><b>Kurum girmemiş:</b> {musteri.eksikler.join(", ")}. Buraya elle yazabilir ya da kurumdan Ayarlar → Resmi bilgiler&apos;i doldurmasını isteyebilirsiniz.</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="pfo-izgara">
           <label><span>Ticari unvan{kurumMu ? <b className="req" aria-hidden="true">*</b> : null}</span>
             <input name="alici_unvan" value={alici.unvan ?? ""} onChange={(e) => setAlici({ ...alici, unvan: e.target.value })} maxLength={200} autoComplete="off"
