@@ -46,6 +46,12 @@ async function paketLimitiniKaydet__impl(formData: FormData) {
     .select("user_limit,storage_limit_mb,ai_credit_limit").eq("plan_code", paket).maybeSingle();
   if (oncekiHatasi) throw new Error("Paket limiti okunamadı: " + oncekiHatasi.message);
   if (!onceki) throw new Error("Bu paketin limit satırı yok; migration 20261102181453 uygulanmış mı?");
+  /* Kutu GB'yi yuvarlayarak gösteriyor; GB değişmediyse MB değeri olduğu gibi
+     kalır (inceleme bulgusu, 02.11.2026). Yoksa yalnızca kullanıcı limitini
+     değiştiren bir kayıt, 1024'ün katı olmayan depolamayı sessizce yuvarlardı
+     (5000 MB → 5120 MB). */
+  const oncekiMb = Number((onceki as { storage_limit_mb: number }).storage_limit_mb);
+  if (Math.round(oncekiMb / 1024) * 1024 === yeni.storage_limit_mb) yeni.storage_limit_mb = oncekiMb;
 
   /* Satır sayısı doğrulanıyor: RLS'in elediği güncelleme hata vermez, sıfır satır eder. */
   /* sınırsız-tamam: tek paketin satırı (plan_code birincil anahtar). */

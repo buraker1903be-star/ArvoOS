@@ -6,6 +6,7 @@ import "./support.css";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
 import "../components/kayit-formu.css";
 import { modulGerek } from "@/lib/modul-kapisi";
+import { alanAcik } from "@/lib/konsol-alanlari";
 
 type Message = { id:string; body:string; is_staff:boolean; created_at:string };
 type Ticket = { id:string; subject:string; category:string; priority:string; status:string; last_message_at:string; organizations:{name?:string}|{name?:string}[]|null; support_messages:Message[] };
@@ -21,8 +22,14 @@ const priorityNames:Record<string,string>={low:"Düşük",normal:"Normal",high:"
 const categoryNames:Record<string,string>={general:"Genel",technical:"Teknik",billing:"Faturalama",feature:"Özellik talebi"};
 
 export default async function SupportPage(){
-  const { supabase,membership,isPlatformOwner,modules }=await getPanelContext();
+  const { supabase,membership,isPlatformOwner:kurucu,konsolKapsami,modules }=await getPanelContext();
   modulGerek(modules, "support");
+  /* Bütün kurumların talepleri yalnızca konsolun Destek alanı açık kurucuya
+     (inceleme bulgusu, 02.11.2026). Eskiden yalnızca Finans'a sınırlanmış bir
+     kurucu da her kurumun yazışmasını okuyordu; yanıt ve durum işlemleri zaten
+     Destek istiyordu (./actions). Kısıtlı kurucu burada kendi kurumunun
+     kullanıcısı gibi görür. */
+  const isPlatformOwner = kurucu && alanAcik(konsolKapsami, "destek");
   let query=supabase.from("support_tickets").select("id,subject,category,priority,status,last_message_at,organizations(name),support_messages(id,body,is_staff,created_at)").order("last_message_at",{ascending:false});
   if(!isPlatformOwner) query=query.eq("organization_id",membership.organization_id);
   const {data,error}=await query;

@@ -373,9 +373,18 @@ const TOPLU_SINIR = 20;
 
 async function gitmeyenleriGonder__impl() {
   const { admin } = await kurucuYoneticisi();
+  /*
+    SIRA SON DENEMEYE GÖRE (inceleme bulgusu, 02.11.2026). Eskiden geçerlilik
+    tarihine göre sıralanıyordu: hiç gönderilemeyecek proformalar (etkin Kurum
+    Sahibi olmayan kurum, kapalı ArvoLab köprüsü) hep ilk yirmide kalıyor,
+    düğme her basışta aynılarını deniyor ve yenilerine hiç sıra gelmiyordu.
+    proformayiUlastir her denemede updated_at'i yazıyor; denenen sona gider.
+    Süresi geçmiş proforma gönderilmiyor: müşteri "süresi dolmuş" bir belge alırdı.
+  */
   const { data, error } = await admin.from("platform_proformalari").select("id")
     .eq("durum", "bekliyor").or("gonderildi_at.is.null,bildirildi_at.is.null")
-    .order("gecerlilik_tarihi", { ascending: true }).limit(TOPLU_SINIR);
+    .gte("gecerlilik_tarihi", todayInIstanbul())
+    .order("updated_at", { ascending: true }).limit(TOPLU_SINIR);
   if (error) throw new Error(`Proformalar okunamadı: ${error.message}`);
   const idler = ((data ?? []) as { id: string }[]).map((p) => p.id);
   if (!idler.length) {

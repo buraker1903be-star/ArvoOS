@@ -277,7 +277,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
          LISTE proformayla sınırlı, sayım ondan yapılsaydı eskileri kaçırırdı.
          Toplu gönder düğmesi de aynı süzgeçle arıyor (actions gitmeyenleriGonder). */
       admin.from("platform_proformalari").select("id", { count: "exact", head: true })
-        .eq("durum", "bekliyor").or("gonderildi_at.is.null,bildirildi_at.is.null"),
+        .eq("durum", "bekliyor").or("gonderildi_at.is.null,bildirildi_at.is.null").gte("gecerlilik_tarihi", todayInIstanbul()),
     ]);
     if (gYaniti.error) throw new Error("Proforma gönderim durumu okunamadı: " + gYaniti.error.message);
     if (pYaniti.error) throw new Error("Proformalar okunamadı: " + pYaniti.error.message);
