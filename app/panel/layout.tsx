@@ -19,6 +19,7 @@ import { formatPersonName } from "@/lib/format-name";
 import { osUygulamalari } from "./os/os-apps";
 import { OsDock } from "./os/os-dock";
 import { konsolUygulamalari } from "./os/konsol-apps";
+import { YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import { OsGeri } from "./os/os-geri";
 import { OsBolumSeridi } from "./os/os-bolum-seridi";
 import { OsUygulamaKabugu } from "./os/os-uygulama-kabugu";
@@ -495,20 +496,24 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   */
   let bekleyenOdeme = 0;
   let bekleyenSozlesme = 0;
+  let bekleyenDestek = 0;
   try {
     const konsolAdmin = createAdminClient();
-    const [odemeSonucu, sozlesmeSonucu] = await Promise.all([
+    const [odemeSonucu, sozlesmeSonucu, destekSonucu] = await Promise.all([
       supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
       konsolAdmin
         ? konsolAdmin.from("platform_subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
         : Promise.resolve({ count: 0, error: null }),
+      // Yanıt bekleyen destek talepleri (lib/destek-kuyrugu YANIT_BEKLEYEN_DURUMLAR).
+      supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", YANIT_BEKLEYEN_DURUMLAR),
     ]);
     bekleyenOdeme = odemeSonucu.error ? 0 : odemeSonucu.count ?? 0;
+    bekleyenDestek = destekSonucu.error ? 0 : destekSonucu.count ?? 0;
     bekleyenSozlesme = sozlesmeSonucu.error ? 0 : sozlesmeSonucu.count ?? 0;
   } catch (hata) {
     console.error("[konsol] dock rozetleri okunamadı", hata instanceof Error ? hata.message : hata);
   }
-  const konsolUygulamalariListesi = konsolUygulamalari({ odeme: bekleyenOdeme, sozlesme: bekleyenSozlesme });
+  const konsolUygulamalariListesi = konsolUygulamalari({ odeme: bekleyenOdeme, sozlesme: bekleyenSozlesme, destek: bekleyenDestek });
 
   const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 

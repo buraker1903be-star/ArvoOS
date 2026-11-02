@@ -20,6 +20,7 @@ import { gunFarki } from "@/lib/is-adimlari";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { tumSatirlar } from "@/lib/rapor-okuma";
+import { beklemeSuresi, gecikmisMi, kuyrukSirala, ONCELIK_ADI, YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import Link from "next/link";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { TalepAkis } from "./crm/kayit-detay/kayit-akis";
@@ -235,6 +236,17 @@ export async function KonsolAnaSayfa() {
   ]);
 
   /*
+    YANIT BEKLEYEN DESTEK TALEPLERİ (02.11.2026): kurumların açtığı
+    talepler konsolun hiçbir yerinde görünmüyordu (lib/destek-kuyrugu).
+    Kurucunun oturumuyla; RLS kurucuya bütün kurumların talebini açıyor.
+  */
+  /* sınırsız-tamam: yanıt bekleyen talepler — kurucunun temizlediği iş listesi, sayısı küçük. */
+  const { data: destekSatirlari, error: destekHatasi } = await supabase.from("support_tickets")
+    .select("id,subject,priority,status,last_message_at,organization_id")
+    .in("status", YANIT_BEKLEYEN_DURUMLAR)
+    .order("last_message_at", { ascending: true });
+
+  /*
     GRAFİĞİN TAHSİLATLARI: üç kanal, PENCEREYLE sınırlı.
 
     Sınır `.limit()` DEĞİL tarih: son 28 gün (14 gün + kıyas için önceki
@@ -296,6 +308,7 @@ export async function KonsolAnaSayfa() {
     ["Bireysel abone ödemeleri", bireyselHatasi],
     ["Kurulum günlüğü", kurulumHatasi],
     ["Bekleyen proformalar", proformaHatasi],
+    ["Destek talepleri", destekHatasi],
   ] as [string, { message: string } | null][])
     .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
   if (okunamayan.length)
@@ -488,8 +501,11 @@ export async function KonsolAnaSayfa() {
   const bugun = todayInIstanbul();
   const proformalar = ((proformaSatirlari ?? []) as { id: string; proforma_no: string; musteri_adi: string; product: string; toplam: number; para_birimi: string | null; gecerlilik_tarihi: string }[])
     .map((p) => ({ ...p, kalan: gunFarki(bugun, p.gecerlilik_tarihi) }));
+  const destekTalepleri = kuyrukSirala((destekSatirlari ?? []) as { id: string; subject: string; priority: string; status: string; last_message_at: string; organization_id: string }[]);
+  const destekAni = new Date(simdi());
   const sekmeler = [
     { ad: "Ödeme onayları", sayi: odemeler.length, hata: Boolean(bekleyenOdeme.error) },
+    { ad: "Destek", sayi: destekTalepleri.length, hata: Boolean(destekHatasi) },
     ...(sozlesmeler ? [{ ad: "Sözleşmeler", sayi: sozlesmeler.length, hata: Boolean(sozlesmeHatasi) }] : []),
     ...(admin ? [{ ad: "Proformalar", sayi: proformalar.length, hata: Boolean(proformaHatasi) }] : []),
     { ad: "Kurulumlar", sayi: kurulumdakiler.length, hata: Boolean(kiraciHatasi) },
@@ -590,6 +606,27 @@ export async function KonsolAnaSayfa() {
                 })}
               </ul>
             ) : bos("İncelenecek ödeme bildirimi yok.")}
+          </section>
+
+          <section>
+            {bas("Kurumların yanıt bekleyen destek talepleri; acil olan ve en uzun bekleyen başta.", "/panel/platform/destek", "Destek talepleri")}
+            {destekHatasi ? okunamadi : destekTalepleri.length ? (
+              <ul className="pu-liste">
+                {destekTalepleri.map((t) => (
+                  <li key={t.id}>
+                    <Link href={`/panel/platform/destek/${t.id}`}>
+                      <span className="pu-govde">
+                        <b>{t.subject}</b>
+                        <small>{[kurumAdi.get(t.organization_id) ?? "Kurum", ONCELIK_ADI[t.priority]].filter(Boolean).join(" · ")}</small>
+                      </span>
+                      <span className="status-pill" data-tone={gecikmisMi(t.last_message_at, destekAni) ? "danger" : "gold"}>
+                        {beklemeSuresi(t.last_message_at, destekAni)} bekliyor
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : bos("Yanıt bekleyen destek talebi yok.")}
           </section>
 
           {sozlesmeler ? (

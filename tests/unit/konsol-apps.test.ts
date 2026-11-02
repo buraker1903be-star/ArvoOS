@@ -48,6 +48,10 @@ describe("kurucu konsolu uygulamaları", () => {
     assert.equal(etkin("/panel/platform/tahsilat/proforma/8f0e1c2a-0000-4000-8000-000000000000"), "finans");
     assert.equal(etkin("/panel/platform/payments"), "finans");
 
+    /* 02.11.2026: destek talepleri konsolda kendi uygulamasında. */
+    assert.equal(etkin("/panel/platform/destek"), "destek");
+    assert.equal(etkin("/panel/platform/destek/8f0e1c2a-0000-4000-8000-000000000000"), "destek");
+
     assert.equal(etkin("/panel/platform/ayarlar"), "sistem");
     assert.equal(etkin("/panel/platform/saglik"), "sistem");
   });
@@ -86,15 +90,19 @@ describe("kurucu konsolu uygulamaları", () => {
     }
   });
 
-  test("dock beş iş alanı", () => {
+  test("dock altı iş alanı", () => {
     /* İlk sürümde konsolun dokuz ekranı dokuz dock girdisiydi, sonra
        sekiz ana menü oldu (14.10.2026) ve 29.10.2026'da beşe indi.
        Girdiler EKRAN değil iş alanı; yeni bir ekran eklenince dock'a
        girdi eklemek yerine ilgili uygulamanın bölümlerine inmeli. Sayı
-       büyümeye başlarsa bu test söyler. */
+       büyümeye başlarsa bu test söyler.
+       02.11.2026: Destek altıncı oldu — yeni bir EKRAN değil yeni bir İŞ
+       ALANI (müşteri talepleri hiçbir yerde görünmüyordu) ve kendi
+       rozeti var; Müşteriler'in bölümü olsaydı rozet "müşteri" sayısı
+       gibi okunurdu. */
     assert.deepEqual(
       uygulamalar.filter((u) => !u.yalnizBaslatici).map((u) => u.label),
-      ["Genel Bakış", "Müşteriler", "Finans", "Ürünler ve Fiyatlar", "Sistem"],
+      ["Genel Bakış", "Müşteriler", "Finans", "Destek", "Ürünler ve Fiyatlar", "Sistem"],
     );
   });
 });
@@ -127,7 +135,7 @@ describe("konsolda kayıt araması", () => {
   konsolda kullanılmıyordu (14.10.2026).
 */
 describe("konsol dock rozetleri", () => {
-  const rozet = (bekleyen?: { odeme?: number; sozlesme?: number }) =>
+  const rozet = (bekleyen?: { odeme?: number; sozlesme?: number; destek?: number }) =>
     Object.fromEntries(konsolUygulamalari(bekleyen).filter((u) => u.rozet).map((u) => [u.key, u.rozet]));
 
   test("bekleyen iş yoksa rozet çizilmiyor", () => {
@@ -144,6 +152,11 @@ describe("konsol dock rozetleri", () => {
   test("yalnızca biri doluysa rozet onun sayısı", () => {
     assert.deepEqual(rozet({ odeme: 1 }), { finans: 1 });
     assert.deepEqual(rozet({ sozlesme: 4 }), { finans: 4 });
+  });
+
+  test("yanıt bekleyen destek talebi Destek'in rozeti, Finans'a karışmaz", () => {
+    assert.deepEqual(rozet({ destek: 2 }), { destek: 2 });
+    assert.deepEqual(rozet({ odeme: 1, destek: 3 }), { finans: 1, destek: 3 });
   });
 
   test("eksi ve küsuratlı sayı rozete sızmıyor", () => {

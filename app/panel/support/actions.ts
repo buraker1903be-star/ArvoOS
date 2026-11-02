@@ -43,6 +43,8 @@ async function replySupportTicket__impl(formData: FormData) {
   });
   if (error) throw new Error("Yanıt gönderilemedi: " + error.message);
   revalidatePath("/panel/support");
+  // Konsolun destek kuyruğu da aynı işlemi kullanıyor (app/panel/platform/destek).
+  revalidatePath("/panel/platform/destek", "layout");
 }
 
 async function updateSupportTicketStatus__impl(formData: FormData) {
@@ -56,6 +58,7 @@ async function updateSupportTicketStatus__impl(formData: FormData) {
   }).eq("id",ticketId);
   if (error) throw new Error("Durum güncellenemedi: " + error.message);
   revalidatePath("/panel/support");
+  revalidatePath("/panel/platform/destek", "layout");
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).

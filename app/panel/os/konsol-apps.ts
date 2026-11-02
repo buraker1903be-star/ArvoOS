@@ -52,8 +52,9 @@ import type { OsUygulama } from "./os-apps";
  * yolu ilgili ekranı açmaktı. Sayı sıfırsa rozet çizilmiyor. İki kuyruk
  * 29.10.2026'dan beri aynı uygulamada (Finans), rozet toplamı gösteriyor.
  */
-export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: number }): OsUygulama[] {
+export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: number; destek?: number }): OsUygulama[] {
   const odeme = Math.max(0, Math.round(bekleyen?.odeme ?? 0));
+  const destek = Math.max(0, Math.round(bekleyen?.destek ?? 0));
   const sozlesme = Math.max(0, Math.round(bekleyen?.sozlesme ?? 0));
   const finansRozeti = odeme + sozlesme;
   return [
@@ -87,6 +88,15 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
         { key: "faturalar", href: "/panel/platform/tahsilat?kanal=fatura", label: "Faturalar" },
         { key: "banka", href: "/panel/platform/tahsilat?kanal=banka", label: "Banka hesapları" },
       ],
+    },
+    /*
+      Destek (02.11.2026): kurumların açtığı talepler konsolda hiç
+      görünmüyordu. Rozet yanıt bekleyen (sıra bizde) talep sayısı.
+    */
+    {
+      key: "destek", label: "Destek", href: "/panel/platform/destek", ikon: "messages",
+      ...(destek ? { rozet: destek } : {}),
+      yollar: ["/panel/platform/destek"],
     },
     {
       key: "urunler", label: "Ürünler ve Fiyatlar", href: "/panel/platform/urunler", ikon: "box",
