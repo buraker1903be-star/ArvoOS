@@ -10,6 +10,7 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { KNot } from "../konsol-ui";
+import { konsolKaydiCumlesi } from "@/lib/konsol-degisiklik";
 import { basHarfleri, KURULUM_ADI, KURULUM_ISLEMI, para, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
@@ -42,8 +43,9 @@ import "../finans.css";
        katıldı (eksik ayarın bedeli ve son posta gönderim hatası).
     3. İşlem kayıtları — kurucu işlemlerinin tek akışı: kurulum adımları,
        ödeme ve sözleşme kararları, fiyat değişiklikleri, üye erişimi.
-       Lisans ve modül düzenlemeleri bugün ayrı bir kayıt bırakmıyor
-       (yalnızca updated_by); bölüm bunu da yazıyor.
+       Lisans, modül ve kurum ayarı düzenlemeleri 02.11.2026'ya kadar
+       kayıt bırakmıyordu (yalnızca updated_by); artık "önce → sonra"
+       ile yazılıyor (app/panel/platform/konsol-kaydi.ts).
 
   Sistem Sağlığı (köprü kopyaları, kota, kurulum hataları) bu menünün
   alt bölümü; ayrıntı orada.
@@ -153,10 +155,16 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
       ne: `${s.organization_id ? kurumAdi.get(s.organization_id) ?? "Kurum" : "Kurum"} · ${KURULUM_ISLEMI[s.action] ?? s.action} · ${KURULUM_ADI[s.state] ?? s.state}${s.result === "failed" ? " · HATA" : ""}`,
       kim: kim(s.actor_user_id),
     })),
-    ...((erisim?.data ?? []) as { id: number; organization_id: string; actor_user_id: string | null; action: string; entity_type: string; metadata: { is_active?: boolean } | null; created_at: string }[]).map((s) => ({
-      anahtar: `erisim-${s.id}`, zaman: s.created_at, tur: "Üye erişimi", ton: "info" as Ton,
-      ne: `${kurumAdi.get(s.organization_id) ?? "Kurum"} · ${s.entity_type === "organization_membership" ? `üye erişimi ${(s as { metadata?: { is_active?: boolean } }).metadata?.is_active ? "açıldı" : "kapatıldı"}` : s.action}`, kim: kim(s.actor_user_id),
-    })),
+    /* Konsolun activity_logs kayıtları: üye erişimi ve 02.11.2026'dan beri
+       lisans, modül, köprü ve kurum ayarı değişiklikleri ("önce → sonra"). */
+    ...((erisim?.data ?? []) as { id: number; organization_id: string; actor_user_id: string | null; action: string; entity_type: string; metadata: Record<string, unknown> | null; created_at: string }[]).map((s) => {
+      const c = konsolKaydiCumlesi(s);
+      const uyelik = s.entity_type === "organization_membership";
+      return {
+        anahtar: `erisim-${s.id}`, zaman: s.created_at, tur: uyelik ? "Üye erişimi" : "Lisans ve ayar", ton: c.ton as Ton,
+        ne: [kurumAdi.get(s.organization_id) ?? "Kurum", c.olay, c.ayrinti].filter(Boolean).join(" · "), kim: kim(s.actor_user_id),
+      };
+    }),
     ...((fiyat?.data ?? []) as { id: number; kod: string; islem: string; yeni_kurus: number | null; kim: string | null; zaman: string }[]).map((s) => ({
       anahtar: `fiyat-${s.id}`, zaman: s.zaman, tur: "Fiyat", ton: (s.islem === "yayim" ? "success" : "neutral") as Ton,
       ne: `${s.kod} · ${({ taslak: "taslak", taslak_iptal: "taslak geri alındı", yayim: "yayımlandı", koda_donus: "koda döndü" } as Record<string, string>)[s.islem] ?? s.islem}${s.yeni_kurus !== null && s.islem !== "koda_donus" ? ` · ${para(Number(s.yeni_kurus))}` : ""}`,
@@ -217,7 +225,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
 
   /* Gönderim hatası da eksik sayılır: Sistem sağlığının "açık sorun" sayısıyla aynı kural. */
   const eksikEntegrasyon = entegrasyonlar.filter((e) => e.durum === "eksik" || e.durum === "hata").length;
-  const KAYIT_TURLERI = ["Kurulum", "Üye erişimi", "Fiyat", "Ödeme kararı", "Sözleşme onayı"];
+  const KAYIT_TURLERI = ["Kurulum", "Lisans ve ayar", "Üye erişimi", "Fiyat", "Ödeme kararı", "Sözleşme onayı"];
   const seciliTur = KAYIT_TURLERI.includes(istenenTur ?? "") ? istenenTur! : "";
   const gorunenKayitlar = seciliTur ? kayitlar.filter((k) => k.tur === seciliTur) : kayitlar;
   const eksikSir = sirlar.filter((s) => !s.var).length;
@@ -231,7 +239,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   const BOLUM_ADI: Record<Bolum, { baslik: string; alt: string }> = {
     yetkiler: { baslik: "Kurucu yetkileri", alt: "Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Sunucu işlemleri ve veritabanı politikaları aynı kuralı uyguluyor." },
     baglantilar: { baslik: "Bağlantılar ve sırlar", alt: "Entegrasyonların ve sunucu sırlarının gerçek durumu; eksikse neyin olmadığı yazıyor, sırların değeri gösterilmez." },
-    kayitlar: { baslik: "İşlem kayıtları", alt: "Kurulum adımları, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt." },
+    kayitlar: { baslik: "İşlem kayıtları", alt: "Kurulum adımları, lisans ve ayar değişiklikleri, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt." },
   };
   const SEKME_ADI: Record<Bolum, string> = { yetkiler: "Kurucu yetkileri", baglantilar: "Bağlantılar ve sırlar", kayitlar: "İşlem kayıtları" };
   const bas = BOLUM_ADI[bolum];
@@ -395,8 +403,8 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
             </div>
           ) : bos(seciliTur ? `“${seciliTur}” türünde kayıt yok` : "Henüz kurucu işlemi kaydı yok", "Konsoldan yapılan kurum, lisans ve ödeme işlemleri burada tarihiyle birikir.")}
           <KNot>
-            Lisans, modül ve deneme düzenlemeleri bugün ayrı bir kayıt bırakmıyor (yalnızca son düzenleyen
-            tutuluyor); genel işlem günlüğü sonraki adım.
+            Lisans, modül, köprü ve kurum ayarı değişiklikleri 2 Kasım 2026&apos;dan beri önceki ve yeni
+            değeriyle kaydediliyor; daha eskilerinde yalnızca son düzenleyen tutuluyordu.
           </KNot>
         </>
       ) : null}

@@ -8,6 +8,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAddonProduct, productName } from "@/lib/products";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { urunLisansiniYansit } from "@/lib/urun-yansitma";
+import { alanFarki, konsolKaydiYaz, URUN_LISANS_ALANLARI } from "./konsol-kaydi";
+
+/* Önceki değer okunamazsa kayıt yazılmaz (licenses/actions.ts'teki gerekçe). */
+async function oncekiLisans(admin: NonNullable<ReturnType<typeof createAdminClient>>, organizationId: string, product: string) {
+  const { data, error } = await admin.from("organization_product_licenses").select("status,suspension_reason,integrated")
+    .eq("organization_id", organizationId).eq("product", product).maybeSingle();
+  if (error) {
+    console.error("[konsol] modül için önceki değer okunamadı; işlem kaydı yazılmayacak", error.message);
+    return undefined;
+  }
+  return (data as Record<string, unknown> | null) ?? null;
+}
 
 /*
   Modül matrisinin iki anahtarı.
@@ -58,6 +70,7 @@ async function modulErisimiDegistir__impl(formData: FormData) {
     throw new Error("Askıya alma sebebi zorunlu. Müşteri sorduğunda yanıtın kayıtta olması gerekiyor.");
   }
 
+  const once = await oncekiLisans(admin, organizationId, product);
   const simdi = new Date().toISOString();
   const { error } = await admin
     .from("organization_product_licenses")
@@ -71,6 +84,13 @@ async function modulErisimiDegistir__impl(formData: FormData) {
     .eq("organization_id", organizationId)
     .eq("product", product);
   if (error) throw new Error(`Erişim güncellenemedi: ${error.message}`);
+  if (once !== undefined) {
+    await konsolKaydiYaz({
+      organizationId, userId, entityType: "product_license", entityId: product,
+      baslik: `${productName(product)} erişimi değişti`,
+      degisiklikler: alanFarki(once, { status: durum, suspension_reason: durum === "suspended" ? sebep : null }, URUN_LISANS_ALANLARI),
+    });
+  }
 
   /*
     Lisans değişikliği ürün tarafına yansımalı. Eskiden yalnızca ArvoARC'a
@@ -98,6 +118,7 @@ export async function modulErisimiDegistir(formData: FormData): Promise<void> {
 async function modulKoprusuDegistir__impl(formData: FormData) {
   const { admin, organizationId, product, userId } = await kurucuVeUrun(formData);
   const entegre = String(formData.get("integrated") ?? "") === "1";
+  const once = await oncekiLisans(admin, organizationId, product);
 
   const { error } = await admin
     .from("organization_product_licenses")
@@ -105,6 +126,13 @@ async function modulKoprusuDegistir__impl(formData: FormData) {
     .eq("organization_id", organizationId)
     .eq("product", product);
   if (error) throw new Error(`Köprü modu güncellenemedi: ${error.message}`);
+  if (once !== undefined) {
+    await konsolKaydiYaz({
+      organizationId, userId, entityType: "product_bridge", entityId: product,
+      baslik: `${productName(product)} köprü modu değişti`,
+      degisiklikler: alanFarki(once, { integrated: entegre }, URUN_LISANS_ALANLARI),
+    });
+  }
 
   /*
     Senkron hemen çalıştırılıyor: bağımsıza çekilen kiracı kapsam dışına
