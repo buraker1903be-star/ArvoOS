@@ -22,6 +22,8 @@ import { SatirTiklama } from "../../crm/satir-tiklama";
 import { TopluIslem, type CsvSatiri } from "./toplu-islem";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { enCok } from "@/lib/liste-istatistik";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { etkinlikHali, etkinlikYazisi, kurumEtkinligi, yenilemeRiski, type KurumEtkinligi, type VarlikSatiri } from "@/lib/musteri-etkinligi";
 import "../platform.css";
 import "../../hr/hr.css";
 import "../../crm/crm.css";
@@ -119,6 +121,10 @@ type Satir = {
   paket?: string | null;
   /** Kurumsal: "4 / 10"; bireyselde yok. */
   kullanici?: string | null;
+  /** Kurumsal: ArvoOS panelinin son kullanımı (lib/musteri-etkinligi); bireyselde yok. */
+  etkinlik?: { yazi: string; hal: "aktif" | "azaliyor" | "sessiz"; haftalik: number } | null;
+  /** Yenilemesi yakın ve paneli kullanmıyor: arayıp sormak için. */
+  risk?: boolean;
 };
 
 const ACIK = new Set(["active", "trialing", "past_due"]);
@@ -183,6 +189,26 @@ function bireyselSatirlariKur(aboneler: Abone[], liste: (urun: string) => number
   });
 }
 
+/*
+  PANEL ETKİNLİĞİ (02.11.2026): kim en son ne zaman girdi. Sunucu
+  anahtarıyla, sayfalı (kurum × kişi başına bir satır; kullanıcı sayısı
+  kadar büyüyor). Okunamazsa sütun "—" kalıyor ve ekranda yazıyor;
+  liste düşmüyor — etkinlik süs değil ama listenin asıl verisi de değil.
+  Şimdiki zaman bileşen DIŞINDA okunuyor (react-hooks/purity).
+*/
+async function etkinlikleriOku(): Promise<{ harita: Map<string, KurumEtkinligi> | null; simdi: number }> {
+  const simdi = Date.now();
+  const admin = createAdminClient();
+  if (!admin) return { harita: null, simdi };
+  const sonuc = await sayfaliSonuc<VarlikSatiri>("panel etkinliği", (bas, son) =>
+    admin.from("user_presence").select("organization_id,last_seen_at").order("organization_id").order("user_id").range(bas, son));
+  if (sonuc.error) {
+    console.error("[konsol] panel etkinliği okunamadı", sonuc.error.message);
+    return { harita: null, simdi };
+  }
+  return { harita: kurumEtkinligi(sonuc.data ?? [], simdi), simdi };
+}
+
 /** Türkçe duyarsız arama: "İş" ile "is" eşleşsin. */
 const sadelestir = (deger: string) =>
   deger.replace(/İ/g, "i").replace(/I/g, "ı").toLocaleLowerCase("tr-TR")
@@ -238,7 +264,7 @@ export default async function MusterilerPage({ searchParams }: {
      Aynı kural dört büyük listede de kullanılıyor; ikinci bir kopyası
      yazılmadı. */
   const sunucuDeseni = aranan ? aramaDeseni(aranan) : null;
-  const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu, aramaSonucu] = await Promise.all([
+  const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu, aramaSonucu, etkinlikSonucu] = await Promise.all([
     sayfaliSonuc<Kurum>("kiracılar", (bas, son) =>
       supabase.from("platform_kiraci_liste")
         .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi,davet_eposta")
@@ -271,6 +297,7 @@ export default async function MusterilerPage({ searchParams }: {
           .or(`email.ilike.%${sunucuDeseni}%,full_name.ilike.%${sunucuDeseni}%,product.ilike.%${sunucuDeseni}%`)
           .limit(LISTE_SINIRI)
       : Promise.resolve({ data: [], error: null }),
+    etkinlikleriOku(),
   ]);
   /*
     Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
@@ -351,7 +378,18 @@ export default async function MusterilerPage({ searchParams }: {
       kurum.license_status === "trialing" ? kurum.trial_ends_at : ACIK.has(kurum.license_status ?? "") ? kurum.current_period_end : null,
       ...ekler.filter((l) => ACIK.has(l.status)).map((l) => (l.status === "trialing" ? l.trial_ends_at : l.current_period_end)),
     ].filter((t): t is string => Boolean(t)).sort();
+    /* Etkinlik yalnızca ArvoOS lisansı olan kurumda anlamlı: diğer
+       ürünlerin paneli başka projede, burada "hiç girilmedi" görünürdü. */
+    const arvoosAcik = ACIK.has(kurum.license_status ?? "");
+    const etk = etkinlikSonucu.harita?.get(kurum.id) ?? null;
+    const etkinlik = etkinlikSonucu.harita && kurum.license_status
+      ? { yazi: etkinlikYazisi(etk?.son ?? null, etkinlikSonucu.simdi), hal: etkinlikHali(etk?.son ?? null, etkinlikSonucu.simdi), haftalik: etk?.haftalik ?? 0 }
+      : null;
+    const arvoosYenileme = kurum.license_status === "trialing" ? kurum.trial_ends_at : kurum.current_period_end;
+    const risk = Boolean(etkinlikSonucu.harita) && yenilemeRiski({ acik: arvoosAcik, yenileme: arvoosYenileme, son: etk?.son ?? null }, etkinlikSonucu.simdi);
     return {
+      etkinlik,
+      risk,
       anahtar: `k-${kurum.id}`,
       secim: `kurum:${kurum.id}`,
       eposta: kurum.davet_eposta ?? null,
@@ -446,6 +484,9 @@ export default async function MusterilerPage({ searchParams }: {
   /* Telefonda satırın altına düşen kısa yazılar: dikkat isteyen durum
      önde, sonra ürünler. */
   const dikkatliler = tumSatirlar.filter((satir) => satir.ton === "danger");
+  /* Yenilemesi yakın ve paneli kullanmayan müşteriler (lib/musteri-etkinligi):
+     erişimi açık oldukları için "dikkat"e düşmüyorlardı. */
+  const riskliler = tumSatirlar.filter((satir) => satir.risk && satir.ton !== "danger");
   const urunDagilimi = enCok(tumSatirlar.flatMap((satir) => satir.urunler.map((u) => u.etiket)), 6);
   const durumDagilimi = enCok(tumSatirlar.map((satir) => satir.durum), 6);
   const TURLER: [string | null, string, number][] = [
@@ -586,7 +627,15 @@ export default async function MusterilerPage({ searchParams }: {
                         {satir.urunler.length ? satir.urunler.map((u) => <span key={u.kod} data-tone={u.ton}>{u.etiket}</span>) : <span className="crm-table-sub">Ürün yok</span>}
                       </span>
                     </td>
-                    <td data-label="Kullanıcı">{satir.kullanici ? <span className="crm-table-title">{satir.kullanici}</span> : <span className="crm-table-sub">—</span>}</td>
+                    <td data-label="Kullanıcı">
+                      {satir.kullanici ? <span className="crm-table-title">{satir.kullanici}</span> : <span className="crm-table-sub">—</span>}
+                      {/* Son kullanım: kim en son ne zaman girdi (lib/musteri-etkinligi). */}
+                      {satir.etkinlik ? (
+                        <span className="crm-table-sub mu-etkinlik" data-hal={satir.etkinlik.hal} title={`Son 7 günde ${satir.etkinlik.haftalik} kişi girdi`}>
+                          {satir.etkinlik.yazi}{satir.etkinlik.haftalik ? ` · ${satir.etkinlik.haftalik} kişi/hafta` : ""}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="crm-col-date" data-label="Yenileme">{satir.yenileme ? tarih(satir.yenileme) : "—"}</td>
                     <td className="crm-col-amount" data-label="Aylık">
                       {/* Bütün ödeyen ürünlerin toplamı; ödeyen ürünü olup hiçbirinin ücreti girilmemişse "Ücret yok". */}
@@ -625,7 +674,7 @@ export default async function MusterilerPage({ searchParams }: {
           sorusunun yanıtı da değişirdi. Ekip listesindeki sekmeli kart. */}
       <div className="liste-sag">
         <TalepAkis kimlik="musteri-sag" sinif="ek-sag" etiket="Müşteri istatistikleri"
-          sekmeler={["İstatistikler", dikkatliler.length ? `Dikkat · ${dikkatliler.length}` : "Dikkat", ...(grupSatirlar.length ? ["Grup içi"] : [])]}>
+          sekmeler={["İstatistikler", dikkatliler.length + riskliler.length ? `Dikkat · ${dikkatliler.length + riskliler.length}` : "Dikkat", ...(grupSatirlar.length ? ["Grup içi"] : [])]}>
           <IstatistikKarti
             kapsam="bütün kayıtlar"
             kutular={[
@@ -652,7 +701,21 @@ export default async function MusterilerPage({ searchParams }: {
                   </li>
                 ))}
               </ul>
-            </> : <p className="ek-bos-kucuk">Dikkat gerektiren kayıt yok.</p>}
+            </> : null}
+            {riskliler.length ? <>
+              <p className="ek-not" data-tone="warning">Yenilemesi 30 gün içinde, son 7 günde paneli kullanmamış müşteriler. Yenilemeden önce arayın.</p>
+              <ul className="pu-liste">
+                {riskliler.map((satir) => (
+                  <li key={`r-${satir.anahtar}`}>
+                    <Link href={satir.href}>
+                      <span className="pu-govde"><b>{satir.ad}</b><small>{[satir.etkinlik?.yazi, satir.yenileme ? `yenileme ${tarih(satir.yenileme)}` : null].filter(Boolean).join(" · ")}</small></span>
+                      <span className="status-pill" data-tone="gold">Yenileme riski</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </> : null}
+            {!dikkatliler.length && !riskliler.length ? <p className="ek-bos-kucuk">Dikkat gerektiren kayıt yok.</p> : null}
           </section>
           {grupSatirlar.length ? (
             <section className="ek-panel" aria-label="Grup içi değer">

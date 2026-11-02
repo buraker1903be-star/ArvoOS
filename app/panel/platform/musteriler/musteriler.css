@@ -30,3 +30,9 @@
 @media (max-width:1360px) and (min-width:761px){
   .os-root .talep-tablo .crm-data-table[data-cols="konsol-musteri"] :is(th,td):nth-child(4){display:none}
 }
+
+/* Son kullanım (lib/musteri-etkinligi): kullanıcı sayısının altında, hâline göre renkli. */
+.konsol-musteriler .mu-etkinlik{display:block}
+.konsol-musteriler .mu-etkinlik[data-hal="aktif"]{color:var(--success)}
+.konsol-musteriler .mu-etkinlik[data-hal="sessiz"]{color:var(--warning)}
+.konsol-musteriler .ek-not[data-tone="warning"]{border-left:3px solid var(--warning)}
