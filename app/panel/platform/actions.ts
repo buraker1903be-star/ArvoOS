@@ -14,6 +14,7 @@ import { loadConversation } from "@/lib/whatsapp-inbox";
 import { normalizePhone } from "@/lib/whatsapp-send";
 import { HATIRLATMA_SABLONLARI, hatirlatmaEngeli } from "@/lib/abonelik-hatirlatma";
 import { kurulumHatasiCumlesi } from "@/lib/kurulum-hatasi";
+import { alanFarki, konsolKaydiYaz, KURUM_ALANLARI } from "./konsol-kaydi";
 
 // DİKKAT: "use server" dosyasında `export type { X }` yeniden dışa aktarımı
 // yazmayın; modül çöker. `export type X = {...}` sorunsuz.
@@ -37,13 +38,13 @@ function cleanSlug(value: string) {
 }
 
 async function requireFounderTarget(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, userId } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   if (!organizationId) throw new Error("Yönetilecek kurum seçilmedi.");
   const { data: target, error } = await supabase.from("organizations").select("id,slug").eq("id", organizationId).maybeSingle();
   if (error || !target) throw new Error("Hedef kurum bulunamadı.");
-  return { supabase, organizationId, target };
+  return { supabase, organizationId, target, userId };
 }
 
 async function createCustomerOrganization__impl(formData: FormData) {
@@ -99,7 +100,7 @@ async function createCustomerOrganization__impl(formData: FormData) {
 }
 
 async function updateOrganizationSettings__impl(formData: FormData) {
-  const { supabase, organizationId } = await requireFounderTarget(formData);
+  const { supabase, organizationId, userId } = await requireFounderTarget(formData);
   const name = String(formData.get("name") ?? "").trim();
   const displayName = String(formData.get("display_name") ?? "").trim();
   const sector = String(formData.get("sector") ?? "").trim();
@@ -133,8 +134,12 @@ async function updateOrganizationSettings__impl(formData: FormData) {
     orası. organizations.plan_code yalnızca yedek — lisans satırı henüz
     yoksa (kurum yeni açılmışsa) o okunuyor.
   */
-  const [{ data: current }, { data: lisans }] = await Promise.all([
-    supabase.from("organizations").select("custom_domain,plan_code").eq("id", organizationId).maybeSingle(),
+  /* Kurum satırının KURUM_ALANLARI sütunları da okunuyor (sütun listesi
+     düz metin: supabase-js seçimi derlemede çözümlüyor, birleştirilmiş
+     dizgede tip kayboluyor): işlem kaydının
+     "önce"si de buradan (02.11.2026). */
+  const [{ data: current, error: currentHatasi }, { data: lisans }] = await Promise.all([
+    supabase.from("organizations").select("plan_code,name,display_name,sector,custom_domain,kind,grup_markasi,contact_phone").eq("id", organizationId).maybeSingle(),
     supabase.from("organization_licenses").select("plan_code").eq("organization_id", organizationId).maybeSingle(),
   ]);
   const planCode = (lisans?.plan_code as string | null) ?? (current?.plan_code as string | null) ?? "";
@@ -165,12 +170,19 @@ async function updateOrganizationSettings__impl(formData: FormData) {
 
   const { error } = await supabase.from("organizations").update(updates).eq("id", organizationId);
   if (error) throw new Error("Kurum ayarları kaydedilemedi.");
+  /* Önceki satır okunamadıysa kayıt yazılmaz: "— → X" yanlış bir geçmiş olurdu. */
+  if (currentHatasi) console.error("[konsol] kurum ayarları için önceki değer okunamadı; işlem kaydı yazılmayacak", currentHatasi.message);
+  else await konsolKaydiYaz({
+    organizationId, userId, entityType: "organization_settings", entityId: organizationId,
+    baslik: "Kurum ayarları değişti",
+    degisiklikler: alanFarki((current as Record<string, unknown> | null) ?? null, updates, KURUM_ALANLARI),
+  });
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
 }
 
 async function toggleOrganizationModule__impl(formData: FormData) {
-  const { supabase, organizationId } = await requireFounderTarget(formData);
+  const { supabase, organizationId, userId } = await requireFounderTarget(formData);
   const moduleCode = String(formData.get("module_code") ?? "");
   const isEnabled = String(formData.get("is_enabled") ?? "") === "true";
   /*
@@ -194,7 +206,7 @@ async function toggleOrganizationModule__impl(formData: FormData) {
     buradaki kontrol yalnızca anlaşılır bir hata mesajı için.
   */
   const { data: katalog, error: katalogHatasi } = await supabase
-    .from("arvo_modules").select("code").eq("code", moduleCode).maybeSingle();
+    .from("arvo_modules").select("code,name").eq("code", moduleCode).maybeSingle();
   if (katalogHatasi) throw new Error("Modül kataloğu okunamadı: " + katalogHatasi.message);
   if (!katalog) throw new Error("Geçersiz modül.");
   /*
@@ -208,6 +220,9 @@ async function toggleOrganizationModule__impl(formData: FormData) {
     sessizce sıfır satır eder, Supabase hata döndürmez ve ekran "oldu"
     derdi. Yazmanın sıfır satır etmesi "oldu" demek değil.
   */
+  /* Önceki durum işlem kaydı için; okunamazsa kayıt yazılmaz. */
+  const { data: onceki, error: oncekiHatasi } = await supabase
+    .from("organization_modules").select("is_enabled").eq("organization_id", organizationId).eq("module_code", moduleCode).maybeSingle();
   const { data: yazilan, error } = await supabase
     .from("organization_modules")
     .update({ is_enabled: isEnabled })
@@ -216,6 +231,16 @@ async function toggleOrganizationModule__impl(formData: FormData) {
     .select("module_code");
   if (error) throw new Error("Modül durumu değiştirilemedi: " + error.message);
   if (!yazilan?.length) throw new Error("Modül kaydı bulunamadı; kurumun bu modül satırı yok.");
+  if (oncekiHatasi) console.error("[konsol] modül için önceki değer okunamadı; işlem kaydı yazılmayacak", oncekiHatasi.message);
+  else {
+    const ad = String((katalog as { name?: string | null }).name || moduleCode);
+    const durumAdi = (acik: boolean | null | undefined) => (acik ? "Açık" : "Kapatıldı");
+    await konsolKaydiYaz({
+      organizationId, userId, entityType: "organization_module", entityId: moduleCode,
+      baslik: `${ad} modülü ${isEnabled ? "açıldı" : "kapatıldı"}`,
+      degisiklikler: Boolean(onceki?.is_enabled) === isEnabled ? [] : [{ alan: moduleCode, ad, once: durumAdi(onceki?.is_enabled), sonra: durumAdi(isEnabled) }],
+    });
+  }
   if (moduleCode === "commerce") await syncArcTenantQuietly(organizationId);
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);

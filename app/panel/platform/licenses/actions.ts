@@ -10,6 +10,21 @@ import { URUN_KOTALARI } from "@/lib/urun-kotasi";
 import { urunLisansiniYansit } from "@/lib/urun-yansitma";
 import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 import { kurusOku } from "@/lib/turkish-amount";
+import { alanFarki, konsolKaydiYaz, LISANS_ALANLARI, URUN_LISANS_ALANLARI } from "../konsol-kaydi";
+
+/*
+  ÖNCEKİ DEĞER (02.11.2026): kaydın "önce → sonra"sı için. Okunamazsa
+  işlem durmaz ama kayıt da YAZILMAZ: eski değeri bilmeden yazılan
+  "— → 20" satırı, değerin hiç yokken açıldığını söyleyen yanlış bir kayıt.
+*/
+async function oncekiSatir(sorgu: PromiseLike<{ data: unknown; error: { message: string } | null }>, ne: string) {
+  const { data, error } = await sorgu;
+  if (error) {
+    console.error(`[konsol] ${ne} için önceki değer okunamadı; işlem kaydı yazılmayacak`, error.message);
+    return undefined;
+  }
+  return (data as Record<string, unknown> | null) ?? null;
+}
 
 const licenseStatuses = new Set(["trialing", "active", "past_due", "suspended", "canceled"]);
 const productStatuses = new Set(["inactive", ...licenseStatuses]);
@@ -67,6 +82,10 @@ async function updateOrganizationLicense__impl(formData: FormData) {
   }
 
   const { data: userData } = await supabase.auth.getUser();
+  const once = await oncekiSatir(
+    supabase.from("organization_licenses").select(Object.keys(LISANS_ALANLARI).join(",")).eq("organization_id", organizationId).maybeSingle(),
+    "ArvoOS lisansı",
+  );
   const now = new Date().toISOString();
   const payload = {
     organization_id: organizationId,
@@ -97,6 +116,14 @@ async function updateOrganizationLicense__impl(formData: FormData) {
     updated_at: now,
   }).eq("id", organizationId);
   if (organizationError) throw new Error(`Kurum durumu güncellenemedi: ${organizationError.message}`);
+
+  if (once !== undefined) {
+    await konsolKaydiYaz({
+      organizationId, userId: userData.user?.id ?? null, entityType: "organization_license", entityId: organizationId,
+      baslik: once ? "ArvoOS lisansı değişti" : "ArvoOS lisansı açıldı",
+      degisiklikler: alanFarki(once, payload, LISANS_ALANLARI),
+    });
+  }
 
   revalidatePath("/panel", "layout");
   // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
@@ -144,8 +171,13 @@ async function updateProductLicense__impl(formData: FormData) {
   if (planCode && !planCodes.has(planCode)) throw new Error("Geçerli bir paket seçin.");
 
   const { data: userData } = await supabase.auth.getUser();
+  const once = await oncekiSatir(
+    supabase.from("organization_product_licenses").select(Object.keys(URUN_LISANS_ALANLARI).join(","))
+      .eq("organization_id", organizationId).eq("product", product).maybeSingle(),
+    `${productName(product)} lisansı`,
+  );
   const now = new Date().toISOString();
-  const { error } = await supabase.from("organization_product_licenses").upsert({
+  const yeni = {
     organization_id: organizationId,
     product,
     status,
@@ -157,8 +189,19 @@ async function updateProductLicense__impl(formData: FormData) {
     suspension_reason: status === "suspended" ? suspensionReason || "Kurucu tarafından askıya alındı" : null,
     updated_by: userData.user?.id ?? null,
     updated_at: now,
-  }, { onConflict: "organization_id,product" });
+  };
+  const { error } = await supabase.from("organization_product_licenses").upsert(yeni, { onConflict: "organization_id,product" });
   if (error) throw new Error(`${productName(product)} lisansı kaydedilemedi: ${error.message}`);
+
+  /* Kayıt yansıtmadan ÖNCE: yansıtma düşüp fırlatsa da lisans
+     veritabanında değişti ve bunun izi kalmalı. */
+  if (once !== undefined) {
+    await konsolKaydiYaz({
+      organizationId, userId: userData.user?.id ?? null, entityType: "product_license", entityId: product,
+      baslik: `${productName(product)} lisansı ${once ? "değişti" : "açıldı"}`,
+      degisiklikler: alanFarki(once, yeni, URUN_LISANS_ALANLARI),
+    });
+  }
 
   await urunLisansiniYansit(organizationId, product);
 

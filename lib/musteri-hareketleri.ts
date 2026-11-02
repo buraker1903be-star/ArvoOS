@@ -21,6 +21,8 @@
   bilmek istediği şeyin kendisi ("dekont iki gündür bekliyor").
 */
 
+import { konsolKaydiCumlesi } from "./konsol-degisiklik";
+
 export type HareketTuru = "odeme" | "proforma" | "fatura" | "kurulum" | "konsol" | "destek" | "not";
 export type HareketTonu = "success" | "warning" | "danger" | "info" | "neutral";
 
@@ -140,13 +142,14 @@ export function musteriHareketleri(g: HareketGirdisi): Hareket[] {
     });
   }
 
+  /* Cümle lib/konsol-degisiklik'te: İşlem kayıtları ekranı da aynısını
+     yazıyor. 02.11.2026'dan beri lisans, modül ve kurum ayarı
+     değişiklikleri de "önce → sonra"sıyla burada. */
   for (const k of g.konsol) {
-    const uyelik = k.entity_type === "organization_membership";
-    const acik = k.metadata?.is_active === true;
+    const c = konsolKaydiCumlesi(k);
     ekle({
       anahtar: `konsol-${k.id}`, zaman: k.created_at, tur: "konsol",
-      olay: uyelik ? (acik ? "Üye erişimi açıldı" : "Üye erişimi kapatıldı") : k.action,
-      ayrinti: "konsoldan", tutar: null, ton: uyelik && !acik ? "warning" : "info",
+      olay: c.olay, ayrinti: c.ayrinti ?? "konsoldan", tutar: null, ton: c.ton,
     });
   }
 
