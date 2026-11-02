@@ -38,3 +38,14 @@ test("girdi denetimi", () => {
   assert.throws(() => duyuruDogrula({ baslik: "Başlık", metin: "metin", baglanti: "https://kotu.example", hedef: "tum" }), /panel içinde/);
   assert.throws(() => duyuruDogrula({ baslik: "Başlık", metin: "metin", baglanti: "//kotu.example", hedef: "tum" }), /panel içinde/);
 });
+
+test("e-posta: HTML ve düz metin aynı içerik, değerler kaçırılmış", async () => {
+  const { duyuruPostasi } = await import("@/lib/platform-duyuru");
+  const p = duyuruPostasi({ baslik: "Bakım <gece>", metin: "Sistem 02:00'de\nkapanır.\n\nİkinci paragraf & not.", adres: "https://app.arvo-os.com/panel/kilavuz", dugme: "Ayrıntı", satici: "ArvoOS" });
+  assert.equal(p.konu, "ArvoOS duyurusu: Bakım <gece>");
+  assert.ok(p.metin.includes("İkinci paragraf & not.") && p.metin.includes("Ayrıntı: https://app.arvo-os.com/panel/kilavuz"));
+  // Kaçırılmamış "<" bir cümlenin kalanını yutardı (AGENTS.md).
+  assert.ok(p.html.includes("Bakım &lt;gece&gt;") && !p.html.includes("<gece>"));
+  assert.ok(p.html.includes("İkinci paragraf &amp; not."));
+  assert.ok(p.html.includes("kapanır.") && p.html.includes("<br>"));
+});

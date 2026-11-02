@@ -1,0 +1,5 @@
+/* Konsol → Aylık müşteri raporu: üç kart yan yana, telefonda alt alta; ay şeridi yatay kayar. */
+.panel-root .konsol-rapor{display:flex;flex-direction:column;gap:var(--sp-4)}
+.panel-root .rapor-aylar{max-width:100%;overflow-x:auto;flex-wrap:nowrap}
+.panel-root .rapor-aylar a{white-space:nowrap}
+.panel-root .rapor-izgara{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--sp-4);align-items:start}

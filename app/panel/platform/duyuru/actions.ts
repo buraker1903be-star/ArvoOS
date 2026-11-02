@@ -2,11 +2,48 @@
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
-import { runPanelAction } from "@/lib/panel-action";
+import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { tumSatirlar } from "@/lib/rapor-okuma";
 import { panelBildirimiYaz } from "@/lib/panel-bildirimi";
-import { DUYURU_HEDEFLERI, duyuruAlicilari, duyuruDogrula, type DuyuruKiracisi, type DuyuruLisansi } from "@/lib/platform-duyuru";
+import { DUYURU_HEDEFLERI, duyuruAlicilari, duyuruDogrula, duyuruPostasi, type DuyuruKiracisi, type DuyuruLisansi } from "@/lib/platform-duyuru";
+import { epostaAyarli, epostaTopluGonder } from "@/lib/eposta-gonder";
+import { alicilariTopla } from "@/lib/otomatik-proforma";
+import { satici } from "@/lib/faturalama-koprusu";
+import { PLATFORM_HOST } from "@/lib/public-host";
+
+/*
+  E-POSTA ALICILARI: kurumun etkin Kurum Sahipleri, sahip adresi yoksa
+  kurumun iletişim adresi (toplu hatırlatma ve otomatik proformayla aynı
+  kural). Üyelikler 100'lük dilimlerle okunuyor: yüzlerce kurumun
+  kimliği tek bir `in` süzgecinde adresi taşırırdı.
+*/
+async function kurumYetkilileri(admin: NonNullable<ReturnType<typeof createAdminClient>>, kurumlar: string[]): Promise<Map<string, string[]>> {
+  const sahipler = new Map<string, string[]>();
+  const iletisim = new Map<string, string | null>();
+  for (let i = 0; i < kurumlar.length; i += 100) {
+    const dilim = kurumlar.slice(i, i + 100);
+    const [uyelik, kurum] = await Promise.all([
+      admin.from("organization_memberships").select("organization_id,user_id").in("organization_id", dilim).eq("role", "owner").eq("is_active", true),
+      admin.from("organizations").select("id,contact_email").in("id", dilim),
+    ]);
+    if (uyelik.error || kurum.error) throw new Error("Kurum yetkilileri okunamadı: " + (uyelik.error ?? kurum.error)!.message);
+    for (const u of (uyelik.data ?? []) as { organization_id: string; user_id: string }[]) sahipler.set(u.organization_id, [...(sahipler.get(u.organization_id) ?? []), u.user_id]);
+    for (const k of (kurum.data ?? []) as { id: string; contact_email: string | null }[]) iletisim.set(k.id, k.contact_email);
+  }
+  const eposta = new Map<string, string | null>();
+  const sonuc = new Map<string, string[]>();
+  for (const id of kurumlar) {
+    const adresler = await Promise.all((sahipler.get(id) ?? []).map(async (uid) => {
+      if (!eposta.has(uid)) eposta.set(uid, (await admin.auth.admin.getUserById(uid)).data.user?.email ?? null);
+      return eposta.get(uid) ?? null;
+    }));
+    let alicilar = alicilariTopla(adresler);
+    if (!alicilar.length) alicilar = alicilariTopla([iletisim.get(id) ?? null]);
+    sonuc.set(id, alicilar);
+  }
+  return sonuc;
+}
 
 /*
   KONSOLDAN KURUMLARA DUYURU (02.11.2026). Kural lib/platform-duyuru.ts,
@@ -67,10 +104,30 @@ async function duyuruGonder__impl(f: FormData) {
   const { error: sayiHatasi } = await admin.from("platform_duyurulari").update({ alici_sayisi: yazilan }).eq("id", kayit.id);
   if (sayiHatasi) console.error("[duyuru] alıcı sayısı yazılamadı", sayiHatasi.message);
   revalidatePath("/panel/platform/duyuru");
+
+  /* E-posta bildirimden SONRA ve bildirimi geri almadan: posta düşerse
+     duyuru yine panelde, sonuç mesajı kaç kurumun postasının gittiğini
+     söylüyor. Adresi olmayan kurum sayılıyor, sessizce atlanmıyor. */
+  let postaOzeti: string | null = null;
+  if (f.get("eposta") === "1") {
+    if (!epostaAyarli()) postaOzeti = "e-posta gönderilmedi: gönderim ayarlı değil (RESEND_API_KEY)";
+    else {
+      const [yetkililer, s] = await Promise.all([kurumYetkilileri(admin, alicilar), satici(admin)]);
+      const adres = `https://${PLATFORM_HOST}${girdi.baglanti ?? "/panel/notifications"}`;
+      const posta = duyuruPostasi({ baslik: girdi.baslik, metin: girdi.metin, adres, dugme: girdi.baglanti ? "Ayrıntıyı aç" : "Panelde görüntüle", satici: s.unvan });
+      const mektuplar = alicilar.map((id) => ({ kime: yetkililer.get(id) ?? [], ...posta }));
+      const adressiz = mektuplar.filter((m) => !m.kime.length).length;
+      const { gonderilen, hatalar } = await epostaTopluGonder(mektuplar);
+      if (hatalar.length) console.error("[duyuru] e-posta", hatalar);
+      postaOzeti = [`${gonderilen} kuruma e-posta gitti`, adressiz ? `${adressiz} kurumun adresi yok` : null, hatalar.length ? `gönderilemeyen dilim: ${hatalar[0]}` : null].filter(Boolean).join(", ");
+    }
+  }
+
   const hedefAdi = DUYURU_HEDEFLERI.find((h) => h.kod === girdi.hedef)?.ad ?? girdi.hedef;
-  if (dusen) throw new Error(`Duyuru ${yazilan} kuruma gitti, ${dusen} kurumda yazılamadı (${hedefAdi}). Günlüğe bakın.`);
+  if (dusen) throw new Error([`Duyuru ${yazilan} kuruma gitti, ${dusen} kurumda yazılamadı (${hedefAdi}). Günlüğe bakın.`, postaOzeti].filter(Boolean).join(" · "));
+  await flashSuccess([`Duyuru ${yazilan} kurumun bildirimlerine düştü`, postaOzeti].filter(Boolean).join(" · "));
 }
 
 export async function duyuruGonder(f: FormData) {
-  await runPanelAction(() => duyuruGonder__impl(f), "Duyuru gönderildi; alıcı sayısı geçmişte yazıyor");
+  await runPanelAction(() => duyuruGonder__impl(f));
 }

@@ -1,0 +1,3 @@
+/* Konsol → Kurumlara duyuru: e-posta seçeneği (onay kutusu ve açıklaması yan yana). */
+.panel-root .duyuru-eposta{display:flex;flex-direction:row;align-items:flex-start;gap:var(--sp-2);font-size:var(--fs-sm);color:var(--ink-soft)}
+.panel-root .duyuru-eposta input{width:auto;min-height:0;margin:2px 0 0}
