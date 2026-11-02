@@ -82,7 +82,6 @@ async function modulErisimiDegistir__impl(formData: FormData) {
   revalidatePath("/panel/platform/musteriler", "layout");
   // Kopya önbelleği (lib/lisans-olcumleri): değişiklik hemen görünmeli.
   updateTag(lisansOlcumEtiketi(organizationId));
-  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   await flashSuccess(
     durum === "suspended"
       ? `${productName(product)} donduruldu`

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { YenilemeTakvimi } from "./yenileme-takvimi";
+import { AbonelikSekmeleri } from "./abonelik-sekmeleri";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPanelContext } from "@/lib/panel-context";
@@ -67,7 +69,10 @@ const remindersNow = (licenses: RenewalLicense[], organizations: RenewalOrganiza
 
 const BOLUMLER = ["sorunlar", "hatirlatma"] as const;
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ durum?: string; bolum?: string }> }) {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ durum?: string; bolum?: string; gorunum?: string; filtre?: string }> }) {
+  /* Yenileme takvimi bu sayfanın sekmesi (02.11.2026; eskiden ayrı sayfa). */
+  const { gorunum, filtre } = await searchParams;
+  if (gorunum === "takvim") return <YenilemeTakvimi filtre={filtre} />;
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   const { durum, bolum: istenenBolum } = await searchParams;
@@ -370,6 +375,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         </Link>
       </div>
     </header>
+
+    <AbonelikSekmeleri aktif="liste" />
 
     {/* Dördü de her zaman çiziliyor: "ödemesi gecikmiş kurum yok" demek,
         satırın hiç olmamasından daha çok şey söyler. */}

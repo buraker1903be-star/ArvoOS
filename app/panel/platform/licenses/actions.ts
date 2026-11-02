@@ -99,7 +99,6 @@ async function updateOrganizationLicense__impl(formData: FormData) {
   if (organizationError) throw new Error(`Kurum durumu güncellenemedi: ${organizationError.message}`);
 
   revalidatePath("/panel", "layout");
-  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
   // Kopya ve kullanım önbelleği: kayıttan hemen sonra doğru görünmeli.
@@ -163,7 +162,6 @@ async function updateProductLicense__impl(formData: FormData) {
 
   await urunLisansiniYansit(organizationId, product);
 
-  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
   // Kopya ve kullanım önbelleği: kayıttan hemen sonra doğru görünmeli.
@@ -205,7 +203,6 @@ async function urunuYenidenYansit__impl(formData: FormData) {
   */
   await urunLisansiniYansit(organizationId, product);
 
-  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
   // Kopya ve kullanım önbelleği: kayıttan hemen sonra doğru görünmeli.
@@ -288,7 +285,6 @@ async function cekirdekErisimi__impl(formData: FormData) {
   if (kurumGuncelleme) throw new Error(`Kurum durumu güncellenemedi: ${kurumGuncelleme.message}`);
 
   revalidatePath("/panel", "layout");
-  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
   // Kopya ve kullanım önbelleği: kayıttan hemen sonra doğru görünmeli.
   updateTag(lisansOlcumEtiketi(organizationId));
