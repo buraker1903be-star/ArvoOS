@@ -23,6 +23,8 @@ import { createAdminClient } from "./supabase/admin";
 import { cronDurumlari, cronSorunlari, cronUyarisi, type CronKaydi, type CronSonucu } from "./cron-isleri";
 import { todayInIstanbul } from "./istanbul-date";
 import { kurucuyaBildir } from "./kurucu-bildirimi";
+import { kurucuyaUyar } from "./kurucu-uyarisi";
+import { hataTeshisi, ZAMANLAYICI_TESHISI } from "./hata-teshisi";
 
 export type CronKosusu = {
   yanit: Response;
@@ -100,15 +102,44 @@ async function nobet(admin: Admin) {
   const gun = todayInIstanbul();
   for (const durum of sorunlar) {
     const { baslik, metin } = cronUyarisi(durum);
-    await kurucuyaBildir(admin, {
+    /* Teşhis (lib/hata-teshisi): bildirimde ve e-postada "muhtemel sebep"
+       da yazsın; kurucu zil ya da posta kutusundan neye bakacağını bilsin. */
+    const hata = cronHataMetni(durum.ayrinti);
+    const teshis = hata ? hataTeshisi(hata) : durum.durum === "gecikti" ? ZAMANLAYICI_TESHISI : null;
+    const yazildi = await kurucuyaBildir(admin, {
       kategori: "cron_gecikti",
       anahtar: `cron:${durum.yol}:${durum.durum}:${gun}`,
       baslik,
       metin,
-      adres: "/panel/platform/saglik",
-      ek: { yol: durum.yol, durum: durum.durum, aralik_dk: durum.aralikDk },
+      adres: "/panel/platform/saglik?sekme=isler",
+      ek: { yol: durum.yol, durum: durum.durum, aralik_dk: durum.aralikDk, ...(teshis ? { sebep: teshis.sebep } : {}) },
     });
+    /* E-posta da: zil yalnızca konsol açıkken görülüyor, arıza ise tam da
+       kimse bakmazken çıkıyor. Bildirimle AYNI tekrar engeli (günde bir,
+       iş ve durum başına): bildirim yazıldıysa posta da gidiyor. */
+    if (yazildi) {
+      await kurucuyaUyar({
+        baslik,
+        satirlar: [
+          ["Ne oldu", metin],
+          ["Hata", hata],
+          ["Muhtemel sebep", teshis?.sebep],
+          ["Ne yapmalı", teshis?.yapilacak.join(" · ")],
+          ["Günlükte aranacak", durum.yol],
+        ],
+        yol: "/panel/platform/saglik?sekme=isler",
+        dugme: "Sistem sağlığını aç",
+      });
+    }
   }
+}
+
+/** Kaydın ayrıntısındaki ilk hata cümlesi (varsa). */
+function cronHataMetni(ayrinti: unknown): string | null {
+  const hata = (ayrinti as { hata?: unknown } | null)?.hata;
+  if (typeof hata === "string" && hata) return hata;
+  if (Array.isArray(hata) && typeof hata[0] === "string" && hata[0]) return hata[0];
+  return null;
 }
 
 /**

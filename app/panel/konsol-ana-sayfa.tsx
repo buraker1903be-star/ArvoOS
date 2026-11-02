@@ -262,6 +262,13 @@ export async function KonsolAnaSayfa() {
   const yeniSayimi = await (admin ?? supabase).from("organizations").select("id", { count: "exact", head: true })
     .gte("created_at", ayBasi).neq("kind", "internal").eq("grup_markasi", false);
   if (yeniSayimi.error) console.error("[konsol] bu ayın yeni müşteri sayısı okunamadı", yeniSayimi.error.message);
+  /* Bireysel aboneler de: aylık rapor "yeni müşteri"ye ikisini birden sayıyor; şeritte
+     yalnızca kurum sayılınca bir tık ötedeki rapor başka sayı yazıyordu. */
+  const yeniAboneSayimi = admin
+    ? await admin.from("product_subscribers").select("id", { count: "exact", head: true }).is("kurum_id", null).gte("created_at", ayBasi)
+    : { count: null, error: { message: "sunucu anahtarı yok" } };
+  if (yeniAboneSayimi.error) console.error("[konsol] bu ayın yeni abone sayısı okunamadı", yeniAboneSayimi.error.message);
+  const yeniOkunamadi = Boolean(yeniSayimi.error || yeniAboneSayimi.error);
 
   /* sınırsız-tamam: zamanı gelen takipler — kurucunun temizlediği iş listesi, sayısı küçük. */
   const takipSonucu = await supabase.from("platform_musteri_notlari")
@@ -605,7 +612,7 @@ export async function KonsolAnaSayfa() {
     { ad: "Müşteri kurum", deger: `${kullanimda} / ${musteriler.length}`, alt: "Kullanımda / toplam", href: "/panel/platform/musteriler?tur=kurumsal" },
     ...(grupMarkalari.length ? [{ ad: "Grup markası", deger: String(grupMarkalari.length), alt: "Müşteri sayılmaz", href: "/panel/platform/musteriler" }] : []),
     { ad: "Son 14 gün tahsilat", deger: para(tahsilatSerisi.total), alt: tahsilatSerisi.delta === null ? undefined : `${tahsilatSerisi.delta >= 0 ? "+" : ""}${tahsilatSerisi.delta}% önceki döneme göre`, href: "/panel/platform/tahsilat" },
-    { ad: "Bu ay yeni müşteri", deger: yeniSayimi.error ? "—" : String(yeniSayimi.count ?? 0), alt: yeniSayimi.error ? "okunamadı" : "aylık rapora git", href: `/panel/platform/rapor?ay=${todayInIstanbul().slice(0, 7)}-01` },
+    { ad: "Bu ay yeni müşteri", deger: yeniOkunamadi ? "—" : String((yeniSayimi.count ?? 0) + (yeniAboneSayimi.count ?? 0)), alt: yeniOkunamadi ? "okunamadı" : `${yeniSayimi.count ?? 0} kurum · ${yeniAboneSayimi.count ?? 0} bireysel`, href: `/panel/platform/rapor?ay=${todayInIstanbul().slice(0, 7)}-01` },
     { ad: "Bekleyen iş", deger: String(bekleyenIs), alt: bekleyenIs ? "Aşağıdaki kuyrukta" : "Kuyruk boş", href: "#bugunun-isleri", ton: bekleyenIs ? "gold" : undefined },
   ];
 

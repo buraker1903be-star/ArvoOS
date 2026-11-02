@@ -73,11 +73,13 @@ export function aylikRapor(ay: string, kurumlar: RaporKurumu[], lisanslar: Rapor
     const ekler = kurumLisanslari.get(k.id) ?? [];
     const acikVar = ACIK.has(k.license_status ?? "") || ekler.some((l) => ACIK.has(l.status));
     if (acikVar) return [];
-    /* Hiç lisansı olmamış (inactive) ürünler bitiş saymıyor: "kullanmıyor" bir kayıp değil. */
+    /* Hiç açılmamış (inactive, kapanışı yok) ürün bitiş saymıyor: "kullanmıyor" bir kayıp değil.
+       Eskiden bütün inactive satırlar düşüyordu; oysa konsolun ürün formu ürünü
+       "Kapalı" (inactive) yaparak kapatıyor ve o kapanış kaybın tarihi. */
     /* Kapanış anı biliniyorsa o, bilinmiyorsa dönem sonu. */
     const bitisler = [
       k.license_status ? k.closed_at ?? bitis(k.license_status, k.current_period_end, k.trial_ends_at) : null,
-      ...ekler.filter((l) => l.status !== "inactive").map((l) => l.closed_at ?? bitis(l.status, l.current_period_end, l.trial_ends_at)),
+      ...ekler.filter((l) => l.status !== "inactive" || l.closed_at).map((l) => l.closed_at ?? bitis(l.status, l.current_period_end, l.trial_ends_at)),
     ].filter((d): d is string => Boolean(d)).map(turkiyeGunu).sort();
     const son = bitisler.at(-1);
     return son && icinde(son, aralik) ? [{ ...k, bitis: son }] : [];

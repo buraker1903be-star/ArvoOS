@@ -17,6 +17,8 @@ import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { cronAralikMetni, cronDurumlari, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
 import type { ReactNode } from "react";
+import { hataTeshisi, ZAMANLAYICI_TESHISI } from "@/lib/hata-teshisi";
+import { TeshisKarti } from "./teshis-karti";
 import { basHarfleri, PAKET_ADI, gecenSure, para, sayi, tarihSaat } from "../bicim";
 import { KNot } from "../konsol-ui";
 import { MobilSatir } from "../../crm/table-cells";
@@ -53,6 +55,8 @@ const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
   Şimdiki zaman MODÜL KAPSAMINDA okunuyor: `new Date()` render gövdesinde
   react-hooks saflık kuralını bozuyor (bu dosyada bir kez yaşandı).
 */
+const simdiMs = () => Date.now();
+
 function cronTablosu(satirlar: CronKaydi[], baslangic: Date | null) {
   return cronDurumlari(satirlar, new Date(), baslangic);
 }
@@ -486,6 +490,23 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
             gelmiyor" diyor, köprü işi durduğunda "ürün kopyası bayat". */}
         {sekme === "isler" ? <section>
           {bolumBasi("Zamanlanmış işler", "Her iş koştuğunu kaydediyor; beklenen aralık vercel.json'dan.")}
+          {/* Arıza kartları tablonun ÜSTÜNDE: "ne oldu, neden, ne yapmalı" ilk bakışta (lib/hata-teshisi). */}
+          {cronSorun.length ? (
+            <div className="sy-teshisler">
+              {cronSorun.map((is) => {
+                const hata = cronHataMetni(is.ayrinti ?? null);
+                return (
+                  <TeshisKarti key={is.yol}
+                    baslik={`${is.ad} ${is.durum === "gecikti" ? "gecikti" : "düştü"} · ${is.aciklama}`}
+                    neZamandir={is.sonBasarili ? `son başarılı koşma ${gecenSure(Math.floor((simdiMs() - is.sonBasarili.getTime()) / 60000))} önce` : "hiç başarılı koşmadı"}
+                    hata={hata}
+                    /* Hata metni yoksa ve iş gecikiyorsa iş hiç başlamıyor demektir: zamanlayıcı teşhisi. */
+                    teshis={hata ? hataTeshisi(hata) : is.durum === "gecikti" ? ZAMANLAYICI_TESHISI : null}
+                    gunlukYolu={is.yol} />
+                );
+              })}
+            </div>
+          ) : null}
           {cronHatasi ? (
             <KNot ton="tehlike">Koşma kayıtları okunamadı ({cronHatasi.message}) — &quot;sorun yok&quot; demek değil.</KNot>
           ) : (
@@ -516,6 +537,14 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
 
         {sekme === "kopru" ? <section>
           {bolumBasi("Ürün köprüleri", "Köprü koptuğunda hata yalnızca karşı taraftaki günlükte kalıyor; kurucu aylar sonra fark ediyordu.")}
+          {kopruler.some((k) => k.bozuk) ? (
+            <div className="sy-teshisler">
+              {kopruler.filter((k) => k.bozuk).map((k) => (
+                <TeshisKarti key={k.ad} baslik={`${k.ad} köprüsü yanıt vermiyor`} neZamandir={null} hata={k.not} teshis={hataTeshisi(k.not)}
+                  gunlukYolu={k.ad === "ArvoLab" ? "/api/bridge" : k.ad === "ArvoARC" ? "arc-bridge" : "randevu-bridge"} />
+              ))}
+            </div>
+          ) : null}
           <div className="talep-tablo fn-ic-tablo">
             <table className="crm-data-table" data-cols="sy-kopru">
               <thead><tr><th>Köprü</th><th>Ayrıntı</th><th>Durum</th></tr></thead>

@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sayfaliSonuc, tumSatirlar, type SayfaliSonuc } from "@/lib/rapor-okuma";
-import { todayInIstanbul } from "@/lib/istanbul-date";
+import { monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import { ayEtiketi, aySecenekleri } from "@/lib/personel-hedefi";
 import { productName } from "@/lib/products";
 import { aylikRapor, degisimYuzdesi, type RaporAbonesi, type RaporKurumu, type RaporLisansi } from "@/lib/aylik-musteri-raporu";
@@ -64,7 +64,8 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
   const buAy = secenekler.at(-1)!;
   const { ay: istenen } = await searchParams;
   const ay = istenen && secenekler.includes(istenen) ? istenen : secenekler.at(-2) ?? buAy;
-  const oncekiAy = secenekler[Math.max(0, secenekler.indexOf(ay) - 1)];
+  /* Önceki ay listeden değil takvimden: eskiden listenin en eski ayında kendisiyle karşılaştırılıyordu ("+0%"). */
+  const oncekiAy = monthStartKey(Number(ay.slice(0, 4)), Number(ay.slice(5, 7)) - 1);
 
   const [kurumSatirlari, cekirdek, lisanslar, aboneler, gelirSonucu] = await Promise.all([
     tumSatirlar<{ id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null; created_at: string }>("kurumlar", (bas, son) =>

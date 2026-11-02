@@ -67,3 +67,11 @@ test("destek talebi ve not çizelgede; kapanış ve tamamlanma ayrı olay", () =
   assert.equal(liste[1].ayrinti, "Aradım, haftaya ödeyecek. · takip 08.11.2026");
   assert.deepEqual(hareketSayimi(liste), { odeme: 0, proforma: 0, fatura: 0, kurulum: 0, konsol: 0, destek: 2, not: 2 });
 });
+
+test("yeniden açılan talep çizelgede \"çözüldü\" görünmez", () => {
+  const liste = musteriHareketleri({
+    ...bos,
+    destek: [{ id: "t2", subject: "Tekrar sordu", priority: "normal", status: "waiting_customer", created_at: "2026-11-01T09:00:00Z", resolved_at: "2026-11-01T12:00:00Z" }],
+  });
+  assert.deepEqual(liste.map((h) => h.olay), ["Destek talebi açıldı"]);
+});
