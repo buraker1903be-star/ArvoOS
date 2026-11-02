@@ -7,7 +7,8 @@ import { redirect } from "next/navigation";
 import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
-import { PRODUCTS } from "@/lib/products";
+import { PRODUCTS, productName } from "@/lib/products";
+import { kurucuyaUyar } from "@/lib/kurucu-uyarisi";
 
 const plans = new Set(["starter", "professional", "enterprise"]);
 const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
@@ -76,6 +77,22 @@ async function submitBankTransferPayment__impl(formData: FormData) {
     await supabase.storage.from("payment-receipts").remove([receiptPath]);
     throw new Error(`Ödeme bildirimi kaydedilemedi: ${insertError.message}`);
   }
+
+  /* Kurucuya anında e-posta (lib/kurucu-uyarisi): dekont onaylanmadan
+     lisans açılmıyor ve bildirim eskiden yalnızca konsolun ziline
+     düşüyordu. Akışı düşürmez. */
+  await kurucuyaUyar({
+    baslik: `Yeni dekont: ${organization.display_name || organization.name}`,
+    satirlar: [
+      ["Kurum", organization.display_name || organization.name],
+      ["Ürün", productName(product as Parameters<typeof productName>[0])],
+      ["Tutar", new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(amount / 100)],
+      ["Referans", referenceNo || null],
+    ],
+    not: customerNote || null,
+    yol: "/panel/platform/payments",
+    dugme: "Ödeme onaylarını aç",
+  });
 
   revalidatePath("/panel/billing");
   redirect("/panel/billing?submitted=1");
