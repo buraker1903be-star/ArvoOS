@@ -1,3 +1,4 @@
+import { alanAcik } from "@/lib/konsol-alanlari";
 import { konsolAlaniniAc } from "../../konsol-alani";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -265,6 +266,14 @@ export default async function MusteriDetayi({ params, searchParams }: {
         <h1>{ad}</h1>
         <p className="ek-alt">{[ad !== kurum.name ? kurum.name : null, kurum.custom_domain || `${kurum.slug}.arvo-os.com`, olusma ? `${tarih(olusma)} tarihinden beri` : null].filter(Boolean).join(" · ")}</p>
       </div>
+      {/* Proforma kes (02.11.2026): Tahsilat'ın "Yeni proforma" penceresi bu kurum
+          seçili ve alıcı bilgileri dolu açılıyor. Finans alanı kapalı kurucuda yok
+          (sayfa ve işlem zaten Finans istiyor; düğme boşa çıkmasın). */}
+      {alanAcik(konsolKapsami, "finans") ? (
+        <div className="talep-bas-eylem">
+          <Link className="panel-secondary" href={`/panel/platform/tahsilat?kanal=proforma&yeni=kurum:${kurum.id}`}>Proforma kes</Link>
+        </div>
+      ) : null}
     </header>
 
     <nav className="kayit-serit talep-serit" aria-label="Müşteri özeti">
