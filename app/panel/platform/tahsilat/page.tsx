@@ -121,6 +121,12 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
   konsolAlaniniAc(konsolKapsami, "finans");
   const { kanal, yeni } = await searchParams;
   const secili = KANALLAR.some((k) => k.kod === kanal) ? kanal! : "";
+  /* Aylık grafik ana okumayla AYNI ANDA başlıyor (02.11.2026): eskiden ana
+     tur bittikten sonra ayrı bekleniyordu; grafiğin ona bağımlılığı yok. */
+  const grafikAdmin = createAdminClient();
+  const aylikIstegi = secili === "" && grafikAdmin
+    ? Promise.resolve(grafikAdmin.rpc("platform_tahsilat_aylik", { p_ay: 12 }))
+    : null;
 
   const [
     { data: ozetVerisi, error: ozetHatasi },
@@ -381,8 +387,8 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
   let aylik: { satirlar: AylikSatir[]; hata: string | null } | null = null;
   if (secili === "") {
     if (!admin) aylik = { satirlar: [], hata: "Sunucu anahtarı tanımlı değil." };
-    else {
-      const { data, error } = await admin.rpc("platform_tahsilat_aylik", { p_ay: 12 });
+    else if (aylikIstegi) {
+      const { data, error } = await aylikIstegi;
       if (error) console.error("[konsol] aylık tahsilat okunamadı", error.message);
       aylik = { satirlar: (data ?? []) as AylikSatir[], hata: error ? error.message : null };
     }
