@@ -37,3 +37,28 @@ test("bekleme süresi ve gecikme", () => {
   assert.equal(gecikmisMi("2026-11-01T13:00:00Z", simdi), false);
   assert.equal(gecikmisMi("2026-11-01T12:00:00Z", simdi), true);
 });
+
+test("yanıt hızı: ilk ekip yanıtına medyan süre ve 24 saatte yanıtlanan oranı", async () => {
+  const { yanitHizi, sureYazisi } = await import("@/lib/destek-kuyrugu");
+  const simdi = new Date("2026-11-02T12:00:00Z");
+  const talepler = [
+    { id: "a", created_at: "2026-10-30T09:00:00Z" }, // 1 saatte yanıt
+    { id: "b", created_at: "2026-10-30T09:00:00Z" }, // 3 saatte yanıt
+    { id: "c", created_at: "2026-10-28T09:00:00Z" }, // 3 günde yanıt
+    { id: "d", created_at: "2026-10-31T09:00:00Z" }, // yanıtsız, 24 saati geçti: başarısız
+    { id: "e", created_at: "2026-11-02T10:00:00Z" }, // yanıtsız ama 24 saati dolmadı: orana girmez
+  ];
+  const mesajlar = [
+    { ticket_id: "a", is_staff: false, created_at: "2026-10-30T09:00:00Z" },
+    { ticket_id: "a", is_staff: true, created_at: "2026-10-30T10:00:00Z" },
+    { ticket_id: "a", is_staff: true, created_at: "2026-10-30T11:00:00Z" },
+    { ticket_id: "b", is_staff: true, created_at: "2026-10-30T12:00:00Z" },
+    { ticket_id: "c", is_staff: true, created_at: "2026-10-31T09:00:00Z" },
+  ];
+  const h = yanitHizi(talepler, mesajlar, simdi);
+  assert.deepEqual(h, { talep: 5, yanitlanan: 3, yanitsiz: 2, medyanDakika: 180, gunIcindeOran: 50 });
+  assert.equal(yanitHizi([], [], simdi).medyanDakika, null);
+  assert.equal(sureYazisi(45), "45 dk");
+  assert.equal(sureYazisi(200), "3 sa 20 dk");
+  assert.equal(sureYazisi(60 * 52), "2 gün 4 sa");
+});

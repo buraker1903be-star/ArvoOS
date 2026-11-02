@@ -48,5 +48,22 @@ test("faturanın tutarı bağlı ödemeden gelir; sıralama en yeni üstte, eşi
   assert.match(liste[1].ayrinti ?? "", /03\.10\.2026/);
   assert.equal(liste[0].olay, "Üye erişimi kapatıldı");
   assert.equal(liste[4].ton, "danger");
-  assert.deepEqual(hareketSayimi(liste), { odeme: 2, proforma: 0, fatura: 1, kurulum: 2, konsol: 1 });
+  assert.deepEqual(hareketSayimi(liste), { odeme: 2, proforma: 0, fatura: 1, kurulum: 2, konsol: 1, destek: 0, not: 0 });
+});
+
+test("destek talebi ve not çizelgede; kapanış ve tamamlanma ayrı olay", () => {
+  const liste = musteriHareketleri({
+    ...bos,
+    destek: [{ id: "t1", subject: "Giriş olmuyor", priority: "urgent", status: "resolved", created_at: "2026-11-01T09:00:00Z", resolved_at: "2026-11-01T12:00:00Z" }],
+    notlar: [{ id: "n1", metin: "Aradım, haftaya ödeyecek.", takip_tarihi: "2026-11-08", tamamlandi_at: "2026-11-08T10:00:00Z", olusturuldu: "2026-11-01T13:00:00Z" }],
+  });
+  assert.deepEqual(liste.map((h) => [h.olay, h.tur, h.ton]), [
+    ["Takip tamamlandı", "not", "success"],
+    ["Not yazıldı", "not", "neutral"],
+    ["Destek talebi çözüldü", "destek", "success"],
+    ["Destek talebi açıldı", "destek", "warning"],
+  ]);
+  assert.equal(liste[3].destekId, "t1");
+  assert.equal(liste[1].ayrinti, "Aradım, haftaya ödeyecek. · takip 08.11.2026");
+  assert.deepEqual(hareketSayimi(liste), { odeme: 0, proforma: 0, fatura: 0, kurulum: 0, konsol: 0, destek: 2, not: 2 });
 });

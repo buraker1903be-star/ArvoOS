@@ -13,12 +13,15 @@
   sayfada yapılıyor, burada yalnızca hangi satırın hangi olayı ürettiği
   ve sıralama var — birim testi kuralı sabitliyor.
 
+  02.11.2026: destek talepleri ve kurucunun müşteri notları da çizelgede
+  ("ödeme gecikti → aradım, not düştüm → talep açtı → ödedi" sırası).
+
   Bir kayıt birden çok olay üretebilir: havale bildirimi geldiği an bir
   olay, kararı verildiği an ayrı bir olay. İkisi arasındaki süre kurucunun
   bilmek istediği şeyin kendisi ("dekont iki gündür bekliyor").
 */
 
-export type HareketTuru = "odeme" | "proforma" | "fatura" | "kurulum" | "konsol";
+export type HareketTuru = "odeme" | "proforma" | "fatura" | "kurulum" | "konsol" | "destek" | "not";
 export type HareketTonu = "success" | "warning" | "danger" | "info" | "neutral";
 
 export type Hareket = {
@@ -33,10 +36,12 @@ export type Hareket = {
   ton: HareketTonu;
   /** Satırın açacağı kayıt (yalnızca kendi sayfası olan proforma). */
   proformaId: string | null;
+  /** Kendi sayfası olan destek talebinin kimliği. */
+  destekId: string | null;
 };
 
 export const HAREKET_TURU_ADI: Record<HareketTuru, string> = {
-  odeme: "Ödeme", proforma: "Proforma", fatura: "Fatura", kurulum: "Kurulum", konsol: "Konsol",
+  odeme: "Ödeme", proforma: "Proforma", fatura: "Fatura", kurulum: "Kurulum", konsol: "Konsol", destek: "Destek", not: "Not",
 };
 
 export type HareketGirdisi = {
@@ -52,6 +57,9 @@ export type HareketGirdisi = {
   faturalar: { id: string; fatura_no: string; fatura_tarihi: string | null; created_at: string; payment_request_id: string | null }[];
   kurulum: { id: string | number; action: string; state: string | null; result: string | null; created_at: string }[];
   konsol: { id: string | number; action: string; entity_type: string; metadata: Record<string, unknown> | null; created_at: string }[];
+  /** Verilmezse çizelgede yok (eski çağıranlar ve testler). */
+  destek?: { id: string; subject: string; priority: string; status: string; created_at: string; resolved_at: string | null }[];
+  notlar?: { id: string; metin: string; takip_tarihi: string | null; tamamlandi_at: string | null; olusturuldu: string }[];
   /** Ad haritaları çağırandan: ekranın geri kalanı aynı adları yazıyor. */
   urunAdi: (kod: string) => string;
   kurulumIslemi: (kod: string) => string;
@@ -63,8 +71,8 @@ const KARTLA = new Set(["paytr", "garanti"]);
 
 export function musteriHareketleri(g: HareketGirdisi): Hareket[] {
   const liste: Hareket[] = [];
-  const ekle = (h: Omit<Hareket, "paraBirimi" | "proformaId"> & { paraBirimi?: string | null; proformaId?: string | null }) =>
-    liste.push({ ...h, paraBirimi: h.paraBirimi || "TRY", proformaId: h.proformaId ?? null });
+  const ekle = (h: Omit<Hareket, "paraBirimi" | "proformaId" | "destekId"> & { paraBirimi?: string | null; proformaId?: string | null; destekId?: string | null }) =>
+    liste.push({ ...h, paraBirimi: h.paraBirimi || "TRY", proformaId: h.proformaId ?? null, destekId: h.destekId ?? null });
 
   if (g.kayitAcildi) ekle({ anahtar: "kayit", zaman: g.kayitAcildi, tur: "kurulum", olay: "Müşteri kaydı açıldı", ayrinti: null, tutar: null, ton: "info" });
 
@@ -142,12 +150,26 @@ export function musteriHareketleri(g: HareketGirdisi): Hareket[] {
     });
   }
 
+  for (const d of g.destek ?? []) {
+    const acil = d.priority === "urgent" || d.priority === "high";
+    ekle({ anahtar: `destek-${d.id}`, zaman: d.created_at, tur: "destek", olay: "Destek talebi açıldı", ayrinti: d.subject, tutar: null, ton: acil ? "warning" : "info", destekId: d.id });
+    /* resolved_at durum "çözüldü" ya da "kapalı"ya çekilince yazılıyor (support/actions). */
+    if (d.resolved_at) ekle({ anahtar: `destek-${d.id}-kapandi`, zaman: d.resolved_at, tur: "destek", olay: d.status === "closed" ? "Destek talebi kapatıldı" : "Destek talebi çözüldü", ayrinti: d.subject, tutar: null, ton: "success", destekId: d.id });
+  }
+
+  for (const n of g.notlar ?? []) {
+    const kisa = n.metin.length > 140 ? `${n.metin.slice(0, 137)}…` : n.metin;
+    const takip = n.takip_tarihi ? `takip ${n.takip_tarihi.split("-").reverse().join(".")}` : null;
+    ekle({ anahtar: `not-${n.id}`, zaman: n.olusturuldu, tur: "not", olay: "Not yazıldı", ayrinti: [kisa, takip].filter(Boolean).join(" · "), tutar: null, ton: "neutral" });
+    if (n.tamamlandi_at) ekle({ anahtar: `not-${n.id}-tamam`, zaman: n.tamamlandi_at, tur: "not", olay: "Takip tamamlandı", ayrinti: kisa, tutar: null, ton: "success" });
+  }
+
   // En yeni üstte; aynı anda yazılan iki olayda sıra anahtara göre sabit (yenilemede satırlar oynamasın).
   return liste.sort((a, b) => b.zaman.localeCompare(a.zaman) || a.anahtar.localeCompare(b.anahtar));
 }
 
 export function hareketSayimi(liste: Hareket[]): Record<HareketTuru, number> {
-  const sayim: Record<HareketTuru, number> = { odeme: 0, proforma: 0, fatura: 0, kurulum: 0, konsol: 0 };
+  const sayim: Record<HareketTuru, number> = { odeme: 0, proforma: 0, fatura: 0, kurulum: 0, konsol: 0, destek: 0, not: 0 };
   for (const h of liste) sayim[h.tur] += 1;
   return sayim;
 }

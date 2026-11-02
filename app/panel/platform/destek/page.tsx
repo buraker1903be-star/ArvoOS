@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPanelContext } from "@/lib/panel-context";
 import { tumSatirlar } from "@/lib/rapor-okuma";
-import { beklemeSuresi, DURUM_ADI, gecikmisMi, kuyrukHali, kuyrukSirala, KATEGORI_ADI, KUYRUK_SEKMELERI, ONCELIK_ADI } from "@/lib/destek-kuyrugu";
+import { beklemeSuresi, DURUM_ADI, gecikmisMi, kuyrukHali, kuyrukSirala, KATEGORI_ADI, KUYRUK_SEKMELERI, ONCELIK_ADI, sureYazisi, yanitHizi } from "@/lib/destek-kuyrugu";
 import { basHarfleri, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
@@ -36,6 +36,9 @@ const kurumAdi = (t: Talep) => {
   return o?.display_name || o?.name || "Kurum";
 };
 
+// Şimdiki zaman bileşen dışında okunur (react-hooks/purity).
+const simdiOku = () => new Date();
+
 export default async function DestekKuyrugu({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
@@ -49,7 +52,27 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
       .order("id")
       .range(bas, son));
 
-  const simdi = new Date();
+  const simdi = simdiOku();
+  /*
+    YANIT HIZI (lib/destek-kuyrugu yanitHizi): son 30 günde açılan
+    talepler ve onlara yazılan EKİP mesajları. Mesajlar talep kimliğiyle,
+    100'lük dilimlerle okunuyor (uzun bir `in` adresi taşırırdı). Okunamazsa
+    şeritteki iki kutu "—" diyor; kuyruk yine çiziliyor.
+  */
+  const otuzGunOnce = new Date(simdi.getTime() - 30 * 86_400_000).toISOString();
+  const sonTalepler = talepler.filter((t) => t.created_at >= otuzGunOnce);
+  let hiz: ReturnType<typeof yanitHizi> | null = null;
+  try {
+    const mesajlar: { ticket_id: string; is_staff: boolean; created_at: string }[] = [];
+    for (let i = 0; i < sonTalepler.length; i += 100) {
+      const dilim = sonTalepler.slice(i, i + 100).map((t) => t.id);
+      mesajlar.push(...await tumSatirlar<{ ticket_id: string; is_staff: boolean; created_at: string }>("destek yanıtları", (bas, son) =>
+        supabase.from("support_messages").select("ticket_id,is_staff,created_at").in("ticket_id", dilim).eq("is_staff", true).order("id").range(bas, son)));
+    }
+    hiz = yanitHizi(sonTalepler, mesajlar, simdi);
+  } catch (hata) {
+    console.error("[destek] yanıt hızı okunamadı", hata instanceof Error ? hata.message : hata);
+  }
   const sayi = (anahtar: string) => talepler.filter((t) => anahtar === "tumu" || kuyrukHali(t.status) === anahtar).length;
   const yanitBekleyen = talepler.filter((t) => kuyrukHali(t.status) === "yanit");
   const geciken = yanitBekleyen.filter((t) => gecikmisMi(t.last_message_at, simdi)).length;
@@ -77,6 +100,17 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
         <div><dt>1 günü geçen</dt><dd className={geciken ? "talep-uyari" : undefined}>{geciken}</dd><small>{geciken ? "Yanıtsız 24 saatten uzun" : "Geciken yok"}</small></div>
         <div><dt>Acil / yüksek</dt><dd className={acil ? "talep-uyari" : undefined}>{acil}</dd><small>Yanıt bekleyenler arasında</small></div>
         <div><dt>Müşteri bekleniyor</dt><dd>{sayi("musteri")}</dd><small>Sıra müşteride</small></div>
+        {/* Son 30 gün: ilk ekip yanıtına kadar geçen süre (medyan) ve 24 saatte yanıtlanan oranı. */}
+        <div>
+          <dt>İlk yanıt (medyan)</dt>
+          <dd className={hiz?.medyanDakika === null || !hiz ? "talep-bos" : undefined}>{hiz && hiz.medyanDakika !== null ? sureYazisi(hiz.medyanDakika) : "—"}</dd>
+          <small>{hiz ? `son 30 gün · ${hiz.yanitlanan}/${hiz.talep} talep yanıtlandı` : "okunamadı"}</small>
+        </div>
+        <div>
+          <dt>24 saatte yanıt</dt>
+          <dd className={hiz?.gunIcindeOran !== null && hiz && hiz.gunIcindeOran < 80 ? "talep-uyari" : hiz?.gunIcindeOran !== null && hiz ? "cari-arti" : "talep-bos"}>{hiz && hiz.gunIcindeOran !== null ? `%${hiz.gunIcindeOran}` : "—"}</dd>
+          <small>{hiz ? (hiz.yanitsiz ? `${hiz.yanitsiz} talep henüz yanıtsız` : "yanıtsız talep yok") : "okunamadı"}</small>
+        </div>
       </dl>
     </nav>
 
