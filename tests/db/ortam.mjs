@@ -81,6 +81,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261102131114_platform_musteri_notlari.sql",
   "20261102134522_hazir_yanit_ve_secili_duyuru.sql",
   "20261102181453_konsol_paket_limitleri_ve_kurucu_alanlari.sql",
+  "20261102190813_proforma_silme_korumasi.sql",
 ];
 
 /*

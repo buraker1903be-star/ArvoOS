@@ -90,6 +90,7 @@ export const KONSOL_KAYIT_TURU: Record<string, string> = {
   organization_module: "Panel modülü",
   founder_scope: "Kurucu yetkisi",
   package_limits: "Paket limiti",
+  proforma: "Proforma",
 };
 
 /**
@@ -111,6 +112,6 @@ export function konsolKaydiCumlesi(kayit: { action: string; entity_type: string;
   const degisiklikler = Array.isArray(m.degisiklikler) ? (m.degisiklikler as Degisiklik[]) : [];
   const ayrinti = degisiklikler.length ? degisiklikOzeti(degisiklikler) : null;
   /* Askıya alma ve kapatma dikkat ister; gerisi bilgi. */
-  const uyari = degisiklikler.some((d) => /Askıda|Kapalı|İptal|Kapatıldı/.test(d.sonra));
+  const uyari = degisiklikler.some((d) => /Askıda|Kapalı|İptal|Kapatıldı|Silindi/.test(d.sonra));
   return { olay: baslik, ayrinti, ton: uyari ? "warning" : "info" };
 }

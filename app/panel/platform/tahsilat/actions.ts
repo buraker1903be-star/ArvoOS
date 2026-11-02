@@ -2,6 +2,9 @@
 
 import { konsolAlaniniDogrula } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { konsolKaydiYaz } from "../konsol-kaydi";
+import { para } from "../bicim";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { flashError, flashSuccess, runPanelAction } from "@/lib/panel-action";
@@ -229,6 +232,60 @@ async function proformaIptal__impl(formData: FormData) {
 
 export async function proformaIptal(...args: Parameters<typeof proformaIptal__impl>) {
   return runPanelAction(() => proformaIptal__impl(...args), "Proforma iptal edildi.");
+}
+
+/*
+  HATALI PROFORMAYI SİLMEK (02.11.2026, kurum sahibinin isteği).
+
+  İptal belgeyi saklıyor ve numarasını koruyor; yanlış müşteriye ya da
+  yanlış tutarla kesilmiş bir proformanın ise saklanacak bir anlamı yok.
+  Silinebilenler: ödeme bekleyen ya da iptal edilmiş, ELLE kesilmiş
+  proforma. Ödenmiş/eşlenmiş ve otomatik olanı veritabanı reddediyor
+  (migration 20261102190813, gerekçe orada); buradaki ön denetim yalnızca
+  anlaşılır mesaj için.
+
+  Müşterinin ArvoOS panelindeki o proformaya giden bildirimler de siliniyor:
+  kalırsa bildirime tıklayan müşteri "sayfa yok" ekranına düşer. E-posta
+  geri alınamıyor; gönderilmişse ekran bunu silmeden önce söylüyor.
+*/
+async function proformaSil__impl(formData: FormData) {
+  const { admin, userId } = await kurucuYoneticisi();
+  const id = String(formData.get("id") ?? "");
+  if (!UUID.test(id)) throw new Error("Proforma bulunamadı.");
+  if (String(formData.get("onay") ?? "") !== "evet") throw new Error("Silmeyi onaylamak için kutuyu işaretleyin.");
+
+  const { data: p, error: okumaHatasi } = await admin.from("platform_proformalari")
+    .select("id,proforma_no,durum,otomatik,organization_id,payment_request_id,subscriber_payment_id,toplam,musteri_adi")
+    .eq("id", id).maybeSingle();
+  if (okumaHatasi) throw new Error(`Proforma okunamadı: ${okumaHatasi.message}`);
+  if (!p) throw new Error("Proforma bulunamadı.");
+  if (p.durum === "odendi" || p.payment_request_id || p.subscriber_payment_id) throw new Error("Ödenmiş ya da ödemeyle eşlenmiş proforma silinemez: ödemesi ve faturası ona bağlı.");
+  if (p.otomatik) throw new Error("Otomatik düzenlenen proforma silinemez, iptal edin: silinirse günlük iş aynısını yeniden keser.");
+
+  const { data: silinen, error } = await admin.from("platform_proformalari").delete().eq("id", id).select("id");
+  if (error) throw new Error(`Proforma silinemedi: ${error.message}`);
+  if (!silinen?.length) throw new Error("Proforma silinemedi: kayıt bulunamadı.");
+
+  /* Bildirim temizliği akışı düşürmez: proforma silindi, kalan bildirim yalnızca boş bir sayfaya gider. */
+  const { error: bildirimHatasi } = await admin.from("notifications").delete().eq("action_url", `/panel/billing/proforma/${id}`);
+  if (bildirimHatasi) console.error("[proforma] silinen proformanın bildirimleri temizlenemedi", id, bildirimHatasi.message);
+
+  /* İz: kim, hangi numarayı, kimin için sildi (kurumun ya da Arvo'nun kaydına). */
+  const { data: arvo } = p.organization_id ? { data: null } : await admin.from("organizations").select("id").eq("slug", "arvo-os").maybeSingle();
+  const kurum = (p.organization_id as string | null) ?? (arvo as { id: string } | null)?.id ?? null;
+  if (kurum) {
+    await konsolKaydiYaz({
+      organizationId: kurum, userId, entityType: "proforma", entityId: id,
+      baslik: `Proforma ${p.proforma_no} silindi`,
+      degisiklikler: [{ alan: "proforma", ad: "Proforma", once: `${p.proforma_no} · ${p.musteri_adi} · ${para(Number(p.toplam))}`, sonra: "Silindi" }],
+    });
+  }
+  revalidatePath("/panel/platform/tahsilat");
+  redirect("/panel/platform/tahsilat?kanal=proforma");
+}
+
+export async function proformaSil(...args: Parameters<typeof proformaSil__impl>) {
+  return runPanelAction(() => proformaSil__impl(...args), "Proforma silindi.");
 }
 
 async function proformaEsle__impl(formData: FormData) {
