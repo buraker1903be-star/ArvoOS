@@ -86,11 +86,9 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
         { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
         { key: "abonelikler", href: "/panel/platform/billing", label: "Abonelikler" },
         /* Yenileme takvimi 02.11.2026'dan beri Abonelikler'in sekmesi (ayrı bölüm değil). */
-        /* Proforma bölüm şeridinde (28.10.2026): yalnızca süzgeç çipinin
-           sonundayken telefonda görünmüyordu. */
-        { key: "proformalar", href: "/panel/platform/tahsilat?kanal=proforma", label: "Proformalar" },
-        { key: "faturalar", href: "/panel/platform/tahsilat?kanal=fatura", label: "Faturalar" },
-        { key: "banka", href: "/panel/platform/tahsilat?kanal=banka", label: "Banka hesapları" },
+        /* Proforma, fatura ve banka hesapları ayrı bölüm değil (02.11.2026):
+           üçü de Tahsilatlar sayfasının Kanal sekmesi. Şeritte de durdukları
+           için aynı ekran iki yerden açılıyordu. */
       ],
     },
     /*
@@ -109,10 +107,9 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
          şeritte yer kaplamıyorlar (14.10.2026'da yedi bölüm kalabalıktı). */
       bolumler: [
         { key: "urunler", href: "/panel/platform/urunler", label: "Ürünler" },
-        { key: "liste", href: "/panel/platform/fiyatlar", label: "Fiyat listesi" },
-        { key: "paketler", href: "/panel/platform/fiyatlar?bolum=paket", label: "Paket limitleri" },
-        { key: "gecmis", href: "/panel/platform/fiyatlar?bolum=gecmis", label: "Fiyat geçmişi" },
-        { key: "moduller", href: "/panel/platform/moduller", label: "Modüller" },
+        /* Paket limitleri ve fiyat geçmişi Fiyatlar sayfasının kendi bölümleri;
+           Modüller 02.11.2026'dan beri Ürünler'in "Modül matrisi" sekmesi. */
+        { key: "fiyatlar", href: "/panel/platform/fiyatlar", label: "Fiyatlar" },
       ],
     },
     {
@@ -121,10 +118,9 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
       bolumler: [
         { key: "kurulumlar", href: "/panel/platform/kurulumlar", label: "Kurulumlar" },
         { key: "saglik", href: "/panel/platform/saglik", label: "Sistem sağlığı" },
-        { key: "yetkiler", href: "/panel/platform/ayarlar?bolum=yetkiler", label: "Kurucu yetkileri" },
-        { key: "entegrasyonlar", href: "/panel/platform/ayarlar?bolum=entegrasyonlar", label: "Entegrasyonlar" },
-        { key: "guvenlik", href: "/panel/platform/ayarlar?bolum=guvenlik", label: "Güvenlik" },
-        { key: "kayitlar", href: "/panel/platform/ayarlar?bolum=kayitlar", label: "İşlem kayıtları" },
+        /* Ayarlar tek bölüm (02.11.2026): yetkiler, bağlantılar ve kayıtlar
+           sayfanın kendi sekmeleri. */
+        { key: "ayarlar", href: "/panel/platform/ayarlar", label: "Ayarlar" },
       ],
     },
   ];

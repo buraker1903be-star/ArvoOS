@@ -8,7 +8,8 @@ import { basHarfleri } from "../bicim";
 // Hücre bağlantısı (.plt-matris-hucre) ve "yalnızca müşteriler" kutusu konsolun stilinde.
 import "../platform.css";
 
-const ADRES = "/panel/platform/moduller";
+/* Matris 02.11.2026'dan beri Ürünler'in sekmesi; süzgeç sekmenin adresine eklenir. */
+const ADRES = "/panel/platform/urunler?gorunum=moduller";
 
 /*
   Kiracı × modül matrisi.
@@ -92,7 +93,7 @@ export function Matris({ urunler, satirlar, durum }: {
         <nav className="ek-segment" aria-label="Süzgeç">
         {SUZGECLER.map((secim) => (
           <Link
-            key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?suzgec=${secim.kod}`}
+            key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}&suzgec=${secim.kod}`}
             className={suzgec === secim.kod ? "is-active" : undefined} aria-current={suzgec === secim.kod ? "page" : undefined}
           >
             {secim.ad} <small>{satirlar.filter((satir) => (!yalnizMusteri || !satir.kendiMarkamiz) && suzgeceUyar(satir, urunler, secim.kod)).length}</small>

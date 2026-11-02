@@ -40,6 +40,7 @@ describe("kurucu konsolu uygulamaları", () => {
 
     assert.equal(etkin("/panel/platform/urunler"), "urunler");
     assert.equal(etkin("/panel/platform/urunler/arc"), "urunler");
+    /* Eski adres Ürünler'in Modül matrisi sekmesine yönlendiriyor (02.11.2026). */
     assert.equal(etkin("/panel/platform/moduller"), "urunler");
     assert.equal(etkin("/panel/platform/fiyatlar"), "urunler");
 
@@ -75,6 +76,17 @@ describe("kurucu konsolu uygulamaları", () => {
         );
       }
     }
+  });
+
+  test("iki bölüm aynı sayfaya gitmez", () => {
+    /* 02.11.2026: Finans'ın şeridinde Proformalar, Faturalar ve Banka
+       hesapları vardı; üçü de Tahsilatlar sayfasının kendi Kanal sekmesiydi.
+       Ürünler'de paket ve geçmiş Fiyatlar'ın, Sistem'de dört girdi
+       Ayarlar'ın bölümüydü. Aynı ekran iki yerden açılıyordu; sayfanın kendi
+       sekmesi olan şey şeritte ayrıca durmaz. */
+    const yollar = uygulamalar.flatMap((u) => (u.bolumler ?? []).map((b) => b.href.split(/[?#]/)[0]));
+    const tekrar = yollar.filter((y, i) => yollar.indexOf(y) !== i);
+    assert.deepEqual(tekrar, [], `aynı sayfaya giden bölümler: ${tekrar.join(", ")}`);
   });
 
   test("her uygulamanın anahtarı ve adresi benzersiz", () => {

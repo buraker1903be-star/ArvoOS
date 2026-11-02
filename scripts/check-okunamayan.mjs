@@ -44,7 +44,7 @@ const EKRANLAR = [
   "app/panel/platform/saglik/page.tsx",
   "app/panel/platform/tahsilat/page.tsx",
   "app/panel/platform/billing/page.tsx",
-  "app/panel/platform/moduller/page.tsx",
+  "app/panel/platform/urunler/modul-matrisi.tsx",
   "app/panel/platform/kurulumlar/page.tsx",
   "app/panel/platform/musteriler/page.tsx",
   "app/panel/platform/kullanicilar/page.tsx",
