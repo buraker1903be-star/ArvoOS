@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
@@ -18,8 +19,9 @@ import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 */
 
 async function listeFiyatiniUygula__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "sistem");
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   if (!organizationId) throw new Error("Kurum seçilmedi.");

@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "./konsol-alani";
 import { revalidatePath, updateTag } from "next/cache";
 import { lisansOlcumEtiketi } from "@/lib/lisans-olcumleri";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
@@ -38,8 +39,9 @@ async function oncekiLisans(admin: NonNullable<ReturnType<typeof createAdminClie
 */
 
 async function kurucuVeUrun(formData: FormData) {
-  const { userId, isPlatformOwner } = await getPanelContext();
+  const { userId, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   const product = String(formData.get("product") ?? "").trim();

@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
@@ -13,8 +14,9 @@ import { kurusOku } from "@/lib/turkish-amount";
 const subscriberStatuses = new Set(["trialing", "active", "past_due", "suspended", "canceled"]);
 
 async function updateProductPlan__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const product = String(formData.get("product") ?? "").trim();
   if (!isSubscriberProduct(product)) throw new Error("Geçerli bir ürün seçin.");
@@ -44,8 +46,9 @@ async function updateProductPlan__impl(formData: FormData) {
 }
 
 async function updateSubscriber__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const subscriberId = String(formData.get("subscriber_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
@@ -84,8 +87,9 @@ async function updateSubscriber__impl(formData: FormData) {
   erişimi taşındığı anda kapanırdı.
 */
 async function setSubscriberOrganization__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const subscriberId = String(formData.get("subscriber_id") ?? "").trim();
   const kurumId = String(formData.get("kurum_id") ?? "").trim();

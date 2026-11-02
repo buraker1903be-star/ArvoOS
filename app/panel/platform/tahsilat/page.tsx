@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import { TarihSecici } from "@/app/panel/components/tarih-secici";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -113,8 +114,9 @@ function onBesGunSonra(bugun: string) {
 }
 
 export default async function TahsilatPage({ searchParams }: { searchParams: Promise<{ kanal?: string }> }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "finans");
   const { kanal } = await searchParams;
   const secili = KANALLAR.some((k) => k.kod === kanal) ? kanal! : "";
 

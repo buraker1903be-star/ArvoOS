@@ -1,3 +1,4 @@
+import { alanAcik } from "@/lib/konsol-alanlari";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -43,8 +44,14 @@ export const metadata: Metadata = { title: "Konsolda ara", robots: { index: fals
 const SINIR = 20;
 
 export default async function AraPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  /* Kısıtlı kurucu yalnızca kendi alanlarında arar (02.11.2026): kapalı
+     alanın sorgusu hiç çalışmıyor, kartı da çizilmiyor. */
+  const musteri = alanAcik(konsolKapsami, "musteriler");
+  const finans = alanAcik(konsolKapsami, "finans");
+  const destek = alanAcik(konsolKapsami, "destek");
+  if (!musteri && !finans && !destek) notFound();
   const admin = createAdminClient();
   const { q } = await searchParams;
   const sorgu = (q ?? "").trim().slice(0, 80);
@@ -52,17 +59,17 @@ export default async function AraPage({ searchParams }: { searchParams: Promise<
 
   const bos = { data: [], error: null };
   const [kurumSonucu, aboneSonucu, proformaSonucu, rehber, destekSonucu] = desen ? await Promise.all([
-    supabase.from("platform_kiraci_liste").select("id,name,display_name,slug,custom_domain,contact_phone,davet_eposta,license_status,plan_code"),
-    supabase.from("product_subscribers").select("id,product,email,full_name,status")
+    !musteri ? bos : supabase.from("platform_kiraci_liste").select("id,name,display_name,slug,custom_domain,contact_phone,davet_eposta,license_status,plan_code"),
+    !musteri ? bos : supabase.from("product_subscribers").select("id,product,email,full_name,status")
       .or(`email.ilike.%${desen}%,full_name.ilike.%${desen}%`).order("created_at", { ascending: false }).limit(SINIR),
-    admin
+    admin && finans
       ? admin.from("platform_proformalari").select("id,proforma_no,musteri_adi,product,toplam,para_birimi,durum,gecerlilik_tarihi,duzenleme_tarihi")
           .or(`proforma_no.ilike.%${desen}%,musteri_adi.ilike.%${desen}%`).order("created_at", { ascending: false }).limit(SINIR)
       : bos,
-    getMemberDirectory().catch((hata: unknown) => { console.error("[ara] kullanıcı rehberi okunamadı", hata instanceof Error ? hata.message : hata); return null; }),
+    !musteri ? null : getMemberDirectory().catch((hata: unknown) => { console.error("[ara] kullanıcı rehberi okunamadı", hata instanceof Error ? hata.message : hata); return null; }),
     /* Destek talepleri (02.11.2026): konuya göre, en son hareket gören başta.
        Kurucunun oturumuyla; RLS kurucuya bütün kurumların talebini açıyor. */
-    supabase.from("support_tickets").select("id,subject,status,priority,last_message_at,organizations(name,display_name)")
+    !destek ? bos : supabase.from("support_tickets").select("id,subject,status,priority,last_message_at,organizations(name,display_name)")
       .ilike("subject", `%${desen}%`).order("last_message_at", { ascending: false }).limit(SINIR),
   ]) : [bos, bos, bos, null, bos];
 
@@ -94,11 +101,10 @@ export default async function AraPage({ searchParams }: { searchParams: Promise<
     tekrar eden bir kusur; burada ikisi tek kaynaktan türüyor.
   */
   const bolumler = [
-    { tur: "müşteri", adet: kurumlar.length },
-    { tur: "kullanıcı", adet: kisiler.length },
-    { tur: "proforma", adet: proformalar.length },
-    { tur: "bireysel abone", adet: aboneler.length },
-    { tur: "destek talebi", adet: talepler.length },
+    ...(musteri ? [{ tur: "müşteri", adet: kurumlar.length }, { tur: "kullanıcı", adet: kisiler.length }] : []),
+    ...(finans ? [{ tur: "proforma", adet: proformalar.length }] : []),
+    ...(musteri ? [{ tur: "bireysel abone", adet: aboneler.length }] : []),
+    ...(destek ? [{ tur: "destek talebi", adet: talepler.length }] : []),
   ];
   const toplam = bolumler.reduce((t, b) => t + b.adet, 0);
   /* "a, b, c ve d": son öğeden önce virgül değil "ve". */
@@ -122,7 +128,7 @@ export default async function AraPage({ searchParams }: { searchParams: Promise<
       sorgu ? <KNot>En az iki harf yazın.</KNot> : null
     ) : (
       <div className="ka-izgara">
-        <KKart baslik="Kurumlar" sag={<span className="status-pill">{sayi(kurumlar.length)}</span>}>
+        {musteri ? <><KKart baslik="Kurumlar" sag={<span className="status-pill">{sayi(kurumlar.length)}</span>}>
           {kurumOkumasi.okunamadi ? <KBos baslik="Kurumlar okunamadı" aciklama="Sorgu yanıt vermedi; “sonuç yok” demek değil." />
             : kurumlar.length ? <KListe>{kurumlar.map((k) => (
               <KOge key={k.id} href={`/panel/platform/musteriler/${k.id}`} simge={k.display_name || k.name} baslik={k.display_name || k.name}
@@ -138,9 +144,9 @@ export default async function AraPage({ searchParams }: { searchParams: Promise<
                 durum={k.acik ? null : { etiket: k.sebep ?? "Erişim kapalı", ton: "danger" }} />
             ))}</KListe> : <KBos baslik="Eşleşen kullanıcı yok" />}
           {rehber && !rehber.arvolabReachable ? <KNot ton="uyari">ArvoLab&apos;a ulaşılamadı; oradaki kullanıcılar sonuçta yok.</KNot> : null}
-        </KKart>
+        </KKart></> : null}
 
-        <KKart baslik="Proformalar" sag={<span className="status-pill">{sayi(proformalar.length)}</span>}>
+        {finans ? <KKart baslik="Proformalar" sag={<span className="status-pill">{sayi(proformalar.length)}</span>}>
           {proformaOkumasi.okunamadi ? <KBos baslik="Proformalar okunamadı" aciklama={admin ? "Sorgu yanıt vermedi; “sonuç yok” demek değil." : "Sunucu anahtarı tanımlı değil."} />
             : proformalar.length ? <KListe>{proformalar.map((p) => {
               const durum = proformaGorunumu(p.durum, p.gecerlilik_tarihi, bugun);
@@ -151,9 +157,9 @@ export default async function AraPage({ searchParams }: { searchParams: Promise<
                   durum={{ etiket: PROFORMA_DURUM_ADI[durum], ton: durum === "odendi" ? "success" : durum === "bekliyor" ? "info" : durum === "suresi_doldu" ? "warning" : "neutral" }} />
               );
             })}</KListe> : <KBos baslik="Eşleşen proforma yok" />}
-        </KKart>
+        </KKart> : null}
 
-        <KKart baslik="Destek talepleri" sag={<span className="status-pill">{sayi(talepler.length)}</span>}>
+        {destek ? <KKart baslik="Destek talepleri" sag={<span className="status-pill">{sayi(talepler.length)}</span>}>
           {destekOkumasi.okunamadi ? <KBos baslik="Destek talepleri okunamadı" aciklama="Sorgu yanıt vermedi; “sonuç yok” demek değil." />
             : talepler.length ? <KListe>{talepler.map((t) => {
               const hal = kuyrukHali(t.status);
@@ -163,18 +169,18 @@ export default async function AraPage({ searchParams }: { searchParams: Promise<
                   durum={{ etiket: DURUM_ADI[t.status] ?? t.status, ton: hal === "yanit" ? "warning" : hal === "musteri" ? "info" : "neutral" }} />
               );
             })}</KListe> : <KBos baslik="Eşleşen destek talebi yok" />}
-        </KKart>
+        </KKart> : null}
 
-        <KKart baslik="Bireysel aboneler" sag={<span className="status-pill">{sayi(aboneler.length)}</span>}>
+        {musteri ? <KKart baslik="Bireysel aboneler" sag={<span className="status-pill">{sayi(aboneler.length)}</span>}>
           {aboneOkumasi.okunamadi ? <KBos baslik="Aboneler okunamadı" aciklama="Sorgu yanıt vermedi; “sonuç yok” demek değil." />
             : aboneler.length ? <KListe>{aboneler.map((a) => (
               <KOge key={a.id} href="/panel/platform/subscribers" simge={a.full_name || a.email} baslik={a.full_name || a.email}
                 alt={[a.full_name ? a.email : null, productName(a.product as Parameters<typeof productName>[0])].filter(Boolean).join(" · ")} />
             ))}</KListe> : <KBos baslik="Eşleşen abone yok" />}
-        </KKart>
+        </KKart> : null}
       </div>
     )}
 
-    {desen && !toplam ? <p className="ka-ipucu">Hiçbir şey bulunamadı. <Link href={`/panel/platform/musteriler?ara=${encodeURIComponent(sorgu)}`}>Müşteriler listesinde ara →</Link></p> : null}
+    {desen && !toplam && musteri ? <p className="ka-ipucu">Hiçbir şey bulunamadı. <Link href={`/panel/platform/musteriler?ara=${encodeURIComponent(sorgu)}`}>Müşteriler listesinde ara →</Link></p> : null}
   </main>;
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
@@ -10,8 +11,9 @@ import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { havaleDenetimleri } from "@/lib/beklenen-odeme";
 
 async function reviewBankTransferPayment__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "finans");
 
   const paymentId = String(formData.get("payment_id") ?? "").trim();
   const decision = String(formData.get("decision") ?? "").trim();

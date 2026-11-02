@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -53,8 +54,9 @@ const SON_ABONE = 50;
 const ODEYEN = new Set(["active", "past_due"]);
 
 export default async function UrunPage({ params }: { params: Promise<{ urun: string }> }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "urunler");
   const { urun } = await params;
   const urunTanimi = PRODUCTS.find((p) => p.code === urun);
   if (!urunTanimi) notFound();

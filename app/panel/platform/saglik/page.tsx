@@ -1,3 +1,5 @@
+import { paketLimitleriOku } from "../paket-limitleri-oku";
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
@@ -85,8 +87,9 @@ type Kiraci = {
 
 export default async function SistemSagligiPage({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
   const { sekme: istenenSekme } = await searchParams;
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "sistem");
   /* Eski "Platform ayarları" sekmesinin bağlantıları Ayarlar'a gider (02.11.2026). */
   if (istenenSekme === "ayar") redirect("/panel/platform/ayarlar?bolum=baglantilar");
   const admin = createAdminClient();
@@ -98,6 +101,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     { data: depolamalar },
     { data: cronSatirlari, error: cronHatasi },
     { data: cronIlk, error: cronIlkHatasi },
+    paketLimitleri,
   ] = await Promise.all([
     /* Sayfalı: kiracı başına tek satır ama 1.000 müşteride tavan
        sessizce vurur (konsol ana sayfasındaki kuralın aynısı). */
@@ -128,6 +132,8 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     /* Kayıt tutmanın başlangıcı: hiç koşmamış bir işin "henüz" mü yoksa
        zamanlayıcıya hiç kaydolmamış mı olduğunu bu ayırıyor. */
     supabase.from("platform_cron_kayitlari").select("basladi_at").order("basladi_at", { ascending: true }).limit(1),
+    /* Konsoldan düzenlenen paket limitleri: "paketinden fazla limit" ona göre. */
+    paketLimitleriOku(supabase),
   ]);
 
   const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya, odemeOlaylari] = await Promise.all([
@@ -230,7 +236,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
          sapması sayfanın okuduğu veriden hesaplanamıyor. */
       sapmalar: fazlaVerilen(limitSapmalari(k.plan_code, {
         userLimit: k.user_limit, storageLimitMb: k.storage_limit_mb, aiCreditLimit: null,
-      })),
+      }, paketLimitleri.limitler)),
     }))
     .filter((x) => x.sapmalar.length > 0);
 
@@ -340,6 +346,8 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
        yeşil kalırdı ve yeşili çürütecek kanıtı göremediğimiz hiç
        yazmazdı. */
     ["Proforma gönderim kayıtları", postaHatasiHatasi],
+    /* Okunamazsa sapma koddaki değerlere göre hesaplanıyor; yazılmalı. */
+    ["Paket limitleri", paketLimitleri.hata ? { message: paketLimitleri.hata } : null],
   ] as [string, { message: string } | null][])
     .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
   if (okunamayan.length)

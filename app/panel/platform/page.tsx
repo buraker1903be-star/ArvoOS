@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "./konsol-alani";
 import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 
@@ -17,8 +18,9 @@ import { getPanelContext } from "@/lib/panel-context";
   ?filtre=kurulum Kurulum Yönetimi'ne, ?filtre=dikkat Müşteriler'e gidiyor.
 */
 export default async function EskiKiraciSayfasi({ searchParams }: { searchParams: Promise<{ organization?: string; provisioned?: string; filtre?: string }> }) {
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "musteriler");
   const { organization, provisioned, filtre } = await searchParams;
   if (organization && /^[0-9a-f-]{36}$/i.test(organization)) {
     redirect(`/panel/platform/musteriler/${organization}?pencere=ayarlar${provisioned === "1" ? "&provisioned=1" : ""}`);

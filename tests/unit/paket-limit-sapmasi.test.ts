@@ -61,3 +61,18 @@ describe("paket limiti sapması", () => {
     }), []);
   });
 });
+
+test("konsoldan düzenlenen limit koddaki yedeğin üstüne yazılır; bozuk satır yok sayılır", async () => {
+  const { paketLimitleriniKur } = await import("@/lib/paket-limitleri");
+  const limitler = paketLimitleriniKur([
+    { plan_code: "starter", user_limit: 5, storage_limit_mb: 10240, ai_credit_limit: 800 },
+    { plan_code: "professional", user_limit: 0, storage_limit_mb: 1, ai_credit_limit: 1 },
+    { plan_code: "bilinmeyen", user_limit: 9, storage_limit_mb: 9, ai_credit_limit: 9 },
+  ]);
+  assert.deepEqual(limitler.starter, { userLimit: 5, storageLimitMb: 10240, aiCreditLimit: 800 });
+  assert.deepEqual(limitler.professional, PAKET_VARSAYILANI.professional);
+  assert.equal("bilinmeyen" in limitler, false);
+  /* Sapma artık konsoldaki değere göre: 5 kullanıcılık başlangıç sapma değil. */
+  assert.deepEqual(limitSapmalari("starter", { userLimit: 5, storageLimitMb: 10240, aiCreditLimit: 800 }, limitler), []);
+  assert.equal(limitSapmalari("starter", { userLimit: 5, storageLimitMb: 10240, aiCreditLimit: 800 }).length, 3);
+});

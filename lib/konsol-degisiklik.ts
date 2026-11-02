@@ -88,6 +88,8 @@ export const KONSOL_KAYIT_TURU: Record<string, string> = {
   product_bridge: "Ürün köprüsü",
   organization_settings: "Kurum ayarları",
   organization_module: "Panel modülü",
+  founder_scope: "Kurucu yetkisi",
+  package_limits: "Paket limiti",
 };
 
 /**

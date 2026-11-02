@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
@@ -36,8 +37,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ACIK = ["active", "trialing", "past_due"];
 
 async function topluHatirlatma__impl(formData: FormData) {
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Toplu hatırlatmayı yalnızca platform kurucusu gönderebilir.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu yapılandırması eksik; hatırlatma gönderilemedi.");
 

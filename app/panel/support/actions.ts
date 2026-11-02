@@ -4,6 +4,7 @@ import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { konsolAlaniniDogrula } from "../platform/konsol-alani";
 import { kurucuyaUyar } from "@/lib/kurucu-uyarisi";
 import { KATEGORI_ADI } from "@/lib/destek-kuyrugu";
 
@@ -47,13 +48,15 @@ async function createSupportTicket__impl(formData: FormData) {
 }
 
 async function replySupportTicket__impl(formData: FormData) {
-  const { supabase, userId, membership, isPlatformOwner } = await getPanelContext();
+  const { supabase, userId, membership, isPlatformOwner, konsolKapsami } = await getPanelContext();
   const ticketId = String(formData.get("ticket_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   if (!body || body.length > 5000) throw new Error("Mesaj 1–5000 karakter olmalı.");
   const { data: ticket } = await supabase.from("support_tickets").select("id,organization_id").eq("id",ticketId).single();
   if (!ticket) throw new Error("Destek talebi bulunamadı.");
   if (!isPlatformOwner && ticket.organization_id !== membership.organization_id) throw new Error("Bu talebe erişiminiz yok.");
+  /* Başka kurumun talebine kurucu olarak yanıt: konsolun Destek alanı (02.11.2026). */
+  if (isPlatformOwner && ticket.organization_id !== membership.organization_id) konsolAlaniniDogrula(konsolKapsami, "destek");
   const { error } = await supabase.from("support_messages").insert({
     ticket_id: ticket.id, organization_id: ticket.organization_id, author_id: userId, body, is_staff: isPlatformOwner,
   });
@@ -64,8 +67,9 @@ async function replySupportTicket__impl(formData: FormData) {
 }
 
 async function updateSupportTicketStatus__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Yalnızca platform yöneticisi durum değiştirebilir.");
+  konsolAlaniniDogrula(konsolKapsami, "destek");
   const ticketId = String(formData.get("ticket_id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!statuses.has(status)) throw new Error("Geçersiz durum.");

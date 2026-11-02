@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "./konsol-alani";
 import { runPanelAction } from "@/lib/panel-action";
 import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 
@@ -38,8 +39,9 @@ function cleanSlug(value: string) {
 }
 
 async function requireFounderTarget(formData: FormData) {
-  const { supabase, isPlatformOwner, userId } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami, userId } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler");
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   if (!organizationId) throw new Error("Yönetilecek kurum seçilmedi.");
   const { data: target, error } = await supabase.from("organizations").select("id,slug").eq("id", organizationId).maybeSingle();
@@ -48,8 +50,9 @@ async function requireFounderTarget(formData: FormData) {
 }
 
 async function createCustomerOrganization__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "musteriler", "sistem");
 
   const name = String(formData.get("name") ?? "").trim();
   const slug = cleanSlug(String(formData.get("slug") ?? name));
@@ -256,8 +259,9 @@ async function toggleOrganizationModule__impl(formData: FormData) {
  */
 export async function createOwnerAccessLink(_previous: OwnerLinkState, formData: FormData): Promise<OwnerLinkState> {
   const empty: OwnerLinkState = { error: null, link: null, email: null, note: null };
-  const { supabase, isPlatformOwner, userId } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami, userId } = await getPanelContext();
   if (!isPlatformOwner) return { ...empty, error: "Bu işlem için kurucu yetkisi gerekiyor." };
+  try { konsolAlaniniDogrula(konsolKapsami, "musteriler"); } catch (hata) { return { ...empty, error: (hata as Error).message }; }
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   if (!organizationId) return { ...empty, error: "Kurum seçilmedi." };
 
@@ -353,8 +357,9 @@ export async function toggleOrganizationModule(...args: Parameters<typeof toggle
   ödüyor.
 */
 async function abonelikHatirlatmasiGonder__impl(formData: FormData) {
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "finans");
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   const product = String(formData.get("product") ?? "").trim();

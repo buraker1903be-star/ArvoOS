@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -52,8 +53,9 @@ type IstekSatiri = {
 };
 
 export default async function SozlesmelerPage() {
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "finans");
 
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu anahtarı tanımlı değil.");

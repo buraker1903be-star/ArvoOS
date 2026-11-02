@@ -1,3 +1,4 @@
+import { uygulamalariSuz } from "@/lib/konsol-alanlari";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
@@ -137,7 +138,7 @@ const DEFAULT_APP_HOST = "app.arvo-os.com";
 const cevrimiciEsigi = () => new Date(Date.now() - 3 * 60_000).toISOString();
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, izin, yetkiler } = await getPanelContext();
+  const { supabase, userId, membership, organization, modules, isPlatformOwner, konsolKapsami, workspaces, hiddenModuleKeys, izin, yetkiler } = await getPanelContext();
 
   /*
     Kurucu konsolu (yonetim.arvo-os.com) normal panel kabuğunu KULLANMAZ.
@@ -513,7 +514,9 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   } catch (hata) {
     console.error("[konsol] dock rozetleri okunamadı", hata instanceof Error ? hata.message : hata);
   }
-  const konsolUygulamalariListesi = konsolUygulamalari({ odeme: bekleyenOdeme, sozlesme: bekleyenSozlesme, destek: bekleyenDestek });
+  /* Kısıtlı kurucu yalnızca kendi alanlarını görür (lib/konsol-alanlari);
+     sayfalar ve işlemler aynı kapsamı ayrıca denetliyor. */
+  const konsolUygulamalariListesi = uygulamalariSuz(konsolUygulamalari({ odeme: bekleyenOdeme, sozlesme: bekleyenSozlesme, destek: bekleyenDestek }), konsolKapsami);
 
   const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 

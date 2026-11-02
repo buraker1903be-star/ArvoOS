@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { YenilemeTakvimi } from "./yenileme-takvimi";
 import { AbonelikSekmeleri } from "./abonelik-sekmeleri";
@@ -73,8 +74,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   /* Yenileme takvimi bu sayfanın sekmesi (02.11.2026; eskiden ayrı sayfa). */
   const { gorunum, filtre } = await searchParams;
   if (gorunum === "takvim") return <YenilemeTakvimi filtre={filtre} />;
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "finans");
   const { durum, bolum: istenenBolum } = await searchParams;
   const bolum = BOLUMLER.find((b) => b === istenenBolum) ?? "";
 

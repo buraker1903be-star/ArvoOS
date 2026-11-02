@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -76,8 +77,9 @@ const kalanYazisi = (k: number) => (k < 0 ? `${-k} gün geçti` : k === 0 ? "bug
 const TAKVIM = "/panel/platform/billing?gorunum=takvim";
 
 export async function YenilemeTakvimi({ filtre }: { filtre?: string }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "finans");
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu yapılandırması eksik; takvim okunamadı.");
   const secili = GORUNUMLER.find((g) => g.kod === filtre)?.kod ?? "";

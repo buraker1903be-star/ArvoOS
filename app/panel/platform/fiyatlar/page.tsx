@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
@@ -6,7 +7,8 @@ import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi } from "@/lib/site/pricing";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
 import { fiyatlariYayimla, koddakiDegerleriTaslagaAl, taslagiGeriAl, taslagiKaydet, yayindanKaldir } from "../urunler/actions";
-import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
+import { paketLimitleriOku } from "../paket-limitleri-oku";
+import { paketLimitiniKaydet } from "./paket-actions";
 import { PAKET_ADI, depolama, para, sayi, tarihSaat } from "../bicim";
 import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi, type FiyatKaydi } from "@/lib/fiyat-dogrulama";
 import { YAYIN_KODU } from "@/lib/paket-ucreti";
@@ -135,11 +137,14 @@ type Kiraci = {
 export default async function FiyatlarPage({ searchParams }: {
   searchParams: Promise<{ bolum?: string; urun?: string }>;
 }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "urunler");
 
   const { bolum, urun } = await searchParams;
   const secili = bolum === "paket" ? "paket" : bolum === "gecmis" ? "gecmis" : "liste";
+  /* Paket limitleri 02.11.2026'dan beri veritabanında, konsoldan düzenleniyor. */
+  const paketLimitleri = await paketLimitleriOku(supabase);
   /* Fiyat listesinde tek ürün açık (?urun=): dört ürün ve ek hizmetler alt
      alta 2.200 piksel tutuyordu (14.10.2026, "kompakt, sade, premium"). */
   const LISTE_URUNLERI = ["arvoos", "arc", "randevu", "arvolab", "ek"] as const;
@@ -264,7 +269,7 @@ export default async function FiyatlarPage({ searchParams }: {
         </div>
         <div className={secili === "paket" ? "is-active" : undefined}>
           <dt>Paket limitleri</dt>
-          <dd><Link href={adres("paket")} aria-current={secili === "paket" ? "page" : undefined}>{sayi(Object.keys(PAKET_VARSAYILANI).length)}</Link></dd>
+          <dd><Link href={adres("paket")} aria-current={secili === "paket" ? "page" : undefined}>{sayi(Object.keys(paketLimitleri.limitler).length)}</Link></dd>
           <small>ArvoOS paketleri</small>
         </div>
         <div className={secili === "gecmis" ? "is-active" : undefined}>
@@ -429,8 +434,8 @@ export default async function FiyatlarPage({ searchParams }: {
         baslik="ArvoOS paket limitleri"
         aciklama={<>
           Yeni kiracının lisansına yazılan varsayılanlar. Dahil kullanıcıyı aşan her etkin kullanıcı için ek kullanıcı
-          bedeli ödeme bağlantısına eklenir. Kiracıya özel (pazarlıkla değişmiş) limit Lisans ve kota ekranından değişir;
-          varsayılanı değiştirmek bugün bir migration gerektiriyor — konsoldan düzenleme henüz yok.
+          bedeli ödeme bağlantısına eklenir. Buradan değiştirmek yalnızca YENİ kiracıyı etkiler; mevcut kiracının limiti
+          kendi lisansında yazılı ve müşteri kartının Lisanslar penceresinden değişir.
         </>}
       >
         {/* Tablo (29.10.2026): üç limit ve bugünkü kiracı sayısı kendi
@@ -439,19 +444,38 @@ export default async function FiyatlarPage({ searchParams }: {
           <table className="crm-data-table" data-cols="ur-paket">
             <thead><tr><th>Paket</th><th>Dahil kullanıcı</th><th>Depolama</th><th>Yapay zekâ kredisi</th><th>Kiracı</th></tr></thead>
             <tbody>
-              {Object.entries(PAKET_VARSAYILANI).map(([paket, limit]) => (
+              {Object.entries(paketLimitleri.limitler).map(([paket, limit]) => (
                 <tr key={paket}>
                   <td data-label="Paket"><span className="crm-table-title">{PAKET_ADI[paket] ?? paket}</span><span className="crm-table-sub plt-mono">{paket}</span></td>
                   <td data-label="Dahil kullanıcı"><span className="crm-table-title">{sayi(limit.userLimit)}</span></td>
                   <td data-label="Depolama"><span className="crm-table-title">{depolama(limit.storageLimitMb)}</span></td>
                   <td data-label="Yapay zekâ kredisi"><span className="crm-table-title">{sayi(limit.aiCreditLimit)}</span></td>
-                  <td data-label="Kiracı"><span className="crm-table-title">{sayi(paketKiracisi(paket))}</span><small>bugün bu pakette</small></td>
+                  <td data-label="Kiracı">
+                    <span className="crm-table-title">{sayi(paketKiracisi(paket))}</span><small>bugün bu pakette</small>
+                    {/* Düzenleme (02.11.2026): tablo okunamadıysa ya da migration
+                        uygulanmadıysa kapalı — koddaki yedeği "düzenlenebilir"
+                        göstermek kaydı sessizce düşürmek olurdu. */}
+                    {paketLimitleri.tabloVar && !paketLimitleri.hata ? (
+                      <details className="sy-alan-duzen">
+                        <summary>Değiştir</summary>
+                        <form action={paketLimitiniKaydet} className="sy-alan-formu">
+                          <input type="hidden" name="plan_code" value={paket} />
+                          <label>Kullanıcı <input name="user_limit" inputMode="numeric" pattern="[0-9.]+" required defaultValue={String(limit.userLimit)} size={6} /></label>
+                          <label>Depolama (GB) <input name="storage_gb" inputMode="numeric" pattern="[0-9.]+" required defaultValue={String(Math.max(1, Math.round(limit.storageLimitMb / 1024)))} size={6} /></label>
+                          <label>AI kredisi <input name="ai_credit_limit" inputMode="numeric" pattern="[0-9.]+" required defaultValue={String(limit.aiCreditLimit)} size={8} /></label>
+                          <button className="panel-secondary" type="submit">Kaydet</button>
+                        </form>
+                      </details>
+                    ) : null}
+                  </td>
                   <MobilSatir baslik={PAKET_ADI[paket] ?? paket} alt={[`${sayi(limit.userLimit)} kullanıcı`, depolama(limit.storageLimitMb), `${sayi(limit.aiCreditLimit)} kredi`, `${sayi(paketKiracisi(paket))} kiracı`]} />
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {paketLimitleri.hata ? <KNot ton="tehlike">Paket limitleri okunamadı ({paketLimitleri.hata}); tablo koddaki yedek değerleri gösteriyor ve düzenleme kapalı.</KNot>
+          : !paketLimitleri.tabloVar ? <KNot ton="uyari">Paket limitleri tablosu henüz kurulmamış (migration 20261102181453); koddaki değerler geçerli ve düzenleme kapalı.</KNot> : null}
         <KNot>
           ArvoARC, Randevu ve ArvoLab&apos;in limitleri kiracının ürün lisansında (limits) duruyor ve bugün yalnızca
           gösteriliyor, uygulanmıyor.

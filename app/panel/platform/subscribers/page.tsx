@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -42,8 +43,9 @@ function hasAccess(subscriber: SubscriberRow) {
 }
 
 export default async function SubscribersPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "musteriler");
   const { durum } = await searchParams;
 
   /*

@@ -1,5 +1,6 @@
 "use server";
 
+import { konsolAlaniniDogrula } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
@@ -44,8 +45,9 @@ function modulleriCoz(requested: unknown): IstenenModul[] {
 }
 
 async function abonelikIsteginiOnayla__impl(formData: FormData) {
-  const { userId, isPlatformOwner } = await getPanelContext();
+  const { userId, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "finans");
 
   const istekId = String(formData.get("request_id") ?? "").trim();
   const hedefKurum = String(formData.get("target_organization_id") ?? "").trim();
@@ -146,8 +148,9 @@ export async function abonelikIsteginiOnayla(formData: FormData): Promise<void> 
 }
 
 async function abonelikIsteginiReddet__impl(formData: FormData) {
-  const { userId, isPlatformOwner } = await getPanelContext();
+  const { userId, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  konsolAlaniniDogrula(konsolKapsami, "finans");
 
   const istekId = String(formData.get("request_id") ?? "").trim();
   const not = String(formData.get("review_note") ?? "").trim();

@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -62,8 +63,9 @@ const simdi = () => Date.now();
 export default async function KisiSayfasi({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!kimlikMi(id)) notFound();
-  const { isPlatformOwner } = await getPanelContext();
+  const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "musteriler");
   const admin = createAdminClient();
 
   const { rows, arvolabReachable } = await getMemberDirectory();

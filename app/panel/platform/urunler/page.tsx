@@ -1,3 +1,4 @@
+import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -58,8 +59,9 @@ type Kiraci = {
 export default async function UrunlerPage({ searchParams }: {
   searchParams: Promise<{ bolum?: string; gorunum?: string; suzgec?: string }>;
 }) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  konsolAlaniniAc(konsolKapsami, "urunler");
 
   const { bolum, gorunum, suzgec } = await searchParams;
   // Fiyatlandırma kendi sayfasına taşındı; eski bağlantılar kırılmasın.
