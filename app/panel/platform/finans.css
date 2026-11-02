@@ -106,3 +106,11 @@
 .panel-root .sy-teshis-hata{margin:6px 0;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
 .panel-root .sy-teshis-not{color:var(--muted)!important;font-size:var(--fs-sm)!important}
 .panel-root .sy-teshis code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+
+/* Sistem sağlığı → iş satırının son çalışmaları (lib/cron-gecmisi). */
+.panel-root .sy-kosu-kap{display:flex;flex-direction:column;gap:2px}
+.panel-root .sy-kosular{display:inline-flex;gap:2px;align-items:center}
+.panel-root .sy-kosular i{display:block;width:6px;height:14px;border-radius:2px;background:var(--success)}
+.panel-root .sy-kosular i[data-sonuc="eksik"]{background:var(--warning)}
+.panel-root .sy-kosular i[data-sonuc="hata"]{background:var(--danger)}
+.panel-root .sy-ayrinti{display:block;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--muted)}

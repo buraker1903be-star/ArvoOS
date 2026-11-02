@@ -19,6 +19,7 @@ import { cronAralikMetni, cronDurumlari, cronSorunlari, type CronKaydi, type Cro
 import type { ReactNode } from "react";
 import { hataTeshisi, ZAMANLAYICI_TESHISI } from "@/lib/hata-teshisi";
 import { TeshisKarti } from "./teshis-karti";
+import { kosuOzeti, type Kosu } from "@/lib/cron-gecmisi";
 import { basHarfleri, PAKET_ADI, gecenSure, para, sayi, tarihSaat } from "../bicim";
 import { KNot } from "../konsol-ui";
 import { MobilSatir } from "../../crm/table-cells";
@@ -151,7 +152,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   /* Kurulum günlüğü yalnızca sunucu anahtarıyla okunuyor; anahtar yoksa
      satır hiç çizilmiyor ("0 hata" yazmak okunamayanı temiz göstermek). */
   const { data: kurulumKayitlari, error: kurulumHatasi } = admin
-    ? await admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at")
+    ? await admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at,details")
         /*
           DEĞER 'failed', 'error' DEĞİL (14.10.2026). Sütunun kısıtı
           ('started','success','failed') 'error'a hiç izin vermiyor:
@@ -250,6 +251,20 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   const cronBaslangici = ((cronIlk ?? []) as { basladi_at: string }[])[0]?.basladi_at ?? null;
   const cronDurum = cronHatasi ? [] : cronTablosu((cronSatirlari ?? []) as unknown as CronKaydi[], cronBaslangici ? new Date(cronBaslangici) : null);
   const cronSorun = cronSorunlari(cronDurum);
+  /*
+    ÇALIŞMA GEÇMİŞİ (02.11.2026, lib/cron-gecmisi): her işin son 20
+    çalışması — "ne zamandan beri düşüyor, sürekli mi arada bir mi".
+    İş başına bir sorgu (iş sayısı vercel.json kadar, bir düzine altı),
+    dizin (is_adi, basladi_at desc) başından yürüyor. Okunamazsa satır
+    noktasız kalıyor; tablonun geri kalanı çiziliyor.
+  */
+  const gecmisler = new Map<string, Kosu[]>();
+  await Promise.all(cronDurum.map(async (is) => {
+    const { data, error } = await supabase.from("platform_cron_kayitlari").select("sonuc,basladi_at,sure_ms")
+      .eq("is_adi", is.yol).order("basladi_at", { ascending: false }).limit(20);
+    if (error) console.error("[sağlık] çalışma geçmişi okunamadı", is.yol, error.message);
+    else gecmisler.set(is.yol, (data ?? []) as Kosu[]);
+  }));
   /* KAYDI OLMAYAN İŞ "ZAMANINDA KOŞUYOR" DEĞİL. Şerit sorunsuz iş sayısını
      yazıyordu ve kayıt tutmanın ilk gününde "5 / 5 · hepsi zamanında
      koşuyor" diyordu — oysa beşinin hiçbiri henüz koşmamıştı. Pay yalnızca
@@ -279,7 +294,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     kurulum hareketleri" listesinde duruyor.
   */
   const hatadaKalanlar = new Set(kiracilar.filter((k) => k.provisioning_state === "failed").map((k) => k.id));
-  const kurulumHatalari = ((kurulumKayitlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; created_at: string }[])
+  const kurulumHatalari = ((kurulumKayitlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; created_at: string; details: { error?: unknown } | null }[])
     .filter((kayit) => hatadaKalanlar.has(kayit.organization_id));
   const kurulumBekleyen = musteriler.filter((k) => PENDING_STATES.has(k.provisioning_state)).length;
   /*
@@ -512,7 +527,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
           ) : (
             <div className="talep-tablo fn-ic-tablo">
               <table className="crm-data-table" data-cols="sy-cron">
-                <thead><tr><th>İş</th><th>Aralık</th><th className="crm-col-date">En son koşma</th><th>Durum</th></tr></thead>
+                <thead><tr><th>İş</th><th>Aralık</th><th>Son çalışmalar</th><th className="crm-col-date">En son koşma</th><th>Durum</th></tr></thead>
                 <tbody>
                   {cronDurum.map((is) => {
                     const sorunlu = is.durum === "gecikti" || is.durum === "dustu";
@@ -520,8 +535,23 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
                     const alt = is.durum === "hic" ? "Koşma kaydı tutma bugün başladı; ilk koşmada yazılacak." : sorunlu ? (hata ?? is.aciklama) : is.aciklama;
                     return (
                       <tr key={is.yol}>
-                        <td data-label="İş"><span className="crm-table-title">{is.ad}</span><span className="crm-table-sub" title={alt}>{alt}</span></td>
+                        <td data-label="İş"><Link className="crm-row-link crm-table-title" href={`/panel/platform/saglik/is?yol=${encodeURIComponent(is.yol)}`}>{is.ad}</Link><span className="crm-table-sub" title={alt}>{alt}</span></td>
                         <td data-label="Aralık"><span className={is.aralikDk === null ? "talep-uyari" : "crm-table-sub"}>{cronAralikMetni(is.aralikDk)}</span></td>
+                        <td data-label="Son çalışmalar">
+                          {/* Soldan sağa eskiden yeniye; her nokta bir çalışma (yeşil tamam, sarı eksik, kırmızı hata). */}
+                          {gecmisler.has(is.yol) ? (() => {
+                            const kosular = gecmisler.get(is.yol)!;
+                            const ozet = kosuOzeti(kosular);
+                            return (
+                              <span className="sy-kosu-kap">
+                                <span className="sy-kosular" aria-label={`Son ${kosular.length} çalışma`}>
+                                  {[...kosular].reverse().map((k) => <i key={k.basladi_at} data-sonuc={k.sonuc} title={`${tarihSaat(k.basladi_at)} · ${k.sonuc}`} />)}
+                                </span>
+                                {ozet.ardisikHata ? <small className="talep-uyari">{ozet.ardisikHata}{ozet.diziPencereyiAsiyor ? "+" : ""} kez üst üste</small> : null}
+                              </span>
+                            );
+                          })() : <span className="crm-table-sub">—</span>}
+                        </td>
                         {/* Hiç koşmamış işte "1 sa önce" yazmak yanlış: o süre kayıt tutmanın yaşı. */}
                         <td className="crm-col-date" data-label="En son koşma">{is.sonCalisma ? gecenSure(is.gecikmeDk ?? 0) : "—"}<small>{is.sonCalisma ? "önce" : is.durum === "gecikti" ? "hiç koşmadı" : "kayıt bekleniyor"}</small></td>
                         <td data-label="Durum"><span className="status-pill" data-tone={CRON_DURUM[is.durum].ton}>{CRON_DURUM[is.durum].etiket}</span></td>
@@ -646,6 +676,18 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
 
         {sekme === "kurulum" ? <section>
           {bolumBasi("Kurulum hataları", "Kurulumu hatada kalmış kiracılar. Sonradan tamamlanan eski hatalar burada sayılmıyor; onlar ana sayfadaki kurulum hareketlerinde.")}
+          {/* Kurulumun hata metni details.error'da (provision-organization); teşhis kartı tablonun üstünde. */}
+          {admin && kurulumHatalari.length ? (
+            <div className="sy-teshisler">
+              {kurulumHatalari.map((kayit) => {
+                const hata = typeof kayit.details?.error === "string" ? kayit.details.error : null;
+                return (
+                  <TeshisKarti key={`t-${kayit.id}`} baslik={`${kurumAdi.get(kayit.organization_id) ?? "Kurum"} · kurulum düştü (${kayit.action})`}
+                    neZamandir={tarihSaat(kayit.created_at)} hata={hata} teshis={hataTeshisi(hata)} gunlukYolu="provision-organization" />
+                );
+              })}
+            </div>
+          ) : null}
           {admin ? (
             kurulumHatalari.length ? (
               <div className="talep-tablo fn-ic-tablo">
