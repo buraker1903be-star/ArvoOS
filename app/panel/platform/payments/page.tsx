@@ -2,6 +2,7 @@ import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { KKart, KNot } from "../konsol-ui";
@@ -42,7 +43,9 @@ export default async function PaymentApprovalsPage() {
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "finans");
 
-  const incidents = await getPaymentIncidents();
+  /* PayTR olayları asıl sorgularla AYNI ANDA (02.11.2026): eskiden önce o
+     bekleniyor, sonra bildirimler okunuyordu — bağımsız iki tur. */
+  const olayIstegi = getPaymentIncidents();
 
   /*
     Üç ayrı sorgu, üç ayrı iş:
@@ -56,10 +59,17 @@ export default async function PaymentApprovalsPage() {
     sessizce eksilmeye başlayacaktı. Liste kısa kalıyor, toplam kısalmıyor.
   */
   const SECIM = "id,organization_id,plan_code,product,amount,currency,status,payment_method,receipt_path,reference_no,customer_note,review_note,created_at,reviewed_at,organizations(name,slug),platform_bank_accounts(bank_name,iban)";
-  const [{ data: bekleyenler, error }, { data: gecmis, error: gecmisHatasi }, { data: onayliTutarlar, error: tutarHatasi }] = await Promise.all([
+  const [{ data: bekleyenler, error }, { data: gecmis, error: gecmisHatasi }, { data: onayliTutarlar, error: tutarHatasi }, incidents] = await Promise.all([
     supabase.from("organization_payment_requests").select(SECIM).eq("status", "pending").order("created_at", { ascending: false }),
     supabase.from("organization_payment_requests").select(SECIM).neq("status", "pending").order("created_at", { ascending: false }).limit(30),
-    supabase.from("organization_payment_requests").select("amount,currency,status"),
+    /*
+      SAYFALI (02.11.2026). Toplam BÜTÜN bildirimlerden; eskiden tek sorguydu
+      ve PostgREST 1.000 satırda kesip söylemiyor: bin birinci bildirimden
+      sonra "Onaylanan ₺X" sessizce eksilecekti (lib/rapor-okuma).
+    */
+    sayfaliSonuc<{ amount: number; currency: string; status: string }>("onaylı tutarlar", (bas, son) =>
+      supabase.from("organization_payment_requests").select("amount,currency,status").order("id").range(bas, son)),
+    olayIstegi,
   ]);
   if (error) throw new Error(`Ödeme bildirimleri okunamadı: ${error.message}`);
   /* Geçmiş ve onaylı tutarlar da para: düşerlerse ekran "hiç ödeme
@@ -73,18 +83,28 @@ export default async function PaymentApprovalsPage() {
     çağrısı, üstelik çoğu hiç tıklanmayan geçmiş kayıtlar için. Geçmişteki
     bir dekonta bakmak gerekirse kiracı dosyasından ulaşılıyor.
   */
-  const incelenecekler = await Promise.all((bekleyenler ?? []).map(async (payment) => {
-    // Kartla (PayTR) ödemede dekont yoktur.
-    // hata-tamam: dekont dosyasının imzalı bağlantısı; düşerse bağlantı çıkmaz, karar ekranı yerinde kalır
-    const { data: signed } = payment.receipt_path
-      ? await supabase.storage.from("payment-receipts").createSignedUrl(payment.receipt_path, 900)
-      : { data: null };
-    return { ...payment, receiptUrl: signed?.signedUrl ?? null };
-  }));
+  /*
+    TEK İSTEK (02.11.2026): bekleyen her dekont için ayrı imza çağrısı
+    yapılıyordu (on bekleyen = on depolama isteği); createSignedUrls hepsini
+    tek istekte imzalıyor. Havale denetimi de onunla aynı anda — ikisi de
+    yalnızca bekleyenlere bakıyor, birbirine değil.
+  */
+  const bekleyenListesi = bekleyenler ?? [];
+  const dekontYollari = bekleyenListesi.flatMap((p) => (p.receipt_path ? [p.receipt_path as string] : []));
+  const [imzaSonucu, denetimler] = await Promise.all([
+    // hata-tamam: dekont bağlantıları; düşerse bağlantı çıkmaz, karar ekranı yerinde kalır
+    dekontYollari.length
+      ? supabase.storage.from("payment-receipts").createSignedUrls(dekontYollari, 900)
+      : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[], error: null }),
+    /* Beklenen tutar ve paket farkı (14.10.2026): onay işlemiyle aynı hesap. */
+    havaleDenetimleri(supabase, bekleyenListesi as unknown as HavaleBildirimi[]),
+  ]);
+  if (imzaSonucu.error) console.error("[ödeme onayları] dekont bağlantıları imzalanamadı", imzaSonucu.error.message);
+  const imzali = new Map((imzaSonucu.data ?? []).flatMap((x) => (x.path && x.signedUrl ? [[x.path, x.signedUrl] as const] : [])));
+  // Kartla (PayTR) ödemede dekont yoktur.
+  const incelenecekler = bekleyenListesi.map((payment) => ({ ...payment, receiptUrl: payment.receipt_path ? imzali.get(payment.receipt_path) ?? null : null }));
 
   const sonuclananlar = (gecmis ?? []) as typeof incelenecekler;
-  /* Beklenen tutar ve paket farkı (14.10.2026): onay işlemiyle aynı hesap. */
-  const denetimler = await havaleDenetimleri(supabase, incelenecekler as unknown as HavaleBildirimi[]);
   const tumBildirimler = (onayliTutarlar ?? []) as { amount: number; currency: string; status: string }[];
 
   const pendingTotal = incelenecekler.reduce((sum, payment) => sum + Number(payment.amount), 0);

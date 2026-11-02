@@ -82,6 +82,32 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   konsolAlaniniAc(konsolKapsami, "sistem");
   const admin = createAdminClient();
 
+  /*
+    TEK TUR (02.11.2026, hızlandırma): çalışan adları, işlem kayıtları ve son
+    posta hatası ana okumayla aynı anda başlıyor; eskiden her biri öncekini
+    bekliyordu, hiçbiri onun sonucuna bakmıyordu. Supabase sorgusu tembel:
+    Promise.resolve ile sarmalanmadan atanan sorgu await'e kadar gitmez.
+  */
+  const SON = 30;
+  const calisanIstegi = Promise.resolve(supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organization.id).not("user_id", "is", null));
+  const kayitIstegi = admin ? Promise.all([
+    admin.from("provisioning_audit_logs").select("id,organization_id,actor_user_id,action,state,result,created_at").order("created_at", { ascending: false }).limit(SON),
+    /* Yalnızca KONSOLUN yazdığı kayıtlar (metadata.by = founder_console).
+       Kurucunun kiracı panelindeki günlük işleri (adım atama vb.) de
+       activity_logs'a düşüyor; onlar konsol işlemi değil. */
+    admin.from("activity_logs").select("id,organization_id,actor_user_id,action,entity_type,metadata,created_at").eq("metadata->>by", "founder_console").order("created_at", { ascending: false }).limit(SON),
+    admin.from("platform_fiyat_gecmisi").select("id,kod,islem,yeni_kurus,kim,zaman").order("id", { ascending: false }).limit(SON),
+    admin.from("organization_payment_requests").select("id,organization_id,status,amount,currency,payment_method,reviewed_by,reviewed_at").not("reviewed_by", "is", null).order("reviewed_at", { ascending: false }).limit(SON),
+    admin.from("platform_subscription_requests").select("id,customer_name,contract_no,status,reviewed_by,reviewed_at").not("reviewed_at", "is", null).order("reviewed_at", { ascending: false }).limit(SON),
+  ]) : Promise.resolve([null, null, null, null, null] as const);
+  const postaIstegi = admin
+    ? Promise.resolve(admin.from("platform_proformalari")
+        .select("proforma_no,gonderim_hatasi,duzenleme_tarihi")
+        .not("gonderim_hatasi", "is", null)
+        .order("duzenleme_tarihi", { ascending: false })
+        .limit(1))
+    : Promise.resolve(null);
+
   /* Köprü sağlığı 60 sn önbellekte (lib/kopru-sagliklari); Sistem sağlığı canlı okuyor. */
   const kopruSagligi = kopruSagliklari();
   const [uyelikSonucu, paytr, arvolab, arc, randevu, kapsamSonucu] = await Promise.all([
@@ -106,23 +132,13 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   /* Profil adı boş olabiliyor (davetle gelen hesap); kurumun personel
      kaydındaki ad yedek. */
   // hata-tamam: kurucu adlarının eşlemesi; düşerse ad yerine e-posta/kimlik görünür, kurucu SAYISI üyelik sorgusundan geliyor
-  const { data: calisanlar } = await supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organization.id).not("user_id", "is", null);
+  const { data: calisanlar } = await calisanIstegi;
   const calisanAdi = new Map(((calisanlar ?? []) as { user_id: string; full_name: string }[]).map((c) => [c.user_id, c.full_name]));
 
   /* İşlem kayıtları: her kaynaktan son otuz, birleşik akışta son altmış.
      Kurulum günlüğü ve üye erişimi yalnızca sunucu anahtarıyla okunuyor;
      anahtar yoksa bölüm "okunamadı" diyor, boş liste göstermiyor. */
-  const SON = 30;
-  const [kurulum, erisim, fiyat, odeme, sozlesme] = admin ? await Promise.all([
-    admin.from("provisioning_audit_logs").select("id,organization_id,actor_user_id,action,state,result,created_at").order("created_at", { ascending: false }).limit(SON),
-    /* Yalnızca KONSOLUN yazdığı kayıtlar (metadata.by = founder_console).
-       Kurucunun kiracı panelindeki günlük işleri (adım atama vb.) de
-       activity_logs'a düşüyor; onlar konsol işlemi değil. */
-    admin.from("activity_logs").select("id,organization_id,actor_user_id,action,entity_type,metadata,created_at").eq("metadata->>by", "founder_console").order("created_at", { ascending: false }).limit(SON),
-    admin.from("platform_fiyat_gecmisi").select("id,kod,islem,yeni_kurus,kim,zaman").order("id", { ascending: false }).limit(SON),
-    admin.from("organization_payment_requests").select("id,organization_id,status,amount,currency,payment_method,reviewed_by,reviewed_at").not("reviewed_by", "is", null).order("reviewed_at", { ascending: false }).limit(SON),
-    admin.from("platform_subscription_requests").select("id,customer_name,contract_no,status,reviewed_by,reviewed_at").not("reviewed_at", "is", null).order("reviewed_at", { ascending: false }).limit(SON),
-  ]) : [null, null, null, null, null];
+  const [kurulum, erisim, fiyat, odeme, sozlesme] = await kayitIstegi;
 
   /*
     "TANIMLI" İLE "ÇALIŞIYOR" AYNI ŞEY DEĞİL (Sistem sağlığından taşındı,
@@ -130,13 +146,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
     "Bağlı" gösterir. Tek gerçek kanıt YAPILMIŞ bir gönderim: otomatik
     proforma her denemenin sonucunu satıra yazıyor, en yeni hata buradan.
   */
-  const postaHatasi = admin
-    ? await admin.from("platform_proformalari")
-        .select("proforma_no,gonderim_hatasi,duzenleme_tarihi")
-        .not("gonderim_hatasi", "is", null)
-        .order("duzenleme_tarihi", { ascending: false })
-        .limit(1)
-    : null;
+  const postaHatasi = await postaIstegi;
   const sonPostaHatasi = ((postaHatasi?.data ?? []) as { proforma_no: string | null; gonderim_hatasi: string }[])[0] ?? null;
 
   /* Okunamayan gönderim kaydı "gönderim sorunsuz" değil: Dikkat listesinde yazar. */
