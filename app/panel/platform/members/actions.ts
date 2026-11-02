@@ -1,6 +1,6 @@
 "use server";
 
-import { konsolAlaniniDogrula } from "../konsol-alani";
+import { konsolAlaniniDogrula, kendiKurumuysaTamYetki } from "../konsol-alani";
 import { revalidatePath } from "next/cache";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
@@ -23,11 +23,12 @@ import { syncArvolabMembers } from "@/lib/arvolab";
   denetliyor). Kural bu yüzden burada da uygulanıyor — lib/uye-erisimi.ts.
 */
 async function uyeErisimiDegistir__impl(formData: FormData) {
-  const { userId, isPlatformOwner, konsolKapsami } = await getPanelContext();
+  const { userId, isPlatformOwner, konsolKapsami, organization } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
   konsolAlaniniDogrula(konsolKapsami, "musteriler");
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
+  kendiKurumuysaTamYetki(konsolKapsami, organizationId, organization.id);
   const hedefKullanici = String(formData.get("user_id") ?? "").trim();
   const aciliyorMu = String(formData.get("acik") ?? "") === "1";
   if (!organizationId || !hedefKullanici) throw new Error("Üye seçilmedi.");

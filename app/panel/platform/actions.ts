@@ -1,6 +1,6 @@
 "use server";
 
-import { konsolAlaniniDogrula } from "./konsol-alani";
+import { konsolAlaniniDogrula, kendiKurumuysaTamYetki } from "./konsol-alani";
 import { runPanelAction } from "@/lib/panel-action";
 import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 
@@ -39,10 +39,11 @@ function cleanSlug(value: string) {
 }
 
 async function requireFounderTarget(formData: FormData) {
-  const { supabase, isPlatformOwner, konsolKapsami, userId } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami, userId, organization } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
   konsolAlaniniDogrula(konsolKapsami, "musteriler");
   const organizationId = String(formData.get("organization_id") ?? "").trim();
+  kendiKurumuysaTamYetki(konsolKapsami, organizationId, organization.id);
   if (!organizationId) throw new Error("Yönetilecek kurum seçilmedi.");
   const { data: target, error } = await supabase.from("organizations").select("id,slug").eq("id", organizationId).maybeSingle();
   if (error || !target) throw new Error("Hedef kurum bulunamadı.");
@@ -259,10 +260,11 @@ async function toggleOrganizationModule__impl(formData: FormData) {
  */
 export async function createOwnerAccessLink(_previous: OwnerLinkState, formData: FormData): Promise<OwnerLinkState> {
   const empty: OwnerLinkState = { error: null, link: null, email: null, note: null };
-  const { supabase, isPlatformOwner, konsolKapsami, userId } = await getPanelContext();
+  const { supabase, isPlatformOwner, konsolKapsami, userId, organization } = await getPanelContext();
   if (!isPlatformOwner) return { ...empty, error: "Bu işlem için kurucu yetkisi gerekiyor." };
   try { konsolAlaniniDogrula(konsolKapsami, "musteriler"); } catch (hata) { return { ...empty, error: (hata as Error).message }; }
   const organizationId = String(formData.get("organization_id") ?? "").trim();
+  try { kendiKurumuysaTamYetki(konsolKapsami, organizationId, organization.id); } catch (hata) { return { ...empty, error: (hata as Error).message }; }
   if (!organizationId) return { ...empty, error: "Kurum seçilmedi." };
 
   const { data: invitation } = await supabase

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { alanAdi, alanlardanBiriAcik, type KonsolAlani, type KonsolKapsami } from "@/lib/konsol-alanlari";
+import { alanAdi, alanlardanBiriAcik, kendiKurumuEngeli, type KonsolAlani, type KonsolKapsami } from "@/lib/konsol-alanlari";
 
 /*
   Konsol alanı denetimi (kural lib/konsol-alanlari.ts'te).
@@ -25,4 +25,21 @@ export function konsolAlaniniDogrula(kapsam: KonsolKapsami, ...alanlar: KonsolAl
 /** Kurucu yetkilerini değiştirmek: yalnızca tam yetkili kurucu. */
 export function tamYetkiyiDogrula(kapsam: KonsolKapsami): void {
   if (kapsam !== null) throw new Error("Kurucu yetkilerini yalnızca tam yetkili kurucu değiştirebilir.");
+}
+
+/*
+  KONSOLUN KENDİ KURUMU (02.11.2026, inceleme bulgusu).
+
+  "Müşteriler" işlemleri (üye erişimi, sahip giriş bağlantısı, lisans,
+  modül, kurum ayarı) hedef kurumu formdan alıyor ve ArvoOS'un KENDİ
+  kurumunu (slug arvo-os) da kabul ediyordu. Kısıtlı bir kurucu bu yolla
+  kademeli yetkinin iki kuralını da delebiliyordu: tam yetkili kurucunun
+  üyeliğini kapatıp kimseyi tam yetkili bırakmamak, ya da kapalı bir
+  kurucuyu (satırı olmayan = tam yetkili) yeniden açıp ona giriş
+  bağlantısı üretmek. Konsolun kendi kurumuna dokunan işlem yetki
+  meselesidir; yalnızca tam yetkili kurucu yapar.
+*/
+export function kendiKurumuysaTamYetki(kapsam: KonsolKapsami, hedefKurum: string, konsolKurumu: string): void {
+  const engel = kendiKurumuEngeli(kapsam, hedefKurum, konsolKurumu);
+  if (engel) throw new Error(engel);
 }

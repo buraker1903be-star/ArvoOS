@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { alanAcik, alanSecimi, kapsamOku, KONSOL_ALANLARI, uygulamalariSuz } from "@/lib/konsol-alanlari";
+import { alanAcik, alanSecimi, kapsamOku, kendiKurumuEngeli, KONSOL_ALANLARI, uygulamalariSuz } from "@/lib/konsol-alanlari";
 import { konsolUygulamalari } from "@/app/panel/os/konsol-apps";
 
 test("alanlar dock'un iş alanlarıyla birebir aynı", () => {
@@ -30,4 +30,13 @@ test("dock süzgeci: ana ekran kalır, kapalı alan düşer", () => {
 test("form seçimi geçerli, tekrarsız ve katalog sırasında", () => {
   assert.deepEqual(alanSecimi(["sistem", "finans", "finans", "yok"]), ["finans", "sistem"]);
   assert.deepEqual(alanSecimi([]), []);
+});
+
+test("konsolun kendi kurumu yalnızca tam yetkiliye açık", () => {
+  /* Kısıtlı kurucu "Müşteriler" işlemleriyle ArvoOS kurumunun üyeliğine
+     dokunup tam yetkiliyi kapatabiliyordu. */
+  const kisitli = kapsamOku({ alanlar: ["musteriler"] });
+  assert.ok(kendiKurumuEngeli(kisitli, "arvo", "arvo"));
+  assert.equal(kendiKurumuEngeli(null, "arvo", "arvo"), null);
+  assert.equal(kendiKurumuEngeli(kisitli, "musteri", "arvo"), null);
 });

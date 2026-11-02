@@ -64,3 +64,16 @@ export function uygulamalariSuz<T extends { key: string }>(uygulamalar: readonly
   if (kapsam === null) return [...uygulamalar];
   return uygulamalar.filter((u) => u.key === "home" || (GECERLI.has(u.key) && kapsam.has(u.key as KonsolAlani)));
 }
+
+/**
+ * Konsolun KENDİ kurumunu hedefleyen işlem (üye erişimi, giriş bağlantısı,
+ * lisans, modül, kurum ayarı) yalnızca tam yetkili kurucuya açık. Eskiden
+ * kısıtlı kurucu "Müşteriler" işlemleriyle tam yetkilinin üyeliğini
+ * kapatabiliyor ya da kapalı bir kurucuyu açıp ona giriş bağlantısı
+ * üretebiliyordu (gerekçe app/panel/platform/konsol-alani.ts).
+ */
+export function kendiKurumuEngeli(kapsam: KonsolKapsami, hedefKurum: string, konsolKurumu: string): string | null {
+  return hedefKurum === konsolKurumu && kapsam !== null
+    ? "ArvoOS'un kendi kurumunda bu işlemi yalnızca tam yetkili kurucu yapabilir."
+    : null;
+}

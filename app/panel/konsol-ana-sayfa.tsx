@@ -545,7 +545,11 @@ export async function KonsolAnaSayfa() {
   */
   const semaSonucu = await semaIstegi;
   const eksikMigrationlar = [...new Set(((semaSonucu?.error ? [] : semaSonucu?.data) ?? []).map((e: { eksik_migration: string }) => e.eksik_migration))].sort();
+  /* Denetim okunamadıysa (işlevin olmaması dahil) kuyruk bunu söylüyor: sessizce
+     boş kalması "eksik migration yok" diye okunuyordu (inceleme bulgusu, 02.11.2026). */
+  const semaOkunamadi = Boolean(admin) && (semaSonucu === null || Boolean(semaSonucu.error));
   const sorunlar = [
+    ...(semaOkunamadi ? [{ id: "m-denetim", href: "/panel/platform/saglik?sekme=veritabani", ad: "Migration denetimi", alt: semaSonucu?.error?.message ?? "Denetim yanıt vermedi", rozet: "Okunamadı" }] : []),
     ...eksikMigrationlar.map((ad) => ({
       id: `m-${ad}`, href: "/panel/platform/saglik?sekme=veritabani", ad: `${ad}.sql`,
       alt: "Canlı veritabanına uygulanmamış; SQL Editor'de çalıştırın", rozet: "Migration eksik",

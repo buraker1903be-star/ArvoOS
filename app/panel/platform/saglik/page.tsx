@@ -359,6 +359,10 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
     ["Proforma gönderim kayıtları", postaHatasiHatasi],
     /* Okunamazsa sapma koddaki değerlere göre hesaplanıyor; yazılmalı. */
     ["Paket limitleri", paketLimitleri.hata ? { message: paketLimitleri.hata } : null],
+    /* Migration denetimi okunamazsa "açık sorun 0 · her şey yolunda" yazmamalı
+       (inceleme bulgusu, 02.11.2026): okunamayan denetim, eksik yok demek değil.
+       İşlevin hiç olmaması ayrı: o Veritabanı sekmesinde "kurulmamış" sayılıyor. */
+    ["Migration denetimi", semaSonucu?.error && semaSonucu.error.code !== "PGRST202" && semaSonucu.error.code !== "42883" ? semaSonucu.error : null],
   ] as [string, { message: string } | null][])
     .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
   if (okunamayan.length)
