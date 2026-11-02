@@ -120,7 +120,11 @@ export default async function OperationDetailPage({
     .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,waiting_party,waiting_note,waiting_since,revision_days,delivered_at,revision_until,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title),sorumlu:hr_employees!operation_workflows_assigned_employee_id_fkey(id,full_name,job_title)")
     .eq("id", id)
     .eq("organization_id", organizationId)
-    .single(),
+    /* maybeSingle (02.11.2026): single() satır yokken (silinmiş ya da
+       görünmeyen iş) HATA döndürüyordu, sayfa aşağıdaki notFound()'a hiç
+       ulaşmadan "İş akışı okunamadı: Cannot coerce the result to a single
+       JSON object" ile çöküyordu — canlıda 16.10–01.11 arasında üç kez. */
+    .maybeSingle(),
     supabase.from("organization_step_template_sets").select("code,name,sort_order").eq("organization_id", organizationId).eq("is_active", true).order("sort_order"),
     supabase.from("organization_step_templates").select("set_code").eq("organization_id", organizationId).eq("is_active", true),
     supabase.from("ops_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", id).eq("organization_id", organizationId).maybeSingle(),
