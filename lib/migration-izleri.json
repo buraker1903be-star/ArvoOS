@@ -294,5 +294,34 @@
         "ad": "public.platform_sema_eksikleri"
       }
     ]
+  },
+  {
+    "migration": "20261102205003_lisans_kayip_nedeni",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.lisans_kapanis_tarihi"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.organization_licenses",
+        "sutun": "kapanis_nedeni"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.organization_licenses",
+        "sutun": "kapanis_notu"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.organization_product_licenses",
+        "sutun": "kapanis_nedeni"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.organization_product_licenses",
+        "sutun": "kapanis_notu"
+      }
+    ]
   }
 ]

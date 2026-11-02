@@ -7,6 +7,7 @@ import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 import "../../components/kayit-formu.css";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { KayipNedeniAlani } from "./kayip-nedeni-alani";
 
 /*
   Ek ürün aboneliği kartının formu (ArvoLab, ArvoARC, Randevu).
@@ -78,7 +79,7 @@ export function UrunFormu({
   organizationId: string;
   product: string;
   productName: string;
-  baslangic: { status: string; planCode: string; monthlyFee: string; currentPeriodEnd: string; suspensionReason: string };
+  baslangic: { status: string; planCode: string; monthlyFee: string; currentPeriodEnd: string; suspensionReason: string; kapanisNedeni: string; kapanisNotu: string };
   kotalar: KotaAlani[];
   kaydet: (formData: FormData) => void;
   yenidenYansit: (formData: FormData) => void;
@@ -96,6 +97,11 @@ export function UrunFormu({
 
   const askida = deger.status === "suspended";
   const kapali = deger.status === "inactive";
+  /* Kayıp: İptal ya da Kapalı. Hiç açılmamış ürünün Kapalı kalması kayıp değil
+     (lib/kapanis-nedeni); daha önce kapatılmış olanda neden yeniden istenmiyor. */
+  const kayipDurumu = deger.status === "canceled" || kapali;
+  const kapaniyor = kayipDurumu && !["canceled", "inactive"].includes(baslangic.status);
+  const kayipAlani = kayipDurumu && (kapaniyor || baslangic.status === "canceled" || Boolean(deger.kapanisNedeni));
   // Kutu Türkçe tutar taşıyor; önizleme de aynı okumadan geçiyor.
   const ucret = parseTurkishAmount(deger.monthlyFee);
 
@@ -184,6 +190,11 @@ export function UrunFormu({
             {askida ? "Kayda geçer." : "Durum Askıda olmadığı için kaydedilmeyecek."}
           </small>
         </label>
+      ) : null}
+
+      {kayipAlani ? (
+        <KayipNedeniAlani neden={deger.kapanisNedeni} not={deger.kapanisNotu} zorunlu={kapaniyor}
+          nedenDegisti={(v) => setDeger({ ...deger, kapanisNedeni: v })} notDegisti={(v) => setDeger({ ...deger, kapanisNotu: v })} />
       ) : null}
 
       {/* Kapalı ürünün ücreti ve kotası kaydediliyor ama kimseyi etkilemiyor;

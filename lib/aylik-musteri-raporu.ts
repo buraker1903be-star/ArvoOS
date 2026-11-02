@@ -30,8 +30,11 @@ export type RaporKurumu = {
   license_status: string | null; current_period_end: string | null; trial_ends_at: string | null;
   /** Lisansın kapandığı an (02.11.2026'dan beri tutuluyor); bilinmiyorsa null. */
   closed_at?: string | null;
+  /** Kayıp nedeni ve notu (lib/kapanis-nedeni, 02.11.2026'dan beri). */
+  kapanis_nedeni?: string | null;
+  kapanis_notu?: string | null;
 };
-export type RaporLisansi = { organization_id: string; product: string; status: string; current_period_end: string | null; trial_ends_at: string | null; created_at: string; closed_at?: string | null };
+export type RaporLisansi = { organization_id: string; product: string; status: string; current_period_end: string | null; trial_ends_at: string | null; created_at: string; closed_at?: string | null; kapanis_nedeni?: string | null; kapanis_notu?: string | null };
 export type RaporAbonesi = { id: string; ad: string; product: string; status: string; created_at: string; closed_at: string | null; current_period_end: string | null; trial_ends_at: string | null };
 
 /** "2026-11-01" → ["2026-11-01", "2026-11-30"]. */
@@ -53,7 +56,8 @@ const bitis = (durum: string | null, donem: string | null, deneme: string | null
 export type AylikRapor = {
   yeniKurumlar: RaporKurumu[];
   yeniAboneler: RaporAbonesi[];
-  kaybedilenKurumlar: (RaporKurumu & { bitis: string })[];
+  /** neden/not: SON kapanan lisanstan (müşteriyi kaybettiren kapanış). */
+  kaybedilenKurumlar: (RaporKurumu & { bitis: string; neden: string | null; not: string | null })[];
   kaybedilenAboneler: (RaporAbonesi & { bitis: string })[];
   /** Mevcut müşterinin bu ay açtığı EK ürün (ilk ürünü değil): büyüme. */
   ekUrunler: (RaporLisansi & { kurumAdi: string })[];
@@ -77,12 +81,16 @@ export function aylikRapor(ay: string, kurumlar: RaporKurumu[], lisanslar: Rapor
        Eskiden bütün inactive satırlar düşüyordu; oysa konsolun ürün formu ürünü
        "Kapalı" (inactive) yaparak kapatıyor ve o kapanış kaybın tarihi. */
     /* Kapanış anı biliniyorsa o, bilinmiyorsa dönem sonu. */
-    const bitisler = [
-      k.license_status ? k.closed_at ?? bitis(k.license_status, k.current_period_end, k.trial_ends_at) : null,
-      ...ekler.filter((l) => l.status !== "inactive" || l.closed_at).map((l) => l.closed_at ?? bitis(l.status, l.current_period_end, l.trial_ends_at)),
-    ].filter((d): d is string => Boolean(d)).map(turkiyeGunu).sort();
-    const son = bitisler.at(-1);
-    return son && icinde(son, aralik) ? [{ ...k, bitis: son }] : [];
+    /* Kayıp nedeni SON kapanan lisanstan: müşteriyi kaybettiren o kapanış;
+       aynı gün kapananlarda nedeni yazılmış olan öne alınır. */
+    const kapanislar = [
+      k.license_status ? { tarih: k.closed_at ?? bitis(k.license_status, k.current_period_end, k.trial_ends_at), neden: k.kapanis_nedeni ?? null, not: k.kapanis_notu ?? null } : null,
+      ...ekler.filter((l) => l.status !== "inactive" || l.closed_at)
+        .map((l) => ({ tarih: l.closed_at ?? bitis(l.status, l.current_period_end, l.trial_ends_at), neden: l.kapanis_nedeni ?? null, not: l.kapanis_notu ?? null })),
+    ].flatMap((x) => (x?.tarih ? [{ ...x, gun: turkiyeGunu(x.tarih) }] : []))
+      .sort((a, b) => a.gun.localeCompare(b.gun) || Number(Boolean(a.neden)) - Number(Boolean(b.neden)));
+    const son = kapanislar.at(-1);
+    return son && icinde(son.gun, aralik) ? [{ ...k, bitis: son.gun, neden: son.neden, not: son.not }] : [];
   });
 
   const yeniAboneler = aboneler.filter((a) => icinde(a.created_at, aralik));

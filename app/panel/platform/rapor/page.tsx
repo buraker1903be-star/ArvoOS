@@ -1,3 +1,4 @@
+import { kapanisNedeniAdi, nedenDagilimi } from "@/lib/kapanis-nedeni";
 import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -44,11 +45,16 @@ export const dynamic = "force-dynamic";
 /* Seçim metni çalışma anında kuruluyor; tipli istemcinin sütun ayrıştırıcısı şablon metni okuyamıyor. */
 const alanlar = (temel: string, ek: string): string => temel + ek;
 type Sayfala<T> = (bas: number, son: number) => PromiseLike<SayfaliSonuc<T>>;
+/* Kayıp nedeni sütunları (20261102205003) da aynı kalıpla: önce hepsi, yoksa
+   yalnızca kapanış anı, o da yoksa sütunsuz. */
 async function kapanisliOku<T>(ad: string, kur: (secim: string) => (bas: number, son: number) => PromiseLike<unknown>): Promise<T[]> {
-  const ilk = await sayfaliSonuc<T>(ad, kur(",closed_at") as Sayfala<T>);
-  const sonuc = ilk.error?.code === "42703" ? await sayfaliSonuc<T>(ad, kur("") as Sayfala<T>) : ilk;
-  if (sonuc.error) throw new Error(`${ad} okunamadı: ${sonuc.error.message}`);
-  return sonuc.data ?? [];
+  for (const secim of [",closed_at,kapanis_nedeni,kapanis_notu", ",closed_at", ""]) {
+    const sonuc = await sayfaliSonuc<T>(ad, kur(secim) as Sayfala<T>);
+    if (sonuc.error?.code === "42703") continue;
+    if (sonuc.error) throw new Error(`${ad} okunamadı: ${sonuc.error.message}`);
+    return sonuc.data ?? [];
+  }
+  return [];
 }
 
 const URUN = (kod: string) => productName(kod as Parameters<typeof productName>[0]);
@@ -72,7 +78,7 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
   const [kurumSatirlari, cekirdek, lisanslar, aboneler, gelirSonucu] = await Promise.all([
     tumSatirlar<{ id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null; created_at: string }>("kurumlar", (bas, son) =>
       admin.from("organizations").select("id,name,display_name,kind,grup_markasi,created_at").order("id").range(bas, son)),
-    kapanisliOku<{ organization_id: string; license_status: string | null; current_period_end: string | null; trial_ends_at: string | null; closed_at?: string | null }>("çekirdek lisanslar",
+    kapanisliOku<{ organization_id: string; license_status: string | null; current_period_end: string | null; trial_ends_at: string | null; closed_at?: string | null; kapanis_nedeni?: string | null; kapanis_notu?: string | null }>("çekirdek lisanslar",
       (secim) => (bas, son) => admin.from("organization_licenses").select(alanlar("organization_id,license_status,current_period_end,trial_ends_at", secim)).order("organization_id").range(bas, son)),
     kapanisliOku<RaporLisansi>("ürün lisansları",
       (secim) => (bas, son) => admin.from("organization_product_licenses").select(alanlar("organization_id,product,status,current_period_end,trial_ends_at,created_at", secim)).order("organization_id").order("product").range(bas, son)),
@@ -86,7 +92,8 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
   const kurumlar: RaporKurumu[] = kurumSatirlari.map((k) => {
     const c = lisans.get(k.id);
     return { id: k.id, ad: k.display_name || k.name, kind: k.kind, grup_markasi: k.grup_markasi, created_at: k.created_at,
-      license_status: c?.license_status ?? null, current_period_end: c?.current_period_end ?? null, trial_ends_at: c?.trial_ends_at ?? null, closed_at: c?.closed_at ?? null };
+      license_status: c?.license_status ?? null, current_period_end: c?.current_period_end ?? null, trial_ends_at: c?.trial_ends_at ?? null, closed_at: c?.closed_at ?? null,
+      kapanis_nedeni: c?.kapanis_nedeni ?? null, kapanis_notu: c?.kapanis_notu ?? null };
   });
   const aboneListesi: RaporAbonesi[] = aboneler.map((a) => ({ ...a, ad: a.full_name?.trim() || a.email }));
   const r = aylikRapor(ay, kurumlar, lisanslar, aboneListesi);
@@ -103,7 +110,7 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
   const csvSatirlari: (string | number | null)[][] = [
     ...r.yeniKurumlar.map((k) => ["Yeni müşteri", "Kurumsal", k.ad, null, gun(k.created_at)]),
     ...r.yeniAboneler.map((a) => ["Yeni müşteri", "Bireysel", a.ad, URUN(a.product), gun(a.created_at)]),
-    ...r.kaybedilenKurumlar.map((k) => ["Kaybedilen", "Kurumsal", k.ad, null, k.bitis]),
+    ...r.kaybedilenKurumlar.map((k) => ["Kaybedilen", "Kurumsal", k.ad, kapanisNedeniAdi(k.neden), k.bitis]),
     ...r.kaybedilenAboneler.map((a) => ["Kaybedilen", "Bireysel", a.ad, URUN(a.product), a.bitis]),
     ...r.ekUrunler.map((l) => ["Ek ürün", "Kurumsal", l.kurumAdi, URUN(l.product), gun(l.created_at)]),
     ["Özet", null, `Tahsilat ${ayEtiketi(ay)}`, csvTutar(buGelir), null],
@@ -118,7 +125,7 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
         <p className="ek-alt">{ayEtiketi(ay)}{ay === buAy ? " · ay sürüyor, sayılar kesin değil" : ""} · yeni ve kaybedilen müşteriler, ek ürünler ve tahsilat.</p>
       </div>
       <div className="talep-bas-eylem">
-        <CsvIndir basliklar={["Tür", "Müşteri türü", "Müşteri", "Ürün / tutar", "Tarih"]} satirlar={csvSatirlari}
+        <CsvIndir basliklar={["Tür", "Müşteri türü", "Müşteri", "Ürün / tutar / kayıp nedeni", "Tarih"]} satirlar={csvSatirlari}
           dosyaAdi={`musteri-raporu-${ay.slice(0, 7)}.csv`} etiket="Raporu indir (CSV)" aciklama="Ayın bütün hareketleri ve tahsilat özeti, Excel'de açılır" />
       </div>
     </header>
@@ -157,9 +164,11 @@ export default async function AylikRaporSayfasi({ searchParams }: { searchParams
         </KListe> : <KBos baslik="Bu ay yeni müşteri yok" />}
       </KKart>
 
-      <KKart baslik="Kaybedilen müşteriler" sag={<span className="status-pill">{sayi(kayip)}</span>}>
+      <KKart baslik="Kaybedilen müşteriler" sag={<span className="status-pill">{sayi(kayip)}</span>}
+        aciklama={r.kaybedilenKurumlar.length ? `Nedene göre: ${nedenDagilimi(r.kaybedilenKurumlar.map((k) => k.neden)).map((n) => `${n.ad} ${n.adet}`).join(" · ")}` : undefined}>
         {kayip ? <KListe>
-          {r.kaybedilenKurumlar.map((k) => <KOge key={k.id} href={`/panel/platform/musteriler/${k.id}`} simge={k.ad} baslik={k.ad} alt="Kurumsal · son dönem bitti" deger={tarih(k.bitis)} />)}
+          {r.kaybedilenKurumlar.map((k) => <KOge key={k.id} href={`/panel/platform/musteriler/${k.id}`} simge={k.ad} baslik={k.ad}
+            alt={["Kurumsal", kapanisNedeniAdi(k.neden), k.not].filter(Boolean).join(" · ")} deger={tarih(k.bitis)} />)}
           {r.kaybedilenAboneler.map((a) => <KOge key={a.id} href="/panel/platform/subscribers" simge={a.ad} baslik={a.ad} alt={`Bireysel · ${URUN(a.product)}${a.closed_at ? " · hesabı kapandı" : ""}`} deger={tarih(a.bitis)} />)}
         </KListe> : <KBos baslik="Bu ay kaybedilen müşteri yok" />}
       </KKart>

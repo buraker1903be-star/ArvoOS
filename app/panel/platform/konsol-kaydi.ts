@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { alanFarki, type AlanTanimi, type Degisiklik } from "@/lib/konsol-degisiklik";
 import { productLicenseLabels } from "@/lib/products";
+import { kapanisNedeniAdi } from "@/lib/kapanis-nedeni";
 import { PAKET_ADI, depolama, para, sayi, tarih } from "./bicim";
 
 /*
@@ -35,6 +36,8 @@ export const LISANS_ALANLARI: Record<string, AlanTanimi> = {
   trial_ends_at: { ad: "Deneme bitişi", yaz: gun },
   current_period_end: { ad: "Dönem sonu", yaz: gun },
   suspension_reason: { ad: "Askı sebebi" },
+  kapanis_nedeni: { ad: "Kayıp nedeni", yaz: (v) => kapanisNedeniAdi(String(v)) },
+  kapanis_notu: { ad: "Kayıp notu" },
 };
 
 export const URUN_LISANS_ALANLARI: Record<string, AlanTanimi> = {
@@ -45,6 +48,8 @@ export const URUN_LISANS_ALANLARI: Record<string, AlanTanimi> = {
   current_period_end: { ad: "Dönem sonu", yaz: gun },
   suspension_reason: { ad: "Askı sebebi" },
   integrated: { ad: "Köprü", yaz: (v) => (v === false ? "Bağımsız" : "Entegre") },
+  kapanis_nedeni: { ad: "Kayıp nedeni", yaz: (v) => kapanisNedeniAdi(String(v)) },
+  kapanis_notu: { ad: "Kayıp notu" },
 };
 
 export const KURUM_ALANLARI: Record<string, AlanTanimi> = {
