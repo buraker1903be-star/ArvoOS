@@ -66,6 +66,9 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
           panel bildirimi gider; müşteri yeniden yazınca talep kendiliğinden kuyruğa döner.
         </p>
       </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/platform/destek/hazir">Hazır yanıtlar</Link>
+      </div>
     </header>
 
     <nav className="kayit-serit talep-serit" aria-label="Destek özeti">

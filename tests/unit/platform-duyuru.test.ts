@@ -49,3 +49,9 @@ test("e-posta: HTML ve düz metin aynı içerik, değerler kaçırılmış", asy
   assert.ok(p.html.includes("İkinci paragraf &amp; not."));
   assert.ok(p.html.includes("kapanır.") && p.html.includes("<br>"));
 });
+
+test("seçili hedef: yalnızca gerçek kiracılar, Arvo hariç; uydurma kimlik düşer", () => {
+  assert.deepEqual(duyuruAlicilari(kiracilar, lisanslar, "secili", ["salon", "arvo", "olmayan", "lab"]), ["salon", "lab"]);
+  assert.deepEqual(duyuruAlicilari(kiracilar, lisanslar, "secili", []), []);
+  assert.equal(duyuruDogrula({ baslik: "Başlık", metin: "metin", baglanti: "", hedef: "secili" }).hedef, "secili");
+});

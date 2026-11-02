@@ -1,3 +1,7 @@
 /* Konsol → Kurumlara duyuru: e-posta seçeneği (onay kutusu ve açıklaması yan yana). */
 .panel-root .duyuru-eposta{display:flex;flex-direction:row;align-items:flex-start;gap:var(--sp-2);font-size:var(--fs-sm);color:var(--ink-soft)}
 .panel-root .duyuru-eposta input{width:auto;min-height:0;margin:2px 0 0}
+/* Seçili kurumlarla açılan duyuru: alıcıların adları. */
+.panel-root .duyuru-secili{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.panel-root .duyuru-secili small{color:var(--ink-soft)}
+.panel-root .duyuru-secili a{font-size:var(--fs-sm)}

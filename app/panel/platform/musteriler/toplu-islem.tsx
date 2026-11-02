@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { OnayPenceresi, type OnayIstegi } from "../../components/onay-penceresi";
 import { csvMetni, csvTutar } from "@/lib/csv";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -36,6 +37,10 @@ export function TopluIslem({ satirlar }: { satirlar: CsvSatiri[] }) {
   const [secili, setSecili] = useState<string[]>([]);
   const [onay, setOnay] = useState<OnayIstegi | null>(null);
   const [calisiyor, basla] = useTransition();
+  const router = useRouter();
+  /* Seçili kurumlara duyuru (02.11.2026): duyuru ekranı seçimle açılıyor;
+     bireysel aboneler panel kullanmadığı için duyuruya giremiyor. */
+  const seciliKurumlar = secili.filter((s) => s.startsWith("kurum:")).map((s) => s.slice(6));
 
   const oku = useCallback(() => setSecili(kutular().filter((k) => k.checked).map((k) => k.value)), []);
   useEffect(() => {
@@ -72,6 +77,11 @@ export function TopluIslem({ satirlar }: { satirlar: CsvSatiri[] }) {
       <span className="mu-toplu-bosluk" />
       <button type="button" className="panel-secondary" onClick={indir} title={secili.length ? "Seçilenleri CSV olarak indir" : "Listede görünen bütün müşterileri CSV olarak indir"}>
         CSV indir{secili.length ? ` (${secili.length})` : ""}
+      </button>
+      <button type="button" className="panel-secondary" disabled={!seciliKurumlar.length}
+        title={secili.length && !seciliKurumlar.length ? "Duyuru yalnızca kurumlara gider; seçimde kurum yok" : "Seçili kurumlara panel duyurusu"}
+        onClick={() => router.push(`/panel/platform/duyuru?kurumlar=${seciliKurumlar.join(",")}`)}>
+        Duyuru gönder{seciliKurumlar.length ? ` (${seciliKurumlar.length})` : ""}
       </button>
       <button type="button" className="panel-primary" disabled={!secili.length || calisiyor}
         onClick={() => setOnay({

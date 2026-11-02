@@ -26,7 +26,16 @@ export const DUYURU_HEDEFLERI = [
   { kod: "arc", ad: "ArvoARC kullanan kurumlar" },
   { kod: "randevu", ad: "ArvoCal kullanan kurumlar" },
 ] as const;
-export type DuyuruHedefi = (typeof DUYURU_HEDEFLERI)[number]["kod"];
+/*
+  "secili": Müşteriler listesinde seçilen kurumlar (02.11.2026). Hedef
+  seçicide yok — o ekrana listeden seçimle gelinir; kimlikler formdan
+  geliyor ama yalnızca gerçek kiracılarla kesiştiriliyor (aşağıda).
+*/
+export const SECILI_HEDEF = { kod: "secili", ad: "Seçili kurumlar" } as const;
+export type DuyuruHedefi = (typeof DUYURU_HEDEFLERI)[number]["kod"] | "secili";
+/** Seçili hedefte tek seferde en çok bu kadar kurum: yanlış bir "tümünü seç" bütün tabana gitmesin; bütün kurumlar için "Bütün kurumlar" hedefi var. */
+export const SECILI_SINIR = 200;
+export const hedefAdi = (kod: string) => (kod === SECILI_HEDEF.kod ? SECILI_HEDEF.ad : DUYURU_HEDEFLERI.find((h) => h.kod === kod)?.ad ?? kod);
 
 const ACIK = new Set(["active", "trialing", "past_due"]);
 
@@ -40,9 +49,14 @@ export type DuyuruLisansi = { organization_id: string; product: string; status: 
  * iptal etmiş kuruma "yeni özellik" duyurusu gitmez. Grup markaları
  * kiracı oldukları için dâhil: duyuru onları da ilgilendiriyor.
  */
-export function duyuruAlicilari(kiracilar: DuyuruKiracisi[], lisanslar: DuyuruLisansi[], hedef: DuyuruHedefi): string[] {
+export function duyuruAlicilari(kiracilar: DuyuruKiracisi[], lisanslar: DuyuruLisansi[], hedef: DuyuruHedefi, secili: string[] = []): string[] {
   const kiraci = kiracilar.filter((k) => k.kind !== "internal");
   if (hedef === "tum") return kiraci.map((k) => k.id);
+  /* Seçili: formdan gelen kimlik yalnızca gerçek bir kiracıysa (Arvo hariç) alıcı olur. */
+  if (hedef === "secili") {
+    const kume = new Set(secili);
+    return kiraci.filter((k) => kume.has(k.id)).map((k) => k.id);
+  }
   const acik = new Set(lisanslar.filter((l) => l.product === hedef && ACIK.has(l.status)).map((l) => l.organization_id));
   /* ArvoOS'un çekirdek lisansı kiracı kaydında; ek ürün tablosunda da olabilir. */
   return kiraci.filter((k) => acik.has(k.id) || (hedef === "arvoos" && ACIK.has(k.license_status ?? ""))).map((k) => k.id);
@@ -57,7 +71,7 @@ export function duyuruDogrula(ham: { baslik: string; metin: string; baglanti: st
   const baglanti = ham.baglanti.trim();
   if (baslik.length < 3 || baslik.length > 120) throw new Error("Başlık 3–120 karakter olmalı.");
   if (metin.length < 3 || metin.length > 2000) throw new Error("Metin 3–2000 karakter olmalı.");
-  if (!DUYURU_HEDEFLERI.some((h) => h.kod === ham.hedef)) throw new Error("Hedef geçersiz.");
+  if (!DUYURU_HEDEFLERI.some((h) => h.kod === ham.hedef) && ham.hedef !== SECILI_HEDEF.kod) throw new Error("Hedef geçersiz.");
   /* Bağlantı yalnızca panel içi bir yol: bildirim listesi dışarıya
      yönlendirmiyor (notifications/feed.ts) ve kurucunun yanlış
      yapıştırdığı bir dış adres kurumların önüne düşmemeli. */

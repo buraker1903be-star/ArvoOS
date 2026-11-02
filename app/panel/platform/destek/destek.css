@@ -12,3 +12,12 @@
 .panel-root .destek-durum label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-sm);color:var(--muted)}
 .panel-root .destek-durum select{min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
 @media (max-width:760px){.panel-root .destek-mesaj{max-width:100%}}
+
+/* Hazır yanıtlar (destek/hazir/page.tsx) ve talep ekranındaki seçici. */
+.panel-root .destek-hazir{display:grid;gap:var(--sp-2);margin:0;padding:0;list-style:none}
+.panel-root .destek-hazir li{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.panel-root .destek-hazir header{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);margin-bottom:4px}
+.panel-root .destek-hazir header form{margin:0}
+.panel-root .destek-hazir p{margin:0;white-space:pre-wrap;word-break:break-word;font-size:var(--fs-base);line-height:1.5;color:var(--ink)}
+.panel-root .destek-kucuk{min-height:28px;padding:3px 10px;font-size:12px}
+.panel-root .destek-hazir-sec select{max-width:320px}
