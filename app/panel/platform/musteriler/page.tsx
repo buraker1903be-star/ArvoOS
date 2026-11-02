@@ -122,7 +122,7 @@ type Satir = {
   /** Kurumsal: "4 / 10"; bireyselde yok. */
   kullanici?: string | null;
   /** Kurumsal: ArvoOS panelinin son kullanımı (lib/musteri-etkinligi); bireyselde yok. */
-  etkinlik?: { yazi: string; hal: "aktif" | "azaliyor" | "sessiz"; haftalik: number } | null;
+  etkinlik?: { yazi: string; hal: "aktif" | "azaliyor" | "sessiz"; haftalik: number; son: string | null } | null;
   /** Yenilemesi yakın ve paneli kullanmıyor: arayıp sormak için. */
   risk?: boolean;
 };
@@ -194,19 +194,32 @@ const sadelestir = (deger: string) =>
   deger.replace(/İ/g, "i").replace(/I/g, "ı").toLocaleLowerCase("tr-TR")
     .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c");
 
+/** 0: hiç girilmemiş, 1: girilmiş, 2: etkinlik ölçülmüyor. */
+const kullanimSirasi = (satir: { etkinlik?: { son: string | null } | null }) => (!satir.etkinlik ? 2 : satir.etkinlik.son ? 1 : 0);
+
 const SIRALAR = [
   { kod: "ad", ad: "Ada göre" },
   { kod: "gelir", ad: "Gelire göre" },
   { kod: "yeni", ad: "En yeni" },
+  /* 02.11.2026: en uzun süredir girilmeyen (ya da hiç girilmemiş) kurum başta. */
+  { kod: "kullanim", ad: "En az kullanan önce" },
+] as const;
+
+/* Panel etkinliği süzgeci (lib/musteri-etkinligi); yalnızca ArvoOS lisanslı kurumlarda anlamlı. */
+const ETKINLIKLER = [
+  { kod: "aktif", ad: "Aktif (7 gün)" },
+  { kod: "azaliyor", ad: "Azalan (8–21 gün)" },
+  { kod: "sessiz", ad: "Sessiz (21+ gün / hiç)" },
 ] as const;
 
 export default async function MusterilerPage({ searchParams }: {
-  searchParams: Promise<{ tur?: string; ara?: string; urun?: string; sira?: string }>;
+  searchParams: Promise<{ tur?: string; ara?: string; urun?: string; sira?: string; etkinlik?: string }>;
 }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const { tur, ara, urun, sira } = await searchParams;
+  const { tur, ara, urun, sira, etkinlik: etkinlikParam } = await searchParams;
+  const secilenEtkinlik = ETKINLIKLER.some((x) => x.kod === etkinlikParam) ? etkinlikParam! : null;
   const secilenUrun = PRODUCTS.some((p) => p.code === urun) ? urun! : null;
   const secilenSira = SIRALAR.some((x) => x.kod === sira) ? sira! : "ad";
   const secilenTur = tur === "kurumsal" || tur === "bireysel" || tur === "grup" || tur === "arvo" ? tur : null;
@@ -363,7 +376,7 @@ export default async function MusterilerPage({ searchParams }: {
     const arvoosAcik = ACIK.has(kurum.license_status ?? "");
     const etk = etkinlikSonucu.harita?.get(kurum.id) ?? null;
     const etkinlik = etkinlikSonucu.harita && kurum.license_status
-      ? { yazi: etkinlikYazisi(etk?.son ?? null, etkinlikSonucu.simdi), hal: etkinlikHali(etk?.son ?? null, etkinlikSonucu.simdi), haftalik: etk?.haftalik ?? 0 }
+      ? { yazi: etkinlikYazisi(etk?.son ?? null, etkinlikSonucu.simdi), hal: etkinlikHali(etk?.son ?? null, etkinlikSonucu.simdi), haftalik: etk?.haftalik ?? 0, son: etk?.son ?? null }
       : null;
     const arvoosYenileme = kurum.license_status === "trialing" ? kurum.trial_ends_at : kurum.current_period_end;
     const risk = Boolean(etkinlikSonucu.harita) && yenilemeRiski({ acik: arvoosAcik, yenileme: arvoosYenileme, son: etk?.son ?? null }, etkinlikSonucu.simdi);
@@ -431,8 +444,13 @@ export default async function MusterilerPage({ searchParams }: {
     .filter((satir) => (secilenTur ? satir.tur === secilenTur : true))
     .filter((satir) => (secilenUrun ? satir.urunler.some((u) => u.kod === secilenUrun) : true))
     .filter((satir) => (desen ? sadelestir(`${satir.ad} ${satir.alt} ${satir.arama ?? ""} ${satir.urunler.map((u) => u.etiket).join(" ")}`).includes(desen) : true))
+    /* Etkinlik süzgeci etkinliği ölçülemeyen satırları (bireysel, ArvoOS'suz kurum) dışarıda bırakıyor. */
+    .filter((satir) => (secilenEtkinlik ? satir.etkinlik?.hal === secilenEtkinlik : true))
     .sort((a, b) => secilenSira === "gelir" ? b.ucret - a.ucret || a.ad.localeCompare(b.ad, "tr")
       : secilenSira === "yeni" ? (b.olusma ?? "").localeCompare(a.olusma ?? "")
+      /* En az kullanan önce: hiç girilmemiş en başta, sonra en eski son
+         kullanım; etkinliği ölçülemeyenler en sonda (sırada yerleri yok). */
+      : secilenSira === "kullanim" ? kullanimSirasi(a) - kullanimSirasi(b) || (a.etkinlik?.son ?? "").localeCompare(b.etkinlik?.son ?? "") || a.ad.localeCompare(b.ad, "tr")
       : a.ad.localeCompare(b.ad, "tr"));
   const urunSayisi = (kod: string) => tumSatirlar.filter((satir) => (secilenTur ? satir.tur === secilenTur : true) && satir.urunler.some((u) => u.kod === kod)).length;
 
@@ -447,7 +465,7 @@ export default async function MusterilerPage({ searchParams }: {
   // Müşteri geliri yalnızca gerçek müşterilerden; grup markası ayrı (grupDegeri).
   const kurumsalGelir = musteriKurumlari.reduce((toplam, satir) => toplam + satir.ucret, 0);
 
-  const adres = (yeni: { tur?: string | null; ara?: string | null; urun?: string | null; sira?: string | null }) => {
+  const adres = (yeni: { tur?: string | null; ara?: string | null; urun?: string | null; sira?: string | null; etkinlik?: string | null }) => {
     const p = new URLSearchParams();
     const t = yeni.tur === undefined ? secilenTur : yeni.tur;
     const a = yeni.ara === undefined ? aranan : yeni.ara;
@@ -456,6 +474,8 @@ export default async function MusterilerPage({ searchParams }: {
     if (t) p.set("tur", t);
     if (u) p.set("urun", u);
     if (r && r !== "ad") p.set("sira", r);
+    const e = yeni.etkinlik === undefined ? secilenEtkinlik : yeni.etkinlik;
+    if (e) p.set("etkinlik", e);
     if (a) p.set("ara", a);
     const q = p.toString();
     return q ? `/panel/platform/musteriler?${q}` : "/panel/platform/musteriler";
@@ -551,6 +571,10 @@ export default async function MusterilerPage({ searchParams }: {
             <OtomatikSecim name="urun" defaultValue={secilenUrun ?? ""} className="talep-temsilci-sec" label="Ürün">
               <option value="">Bütün ürünler</option>
               {PRODUCTS.map((p) => <option key={p.code} value={p.code}>{p.name} ({sayi(urunSayisi(p.code))})</option>)}
+            </OtomatikSecim>
+            <OtomatikSecim name="etkinlik" defaultValue={secilenEtkinlik ?? ""} className="talep-temsilci-sec" label="Panel kullanımı">
+              <option value="">Bütün kullanım</option>
+              {ETKINLIKLER.map((x) => <option key={x.kod} value={x.kod}>{x.ad} ({sayi(tumSatirlar.filter((satir) => satir.etkinlik?.hal === x.kod).length)})</option>)}
             </OtomatikSecim>
             <OtomatikSecim name="sira" defaultValue={secilenSira} className="talep-temsilci-sec" label="Sıralama">
               {SIRALAR.map((x) => <option key={x.kod} value={x.kod}>{x.ad}</option>)}
