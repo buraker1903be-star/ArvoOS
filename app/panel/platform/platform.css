@@ -1195,3 +1195,6 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
 .sy-alan-formu{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center;margin-top:6px}
 .sy-alan-formu label{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);color:var(--ink)}
 .sy-alan-duzen summary{cursor:pointer;color:var(--primary);font-size:var(--fs-sm)}
+
+/* Uygulanmamış migration satırı (Sistem sağlığı → Veritabanı, 02.11.2026). */
+.sy-sema-eksik{display:block;color:var(--danger);overflow-wrap:anywhere}

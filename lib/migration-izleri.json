@@ -1,0 +1,298 @@
+[
+  {
+    "migration": "20261028083410_site_formu_arvobook_ve_diller",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.submit_site_lead"
+      }
+    ]
+  },
+  {
+    "migration": "20261028145027_ek_kullanici_kdv_dahil",
+    "izler": []
+  },
+  {
+    "migration": "20261028145415_site_formu_arvocal",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.submit_site_lead"
+      }
+    ]
+  },
+  {
+    "migration": "20261028155350_proforma_alici",
+    "izler": [
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_proformalari",
+        "sutun": "alici"
+      }
+    ]
+  },
+  {
+    "migration": "20261028165823_paytr_kart_saklama",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.paytr_kart_islemleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.paytr_kayitli_kartlar"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.paytr_otomatik_yenileme"
+      }
+    ]
+  },
+  {
+    "migration": "20261029112549_departman_yonetim_adi_korumasi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.arvo_department_management_guard"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.arvo_department_management_sync"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "arvo_department_management_guard",
+        "tablo": "public.hr_departments"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "arvo_department_management_sync",
+        "tablo": "public.hr_departments"
+      }
+    ]
+  },
+  {
+    "migration": "20261029152535_platform_tahsilat_aylik",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.platform_tahsilat_aylik"
+      }
+    ]
+  },
+  {
+    "migration": "20261029160309_otomatik_proforma",
+    "izler": [
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_proformalari",
+        "sutun": "otomatik"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_proformalari",
+        "sutun": "donem_sonu"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_proformalari",
+        "sutun": "gonderildi_at"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_proformalari",
+        "sutun": "gonderilen"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_proformalari",
+        "sutun": "bildirildi_at"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_proformalari",
+        "sutun": "gonderim_hatasi"
+      }
+    ]
+  },
+  {
+    "migration": "20261029162437_sozlesme_onaylari",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.sozlesme_onaylari"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.sozlesme_onayi_degismez"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "sozlesme_onayi_degismez",
+        "tablo": "public.sozlesme_onaylari"
+      }
+    ]
+  },
+  {
+    "migration": "20261029181748_personel_satis_hedefleri",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.hr_personel_hedefleri"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.hr_hedef_kurum_tutarli"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "hr_personel_hedefleri_kurum",
+        "tablo": "public.hr_personel_hedefleri"
+      }
+    ]
+  },
+  {
+    "migration": "20261030062700_proforma_arc_urunu",
+    "izler": []
+  },
+  {
+    "migration": "20261030065444_maas_ve_hakedis",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.hr_maaslar"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.hr_hakedisler"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.hr_kisi_kaydi_kurum_tutarli"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "hr_maaslar_kurum",
+        "tablo": "public.hr_maaslar"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "hr_hakedisler_kurum",
+        "tablo": "public.hr_hakedisler"
+      }
+    ]
+  },
+  {
+    "migration": "20261030080627_teklif_revizyonu_kapat",
+    "izler": []
+  },
+  {
+    "migration": "20261102083212_platform_duyurulari",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.platform_duyurulari"
+      }
+    ]
+  },
+  {
+    "migration": "20261102101259_lisans_kapanis_tarihi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.lisans_kapanis_tarihi"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "lisans_kapanis_tarihi",
+        "tablo": "public.organization_licenses"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "lisans_kapanis_tarihi",
+        "tablo": "public.organization_product_licenses"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.organization_licenses",
+        "sutun": "closed_at"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.organization_product_licenses",
+        "sutun": "closed_at"
+      }
+    ]
+  },
+  {
+    "migration": "20261102131114_platform_musteri_notlari",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.platform_musteri_notlari"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.musteri_notu_degismez"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "musteri_notu_degismez",
+        "tablo": "public.platform_musteri_notlari"
+      }
+    ]
+  },
+  {
+    "migration": "20261102134522_hazir_yanit_ve_secili_duyuru",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.platform_hazir_yanitlar"
+      }
+    ]
+  },
+  {
+    "migration": "20261102181453_konsol_paket_limitleri_ve_kurucu_alanlari",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.platform_paket_limitleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.platform_kurucu_alanlari"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.default_license_limits"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.kurucu_tam_yetkili"
+      }
+    ]
+  },
+  {
+    "migration": "20261102190813_proforma_silme_korumasi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.platform_proforma_silme_korumasi"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "platform_proforma_silme_korumasi",
+        "tablo": "public.platform_proformalari"
+      }
+    ]
+  },
+  {
+    "migration": "20261102192458_platform_sema_eksikleri",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.platform_sema_eksikleri"
+      }
+    ]
+  }
+]
