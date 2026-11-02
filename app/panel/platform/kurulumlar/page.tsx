@@ -17,6 +17,8 @@ import { productLicenseLabels } from "@/lib/products";
 import { listeFiyatiniUygula } from "./actions";
 import { kurumTuru } from "@/lib/kurum-turu";
 import { KNot } from "../konsol-ui";
+import { hataTeshisi } from "@/lib/hata-teshisi";
+import { TeshisKarti } from "../saglik/teshis-karti";
 import { MobilSatir } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
@@ -115,7 +117,7 @@ export default async function KurulumlarPage({ searchParams }: {
     hangi adımda" sorusunun yanıtı yoktu. Okunamazsa sekme "hareket yok"
     demiyor, hatayı yazıyor.
   */
-  const [{ data: istekSatirlari, error: istekHatasi }, { data: hareketSatirlari, error: hareketHatasi }] = admin
+  const [{ data: istekSatirlari, error: istekHatasi }, { data: hareketSatirlari, error: hareketHatasi }, { data: hataSatirlari, error: hataKaydiHatasi }] = admin
     ? await Promise.all([
         admin.from("platform_subscription_requests")
           .select("id,contract_no,customer_name,amount,currency,status,created_at,target_organization_id")
@@ -123,8 +125,17 @@ export default async function KurulumlarPage({ searchParams }: {
           .order("created_at", { ascending: false }).limit(20),
         admin.from("provisioning_audit_logs").select("id,organization_id,action,state,result,created_at")
           .order("created_at", { ascending: false }).limit(12),
+        /*
+          KURULUM HATALARI BURADA (02.11.2026): eskiden Sistem sağlığının ayrı
+          bir sekmesiydi ve aynı kiracılar üç yerde (bu sayfa, sağlık, ana
+          ekran) listeleniyordu. Son on başarısız kayıt; hata metni
+          details.error'da (provision-organization), teşhisi lib/hata-teshisi.
+        */
+        admin.from("provisioning_audit_logs").select("id,organization_id,action,state,created_at,details")
+          .eq("result", "failed").order("created_at", { ascending: false }).limit(10),
       ])
-    : [{ data: null, error: null }, { data: null, error: null }];
+    : [{ data: null, error: null }, { data: null, error: null }, { data: null, error: null }];
+  if (hataKaydiHatasi) console.error("[kurulumlar] kurulum hataları okunamadı", hataKaydiHatasi.message);
 
   const tumKiracilar = (kiraciSatirlari ?? []) as unknown as Kiraci[];
   /*
@@ -138,6 +149,11 @@ export default async function KurulumlarPage({ searchParams }: {
 
   const bekleyenler = kiracilar.filter((k) => BEKLEYEN.has(k.provisioning_state) || k.provisioning_state === "failed");
   const tamamlananlar = kiracilar.filter((k) => k.provisioning_state === "active");
+  /* Yalnızca kurulumu HÂLÂ hatada olan kiracıların kayıtları: sonradan tamamlanan eski hata gösterilmiyor. */
+  const hatadaKalanlar = new Set(kiracilar.filter((k) => k.provisioning_state === "failed").map((k) => k.id));
+  const kiraciAdi = new Map(kiracilar.map((k) => [k.id, k.display_name || k.name]));
+  const kurulumHatalari = ((hataSatirlari ?? []) as { id: string | number; organization_id: string; action: string; created_at: string; details: { error?: unknown } | null }[])
+    .filter((k) => hatadaKalanlar.has(k.organization_id));
   /* İstekler okunamazsa "yeni istek yok" denirdi: imzalı bir sözleşmenin
      modülleri açılmayı bekliyorken ekran temiz görünürdü. Anahtar yoksa
      (admin null) hata da yok — o durumda bölüm zaten çizilmiyor. */
@@ -220,6 +236,18 @@ export default async function KurulumlarPage({ searchParams }: {
         </PanelDrawer>
       </div>
     </header>
+
+    {kurulumHatalari.length ? (
+      <div className="sy-teshisler">
+        {kurulumHatalari.map((kayit) => {
+          const hata = typeof kayit.details?.error === "string" ? kayit.details.error : null;
+          return (
+            <TeshisKarti key={`t-${kayit.id}`} baslik={`${kiraciAdi.get(kayit.organization_id) ?? "Kurum"} · kurulum düştü (${KURULUM_ISLEMI[kayit.action] ?? kayit.action})`}
+              neZamandir={tarihSaat(kayit.created_at)} hata={hata} teshis={hataTeshisi(hata)} gunlukYolu="provision-organization" />
+          );
+        })}
+      </div>
+    ) : hataKaydiHatasi ? <KNot ton="uyari">Kurulum hata kayıtları okunamadı; teşhis kartları gösterilemiyor.</KNot> : null}
 
     {/* Şerit ÖZET, sekme değil (29.10.2026): aşama seçimi listenin
         segmentinde; şerit eskiden aynı üç sayıyı ikinci kez yazıyordu.

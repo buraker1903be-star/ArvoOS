@@ -67,7 +67,8 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
         /* Tek "Kullanıcılar" (14.10.2026): aktif, pasif ve davet bekleyenler
            sayfanın kendi sekmeleri. */
         { key: "kullanicilar", href: "/panel/platform/kullanicilar", label: "Kullanıcılar" },
-        { key: "bireysel", href: "/panel/platform/subscribers", label: "Bireysel aboneler" },
+        /* Bireysel aboneler ayrı bölüm değil (02.11.2026): Müşteriler'in Bireysel
+           sekmesinden açılıyor; abone işlemleri sayfası yerinde. */
         /* Kurumlara duyuru (02.11.2026): bakım, yeni özellik — lib/platform-duyuru. */
         { key: "duyuru", href: "/panel/platform/duyuru", label: "Duyuru gönder" },
         /* Aylık müşteri raporu (02.11.2026): yeni, kaybedilen, ek ürün, tahsilat. */
@@ -84,8 +85,7 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
         { key: "tahsilatlar", href: "/panel/platform/tahsilat", label: "Tahsilatlar" },
         { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
         { key: "abonelikler", href: "/panel/platform/billing", label: "Abonelikler" },
-        /* Yenileme takvimi (29.10.2026): 30 günde dönemi dolanlar ve proforma durumları. */
-        { key: "yenilemeler", href: "/panel/platform/yenilemeler", label: "Yenileme takvimi" },
+        /* Yenileme takvimi 02.11.2026'dan beri Abonelikler'in sekmesi (ayrı bölüm değil). */
         /* Proforma bölüm şeridinde (28.10.2026): yalnızca süzgeç çipinin
            sonundayken telefonda görünmüyordu. */
         { key: "proformalar", href: "/panel/platform/tahsilat?kanal=proforma", label: "Proformalar" },

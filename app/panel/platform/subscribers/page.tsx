@@ -162,7 +162,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
   return <main className="plt talep cari ekip talepler teklifler liste-sayfa kisi-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker"><Link href="/panel/platform/musteriler">MÜŞTERİLER</Link></small>
+        <small className="panel-kicker"><Link href="/panel/platform/musteriler?tur=bireysel">MÜŞTERİLER · BİREYSEL</Link></small>
         <h1>Bireysel aboneler</h1>
         <p className="ek-alt">Kendi adına abone olan kişiler · {paying.length} ödeyen · {trialing.length} denemede{monthlyRevenue ? ` · ${para(monthlyRevenue)} / ay` : ""}</p>
       </div>

@@ -589,6 +589,11 @@ export default async function MusterilerPage({ searchParams }: {
     </nav>
 
     <div className="talep-izgara personel-iki ekip-izgara">
+      {/* Bireysel aboneler ayrı menü değil (02.11.2026); işlemleri (paket fiyatı,
+          aboneyi kuruma bağlama) kendi ekranında, buradan açılıyor. */}
+      {secilenTur === "bireysel" ? (
+        <KNot>Bireysel abonelerin paket fiyatı ve kuruma bağlama işlemleri: <Link href="/panel/platform/subscribers">Bireysel abone yönetimi →</Link></KNot>
+      ) : null}
       <section className="panel-card talep-bilgi" aria-label="Müşteri listesi">
         <div className="ekip-suzgec talep-suzgec ek-arac">
           <nav className="ek-segment" aria-label="Tür">

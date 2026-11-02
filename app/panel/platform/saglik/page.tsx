@@ -398,13 +398,11 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
   const cronSorunAdedi = cronHatasi ? 1 : cronSorun.length;
   const kopruSorunu = kopukKopru + bayatKopyalar.length;
   const kotaSorunu = kotalar.length + limitSapanlar.length;
-  const kurulumSorunu = kurulumHatalari.length;
   const odemeSorunu = krediSonucu.veri.length + odemeOlaylari.length + (krediSonucu.hata ? 1 : 0);
   const sekmeler = [
     { kod: "isler", ad: "Zamanlanmış işler", adet: cronSorunAdedi },
     { kod: "kopru", ad: "Köprü ve kopyalar", adet: kopruSorunu },
     { kod: "kota", ad: "Kota ve limitler", adet: kotaSorunu },
-    { kod: "kurulum", ad: "Kurulum", adet: kurulumSorunu },
     { kod: "odeme", ad: "Ödeme ve kredi", adet: odemeSorunu },
     { kod: "ayar", ad: "Platform ayarları", adet: ayarSorunu },
   ] as const;
@@ -469,7 +467,7 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
         </div>
         <div>
           <dt>Kurulum</dt>
-          <dd className={kurulumHatalari.length ? "talep-uyari" : undefined}><Link href={sekmeAdresi("kurulum")}>{sayi(kurulumHatalari.length)}</Link></dd>
+          <dd className={kurulumHatalari.length ? "talep-uyari" : undefined}><Link href="/panel/platform/kurulumlar">{sayi(kurulumHatalari.length)}</Link></dd>
           <small>{kurulumBekleyen ? `${sayi(kurulumBekleyen)} kurulum sürüyor` : "Son hatalı kurulum kaydı"}</small>
         </div>
         <div>
@@ -674,46 +672,6 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
           ) : bos("Limitler paketleriyle uyumlu", "Hiçbir kiracıya paketinin üstünde hak tanımlanmamış.")}
         </section> : null}
 
-        {sekme === "kurulum" ? <section>
-          {bolumBasi("Kurulum hataları", "Kurulumu hatada kalmış kiracılar. Sonradan tamamlanan eski hatalar burada sayılmıyor; onlar ana sayfadaki kurulum hareketlerinde.")}
-          {/* Kurulumun hata metni details.error'da (provision-organization); teşhis kartı tablonun üstünde. */}
-          {admin && kurulumHatalari.length ? (
-            <div className="sy-teshisler">
-              {kurulumHatalari.map((kayit) => {
-                const hata = typeof kayit.details?.error === "string" ? kayit.details.error : null;
-                return (
-                  <TeshisKarti key={`t-${kayit.id}`} baslik={`${kurumAdi.get(kayit.organization_id) ?? "Kurum"} · kurulum düştü (${kayit.action})`}
-                    neZamandir={tarihSaat(kayit.created_at)} hata={hata} teshis={hataTeshisi(hata)} gunlukYolu="provision-organization" />
-                );
-              })}
-            </div>
-          ) : null}
-          {admin ? (
-            kurulumHatalari.length ? (
-              <div className="talep-tablo fn-ic-tablo">
-                <table className="crm-data-table" data-cols="sy-kurulum">
-                  <thead><tr><th>Kiracı</th><th>Adım</th><th className="crm-col-date">Zaman</th></tr></thead>
-                  <tbody>
-                    {kurulumHatalari.map((kayit) => {
-                      const ad = kurumAdi.get(kayit.organization_id) ?? "Kurum";
-                      const href = `/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`;
-                      return (
-                        <tr key={kayit.id}>
-                          <td data-label="Kiracı">{kisi(ad, "kurulum sekmesini aç", href)}</td>
-                          <td data-label="Adım"><span className="crm-table-title">{kayit.action}</span>{kayit.state ? <small>{kayit.state}</small> : null}</td>
-                          <td className="crm-col-date" data-label="Zaman">{tarihSaat(kayit.created_at)}</td>
-                          <MobilSatir href={href} baslik={ad} durum={{ etiket: "Kurulum hatası", ton: "danger" }} alt={[kayit.action, kayit.state, tarihSaat(kayit.created_at)]} />
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                <SatirTiklama />
-              </div>
-            ) : bos("Kurulum hatası yok", "Kurulumu hatada kalmış kiracı yok.")
-          ) : bos("Kurulum günlüğü okunamıyor", "Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hata yok” demek değil.")}
-        </section> : null}
-
         {sekme === "odeme" ? <section>
           {bolumBasi("Yüklenemeyen AI kredisi", "Müşteri krediyi ödedi ama ArvoLab'a yüklenemedi: ödediği hâlde asistanda durdurulur. On dakikada bir yeniden deneniyor.")}
           {krediSonucu.hata ? (
@@ -824,13 +782,14 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
                 { ad: "Bayat ürün kopyası", adet: bayatKopyalar.length, kod: "kopru" },
                 { ad: "Kota sorunu", adet: kiraciHatasi ? null : kotalar.length, kod: "kota" },
                 { ad: "Paketinden fazla limit", adet: kiraciHatasi ? null : limitSapanlar.length, kod: "kota" },
-                { ad: "Kurulum hatası", adet: kurulumHatalari.length, kod: "kurulum" },
+                /* Kurulum hataları 02.11.2026'dan beri Kurulumlar sayfasında (teşhisiyle); satır oraya gidiyor. */
+                { ad: "Kurulum hatası", adet: kurulumHatalari.length, kod: "kurulum", href: "/panel/platform/kurulumlar" },
                 { ad: "Yüklenemeyen AI kredisi", adet: krediSonucu.hata ? null : krediSonucu.veri.length, kod: "odeme" },
                 { ad: "İşlenemeyen ödeme", adet: odemeOlaylari.length, kod: "odeme" },
               ].map((satir) => (
                 <li key={satir.ad}>
-                  <Link href={sekmeAdresi(satir.kod as SekmeKodu)} scroll={false} replace aria-current={sekme === satir.kod ? "true" : undefined}>
-                    <span className="pu-govde"><b>{satir.ad}</b><small>{sekmeler.find((x) => x.kod === satir.kod)?.ad}</small></span>
+                  <Link href={"href" in satir && satir.href ? satir.href : sekmeAdresi(satir.kod as SekmeKodu)} scroll={false} replace={!("href" in satir && satir.href)} aria-current={sekme === satir.kod ? "true" : undefined}>
+                    <span className="pu-govde"><b>{satir.ad}</b><small>{sekmeler.find((x) => x.kod === satir.kod)?.ad ?? "Kurulumlar"}</small></span>
                     <span className="status-pill" data-tone={satir.adet === null ? "danger" : satir.adet ? "warning" : "success"}>{satir.adet === null ? "okunamadı" : satir.adet ? sayi(satir.adet) : "yok"}</span>
                   </Link>
                 </li>
