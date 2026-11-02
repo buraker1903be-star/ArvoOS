@@ -4,13 +4,15 @@ import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { kurucuyaUyar } from "@/lib/kurucu-uyarisi";
+import { KATEGORI_ADI } from "@/lib/destek-kuyrugu";
 
 const categories = new Set(["general","technical","billing","feature"]);
 const priorities = new Set(["low","normal","high","urgent"]);
 const statuses = new Set(["open","in_progress","waiting_customer","resolved","closed"]);
 
 async function createSupportTicket__impl(formData: FormData) {
-  const { supabase, userId, membership } = await getPanelContext();
+  const { supabase, userId, membership, organization } = await getPanelContext();
   const subject = String(formData.get("subject") ?? "").trim();
   const category = String(formData.get("category") ?? "general");
   const priority = String(formData.get("priority") ?? "normal");
@@ -27,7 +29,21 @@ async function createSupportTicket__impl(formData: FormData) {
     ticket_id: ticket.id, organization_id: membership.organization_id, author_id: userId, body, is_staff: false,
   });
   if (messageError) throw new Error("İlk mesaj eklenemedi: " + messageError.message);
+  /* Acil ve yüksek öncelikli talep kurucuya anında e-postayla da gidiyor
+     (lib/kurucu-uyarisi): eskiden yalnızca konsolun ziline düşüyordu.
+     Normal ve düşük öncelik e-posta göndermiyor; her talep bir posta
+     olursa kurucu postayı okumayı bırakır. Akışı düşürmez. */
+  if (priority === "urgent" || priority === "high") {
+    await kurucuyaUyar({
+      baslik: `${priority === "urgent" ? "Acil" : "Yüksek öncelikli"} destek talebi: ${subject}`,
+      satirlar: [["Kurum", organization.display_name || organization.name], ["Konu", subject], ["Kategori", KATEGORI_ADI[category] ?? category]],
+      not: body.slice(0, 1500),
+      yol: `/panel/platform/destek/${ticket.id}`,
+      dugme: "Talebi aç",
+    });
+  }
   revalidatePath("/panel/support");
+  revalidatePath("/panel/platform/destek", "layout");
 }
 
 async function replySupportTicket__impl(formData: FormData) {

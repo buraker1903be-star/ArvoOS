@@ -18,7 +18,9 @@ import { OdemeBolumu, type Odeme, type UrunSatiri } from "./bolumler";
 import { BelgeBolumu } from "./belgeler";
 import { HareketBolumu } from "./hareketler";
 import { DestekBolumu } from "./destek";
-import { YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
+import { gecikmisMi, YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
+import { etkinlikHali, kurumEtkinligi, type VarlikSatiri } from "@/lib/musteri-etkinligi";
+import { musteriSagligi, SAGLIK_ADI, SAGLIK_TONU } from "@/lib/musteri-sagligi";
 import "../../platform.css";
 import "../../../hr/hr.css";
 import "../../../crm/kayit-detay/kayit-detay.css";
@@ -84,6 +86,25 @@ const ESKI_SEKME: Record<string, SekmeKodu> = {
   lisanslar: "urunler", fiyat: "urunler", ayarlar: "kurulum", cari: "odemeler", faturalar: "odemeler",
 };
 
+/*
+  SAĞLIK GÖSTERGESİ (02.11.2026, lib/musteri-sagligi): Müşteriler
+  listesindeki kuralın aynısı. Açık ürünü yoksa ya da destek okunamadıysa
+  hesaplanmıyor (null) — "okuyamadım" ile "iyi" aynı şey değil. Şimdiki
+  zaman bileşen dışında okunuyor (react-hooks/purity).
+*/
+function kartSagligi(g: { acik: boolean; arvoos: boolean; gecikmis: boolean; yenileme: string | null; talepler: string[] | null; varlik: VarlikSatiri[] | null }) {
+  if (!g.acik || !g.talepler) return null;
+  const simdi = Date.now();
+  const son = g.varlik ? kurumEtkinligi(g.varlik, simdi).values().next().value?.son ?? null : null;
+  return musteriSagligi({
+    etkinlik: g.arvoos && g.varlik ? etkinlikHali(son, simdi) : null,
+    odemeGecikmis: g.gecikmis,
+    yanitBekleyenDestek: g.talepler.length,
+    gecikenDestek: g.talepler.filter((t) => gecikmisMi(t, new Date(simdi))).length,
+    yenilemeGun: g.yenileme ? Math.floor((Date.parse(g.yenileme) - simdi) / 86_400_000) : null,
+  });
+}
+
 type Kurum = {
   id: string; name: string; display_name: string | null; slug: string; kind: string | null; plan_code: string | null;
   provisioning_state: string; license_status: string | null; monthly_fee: number | null; current_period_end: string | null;
@@ -111,7 +132,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
     bir sınır koymak toplamı sessizce eksiltirdi (check:rakamlar). Kurum
     başına ayda bir-iki satır.
   */
-  const [{ data: kurumSatiri, error: kurumHatasi }, { data: kayit }, { data: urunSatirlari, error: urunHatasi }, { data: odemeSatirlari, error: odemeHatasi }, { data: etkinlikSatirlari }, { count: yanitBekleyen }] = await Promise.all([
+  const [{ data: kurumSatiri, error: kurumHatasi }, { data: kayit }, { data: urunSatirlari, error: urunHatasi }, { data: odemeSatirlari, error: odemeHatasi }, { data: etkinlikSatirlari }, destekSonucu, varlikSonucu] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,slug,kind,plan_code,provisioning_state,license_status,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,custom_domain,davet_eposta,grup_markasi")
       .eq("id", id).maybeSingle(),
@@ -124,9 +145,16 @@ export default async function MusteriDetayi({ params, searchParams }: {
          tekrarlıyordu — kurucu için tek bir "bir şeyler oldu". */
       ? admin.from("activity_logs").select("action,entity_type,created_at,metadata").eq("organization_id", id).order("created_at", { ascending: false }).limit(6)
       : Promise.resolve({ data: [] }),
-    // hata-tamam: sekme rozeti; okunamazsa rozet çizilmiyor, sekmenin kendisi hatayı söylüyor
-    supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("organization_id", id).in("status", YANIT_BEKLEYEN_DURUMLAR),
+    /* Yanıt bekleyen talepler: sekme rozeti ve sağlık göstergesi. Okunamazsa
+       rozet çizilmiyor ve sağlık hesaplanmıyor (aşağıda). */
+    supabase.from("support_tickets").select("last_message_at").eq("organization_id", id).in("status", YANIT_BEKLEYEN_DURUMLAR),
+    /* Panel etkinliği: kurum × kişi başına bir satır (lib/musteri-etkinligi). */
+    admin ? admin.from("user_presence").select("organization_id,last_seen_at").eq("organization_id", id) : Promise.resolve({ data: null, error: { message: "sunucu anahtarı yok" } }),
   ]);
+  if (destekSonucu.error) console.error("[müşteri kartı] destek talepleri okunamadı", destekSonucu.error.message);
+  if (varlikSonucu.error) console.error("[müşteri kartı] panel etkinliği okunamadı", varlikSonucu.error.message);
+  const bekleyenTalepler = destekSonucu.error ? null : ((destekSonucu.data ?? []) as { last_message_at: string }[]).map((t) => t.last_message_at);
+  const yanitBekleyen = bekleyenTalepler?.length ?? 0;
   if (kurumHatasi) throw new Error(`Müşteri okunamadı: ${kurumHatasi.message}`);
   if (!kurumSatiri) notFound();
   // Ürünler ve ödemeler sayfanın asıl konusu: okunamamaları "yok" demek değil.
@@ -158,6 +186,15 @@ export default async function MusteriDetayi({ params, searchParams }: {
   const onaylanan = odemeler.filter((o) => o.status === "approved");
   const toplamTahsilat = onaylanan.reduce((t, o) => t + Number(o.amount ?? 0), 0);
   const bekleyen = odemeler.filter((o) => o.status === "pending");
+
+  const saglik = kartSagligi({
+    acik: urunler.some((u) => ACIK.has(u.status)),
+    arvoos: Boolean(kurum.license_status),
+    gecikmis: urunler.some((u) => u.status === "past_due"),
+    yenileme,
+    talepler: bekleyenTalepler,
+    varlik: varlikSonucu.error ? null : ((varlikSonucu.data ?? []) as VarlikSatiri[]),
+  });
 
   const ad = kurum.display_name || kurum.name;
   /*
@@ -227,6 +264,14 @@ export default async function MusteriDetayi({ params, searchParams }: {
     <nav className="kayit-serit talep-serit" aria-label="Müşteri özeti">
       <dl>
         <div><dt>Durum</dt><dd><span className="status-pill" data-tone={genelDurum.ton}>{genelDurum.ad}</span></dd></div>
+        {/* Sağlık: kullanım, ödeme, destek ve yenileme tek göstergede, gerekçesiyle. */}
+        {saglik ? (
+          <div>
+            <dt>Sağlık</dt>
+            <dd><span className="status-pill" data-tone={SAGLIK_TONU[saglik.seviye]}>{SAGLIK_ADI[saglik.seviye]}</span></dd>
+            <small>{saglik.nedenler.length ? saglik.nedenler.join(" · ") : "kullanım, ödeme ve destek yolunda"}</small>
+          </div>
+        ) : null}
         <div>
           <dt>{grup ? "Grup içi değer" : "Aylık tutar"}</dt>
           <dd className={aylik ? "cari-arti" : "talep-bos"}>{aylik ? para(aylik) : "Ücret yok"}</dd>

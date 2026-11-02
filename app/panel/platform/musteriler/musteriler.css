@@ -36,3 +36,8 @@
 .konsol-musteriler .mu-etkinlik[data-hal="aktif"]{color:var(--success)}
 .konsol-musteriler .mu-etkinlik[data-hal="sessiz"]{color:var(--warning)}
 .konsol-musteriler .ek-not[data-tone="warning"]{border-left:3px solid var(--warning)}
+
+/* Müşteri sağlığı (lib/musteri-sagligi): durum rozetinin altında, gerekçesiyle. */
+.konsol-musteriler .mu-saglik{display:block;margin-top:2px}
+.konsol-musteriler .mu-saglik[data-seviye="riskli"]{color:var(--danger)}
+.konsol-musteriler .mu-saglik[data-seviye="izlenmeli"]{color:var(--warning)}

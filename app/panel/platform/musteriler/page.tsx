@@ -24,6 +24,8 @@ import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { enCok } from "@/lib/liste-istatistik";
 import { etkinlikHali, etkinlikYazisi, yenilemeRiski } from "@/lib/musteri-etkinligi";
 import { musteriEtkinlikleri } from "@/lib/musteri-etkinligi-oku";
+import { musteriSagligi, SAGLIK_ADI, SAGLIK_SIRASI, type SaglikSeviyesi } from "@/lib/musteri-sagligi";
+import { gecikmisMi, YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import "../platform.css";
 import "../../hr/hr.css";
 import "../../crm/crm.css";
@@ -125,6 +127,8 @@ type Satir = {
   etkinlik?: { yazi: string; hal: "aktif" | "azaliyor" | "sessiz"; haftalik: number; son: string | null } | null;
   /** Yenilemesi yakın ve paneli kullanmıyor: arayıp sormak için. */
   risk?: boolean;
+  /** Kurumsal, erişimi açık: kullanım + ödeme + destek + yenileme tek göstergede (lib/musteri-sagligi). */
+  saglik?: { seviye: SaglikSeviyesi; nedenler: string[] } | null;
 };
 
 const ACIK = new Set(["active", "trialing", "past_due"]);
@@ -203,6 +207,7 @@ const SIRALAR = [
   { kod: "yeni", ad: "En yeni" },
   /* 02.11.2026: en uzun süredir girilmeyen (ya da hiç girilmemiş) kurum başta. */
   { kod: "kullanim", ad: "En az kullanan önce" },
+  { kod: "saglik", ad: "Sağlığa göre (riskli önce)" },
 ] as const;
 
 /* Panel etkinliği süzgeci (lib/musteri-etkinligi); yalnızca ArvoOS lisanslı kurumlarda anlamlı. */
@@ -257,7 +262,7 @@ export default async function MusterilerPage({ searchParams }: {
      Aynı kural dört büyük listede de kullanılıyor; ikinci bir kopyası
      yazılmadı. */
   const sunucuDeseni = aranan ? aramaDeseni(aranan) : null;
-  const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu, aramaSonucu, etkinlikSonucu] = await Promise.all([
+  const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu, aramaSonucu, etkinlikSonucu, destekSonucu] = await Promise.all([
     sayfaliSonuc<Kurum>("kiracılar", (bas, son) =>
       supabase.from("platform_kiraci_liste")
         .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi,davet_eposta")
@@ -291,6 +296,10 @@ export default async function MusterilerPage({ searchParams }: {
           .limit(LISTE_SINIRI)
       : Promise.resolve({ data: [], error: null }),
     musteriEtkinlikleri(),
+    /* Yanıt bekleyen destek talepleri (sağlık göstergesi, lib/musteri-sagligi).
+       Kurucunun oturumuyla; RLS kurucuya bütün kurumları açıyor. */
+    sayfaliSonuc<{ organization_id: string; last_message_at: string }>("destek talepleri", (bas, son) =>
+      supabase.from("support_tickets").select("organization_id,last_message_at").in("status", YANIT_BEKLEYEN_DURUMLAR).order("id").range(bas, son)),
   ]);
   /*
     Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
@@ -344,6 +353,14 @@ export default async function MusterilerPage({ searchParams }: {
   const urunleriKurumun = new Map<string, UrunLisansi[]>();
   for (const l of urunLisanslari) urunleriKurumun.set(l.organization_id, [...(urunleriKurumun.get(l.organization_id) ?? []), l]);
 
+  /* Destek okunamazsa harita null: sağlık sütunu boş kalıyor, liste düşmüyor. */
+  if (destekSonucu.error) console.error("[konsol] destek talepleri okunamadı", destekSonucu.error.message);
+  const destekHaritasi = destekSonucu.error ? null : (() => {
+    const h = new Map<string, string[]>();
+    for (const t of destekSonucu.data ?? []) h.set(t.organization_id, [...(h.get(t.organization_id) ?? []), t.last_message_at]);
+    return h;
+  })();
+  const simdiAn = new Date(etkinlikSonucu.simdi);
   const kurumsalSatirlar: Satir[] = kurumlar.map((kurum) => {
     const ekler = (urunleriKurumun.get(kurum.id) ?? []).filter((l) => l.status !== "inactive");
     /* Durum ÇEKİRDEK lisanstan, ama çekirdek kapalıyken açık bir ek ürün
@@ -379,10 +396,24 @@ export default async function MusterilerPage({ searchParams }: {
       ? { yazi: etkinlikYazisi(etk?.son ?? null, etkinlikSonucu.simdi), hal: etkinlikHali(etk?.son ?? null, etkinlikSonucu.simdi), haftalik: etk?.haftalik ?? 0, son: etk?.son ?? null }
       : null;
     const arvoosYenileme = kurum.license_status === "trialing" ? kurum.trial_ends_at : kurum.current_period_end;
+    /* Sağlık: açık bir ürünü olan kurumda. Destek okunamazsa o kısım sıfır sayılmıyor, sağlık hiç hesaplanmıyor. */
+    const acikUrunVar = ACIK.has(kurum.license_status ?? "") || ekler.some((l) => ACIK.has(l.status));
+    const talepler = destekHaritasi?.get(kurum.id) ?? [];
+    const enYakin = tarihler[0] ?? null;
+    const saglik = acikUrunVar && destekHaritasi
+      ? musteriSagligi({
+          etkinlik: etkinlik?.hal ?? null,
+          odemeGecikmis: kurum.license_status === "past_due" || ekler.some((l) => l.status === "past_due"),
+          yanitBekleyenDestek: talepler.length,
+          gecikenDestek: talepler.filter((t) => gecikmisMi(t, simdiAn)).length,
+          yenilemeGun: enYakin ? Math.floor((Date.parse(enYakin) - etkinlikSonucu.simdi) / 86_400_000) : null,
+        })
+      : null;
     const risk = Boolean(etkinlikSonucu.harita) && yenilemeRiski({ acik: arvoosAcik, yenileme: arvoosYenileme, son: etk?.son ?? null }, etkinlikSonucu.simdi);
     return {
       etkinlik,
       risk,
+      saglik,
       anahtar: `k-${kurum.id}`,
       secim: `kurum:${kurum.id}`,
       eposta: kurum.davet_eposta ?? null,
@@ -450,6 +481,7 @@ export default async function MusterilerPage({ searchParams }: {
       : secilenSira === "yeni" ? (b.olusma ?? "").localeCompare(a.olusma ?? "")
       /* En az kullanan önce: hiç girilmemiş en başta, sonra en eski son
          kullanım; etkinliği ölçülemeyenler en sonda (sırada yerleri yok). */
+      : secilenSira === "saglik" ? (a.saglik ? SAGLIK_SIRASI[a.saglik.seviye] : 3) - (b.saglik ? SAGLIK_SIRASI[b.saglik.seviye] : 3) || a.ad.localeCompare(b.ad, "tr")
       : secilenSira === "kullanim" ? kullanimSirasi(a) - kullanimSirasi(b) || (a.etkinlik?.son ?? "").localeCompare(b.etkinlik?.son ?? "") || a.ad.localeCompare(b.ad, "tr")
       : a.ad.localeCompare(b.ad, "tr"));
   const urunSayisi = (kod: string) => tumSatirlar.filter((satir) => (secilenTur ? satir.tur === secilenTur : true) && satir.urunler.some((u) => u.kod === kod)).length;
@@ -646,7 +678,15 @@ export default async function MusterilerPage({ searchParams }: {
                       {satir.ucret ? <span className="crm-table-title">{para(satir.ucret)}</span> : satir.ucretGirilmedi ? <span className="k-ios-eksik">Ücret yok</span> : <span className="crm-table-sub">—</span>}
                       {satir.ucret && (satir.tur === "grup" || satir.tur === "arvo") ? <small>grup içi</small> : null}
                     </td>
-                    <td data-label="Durum"><span className="status-pill" data-tone={satir.ton}>{satir.durum}</span></td>
+                    <td data-label="Durum">
+                      <span className="status-pill" data-tone={satir.ton}>{satir.durum}</span>
+                      {/* Sağlık: iyi olan sessiz kalıyor, yalnızca dikkat isteyen yazıyor (gerekçesiyle). */}
+                      {satir.saglik && satir.saglik.seviye !== "iyi" ? (
+                        <span className="crm-table-sub mu-saglik" data-seviye={satir.saglik.seviye} title={satir.saglik.nedenler.join(" · ")}>
+                          {SAGLIK_ADI[satir.saglik.seviye]} · {satir.saglik.nedenler[0]}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
                     <MobilSatir
                       href={satir.href}
@@ -656,6 +696,7 @@ export default async function MusterilerPage({ searchParams }: {
                       isaretler={[
                         satir.ucret ? { metin: `${para(satir.ucret)} / ay`, ton: "sessiz" } : null,
                         satir.yenileme ? { metin: `yenileme ${tarih(satir.yenileme)}`, ton: "sessiz" } : null,
+                        satir.saglik && satir.saglik.seviye !== "iyi" ? { metin: `${SAGLIK_ADI[satir.saglik.seviye]}: ${satir.saglik.nedenler[0]}`, ton: satir.saglik.seviye === "riskli" ? "tehlike" : "uyari" } : null,
                       ]}
                     />
                   </tr>
