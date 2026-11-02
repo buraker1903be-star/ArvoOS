@@ -14,7 +14,7 @@ import { ProformaBelgesi } from "../../../../billing/proforma/proforma-belgesi";
 import { YazdirDugmesi } from "../../../../billing/proforma/yazdir-dugmesi";
 import { KKart, KNot } from "../../../konsol-ui";
 import { para, tarih, tarihSaat } from "../../../bicim";
-import { proformaEsle, proformaGonder, proformaIptal } from "../../actions";
+import { proformaEsle, proformaGonder, proformaIptal, proformaSil } from "../../actions";
 import { epostaAyarli } from "@/lib/eposta-gonder";
 import { ikincil } from "../../../konsol-oku";
 import "../../../platform.css";
@@ -200,6 +200,23 @@ export default async function KonsolProformaPage({ params }: { params: Promise<{
               <button className="panel-secondary proforma-iptal" type="submit">Proformayı iptal et</button>
             </form>
           </KKart>
+        ) : null}
+
+        {/* Silme (02.11.2026): yalnızca ödenmemiş, eşlenmemiş ve elle kesilmiş
+            proforma; kalanını veritabanı da reddediyor (20261102190813).
+            Gönderim kaydı okunamazsa düğme gizli: otomatik olup olmadığını
+            bilmeden silme önermek, reddedilecek bir düğme göstermek olurdu. */}
+        {p.durum !== "odendi" && !p.odemeId && !gonderim.okunamadi && !g?.otomatik ? (
+          <KKart baslik="Proformayı sil" aciklama="Yanlış müşteriye ya da yanlış tutarla kesildiyse. Kalıcıdır; numara boşta kalır.">
+            <form action={proformaSil} className="proforma-sil">
+              <input type="hidden" name="id" value={p.id} />
+              {g?.gonderildi_at ? <KNot ton="uyari">Bu proforma {tarihSaat(g.gonderildi_at)} tarihinde müşteriye e-postayla gitti; e-posta geri alınamaz. Paneldeki bildirimi silinir.</KNot> : null}
+              <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> {p.no} numaralı proformayı kalıcı olarak silmek istiyorum.</label>
+              <button className="panel-secondary proforma-iptal" type="submit">Proformayı sil</button>
+            </form>
+          </KKart>
+        ) : g?.otomatik && p.durum !== "odendi" ? (
+          <KNot>Otomatik düzenlenen proforma silinemez, yalnızca iptal edilir: silinirse günlük iş aynısını ertesi sabah yeniden keser.</KNot>
         ) : null}
       </div>
     </div>

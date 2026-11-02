@@ -60,7 +60,7 @@ export const KURUM_ALANLARI: Record<string, AlanTanimi> = {
 export async function konsolKaydiYaz(kayit: {
   organizationId: string;
   userId: string | null;
-  entityType: "organization_license" | "product_license" | "product_bridge" | "organization_settings" | "organization_module" | "founder_scope" | "package_limits";
+  entityType: "organization_license" | "product_license" | "product_bridge" | "organization_settings" | "organization_module" | "founder_scope" | "package_limits" | "proforma";
   entityId: string;
   baslik: string;
   degisiklikler: Degisiklik[];

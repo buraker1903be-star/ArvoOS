@@ -12,3 +12,5 @@
 @media (max-width:1100px){
   .os-root .proforma-kayit .talep-izgara.ekip-izgara{grid-template-columns:minmax(0,1fr)}
 }
+/* Silme kartı (02.11.2026): onay kutusu ve düğme alt alta. */
+.os-root .proforma-sag .proforma-sil{display:flex;flex-direction:column;gap:var(--sp-2)}
