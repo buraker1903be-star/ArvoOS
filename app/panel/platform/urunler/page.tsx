@@ -1,3 +1,4 @@
+import { kopruSagliklari } from "@/lib/kopru-sagliklari";
 import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -5,9 +6,6 @@ import { getPanelContext } from "@/lib/panel-context";
 import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { zorunlu } from "../konsol-oku";
 import { PRODUCTS, SUBSCRIBER_PRODUCTS, urunSimgesi } from "@/lib/products";
-import { getArvolabBridgeHealth } from "@/lib/arvolab";
-import { getArcBridgeHealth } from "@/lib/arc-bridge";
-import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
 import { para, sayi } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
@@ -70,6 +68,8 @@ export default async function UrunlerPage({ searchParams }: {
      ayrı, özetinkiler boşuna çalışmasın diye erken dönüyor. */
   if (gorunum === "moduller") return <ModulMatrisi suzgec={suzgec} />;
 
+  /* Köprü sağlığı 60 sn önbellekte (lib/kopru-sagliklari); Sistem sağlığı canlı okuyor. */
+  const kopruSagligi = kopruSagliklari();
   const [kiraciSonucu, urunLisansSonucu, aboneSonucu, arvolab, arc, randevu] = await Promise.all([
     /* ÜÇÜ DE SAYFALI. Üçü de müşteri sayısıyla büyüyor ve PostgREST
        1.000 satırda kesip söylemiyor: ürün kartlarındaki kurum sayısı,
@@ -85,9 +85,9 @@ export default async function UrunlerPage({ searchParams }: {
     sayfaliSonuc<{ product: string; status: string }>("bireysel aboneler", (bas, son) =>
       supabase.from("product_subscribers").select("product,status").is("kurum_id", null)
         .order("id").range(bas, son)),
-    getArvolabBridgeHealth(),
-    getArcBridgeHealth(),
-    getRandevuBridgeHealth(),
+    kopruSagligi.then((k) => k.arvolab),
+    kopruSagligi.then((k) => k.arc),
+    kopruSagligi.then((k) => k.randevu),
   ]);
   /*
     Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`

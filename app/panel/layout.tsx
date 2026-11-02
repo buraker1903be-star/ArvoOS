@@ -152,6 +152,30 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const konsolHostu = isManagementHost(hostFromHeaders(await headers()));
 
   /*
+    Dock rozetleri ŞİMDİ başlıyor (02.11.2026, hızlandırma): eskiden kabuğun
+    asıl okuması (arvo_panel_kabugu) bittikten sonra ayrı bir tur
+    bekliyordu ve her konsol sayfasına bir gidiş-dönüş ekliyordu. Rozet
+    kabuğun sonucuna bakmıyor; aşağıda, kullanıldığı yerde bekleniyor.
+    Hata yakalanıyor: rozet süs, konsolu düşürmez.
+  */
+  const rozetIstegi = konsolHostu && isPlatformOwner
+    ? (() => {
+        const konsolAdmin = createAdminClient();
+        return Promise.all([
+          supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+          konsolAdmin
+            ? konsolAdmin.from("platform_subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
+            : Promise.resolve({ count: 0, error: null }),
+          // Yanıt bekleyen destek talepleri (lib/destek-kuyrugu YANIT_BEKLEYEN_DURUMLAR).
+          supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", YANIT_BEKLEYEN_DURUMLAR),
+        ]).catch((hata: unknown) => {
+          console.error("[konsol] dock rozetleri okunamadı", hata instanceof Error ? hata.message : hata);
+          return null;
+        });
+      })()
+    : null;
+
+  /*
     Konsola yalnızca kurucu girebilir. Yetkisi olmayan biri giriş yaparsa
     normal paneli BURADA göstermiyoruz: bu alan adının tamamı platform
     yönetimi, müşteri paneli için uygulama alan adı var.
@@ -499,18 +523,14 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   let bekleyenSozlesme = 0;
   let bekleyenDestek = 0;
   try {
-    const konsolAdmin = createAdminClient();
-    const [odemeSonucu, sozlesmeSonucu, destekSonucu] = await Promise.all([
-      supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-      konsolAdmin
-        ? konsolAdmin.from("platform_subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
-        : Promise.resolve({ count: 0, error: null }),
-      // Yanıt bekleyen destek talepleri (lib/destek-kuyrugu YANIT_BEKLEYEN_DURUMLAR).
-      supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", YANIT_BEKLEYEN_DURUMLAR),
-    ]);
-    bekleyenOdeme = odemeSonucu.error ? 0 : odemeSonucu.count ?? 0;
-    bekleyenDestek = destekSonucu.error ? 0 : destekSonucu.count ?? 0;
-    bekleyenSozlesme = sozlesmeSonucu.error ? 0 : sozlesmeSonucu.count ?? 0;
+    /* Düşen istek yukarıda günlüğe yazıldı (null); rozet çizilmez. */
+    const rozetler = await rozetIstegi;
+    if (rozetler) {
+      const [odemeSonucu, sozlesmeSonucu, destekSonucu] = rozetler;
+      bekleyenOdeme = odemeSonucu.error ? 0 : odemeSonucu.count ?? 0;
+      bekleyenDestek = destekSonucu.error ? 0 : destekSonucu.count ?? 0;
+      bekleyenSozlesme = sozlesmeSonucu.error ? 0 : sozlesmeSonucu.count ?? 0;
+    }
   } catch (hata) {
     console.error("[konsol] dock rozetleri okunamadı", hata instanceof Error ? hata.message : hata);
   }

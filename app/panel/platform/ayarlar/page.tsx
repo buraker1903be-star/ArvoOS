@@ -1,3 +1,4 @@
+import { kopruSagliklari } from "@/lib/kopru-sagliklari";
 import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,9 +8,6 @@ import { mesajAyarlari } from "@/lib/platform-mesaj-ayarlari";
 import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { getPaytrStatus } from "@/lib/paytr-status";
 import { pushYapilandi } from "@/lib/anlik-bildirim-gonder";
-import { getArvolabBridgeHealth } from "@/lib/arvolab";
-import { getArcBridgeHealth } from "@/lib/arc-bridge";
-import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { KNot } from "../konsol-ui";
 import { konsolKaydiCumlesi } from "@/lib/konsol-degisiklik";
 import { alanAdi, KONSOL_ALANLARI } from "@/lib/konsol-alanlari";
@@ -84,12 +82,14 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   konsolAlaniniAc(konsolKapsami, "sistem");
   const admin = createAdminClient();
 
+  /* Köprü sağlığı 60 sn önbellekte (lib/kopru-sagliklari); Sistem sağlığı canlı okuyor. */
+  const kopruSagligi = kopruSagliklari();
   const [uyelikSonucu, paytr, arvolab, arc, randevu, kapsamSonucu] = await Promise.all([
     supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", organization.id),
     getPaytrStatus(organization.id),
-    getArvolabBridgeHealth(),
-    getArcBridgeHealth(),
-    getRandevuBridgeHealth(),
+    kopruSagligi.then((k) => k.arvolab),
+    kopruSagligi.then((k) => k.arc),
+    kopruSagligi.then((k) => k.randevu),
     /* Kademeli kurucu yetkisi (02.11.2026): satırı olmayan tam yetkili. */
     supabase.from("platform_kurucu_alanlari").select("user_id,alanlar"),
   ]);
