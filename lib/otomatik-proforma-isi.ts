@@ -262,7 +262,12 @@ export async function proformayiUlastir(admin: Admin, id: string, yalnizEksik = 
   const { data: p, error } = await admin.from("platform_proformalari")
     .select("id,proforma_no,product,organization_id,subscriber_id,toplam,para_birimi,gecerlilik_tarihi,durum,otomatik,gonderildi_at,bildirildi_at")
     .eq("id", id).maybeSingle();
-  if (error || !p) return { eposta: { ok: false, hata: "Proforma bulunamadı.", alicilar: [] }, bildirim: null };
+  /* Okuma hatası "bulunamadı" DEĞİL (02.11.2026): canlıda otomatik proforma
+     migration'ı uygulanmamıştı, bu seçim "otomatik" sütununu bulamıyordu ve
+     kurucu ekranda yalnızca "Proforma bulunamadı." okuyordu — gerçek sebep
+     günlükte kalıyordu. */
+  if (error) return { eposta: { ok: false, hata: `Proforma okunamadı: ${error.message}`, alicilar: [] }, bildirim: null };
+  if (!p) return { eposta: { ok: false, hata: "Proforma bulunamadı.", alicilar: [] }, bildirim: null };
   if (p.durum !== "bekliyor") return { eposta: { ok: false, hata: "Yalnızca ödeme bekleyen proforma gönderilir.", alicilar: [] }, bildirim: null };
 
   const urun = p.product as OtomatikUrun;
