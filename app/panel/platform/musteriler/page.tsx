@@ -22,8 +22,8 @@ import { SatirTiklama } from "../../crm/satir-tiklama";
 import { TopluIslem, type CsvSatiri } from "./toplu-islem";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { enCok } from "@/lib/liste-istatistik";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { etkinlikHali, etkinlikYazisi, kurumEtkinligi, yenilemeRiski, type KurumEtkinligi, type VarlikSatiri } from "@/lib/musteri-etkinligi";
+import { etkinlikHali, etkinlikYazisi, yenilemeRiski } from "@/lib/musteri-etkinligi";
+import { musteriEtkinlikleri } from "@/lib/musteri-etkinligi-oku";
 import "../platform.css";
 import "../../hr/hr.css";
 import "../../crm/crm.css";
@@ -189,26 +189,6 @@ function bireyselSatirlariKur(aboneler: Abone[], liste: (urun: string) => number
   });
 }
 
-/*
-  PANEL ETKİNLİĞİ (02.11.2026): kim en son ne zaman girdi. Sunucu
-  anahtarıyla, sayfalı (kurum × kişi başına bir satır; kullanıcı sayısı
-  kadar büyüyor). Okunamazsa sütun "—" kalıyor ve ekranda yazıyor;
-  liste düşmüyor — etkinlik süs değil ama listenin asıl verisi de değil.
-  Şimdiki zaman bileşen DIŞINDA okunuyor (react-hooks/purity).
-*/
-async function etkinlikleriOku(): Promise<{ harita: Map<string, KurumEtkinligi> | null; simdi: number }> {
-  const simdi = Date.now();
-  const admin = createAdminClient();
-  if (!admin) return { harita: null, simdi };
-  const sonuc = await sayfaliSonuc<VarlikSatiri>("panel etkinliği", (bas, son) =>
-    admin.from("user_presence").select("organization_id,last_seen_at").order("organization_id").order("user_id").range(bas, son));
-  if (sonuc.error) {
-    console.error("[konsol] panel etkinliği okunamadı", sonuc.error.message);
-    return { harita: null, simdi };
-  }
-  return { harita: kurumEtkinligi(sonuc.data ?? [], simdi), simdi };
-}
-
 /** Türkçe duyarsız arama: "İş" ile "is" eşleşsin. */
 const sadelestir = (deger: string) =>
   deger.replace(/İ/g, "i").replace(/I/g, "ı").toLocaleLowerCase("tr-TR")
@@ -297,7 +277,7 @@ export default async function MusterilerPage({ searchParams }: {
           .or(`email.ilike.%${sunucuDeseni}%,full_name.ilike.%${sunucuDeseni}%,product.ilike.%${sunucuDeseni}%`)
           .limit(LISTE_SINIRI)
       : Promise.resolve({ data: [], error: null }),
-    etkinlikleriOku(),
+    musteriEtkinlikleri(),
   ]);
   /*
     Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
