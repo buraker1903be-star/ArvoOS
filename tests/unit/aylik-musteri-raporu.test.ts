@@ -86,3 +86,12 @@ test("değişim yüzdesi", () => {
   assert.equal(degisimYuzdesi(50, 100), -50);
   assert.equal(degisimYuzdesi(50, 0), null);
 });
+
+test("kayıp nedeni SON kapanan lisanstan", () => {
+  /* Çekirdek Eylül'de fiyat yüzünden kapandı, ArvoLab Ekim'de kullanmadığı
+     için: müşteriyi kaybettiren Ekim'deki kapanış. */
+  const r = aylikRapor(AY, [kurum("giden", { license_status: "canceled", closed_at: "2026-09-20T10:00:00Z", kapanis_nedeni: "fiyat" })], [
+    { organization_id: "giden", product: "arvolab", status: "canceled", current_period_end: null, trial_ends_at: null, created_at: "2026-01-10T10:00:00Z", closed_at: "2026-10-15T10:00:00Z", kapanis_nedeni: "kullanmiyor", kapanis_notu: "ekip küçüldü" },
+  ], []);
+  assert.deepEqual(r.kaybedilenKurumlar.map((k) => [k.bitis, k.neden, k.not]), [["2026-10-15", "kullanmiyor", "ekip küçüldü"]]);
+});

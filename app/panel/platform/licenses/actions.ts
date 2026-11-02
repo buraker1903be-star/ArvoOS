@@ -11,6 +11,7 @@ import { URUN_KOTALARI } from "@/lib/urun-kotasi";
 import { urunLisansiniYansit } from "@/lib/urun-yansitma";
 import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 import { kurusOku } from "@/lib/turkish-amount";
+import { kapanisNedeniOku } from "@/lib/kapanis-nedeni";
 import { alanFarki, konsolKaydiYaz, LISANS_ALANLARI, URUN_LISANS_ALANLARI } from "../konsol-kaydi";
 
 /*
@@ -89,9 +90,19 @@ async function updateOrganizationLicense__impl(formData: FormData) {
     supabase.from("organization_licenses").select(Object.keys(LISANS_ALANLARI).join(",")).eq("organization_id", organizationId).maybeSingle(),
     "ArvoOS lisansı",
   );
+  /* Kayıp nedeni (02.11.2026, lib/kapanis-nedeni): açıktan İptal'e geçerken zorunlu.
+     Önceki durum okunamadıysa (once === undefined) kapanış sayılır ve neden istenir. */
+  const kapanis = kapanisNedeniOku({
+    yeniDurum: licenseStatus,
+    eskiDurum: once ? String((once as { license_status?: string }).license_status ?? "") || null : null,
+    neden: String(formData.get("kapanis_nedeni") ?? ""),
+    not: String(formData.get("kapanis_notu") ?? ""),
+  });
   const now = new Date().toISOString();
   const payload = {
     organization_id: organizationId,
+    kapanis_nedeni: kapanis.neden,
+    kapanis_notu: kapanis.not,
     plan_code: planCode,
     license_status: licenseStatus,
     trial_ends_at: trialEndsAt ? new Date(trialEndsAt).toISOString() : null,
@@ -181,11 +192,19 @@ async function updateProductLicense__impl(formData: FormData) {
       .eq("organization_id", organizationId).eq("product", product).maybeSingle(),
     `${productName(product)} lisansı`,
   );
+  const kapanis = kapanisNedeniOku({
+    yeniDurum: status,
+    eskiDurum: once ? String((once as { status?: string }).status ?? "") || null : null,
+    neden: String(formData.get("kapanis_nedeni") ?? ""),
+    not: String(formData.get("kapanis_notu") ?? ""),
+  });
   const now = new Date().toISOString();
   const yeni = {
     organization_id: organizationId,
     product,
     status,
+    kapanis_nedeni: kapanis.neden,
+    kapanis_notu: kapanis.not,
     plan_code: planCode || null,
     monthly_fee: monthlyFee,
     limits,

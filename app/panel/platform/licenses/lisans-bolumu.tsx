@@ -49,6 +49,9 @@ type LicenseRow = {
   extra_user_cap: number | null;
   suspended_at: string | null;
   suspension_reason: string | null;
+  /** Kayıp nedeni (20261102205003); migration öncesi yok. */
+  kapanis_nedeni?: string | null;
+  kapanis_notu?: string | null;
 };
 
 type ProductLicenseRow = {
@@ -59,6 +62,8 @@ type ProductLicenseRow = {
   monthly_fee: number | null;
   current_period_end: string | null;
   suspension_reason: string | null;
+  kapanis_nedeni?: string | null;
+  kapanis_notu?: string | null;
 };
 
 
@@ -91,7 +96,9 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
     Promise.all([
       supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
       supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", selected.id).eq("is_active", true),
-      supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,suspension_reason,limits").eq("organization_id", selected.id),
+      /* "*": kayıp nedeni sütunları (20261102205003) canlıya uygulanmadan önce de
+         pencere açılsın — adıyla istenen olmayan bir sütun bütün okumayı düşürürdü. */
+      supabase.from("organization_product_licenses").select("*").eq("organization_id", selected.id),
     ]),
     /* Depolama kullanımı: limit tek başına bir şey anlatmıyor ("512000 MB").
        5 dk önbellekte (lib/lisans-olcumleri). */
@@ -336,6 +343,8 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                 extraUserFee: license.extra_user_fee ? liraYazisi(Number(license.extra_user_fee)) : "",
                 extraUserCap: String(Number(license.extra_user_cap ?? 0)),
                 suspensionReason: license.suspension_reason ?? "",
+                kapanisNedeni: license.kapanis_nedeni ?? "",
+                kapanisNotu: license.kapanis_notu ?? "",
               },
             },
             ...ADDON_PRODUCTS.map((product) => {
@@ -390,6 +399,8 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                   monthlyFee: row?.monthly_fee ? liraYazisi(Number(row.monthly_fee)) : "",
                   currentPeriodEnd: tarihDegeri(row?.current_period_end ?? null),
                   suspensionReason: row?.suspension_reason ?? "",
+                  kapanisNedeni: row?.kapanis_nedeni ?? "",
+                  kapanisNotu: row?.kapanis_notu ?? "",
                 },
               };
             }),

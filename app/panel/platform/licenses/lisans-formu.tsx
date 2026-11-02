@@ -8,6 +8,7 @@ import { PAKET_VARSAYILANI, type PaketLimiti } from "@/lib/paket-limitleri";
 import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { KayipNedeniAlani } from "./kayip-nedeni-alani";
 
 /*
   ArvoOS çekirdek lisans formu.
@@ -49,6 +50,9 @@ export type LisansDegerleri = {
   /** Dahil limitin üstüne açılabilen koltuk sayısı. */
   extraUserCap: string;
   suspensionReason: string;
+  /** Kayıp nedeni ve notu (lib/kapanis-nedeni); İptal'e geçerken istenir. */
+  kapanisNedeni: string;
+  kapanisNotu: string;
 };
 
 // Paket adları tek kaynaktan, sitedeki adla aynı (lib/paket-adlari).
@@ -118,6 +122,9 @@ export function LisansFormu({
   const kirli = (Object.keys(baslangic) as (keyof LisansDegerleri)[]).some((alan) => deger[alan] !== baslangic[alan]);
   const askida = deger.licenseStatus === "suspended";
   const denemede = deger.licenseStatus === "trialing";
+  const iptal = deger.licenseStatus === "canceled";
+  /* Zaten İptal olan lisansı düzenlerken neden istenmiyor (kapanış daha önce kaydedildi). */
+  const kapaniyor = iptal && baslangic.licenseStatus !== "canceled";
 
   const mb = Number.parseInt(deger.storageLimitMb, 10);
   const kredi = Number.parseInt(deger.aiCreditLimit, 10);
@@ -307,6 +314,17 @@ export function LisansFormu({
                   : "Durum Askıda olmadığı için kaydedilmeyecek."}
               </small>
             </label>
+          </div>
+        </fieldset>
+      ) : null}
+
+      {/* Kayıp nedeni (02.11.2026): İptal edilen lisansta aylık rapor neden gittiğini buradan okuyor. */}
+      {iptal ? (
+        <fieldset className="plt-alan-grubu" data-tone={kapaniyor ? "danger" : undefined}>
+          <legend>Kayıp</legend>
+          <div className="panel-form kayit-formu">
+            <KayipNedeniAlani neden={deger.kapanisNedeni} not={deger.kapanisNotu} zorunlu={kapaniyor}
+              nedenDegisti={(v) => yaz("kapanisNedeni", v)} notDegisti={(v) => yaz("kapanisNotu", v)} />
           </div>
         </fieldset>
       ) : null}

@@ -54,7 +54,7 @@ export type UrunKarti =
       tur: "ek";
       /** Ürün kullanılıyorsa (lisans satırı inactive değil) erişim açık mı; kullanılmıyorsa null — anahtar yok. */
       erisimAcik: boolean | null;
-      baslangic: { status: string; planCode: string; monthlyFee: string; currentPeriodEnd: string; suspensionReason: string };
+      baslangic: { status: string; planCode: string; monthlyFee: string; currentPeriodEnd: string; suspensionReason: string; kapanisNedeni: string; kapanisNotu: string };
       kotalar: KotaAlani[];
       yansima: { uyari: boolean; notu: string };
     });
