@@ -99,3 +99,25 @@ describe("alıcı bilgisi", () => {
     assert.throws(() => aliciOku({ ...bos, adSoyad: "A", eposta: "ali" }, "abone"), /e-posta/);
   });
 });
+
+test("kurum alıcısı resmi bilgilerden; yetkili ve e-posta sahiplerden, eksikler sayılı", async () => {
+  const { kurumAlicisiKur } = await import("@/lib/proforma");
+  const kurum = {
+    name: "akademik", display_name: "Akademik Merkez", legal_name: "Akademik Merkez Eğitim Ltd. Şti.",
+    legal_address: "Moda Cad. No: 12", legal_district: "Kadıköy", legal_city: "İstanbul",
+    tax_office: "Kadıköy", tax_number: "1234567890", contact_email: null,
+  };
+  const s = kurumAlicisiKur(kurum, [{ ad: null, eposta: "b@x.co" }, { ad: "Ayşe Yılmaz", eposta: "a@x.co" }]);
+  assert.equal(s.alici.unvan, "Akademik Merkez Eğitim Ltd. Şti.");
+  assert.equal(s.alici.adres, "Moda Cad. No: 12, Kadıköy / İstanbul");
+  /* Adı olan sahip yetkili; iletişim adresi yoksa onun e-postası belgeye. */
+  assert.equal(s.alici.adSoyad, "Ayşe Yılmaz");
+  assert.equal(s.alici.eposta, "a@x.co");
+  assert.deepEqual(s.sahipler.map((x) => x.eposta), ["a@x.co", "b@x.co"]);
+  assert.deepEqual(s.eksikler, []);
+
+  const bos = kurumAlicisiKur({ ...kurum, legal_name: null, tax_office: null, tax_number: null, legal_address: null, legal_district: null, legal_city: null, contact_email: "bilgi@x.co" }, []);
+  assert.equal(bos.alici.unvan, "Akademik Merkez");
+  assert.equal(bos.alici.eposta, "bilgi@x.co");
+  assert.deepEqual(bos.eksikler, ["ticari unvan", "vergi dairesi", "vergi numarası", "adres"]);
+});

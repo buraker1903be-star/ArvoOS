@@ -292,7 +292,8 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
     ]);
     proformaMusterileri = [
       ...kurumAlici.filter((k) => musteriMi(k)).map((k): ProformaMusterisi => ({
-        deger: `kurum:${k.id}`, tur: "kurum", ad: k.ad, arama: [k.alici.unvan, k.alici.adSoyad, k.alici.eposta, k.alici.vergiNo].filter(Boolean).join(" "), alici: k.alici,
+        deger: `kurum:${k.id}`, tur: "kurum", ad: k.ad, alici: k.alici, sahipler: k.sahipler, eksikler: k.eksikler,
+        arama: [k.alici.unvan, k.alici.adSoyad, k.alici.eposta, k.alici.vergiNo, ...k.sahipler.map((x) => x.eposta)].filter(Boolean).join(" "),
       })),
       ...aboneSatirlari.map((a): ProformaMusterisi => {
         const adSoyad = a.full_name || aboneAdlari.get(a.external_user_id) || null;

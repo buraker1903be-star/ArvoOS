@@ -58,3 +58,8 @@
   .panel-root .pfo-kalem>:nth-child(5){grid-area:t}
   .panel-root .pfo-kalem>:nth-child(6){grid-area:x}
 }
+
+/* Alıcının kime gideceği ve eksik resmi bilgiler (02.11.2026). */
+.panel-root .pfo-alici-bilgi{display:flex;flex-direction:column;gap:6px;padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);background:var(--surface-2);font-size:var(--fs-sm);color:var(--ink-soft)}
+.panel-root .pfo-alici-bilgi p{margin:0;overflow-wrap:anywhere}
+.panel-root .pfo-alici-bilgi .pfo-uyari{color:var(--warning)}

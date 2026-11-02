@@ -208,3 +208,54 @@ export function kdvDahilProforma(brutKalemler: ProformaKalemi[], kdvOrani: numbe
   const toplam = brutKalemler.reduce((t, k) => t + kalemTutari(k), 0);
   return { kalemler, araToplam, kdv: toplam - araToplam, toplam };
 }
+
+/*
+  KURUMUN PROFORMA ALICISI (02.11.2026, kurum sahibinin isteği: "kurumu
+  seçip ownerlara düşsün, kurumun girdiği bilgiler otomatik gelsin").
+
+  Bilgiler kurumun kendi panelinde girdiği RESMİ BİLGİLERDEN (Ayarlar →
+  Resmi bilgiler: legal_name, legal_address, il/ilçe, vergi dairesi ve
+  numarası). Belge Kurum Sahiplerine gidiyor (lib/otomatik-proforma-isi);
+  form da artık onları gösteriyor. Eskiden:
+   - e-posta kutusu kurumun genel iletişim adresini gösteriyordu, belgenin
+     GİDECEĞİ sahip adresleri hiçbir yerde yazmıyordu;
+   - yetkili adı yalnızca profilden geliyordu, profili boş sahip "—" kalıyordu;
+   - kurum resmi bilgilerini girmemişse form boş açılıyor ve bunu söylemiyordu.
+  Saf: testi tests/unit/proforma.test.ts.
+*/
+export type KurumResmiBilgisi = {
+  name: string; display_name: string | null;
+  legal_name: string | null; legal_address: string | null; legal_district: string | null; legal_city: string | null;
+  tax_office: string | null; tax_number: string | null; contact_email: string | null;
+};
+export type KurumSahibi = { ad: string | null; eposta: string | null };
+
+export function kurumAlicisiKur(k: KurumResmiBilgisi, sahipler: readonly KurumSahibi[]): {
+  alici: ProformaAlici; sahipler: KurumSahibi[]; eksikler: string[];
+} {
+  const ilce = [k.legal_district, k.legal_city].filter(Boolean).join(" / ");
+  const adres = [k.legal_address, ilce].filter(Boolean).join(", ") || null;
+  /* Adı olan sahip önce, sonra ada göre: belgedeki yetkili her açılışta aynı kişi. */
+  const sirali = [...sahipler].sort((a, b) => Number(!a.ad) - Number(!b.ad) || (a.ad ?? a.eposta ?? "").localeCompare(b.ad ?? b.eposta ?? "", "tr"));
+  const sahipEpostasi = sirali.find((s) => s.eposta)?.eposta ?? null;
+  const eksikler = [
+    !k.legal_name ? "ticari unvan" : null,
+    !k.tax_office ? "vergi dairesi" : null,
+    !k.tax_number ? "vergi numarası" : null,
+    !k.legal_address ? "adres" : null,
+  ].filter((x): x is string => Boolean(x));
+  return {
+    alici: {
+      // Unvan girilmemişse kurumun adı: belgede boş muhatap olmasın, kurucu düzeltebilir.
+      unvan: k.legal_name || k.display_name || k.name,
+      adSoyad: sirali.find((s) => s.ad)?.ad ?? null,
+      vergiDairesi: k.tax_office,
+      vergiNo: k.tax_number,
+      adres,
+      /* Belgeye basılan e-posta: kurumun iletişim adresi, yoksa ilk sahibin. */
+      eposta: k.contact_email || sahipEpostasi,
+    },
+    sahipler: sirali,
+    eksikler,
+  };
+}

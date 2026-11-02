@@ -9,7 +9,7 @@ import { kurucuyaBildir } from "@/lib/kurucu-bildirimi";
 import { epostaGonder, type EpostaSonucu } from "@/lib/eposta-gonder";
 import { arvolabClient } from "@/lib/arvolab";
 import { otomatikYenilemeAcik } from "@/lib/paytr-kart-akisi";
-import type { ProformaAlici } from "@/lib/proforma";
+import { kurumAlicisiKur, type ProformaAlici } from "@/lib/proforma";
 import {
   alicilariTopla, OTOMATIK_KDV_ORANI, otomatikKalemler, proformaBildirimi, proformaPostasi, proformaZamaniMi, sonrakiDonemSonu, turkiyeGunu,
   type OtomatikUrun,
@@ -169,7 +169,15 @@ async function adaylariKes(admin: Admin, bugun: string, adaylar: Aday[], sonuc: 
     // hata-tamam: sahip adı yalnızca belgedeki "Ad soyad"; okunamazsa boş kalır.
     : { data: [] as { id: string; full_name: string | null }[] };
   const profilAdi = new Map(((profiller ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name]));
-  const sahipAdi = new Map(sahipListesi.map((s) => [s.organization_id, profilAdi.get(s.user_id) ?? null]));
+  /* Kurum başına bütün sahipler: yetkiliyi elle kesilen proformayla aynı kural
+     seçiyor (lib/proforma kurumAlicisiKur). Eskiden haritaya son yazılan
+     sahip kalıyordu, yani birden çok sahibi olan kurumda yetkili rastgeleydi. */
+  const kurumSahipleri = new Map<string, { ad: string | null; eposta: string | null }[]>();
+  for (const s of sahipListesi) {
+    const liste = kurumSahipleri.get(s.organization_id) ?? [];
+    liste.push({ ad: profilAdi.get(s.user_id)?.trim() || null, eposta: null });
+    kurumSahipleri.set(s.organization_id, liste);
+  }
 
   let bireyselUcret: number | null | undefined;
   for (const a of adaylar) {
@@ -202,12 +210,11 @@ async function adaylariKes(admin: Admin, bugun: string, adaylar: Aday[], sonuc: 
 
     let alici: ProformaAlici;
     if (k) {
-      const ilce = [k.legal_district, k.legal_city].filter(Boolean).join(" / ");
+      const kurulan = kurumAlicisiKur(k, kurumSahipleri.get(k.id) ?? []).alici;
       alici = {
-        unvan: k.legal_name || k.display_name || k.name, adSoyad: sahipAdi.get(k.id) ?? null, vergiDairesi: k.tax_office,
+        ...kurulan,
         // Elle kesilen proformadaki kuralın aynısı (lib/proforma aliciOku): rakamlar, 10 haneli VKN ya da 11 haneli TCKN.
         vergiNo: ((r) => (r.length === 10 || r.length === 11 ? r : null))((k.tax_number ?? "").replace(/\D/g, "")),
-        adres: [k.legal_address, ilce].filter(Boolean).join(", ") || null, eposta: k.contact_email,
       };
     } else {
       const ab = abone.get(a.musteriId);
