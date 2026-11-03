@@ -1,17 +1,18 @@
 /* Yazışmalar çekmecesi (akis-cekmecesi.tsx). Gerekçe bileşende. */
 
 /* Sütundaki özet: kanal başına bir düğme, son mesajın ilk iki satırı. */
-.akis-ozet{display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-4)}
-.akis-ozet-baslik{margin:0 0 var(--sp-1);font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
-.akis-ozet ul{display:flex;flex-direction:column;gap:var(--sp-2);margin:0;padding:0;list-style:none}
-.akis-ozet-satir{display:flex;flex-direction:column;gap:4px;width:100%;padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+/* Sıkı: sütun daraldı (03.11.2026), arta kalan genişlik görevlere gitti. */
+.akis-ozet{display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-3)}
+.akis-ozet-baslik{margin:0 0 2px;font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--muted)}
+.akis-ozet ul{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.akis-ozet-satir{display:flex;flex-direction:column;gap:2px;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,background .15s ease}
 .akis-ozet-satir:hover{border-color:var(--primary);background:var(--surface-2)}
 .akis-ozet-satir:focus-visible{outline:none;box-shadow:0 0 0 2px var(--focus)}
 .akis-ozet-satir.is-secili{border-color:var(--primary);background:var(--primary-soft)}
 .akis-ozet-ust{display:flex;align-items:center;gap:var(--sp-2)}
 .akis-ozet-ust b{font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
-.akis-ozet-ust time{margin-left:auto;color:var(--muted);font-size:var(--fs-micro)}
-.akis-ozet-metin{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;color:var(--muted);font-size:var(--fs-sm);line-height:1.45;overflow-wrap:anywhere}
+.akis-ozet-ust time{margin-left:auto;white-space:nowrap;color:var(--muted);font-size:var(--fs-micro)}
+.akis-ozet-metin{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;color:var(--muted);font-size:var(--fs-micro);line-height:1.45;overflow-wrap:anywhere}
 .akis-ozet-metin em{font-style:normal;font-weight:var(--fw-semibold);color:var(--ink)}
 .akis-ozet-metin.is-bos{font-style:italic}
 .akis-rozet{padding:1px 8px;border-radius:var(--r-pill);background:var(--danger-soft);color:var(--danger);font-size:var(--fs-micro);font-weight:var(--fw-semibold);white-space:nowrap}
@@ -40,6 +41,11 @@
 /* Geniş çekmecede balonlar daha geniş açılabilir: uzun mesaj daha az satıra kırılır. */
 .akis-cekmece .opd-sohbet-satir{max-width:88%}
 
+/* Sütunlar ikiye inince (≤1200px) özet tam genişlikte bir satır: kartlar yan yana. */
+@media(max-width:1200px){
+  .talep-izgara>.akis-ozet{grid-column:1/-1}
+  .akis-ozet ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
 @media(max-width:760px){
   .akis-cekmece{top:0;right:0;bottom:0;width:100vw;border:0;border-radius:0;transform:translateY(24px)}
 }
