@@ -1215,3 +1215,6 @@
 .talep-istatistik .istat-satirlar>div{padding:6px 0}
 .os-root .talep-istatistik .istat-kart{gap:6px;padding:var(--sp-2) var(--sp-3)}
 .talep-istatistik .cari-baslik{margin-bottom:0}
+/* Her kalem kendi ızgarası: değer sütunu "auto" iken "₺0" ile "₺828,8 B" çubuğu farklı yere itiyordu. Sabit sütun, sağa yaslı değer. */
+.talep-istatistik .istat-kart-satir{grid-template-columns:minmax(0,1fr) 64px 76px}
+.talep-istatistik .istat-kart-satir>strong{text-align:right;white-space:nowrap}
