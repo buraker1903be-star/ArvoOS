@@ -8,7 +8,7 @@ import { reportActionFailure } from "@/lib/action-diagnostics";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
-import { setWorkflowAssistants, addWorkflowStep, archiveWorkflow, changeWorkType, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { setWorkflowAssistants, archiveWorkflow, changeWorkType, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { dueBadge, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
@@ -1022,15 +1022,13 @@ export default async function OperationDetailPage({
                 </Fragment>
               );
             })}
-            {!steps.length ? <p className="opd-empty">Henüz görev yok. Aşağıdan ilk görevi ekleyin.</p> : null}
+            {!steps.length ? <p className="opd-empty">Henüz görev yok. Görevler çalışma türünün listesinden gelir; “Türü değiştir” ile seçilir.</p> : null}
           </div>
-          {/* Sonradan gelen adım: tez bittikten sonra istenen sunum dosyası gibi. */}
-          <form className="opd-add" action={addWorkflowStep}>
-            <input type="hidden" name="workflow_id" value={workflow.id} />
-            <input name="title" required minLength={2} maxLength={180} placeholder="Yeni görev ekle" aria-label="Yeni görev" />
-            <TarihSecici className="tsc-kucuk" name="due_date" aria-label="Yeni görevin teslim tarihi" />
-            <button className="panel-primary" type="submit">Ekle</button>
-          </form>
+          {/*
+            "Yeni görev ekle" satırı 03.11.2026'da kurum sahibinin isteğiyle
+            kaldırıldı; görevler çalışma türünün listesinden geliyor. Sunucu
+            işlemi (addWorkflowStep) yerinde; yeniden açılırsa form buraya döner.
+          */}
         </section>
 
       </div>
