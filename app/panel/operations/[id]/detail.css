@@ -652,7 +652,16 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-duzen-v4>.opd-evrak-kart{grid-area:evrak}
 .opd-duzen-v4>.opd-durum-kart{grid-area:durum;align-self:stretch}
 .opd-duzen-v4>.opd-evrak-kart{align-self:stretch}
-.os-root .opd-duzen-v4>.opd-gorevler{grid-area:gorevler;align-self:stretch;min-height:0;max-height:calc(100dvh - 322px);overflow:auto;scrollbar-width:thin}
+/*
+  GÖREVLER SOL KARTLARLA AYNI HİZADA (03.11.2026). Eskiden sabit bir
+  yükseklik sınırı vardı (100dvh − 322px) ve sol kartlar ondan uzun
+  olunca görev kartı yukarıda bitiyordu. contain:size görevlerin kendi
+  boyunu ızgaraya söylemesini engelliyor: kart iki satırın tamamına
+  uzanıyor, içerik kendi içinde kayıyor. Alt sınır, sol taraf kısa
+  kaldığında görev listesinin ekranı doldurması için; o zaman sol
+  kartlar da (align-self:stretch) aynı boya uzar.
+*/
+.os-root .opd-duzen-v4>.opd-gorevler{grid-area:gorevler;align-self:stretch;contain:size;min-height:calc(100dvh - 322px);overflow:auto;scrollbar-width:thin}
 .opd-kart{display:flex;flex-direction:column;gap:var(--sp-3);margin:0;padding:var(--sp-4)}
 /* Kart ve grup başlıkları paneldeki alan etiketleriyle aynı (opd-ff-etiket: "DURUM", "TOP KİMDE").
    .panel-card h2/h3 genel kuralı 19/16 px veriyordu; seçici o yüzden kartla birlikte. */
@@ -715,7 +724,7 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 
 @media (max-width:1200px){
   .opd-duzen-v4{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"musteri iletisim" "evrak durum" "gorevler gorevler";grid-template-rows:none}
-  .os-root .opd-duzen-v4>.opd-gorevler{max-height:none;overflow:visible}
+  .os-root .opd-duzen-v4>.opd-gorevler{contain:none;min-height:0;overflow:visible}
 }
 @media (max-width:760px){
   .opd-duzen-v4{grid-template-columns:minmax(0,1fr);grid-template-areas:"musteri" "iletisim" "durum" "evrak" "gorevler"}
