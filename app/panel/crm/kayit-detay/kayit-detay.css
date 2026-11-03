@@ -1049,5 +1049,21 @@
   */
   .os-root main.kd-tek-sayfa{gap:var(--sp-4)}
   .kd-tek-ekran .opd-kanal{min-height:36px}
+  /*
+    Müşteri sayfasının kayıt kartı: süzgeç yerinde kalır, yalnızca tablo
+    kayar. Tablo kartın genişliğine sabit; uzun alt satır (hizmet · no ·
+    temsilci) üç noktayla kısalır. Eskiden tablo içeriğine göre genişleyip
+    kartın altında yatay kaydırma çubuğu çıkarıyordu.
+  */
+  .os-root main.kd-tek-sayfa>.kd-tek-ekran>.kd-ana.talep-bilgi{display:flex;flex-direction:column;overflow:hidden}
+  .os-root .kd-tek-ekran>.kd-ana>.talep-tablo{flex:1 1 auto;min-height:0;overflow:auto;scrollbar-width:thin}
+  .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"]{table-layout:fixed;width:100%;min-width:0}
+  .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"] :is(th,td):nth-child(1){width:96px}
+  .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"] :is(th,td):nth-child(3){width:120px}
+  .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"] :is(th,td):nth-child(4){width:140px}
+  .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"] :is(th,td):nth-child(5){width:110px}
+  .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"] :is(th,td):nth-child(6){width:32px}
+  .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"] td[data-label="Kayıt"]{min-width:0}
+  .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"] td[data-label="Kayıt"] :is(.crm-table-title,.crm-table-sub){display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .kd-tek-ekran :is(.kd-alt-sol,.kd-alt-sag) :is(.panel-secondary,.panel-primary){min-height:34px}
 }
