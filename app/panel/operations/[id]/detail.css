@@ -646,14 +646,19 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   teslimi; sağda görevler ekranın kalanı. Görevler kendi içinde kayar,
   sol taraf kaydırma istemeyecek kadar kısa tutuldu.
 */
-.opd-duzen-v4{display:grid;grid-template-columns:minmax(280px,1.75fr) minmax(190px,1fr) minmax(0,4.4fr);grid-template-areas:"musteri iletisim gorevler" "durum durum gorevler";grid-template-rows:auto 1fr;gap:var(--sp-4);align-items:start}
+.opd-duzen-v4{display:grid;grid-template-columns:minmax(280px,1.9fr) minmax(196px,.85fr) minmax(0,4.6fr);grid-template-areas:"musteri iletisim gorevler" "durum durum gorevler";grid-template-rows:auto 1fr;gap:var(--sp-4);align-items:start}
 .opd-duzen-v4>.opd-musteri{grid-area:musteri;align-self:stretch}
 .opd-duzen-v4>.opd-iletisim{grid-area:iletisim;align-self:stretch}
 .opd-duzen-v4>.opd-durum-kart{grid-area:durum}
 .os-root .opd-duzen-v4>.opd-gorevler{grid-area:gorevler;align-self:stretch;min-height:0;max-height:calc(100dvh - 322px);overflow:auto;scrollbar-width:thin}
 .opd-kart{display:flex;flex-direction:column;gap:var(--sp-3);margin:0;padding:var(--sp-4)}
-.opd-kart-baslik{margin:0;color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium);letter-spacing:.08em;text-align:center;text-transform:uppercase}
-.opd-kanal-grup{margin:var(--sp-1) 0 -4px;color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium);letter-spacing:.08em;text-transform:uppercase}
+/* Kart ve grup başlıkları paneldeki alan etiketleriyle aynı (opd-ff-etiket: "DURUM", "TOP KİMDE").
+   .panel-card h2/h3 genel kuralı 19/16 px veriyordu; seçici o yüzden kartla birlikte. */
+.opd-kart :is(.opd-kart-baslik,.opd-kanal-grup){margin:0;color:var(--muted);font-family:inherit;font-size:var(--fs-micro);font-weight:700;letter-spacing:.02em;line-height:1.3;text-transform:uppercase}
+.opd-kart .opd-kart-baslik{color:var(--ink)}
+.opd-kart .opd-kanal-grup{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);margin-top:var(--sp-1)}
+.opd-kart .opd-kanal-grup>span{white-space:nowrap}
+.opd-kart .opd-kanal-grup time{min-width:0;overflow:hidden;color:var(--muted);font-weight:var(--fw-medium);letter-spacing:0;text-overflow:ellipsis;text-transform:none;white-space:nowrap}
 
 /* Müşteri kartı */
 .opd-iletisim-dugmeleri{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:var(--sp-2)}
@@ -678,7 +683,7 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-durum-alanlar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3)}
 .opd-durum-alanlar>.opd-ff{display:flex;flex-direction:column;align-items:stretch;gap:6px}
 .opd-durum-alanlar .opd-ff-not{white-space:normal}
-.opd-evrak{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;min-height:96px;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);color:var(--ink);font:inherit;text-align:center;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease}
+.opd-evrak{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;min-height:76px;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);color:var(--ink);font:inherit;text-align:center;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease}
 .opd-evrak:hover{border-color:var(--primary);box-shadow:var(--shadow-sm)}
 .opd-evrak b{font-size:var(--fs-md)}
 .opd-evrak span{color:var(--muted);font-size:var(--fs-sm)}
@@ -687,8 +692,9 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-evrak.is-tamam{border-color:color-mix(in srgb,var(--success) 45%,var(--line))}
 
 /* Başlıktaki termin */
-.opd-bas-termin{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
-.opd-bas-termin p{margin:0;color:var(--ink);font-size:var(--fs-md)}
+/* Termin tek satırda: tarih, kalan gün, değiştir düğmesi (üç satır üst üste başlığı uzatıyordu). */
+.opd-bas-termin{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-2)}
+.opd-bas-termin p{margin:0;color:var(--ink);font-size:var(--fs-sm)}
 .os-root .opd-bas-termin-dugme{min-height:30px;padding:0 var(--sp-3);border-radius:var(--r-pill);font-size:var(--fs-micro)}
 
 /* Müşteri ayrıntıları penceresi: iki sütun bölüm kartı */

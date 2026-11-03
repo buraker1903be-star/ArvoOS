@@ -17,9 +17,9 @@
 .panel-modal-root[data-boy="tam"]{--modal-w:1180px}
 /* İş detayının pencereleri (03.11.2026, kurum sahibinin isteği: "biraz daha geniş ve yüksek").
    "yazisma" sohbet gibi sabit boylu (yazma alanı altta kalsın), "buyuk" içeriği kadar uzar. */
-.panel-modal-root[data-boy="yazisma"]{--modal-w:1040px;padding:16px}
+.panel-modal-root[data-boy="yazisma"]{--modal-w:1200px;padding:16px}
 .panel-modal-root[data-boy="yazisma"] .panel-modal{height:min(92dvh,940px);max-height:min(92dvh,940px)}
-.panel-modal-root[data-boy="buyuk"]{--modal-w:1100px;padding:16px}
+.panel-modal-root[data-boy="buyuk"]{--modal-w:1240px;padding:16px}
 .panel-modal-root[data-boy="buyuk"] .panel-modal{max-height:min(92dvh,1040px)}
 /* "ekran": prim hesabı gibi hareket listesi + özet yan yana duran pencereler.
    "tam" (1180) dizüstü ekranda iki sütunu sıkıştırıyordu; kenar boşluğu da daralıyor. */

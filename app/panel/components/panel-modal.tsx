@@ -53,6 +53,8 @@ type PanelModalProps = {
     erişilebilir ad olarak kullanılır.
   */
   tetik?: ReactNode;
+  /** Pencere düğmeyle açıldığında (iş detayının bildirim rozetleri "görüldü" sayar). */
+  acilinca?: () => void;
   children: ReactNode;
 };
 
@@ -80,7 +82,7 @@ const subscribeNothing = () => () => undefined;
 */
 export function PanelModal({
   triggerLabel, triggerNote, triggerBadge, triggerTone = "neutral", triggerClassName = "panel-secondary",
-  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, kapaninca, dugmesiz = false, yalnizcaTelefonda = false, tetik, children,
+  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, kapaninca, dugmesiz = false, yalnizcaTelefonda = false, tetik, acilinca, children,
 }: PanelModalProps) {
   /* Sunucuda pencere zaten çizilmiyor (portal istemciyi bekliyor); bu
      yüzden ilk durumu tarayıcıda ekran genişliğine bakarak kurmak
@@ -104,8 +106,9 @@ export function PanelModal({
   const router = useRouter();
   const setOpen = useCallback((deger: boolean) => {
     setAcik(deger);
+    if (deger) acilinca?.();
     if (!deger && kapaninca) router.replace(kapaninca, { scroll: false });
-  }, [router, kapaninca]);
+  }, [router, kapaninca, acilinca]);
   const titleId = useId();
   const kokRef = useRef<HTMLDivElement>(null);
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);

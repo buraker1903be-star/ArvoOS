@@ -29,6 +29,8 @@ import { statusTone } from "@/lib/status-tone";
 import { contractStatusLabel, proposalStatusLabel } from "../../crm/status-labels";
 import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
+import { KanalDugmesi } from "./kanal-dugmesi";
+import { ozetZamani } from "../../crm/kayit-detay/akis-kanallari";
 import { MusteriSohbeti } from "./musteri-sohbet";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
@@ -388,10 +390,14 @@ export default async function OperationDetailPage({
     okunmamış konuşma. Yorumlar okunma kaydı tutmuyor; rozet, görüntüleyenin
     SON YORUMUNDAN sonra başkalarının yazdığı yorum sayısı — "yanıtlamadığım
     yorum var mı" sorusunun cevabı. Hiç yazmadıysa başkalarının bütün yorumları.
+    Pencere açılınca rozetler tarayıcıda "görüldü" sayılıp söner (kanal-dugmesi.tsx).
   */
   const sonYorumum = comments.filter((c) => c.created_by === userId).map((c) => c.created_at).sort().at(-1) ?? "";
-  const yorumRozeti = comments.filter((c) => c.created_by !== userId && c.created_at > sonYorumum).length;
-  const okunmamisPosta = postalar.filter((posta) => posta.okunmamis).length;
+  const baskalarininYorumlari = comments.filter((c) => c.created_by !== userId).map((c) => c.created_at);
+  const sonYorumZamani = comments.map((c) => c.created_at).sort().at(-1) ?? null;
+  const sonMusteriMesajiZamani = customerMessages.filter((m) => m.sender_type === "customer").map((m) => m.created_at).sort().at(-1) ?? null;
+  const okunmamisMesajZamanlari = customerMessages.filter((m) => m.sender_type === "customer" && !m.read_at).map((m) => m.created_at);
+  const okunmamisPostaZamanlari = postalar.filter((posta) => posta.okunmamis).map((posta) => posta.son_mesaj_at ?? "").filter(Boolean);
   const musteriAdi = customerName === "Kurum içi iş" ? null : customerName;
 
   return (
@@ -746,57 +752,55 @@ export default async function OperationDetailPage({
           <h2 className="opd-kart-baslik">İletişim</h2>
           {contract?.opportunity_id ? (
             <>
-              <h3 className="opd-kanal-grup">Kurum içi</h3>
-              <PanelModal
-                triggerClassName="opd-kanal"
-                triggerLabel="Yorumlar"
-                triggerBadge={yorumRozeti ? String(yorumRozeti) : null}
+              {/* Grup başlığının yanında son olayın zamanı: pencereyi açmadan "en son ne zaman yazıldı" görünsün. */}
+              <h3 className="opd-kanal-grup"><span>Kurum içi</span>{sonYorumZamani ? <time dateTime={sonYorumZamani}>{ozetZamani(sonYorumZamani)}</time> : null}</h3>
+              <KanalDugmesi
+                anahtar={`kanal:${workflow.id}:yorum`}
+                etiket="Yorumlar"
+                olaylar={baskalarininYorumlari}
+                varsayilanGorulme={sonYorumum}
                 title="Ekip içi yorumlar"
                 description="Yalnızca ekip görür; müşteriye gitmez."
                 kicker={`İŞ · ${formatSubject(workflow.title)}`}
-                boy="yazisma"
               >
                 <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} gorunum="akis" />
-              </PanelModal>
+              </KanalDugmesi>
             </>
           ) : null}
-          <h3 className="opd-kanal-grup">Müşteri</h3>
-          <PanelModal
-            triggerClassName="opd-kanal"
-            triggerLabel="Mesajlar"
-            triggerBadge={unreadCustomerMessages ? String(unreadCustomerMessages) : null}
+          <h3 className="opd-kanal-grup"><span>Müşteri</span>{sonMusteriMesajiZamani ? <time dateTime={sonMusteriMesajiZamani}>{ozetZamani(sonMusteriMesajiZamani)}</time> : null}</h3>
+          <KanalDugmesi
+            anahtar={`kanal:${workflow.id}:mesaj`}
+            etiket="Mesajlar"
+            olaylar={okunmamisMesajZamanlari}
             title={musteriAdi ?? "Müşteri mesajları"}
             description="Müşterinin takip ekranından yazdıkları; yanıtınız orada görünür."
             kicker="MÜŞTERİ MESAJLARI"
-            boy="yazisma"
             baslangicAcik={acilacakPencere === "mesajlar"}
           >
             <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
             <MusteriSohbeti workflowId={workflow.id} messages={customerMessages} customerName={customerName} canReply={Boolean(contract)} bugun={bugunIstanbul} />
-          </PanelModal>
+          </KanalDugmesi>
           {whatsappGorur && whatsappEntegre ? (
-            <PanelModal
-              triggerClassName="opd-kanal"
-              triggerLabel="WhatsApp"
-              triggerBadge={whatsappMesajlari[0]?.direction === "inbound" ? "1" : null}
+            <KanalDugmesi
+              anahtar={`kanal:${workflow.id}:whatsapp`}
+              etiket="WhatsApp"
+              olaylar={whatsappMesajlari[0]?.direction === "inbound" ? [whatsappMesajlari[0].createdAt] : []}
               title={musteriAdi ?? "WhatsApp"}
               kicker="WHATSAPP"
-              boy="yazisma"
             >
               <WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteriAdi ?? customerName} />
-            </PanelModal>
+            </KanalDugmesi>
           ) : null}
           {postaGorur ? (
-            <PanelModal
-              triggerClassName="opd-kanal"
-              triggerLabel="Postalar"
-              triggerBadge={okunmamisPosta ? String(okunmamisPosta) : null}
+            <KanalDugmesi
+              anahtar={`kanal:${workflow.id}:posta`}
+              etiket="Postalar"
+              olaylar={okunmamisPostaZamanlari}
               title={musteriAdi ?? "Postalar"}
               kicker="POSTALAR"
-              boy="yazisma"
             >
               <PostaAkisi postalar={postalar} epostaVar={Boolean(opportunity?.contact_email)} />
-            </PanelModal>
+            </KanalDugmesi>
           ) : null}
         </section>
 
