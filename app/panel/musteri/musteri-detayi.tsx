@@ -455,7 +455,7 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
               kicker="CARİ HESAP"
               title={musteri}
                               description={bakiye !== null ? `Açık bakiye ${money(bakiye)}${cariler.length > 1 ? ` · ${cariler.length} cari` : ""}` : undefined}
-              boy="tam"
+              boy="ekran"
               baslangicAcik={pencere === "cari"}
               kapaninca={pencere === "cari" ? adres : undefined}
             >

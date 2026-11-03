@@ -169,6 +169,12 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   const dagitilmis = bakiyeyeSigdir(taksitleriDagit(taksitler, collections - refunds, todayInIstanbul()), balance);
   const gecikenTaksitler = dagitilmis.filter((t) => t.durum === "gecikti");
   const gecikenTutar = gecikenTaksitler.reduce((sum, t) => sum + t.kalan, 0);
+  /* Sıradaki taksit şeritte (03.11.2026): "bir sonraki ödeme ne zaman,
+     ne kadar" sorusu için takvimi aşağıda aramak gerekiyordu. Gecikmiş
+     taksit varsa sıradaki o; yoksa vadesi en yakın açık taksit. */
+  const siradakiTaksit = dagitilmis
+    .filter((t) => t.durum !== "iptal" && t.durum !== "odendi" && t.kalan > 0)
+    .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"))[0] ?? null;
   // Silme yıkıcı: hareket dökümünü de götürür (CASCADE). Sunucu eylemi ayrıca denetliyor.
   const canDelete = isPlatformOwner || izin("finance.cari.sil");
   // Elle girilen hareketi düzeltme/silme: hareket girişiyle aynı yetki.
@@ -214,6 +220,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
 
   return (
     <div className="cari-pencere">
+      <div className="cari-pencere-ust">
       <div className="cari-pencere-eylem">
         {balance > 0 ? (
           <PanelDrawer
@@ -336,15 +343,29 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
           <div><dt>İade</dt><dd>{money(refunds)}</dd></div>
           <div className="cari-bakiye" data-tone={balance > 0 ? "warning" : "success"}><dt>Açık bakiye</dt><dd>{money(balance)}</dd></div>
           {gecikenTaksitler.length ? <div><dt>Vadesi geçen</dt><dd className="talep-uyari">{money(gecikenTutar)}</dd></div> : null}
+          {siradakiTaksit ? (
+            <div className="cari-siradaki">
+              <dt>Sıradaki taksit</dt>
+              <dd>{money(siradakiTaksit.kalan)}<small>{siradakiTaksit.due_date ? date(siradakiTaksit.due_date) : "vade yok"}</small></dd>
+            </div>
+          ) : null}
         </dl>
         <div className="cari-oran">
           <span>Tahsil edilen %{tahsilOrani}</span>
           <div className="cari-oran-cubuk" aria-hidden="true"><i style={{ "--p": `${tahsilOrani}%` } as CSSProperties} /></div>
         </div>
       </section>
+      </div>
 
+      {/*
+        ÜÇ SÜTUN (03.11.2026): hareketler · ödeme takvimi · sözleşmeler ve
+        bakiye. Eskiden iki sütundu ve sağ sütunda sözleşmeler, ödeme
+        bağlantıları, takvim ve bakiye hesabı alt alta diziliyordu; sol
+        sütun kısa kalırken pencere sağ sütun yüzünden aşağı uzuyordu.
+        Her sütun kendi kartında, uzun kalan kendi içinde kayar.
+      */}
       <div className="cari-pencere-izgara">
-        <section aria-label="Hareket dökümü">
+        <section className="cari-sutun" aria-label="Hareket dökümü">
           <div className="cari-baslik">
             <h3>Hareket dökümü</h3>
             <small>{entries.length} hareket</small>
@@ -456,39 +477,9 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
           )}
         </section>
 
-        <section aria-label="Sözleşmeler ve bakiye">
-          <div className="cari-baslik">
-            <h3>Sözleşmeler</h3>
-            <small>{sozlesmeler.length} imzalı</small>
-          </div>
-          {sozlesmeler.length ? (
-            <ul className="cari-hareketler">
-              {sozlesmeler.map((c) => {
-                const icerik = (
-                  <>
-                    <span className="cari-hareket-metin">
-                      <b>{c.contract_no}</b>
-                      <small>{c.title} · {c.signed_at ? date(c.signed_at) : "İmzalı"}</small>
-                    </span>
-                    <strong>{money(Number(c.amount))}</strong>
-                  </>
-                );
-                return <li key={c.id}>{crmVar ? <Link href={`/panel/crm/contracts/${c.id}`}>{icerik}</Link> : icerik}</li>;
-              })}
-            </ul>
-          ) : (
-            <p className="talep-bos cari-not">Bu cariye bağlı imzalı sözleşme yok.</p>
-          )}
-
-          {odemeLinkleri.length ? (
-            <div className="talep-not">
-              <div className="cari-baslik"><h3>Ödeme bağlantıları</h3><small>{bekleyenLink ?? 0} bekliyor</small></div>
-              <OdemeBaglantilari linkler={odemeLinkleri} telefonVar={telefonVar} epostaVar={epostaVar} />
-            </div>
-          ) : null}
-
+        <section className="cari-sutun" aria-label="Ödeme takvimi">
           {taksitler.length ? (
-            <div className="talep-not">
+            <>
               <div className="cari-baslik"><h3>Ödeme takvimi</h3><small>{dagitilmis.filter((t) => t.durum === "odendi").length}/{dagitilmis.filter((t) => t.durum !== "iptal").length} ödendi</small></div>
               {/* Taksit seçeneği (adet, ilk vade, aralık): sözleşme başına; ödenmiş kısım korunur. */}
               {vadeDegistirir && planOzetleri.length ? (
@@ -563,6 +554,43 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                   );
                 })}
               </ul>
+            </>
+          ) : (
+            <>
+              <div className="cari-baslik"><h3>Ödeme takvimi</h3></div>
+              <p className="ic-akis-bos">Taksit planı yok. Sözleşme imzalanınca ödeme planı buraya gelir.</p>
+            </>
+          )}
+        </section>
+
+        <section className="cari-sutun" aria-label="Sözleşmeler ve bakiye">
+          <div className="cari-baslik">
+            <h3>Sözleşmeler</h3>
+            <small>{sozlesmeler.length} imzalı</small>
+          </div>
+          {sozlesmeler.length ? (
+            <ul className="cari-hareketler">
+              {sozlesmeler.map((c) => {
+                const icerik = (
+                  <>
+                    <span className="cari-hareket-metin">
+                      <b>{c.contract_no}</b>
+                      <small>{c.title} · {c.signed_at ? date(c.signed_at) : "İmzalı"}</small>
+                    </span>
+                    <strong>{money(Number(c.amount))}</strong>
+                  </>
+                );
+                return <li key={c.id}>{crmVar ? <Link href={`/panel/crm/contracts/${c.id}`}>{icerik}</Link> : icerik}</li>;
+              })}
+            </ul>
+          ) : (
+            <p className="talep-bos cari-not">Bu cariye bağlı imzalı sözleşme yok.</p>
+          )}
+
+          {odemeLinkleri.length ? (
+            <div className="talep-not">
+              <div className="cari-baslik"><h3>Ödeme bağlantıları</h3><small>{bekleyenLink ?? 0} bekliyor</small></div>
+              <OdemeBaglantilari linkler={odemeLinkleri} telefonVar={telefonVar} epostaVar={epostaVar} />
             </div>
           ) : null}
 
