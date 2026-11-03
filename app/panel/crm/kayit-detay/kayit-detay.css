@@ -1143,3 +1143,17 @@
 */
 .os-root .talep-bas-eylem .kd-bas-dugme{min-height:40px;padding:0 var(--sp-5);border-radius:var(--r-pill);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
 .os-root .talep-bas-eylem summary.kd-bas-dugme{min-width:40px;padding:0 var(--sp-3);justify-content:center}
+/*
+  Bağlantı olan kart (Hedef, Maaş/Hakediş) yazıları kalın çıkıyordu:
+  panel.css'in `.panel-card a` kuralı (12px/800, birincil renk) karta da
+  uyuyordu, düğme olan kartlarda bu kural yok. Bağlantı kart, düğme kartla
+  aynı yazı ağırlığında ve renginde.
+*/
+.os-root .panel-card a.kd-kutu{color:var(--ink);font-size:inherit;font-weight:400}
+/* Kart başlığı tek satır: iki kelimelik başlık kırılınca büyük rakamlar kartlar arasında farklı hizada başlıyordu. */
+.kd-kutu-etiket{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* Prim bakiyesi öteki kartların büyük rakamıyla aynı boyda (.panel-card p kuralı onu 13px'e indiriyordu). */
+.os-root .opd-kart p.kd-buyuk-rakam{color:var(--ink);font-size:var(--fs-xl);font-weight:var(--fw-semibold);line-height:1.15}
+.os-root .opd-kart p.kd-buyuk-rakam[data-tone="warning"]{color:var(--warning)}
+.os-root .opd-kart p.kd-buyuk-rakam[data-tone="success"]{color:var(--success)}
+.os-root .opd-kart p.kd-buyuk-rakam small{font-size:var(--fs-micro);font-weight:var(--fw-medium);color:var(--muted)}
