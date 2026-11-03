@@ -1189,3 +1189,16 @@
 .istat-kart-satir>i>b{display:block;height:100%;border-radius:inherit;background:var(--primary)}
 .istat-kart-daha{color:var(--muted);font-size:var(--fs-micro)}
 .istat-pencere{gap:var(--sp-3)}
+/* İstatistik sayıları satır hâlinde: solda ad ve bağlam, sağda rakam (dar sütunda 2×2 kutu kırılıyordu). */
+.istat-satirlar{display:flex;flex-direction:column;margin:var(--sp-2) 0 0}
+.istat-satirlar>div{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-3) 0;border-top:1px solid var(--line-soft)}
+.istat-satirlar>div:first-child{border-top:0;padding-top:var(--sp-1)}
+.istat-satirlar dt{display:flex;flex-direction:column;gap:2px;min-width:0;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.istat-satirlar dt small{overflow:hidden;color:var(--muted);font-size:var(--fs-micro);font-weight:400;text-overflow:ellipsis;white-space:nowrap}
+.istat-satirlar dt small.cari-arti{color:var(--success)}
+.istat-satirlar dt small.talep-uyari{color:var(--warning)}
+.istat-satirlar dd{flex:none;margin:0;color:var(--ink);font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.istat-satirlar dd.talep-uyari{color:var(--warning)}
+.talep-istatistik .istat-kartlar{margin-top:var(--sp-2)}
+.os-root .talep-istatistik .istat-kart{background:var(--surface-2);border-color:transparent}
+.os-root .talep-istatistik .istat-kart:hover{background:var(--surface);border-color:color-mix(in srgb,var(--primary) 45%,var(--line))}

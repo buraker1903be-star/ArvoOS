@@ -117,17 +117,6 @@ const ASAMALAR = [
 ] as const;
 /** Teklife ya da ötesine geçmiş talepler: dönüşüm oranının payı. */
 const ILERLEYEN = new Set(["proposal", "contract", "won"]);
-/*
-  Kaynak adları: veritabanında serbest yazılmış ("INSTAGRAM", "WEB SİTESİ",
-  aktarımdan gelen "arvocore_migration"). Küçük harfe indirip bilinenleri
-  adlandırıyoruz; bilinmeyen değerin yalnızca ilk harfi büyük.
-*/
-const KAYNAK_ADLARI: Record<string, string> = { website: "Web sitesi", site: "Web sitesi", "web sitesi": "Web sitesi", manual: "Elle giriş", panel: "Elle giriş", whatsapp: "WhatsApp", instagram: "Instagram", phone: "Telefon", telefon: "Telefon", email: "E-posta", "e-posta": "E-posta", referral: "Tavsiye", tavsiye: "Tavsiye", arvocore_migration: "Eski sistemden aktarım" };
-function kaynakAdi(kaynak: string | null) {
-  const anahtar = (kaynak ?? "").trim().toLocaleLowerCase("tr");
-  if (!anahtar) return "Belirtilmedi";
-  return KAYNAK_ADLARI[anahtar] ?? anahtar.charAt(0).toLocaleUpperCase("tr") + anahtar.slice(1);
-}
 const clean = (v?: string) => (v ?? "").trim().slice(0, 100);
 const active = new Set(["lead", "qualified"]);
 export default async function RequestsPage({
@@ -313,7 +302,6 @@ export default async function RequestsPage({
   const hizmetDagilimi = (ozet.hizmetler ?? []).map((satir) => ({ ad: satir.ad, adet: Number(satir.adet) }));
   /* Kaynak adları serbest yazılmış ("INSTAGRAM", "WEB SİTESİ"); ham
      değer veritabanından geliyor, okunur ada burada çevriliyor. */
-  const kaynakDagilimi = (ozet.kaynaklar ?? []).map((satir) => ({ ad: kaynakAdi(satir.ad), adet: Number(satir.adet) }));
   const gorunumAdi = selected === "tumu" ? "Tüm kayıtlar" : selected ? requestStageNames[selected] ?? selected : "Aktif talepler";
 
   return (
@@ -534,7 +522,7 @@ export default async function RequestsPage({
           ]}
           gruplar={[
             { baslik: "Hizmet türüne göre", satirlar: hizmetDagilimi },
-            { baslik: "Kaynağa göre", satirlar: kaynakDagilimi },
+            /* "Kaynağa göre" 03.11.2026'da kalktı (kurum sahibinin isteği): kayıtların çoğunda kaynak "Belirtilmedi", dağılım bir şey söylemiyordu. */
           ]}
         />
       </div>
