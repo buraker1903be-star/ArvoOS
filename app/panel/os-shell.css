@@ -6,7 +6,8 @@
    kurallarıyla çakışmasın diye. Kurucu konsolu eski kabukta kalıyor.
    ============================================================ */
 
-.os-root{--os-bar-h:60px;--os-dock-space:104px}
+/* --os-dock-space: dock (54px) + alt boşluk (16px) + içerikle arası. 04.11.2026'da ArvoLab'la birlikte dock inceldi (simge 48 → 40px): 104 → 92. */
+.os-root{--os-bar-h:60px;--os-dock-space:92px}
 .os-root .os-frame{display:block;min-height:100dvh}
 
 /* ---------- Durum çubuğu ---------- */
@@ -103,16 +104,16 @@
 .os-dock{
   position:fixed;left:50%;bottom:max(var(--sp-4),env(safe-area-inset-bottom));transform:translateX(-50%);z-index:55;
   display:flex;align-items:center;gap:var(--sp-1);
-  max-width:calc(100vw - var(--sp-6));padding:var(--sp-2);box-sizing:border-box;overflow-x:auto;scrollbar-width:none;
+  max-width:calc(100vw - var(--sp-6));padding:6px;box-sizing:border-box;overflow-x:auto;scrollbar-width:none;
   border:1px solid var(--line);border-radius:var(--r-xl);
   background:color-mix(in srgb,var(--surface) 88%,transparent);
   -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
   box-shadow:var(--shadow-lg);
 }
 .os-dock::-webkit-scrollbar{display:none}
-.os-dock-sep{flex:none;width:1px;height:28px;margin:0 var(--sp-1);background:var(--line)}
+.os-dock-sep{flex:none;width:1px;height:22px;margin:0 var(--sp-1);background:var(--line)}
 .os-dock-item{
-  position:relative;flex:none;display:grid;place-items:center;width:48px;height:48px;
+  position:relative;flex:none;display:grid;place-items:center;width:40px;height:40px;
   border:0;border-radius:var(--r-md);background:transparent;color:var(--ink-soft);cursor:pointer;text-decoration:none;
   transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease),color var(--dur) var(--ease);
 }
@@ -189,7 +190,7 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
 
 /* ---------- Dar ekran ---------- */
 @media (max-width:900px){
-  .os-root{--os-bar-h:56px;--os-dock-space:96px}
+  .os-root{--os-bar-h:56px;--os-dock-space:92px}
   .os-bar{padding:0 var(--sp-3);gap:var(--sp-2)}
   .os-brand-app,.os-clock,.os-online,.os-search-text,.os-search kbd{display:none}
   .os-search{flex:0 0 40px;width:40px;margin:0 0 0 auto;padding:0;justify-content:center;border-color:transparent;background:transparent}
@@ -204,7 +205,23 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
   .os-live-pill{font-size:0;gap:0;width:28px;padding:0;justify-content:center}
   .os-bar .panel-theme-toggle{display:none}
 }
+/*
+  YAZARKEN DOCK GERİ ÇEKİLİR (04.11.2026, ArvoLab'la aynı kural):
+  masaüstünde zengin metin alanına (posta yanıtı, not editörü) odaklanınca
+  dock aşağı kayar, altta 6px'lik şerit kalır; fare şeride gelince ya da
+  klavyeyle dock'a geçilince geri çıkar. Form kutuları tetiklemez: kısa
+  bir alanı doldururken menünün kaybolması kafa karıştırırdı.
+*/
+@media (min-width:901px){
+  .os-dock{transition:transform .35s var(--ease),opacity .2s ease}
+  html:has([contenteditable="true"]:focus) .os-dock:not(:hover):not(:focus-within){
+    transform:translateX(-50%) translateY(calc(100% + max(var(--sp-4),env(safe-area-inset-bottom)) - 6px));
+    opacity:.55;
+  }
+  html:has([contenteditable="true"]:focus) .os-subdock{display:none}
+}
 @media (prefers-reduced-motion:reduce){
+  .os-dock{transition:none}
   .os-dock-item,.os-app-tile,.os-launcher[open],.os-palette[open]{transition:none;animation:none}
   .os-live-pill.is-canli>i{animation:none}
 }

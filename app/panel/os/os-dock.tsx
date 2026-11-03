@@ -120,7 +120,7 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
           else { zaman.iptal(); setAlt({ key: uygulama.key, ...konum(olay.currentTarget) }); }
         }}
       >
-        <OsSimge ad={uygulama.ikon} boyut={22} />
+        <OsSimge ad={uygulama.ikon} boyut={20} />
         <span className="os-dock-label">{uygulama.label}</span>
         {uygulama.rozet ? <b className="os-dock-badge">{uygulama.rozet > 99 ? "99+" : uygulama.rozet}</b> : null}
       </Link>
@@ -165,7 +165,7 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
         {dockta.map(simge)}
         <span className="os-dock-sep" aria-hidden="true" />
         <button type="button" className="os-dock-item" aria-haspopup="dialog" title="Tüm uygulamalar" onClick={() => pencere.current?.showModal()}>
-          <OsSimge ad="apps" boyut={22} />
+          <OsSimge ad="apps" boyut={20} />
           <span className="os-dock-label">Uygulamalar</span>
         </button>
       </nav>
