@@ -323,5 +323,9 @@
         "sutun": "kapanis_notu"
       }
     ]
+  },
+  {
+    "migration": "20261103062213_kurucu_bildirim_sayim_dizini",
+    "izler": []
   }
 ]
