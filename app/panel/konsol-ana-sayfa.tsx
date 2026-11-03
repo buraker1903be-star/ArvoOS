@@ -202,19 +202,21 @@ export async function KonsolAnaSayfa() {
           .eq("durum", "bekliyor").order("gecerlilik_tarihi", { ascending: true }),
       ])
     : Promise.resolve([{ data: null, error: null }, { data: [], error: null }, { data: null, error: null }] as const);
+  /* Grup içi de ayrı ölçülüyor: ilk ölçümde bu grup ~470 ms ile en yavaştı
+     ve beş okumadan hangisi olduğu görünmüyordu. */
   const odemeIstegi = Promise.all([
-    getPaymentIncidents(),
+    sure.olc("odeme_olaylari", getPaymentIncidents()),
     admin
-      ? bekleyenKrediler(admin).then((veri) => ({ veri, hata: null as string | null }))
+      ? sure.olc("bekleyen_krediler", bekleyenKrediler(admin)).then((veri) => ({ veri, hata: null as string | null }))
           .catch((hata: unknown) => ({ veri: [], hata: hata instanceof Error ? hata.message : String(hata) }))
       : Promise.resolve({ veri: [], hata: null as string | null }),
     /* Panel etkinliği (lib/musteri-etkinligi-oku): okunamazsa harita null, risk sekmesi "okunamadı". */
-    musteriEtkinlikleri(),
+    sure.olc("musteri_etkinligi", musteriEtkinlikleri()),
     /* Askıdaki lisanslar (02.11.2026, lib/askidakiler): kuyruk "açalım mı, kapatalım mı".
        sınırsız-tamam: askıdaki lisans sayısı küçük ve kurucunun temizlediği bir iş listesi. */
-    (admin ?? supabase).from("organization_licenses").select("organization_id,suspended_at,suspension_reason").eq("license_status", "suspended"),
+    sure.olc("aski_cekirdek", (admin ?? supabase).from("organization_licenses").select("organization_id,suspended_at,suspension_reason").eq("license_status", "suspended")),
     /* sınırsız-tamam: aynı kuyruk, ek ürünler. */
-    (admin ?? supabase).from("organization_product_licenses").select("organization_id,product,suspended_at,suspension_reason").eq("status", "suspended"),
+    sure.olc("aski_urun", (admin ?? supabase).from("organization_product_licenses").select("organization_id,product,suspended_at,suspension_reason").eq("status", "suspended")),
   ]);
   const yeniSayimIstegi = Promise.resolve((admin ?? supabase).from("organizations").select("id", { count: "exact", head: true })
     .gte("created_at", ayBasi).neq("kind", "internal").eq("grup_markasi", false));

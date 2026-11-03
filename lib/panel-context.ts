@@ -154,7 +154,11 @@ const panelBaglaminiKur = cache(async () => {
         supabase.from("member_capability_permissions").select("capability_key,allowed")
           .eq("organization_id", membership.organization_id).eq("user_id", userId),
       ]);
-  const [{ data: moduleRows, error: moduleError }, yetkiSonuclari, { data: lisansSatiri, error: lisansHatasi }] = await Promise.all([
+  /* Kurucu alanları modül/yetki okumalarıyla AYNI turda (03.11.2026):
+     eskiden bu turdan sonra ayrı bekleniyordu ve her konsol sayfasına bir
+     gidiş-dönüş ekliyordu. Kurucu olup olmadığı rol ve kurumdan zaten belli. */
+  const kurucuMu = membership.role === "owner" && organization.slug === "arvo-os";
+  const [{ data: moduleRows, error: moduleError }, yetkiSonuclari, { data: lisansSatiri, error: lisansHatasi }, kapsamSonucu] = await Promise.all([
     hazir
       ? Promise.resolve({ data: hazir.moduller, error: null })
       : supabase.from("organization_modules")
@@ -173,6 +177,9 @@ const panelBaglaminiKur = cache(async () => {
       ? Promise.resolve({ data: hazir.lisans ?? null, error: null })
       : supabase.from("organization_licenses").select("license_status,suspension_reason")
           .eq("organization_id", membership.organization_id).maybeSingle(),
+    kurucuMu
+      ? supabase.from("platform_kurucu_alanlari").select("alanlar").eq("user_id", userId).maybeSingle()
+      : Promise.resolve(null),
   ]);
   if (moduleError) throw new Error("Modül yetkileri okunamadı.");
 
@@ -205,7 +212,7 @@ const panelBaglaminiKur = cache(async () => {
     return { code: row.module_code, name: fallback?.name ?? item?.name ?? row.module_code, description: fallback?.description ?? item?.description ?? "", sortOrder: item?.sort_order ?? 0, icon: fallback?.icon ?? "•" };
   }).sort((a, b) => a.sortOrder - b.sortOrder);
 
-  const isPlatformOwner = membership.role === "owner" && organization.slug === "arvo-os";
+  const isPlatformOwner = kurucuMu;
 
   /*
     KONSOL KAPSAMI (02.11.2026, lib/konsol-alanlari). Yalnızca kurucuda
@@ -217,9 +224,8 @@ const panelBaglaminiKur = cache(async () => {
     Tablonun henüz olmaması da aynı cevap.
   */
   let konsolKapsami: KonsolKapsami = null;
-  if (isPlatformOwner) {
-    const { data: kapsamSatiri, error: kapsamHatasi } = await supabase
-      .from("platform_kurucu_alanlari").select("alanlar").eq("user_id", userId).maybeSingle();
+  if (isPlatformOwner && kapsamSonucu) {
+    const { data: kapsamSatiri, error: kapsamHatasi } = kapsamSonucu;
     if (kapsamHatasi) {
       if (kapsamHatasi.code !== "42P01" && kapsamHatasi.code !== "PGRST205") console.error("[panel] kurucu alanları okunamadı; tam yetki varsayıldı", kapsamHatasi.message);
     } else konsolKapsami = kapsamOku(kapsamSatiri);
