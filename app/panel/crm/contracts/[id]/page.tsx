@@ -245,7 +245,13 @@ export default async function ContractDetailPage({ params }: Props) {
   const imzaKalan = !locked && data.imza_son_tarihi ? Math.round((Date.parse(`${data.imza_son_tarihi}T00:00:00Z`) - Date.parse(`${bugunAnahtari}T00:00:00Z`)) / 86400000) : null;
   /* Kartlar için: sıradaki (bugün ve sonrası) ara teslim, işin toplam süresi. */
   const siradakiTeslim = currentPlan.find((item) => item.due_date >= bugunAnahtari) ?? null;
-  const sureGun = data.start_date && data.due_date ? Math.round((Date.parse(`${data.due_date}T00:00:00Z`) - Date.parse(`${data.start_date}T00:00:00Z`)) / 86400000) : null;
+  /*
+    Başlangıç = imza günü (03.11.2026, kurum sahibinin kararı; imza işlevi işi
+    boş başlangıçta o gün başlatıyor). Elle girilmiş eski tarih varsa o geçerli.
+    İmzadan önce süre gösterilmez: başlangıç henüz belli değil.
+  */
+  const baslangicGunu = data.start_date ?? (data.signed_at ? todayInIstanbul(new Date(data.signed_at)) : null);
+  const sureGun = baslangicGunu && data.due_date ? Math.round((Date.parse(`${data.due_date}T00:00:00Z`) - Date.parse(`${baslangicGunu}T00:00:00Z`)) / 86400000) : null;
   const terminKalan = data.due_date ? Math.round((Date.parse(`${data.due_date}T00:00:00Z`) - Date.parse(`${bugunAnahtari}T00:00:00Z`)) / 86400000) : null;
   const kunyeSatirlari = doluAlanlar((customer?.request_details ?? {}) as Kunye);
   /*
@@ -265,8 +271,10 @@ export default async function ContractDetailPage({ params }: Props) {
   };
   const gizliAlanlar = (haric: "hizmet" | "musteri" | "termin") => {
     /* Hizmet penceresinde teslim tarihi (termin kartı) ve ödeme planı açıklaması yok; açıklama
-       03.11.2026'da kurum sahibinin isteğiyle formdan kalktı (taksitler ödeme planı kartında), değeri korunuyor. */
-    const satirlar = haric === "hizmet" ? [...gizliDegerler.musteri, ...gizliDegerler.sozlesme.filter(([ad]) => ad === "due_date" || ad === "payment_plan")]
+       03.11.2026'da kurum sahibinin isteğiyle formdan kalktı (taksitler ödeme planı kartında), değeri korunuyor.
+       Başlangıç tarihi de kalktı: iş imza günü başlar (sign_crm_contract boş başlangıçta current_date yazıyor);
+       eski sözleşmelerde girilmiş tarih korunuyor. */
+    const satirlar = haric === "hizmet" ? [...gizliDegerler.musteri, ...gizliDegerler.sozlesme.filter(([ad]) => ad === "due_date" || ad === "payment_plan" || ad === "start_date")]
       : haric === "musteri" ? gizliDegerler.sozlesme
       : [...gizliDegerler.musteri, ...gizliDegerler.sozlesme.filter(([ad]) => ad !== "due_date")];
     return <>{satirlar.map(([ad, deger]) => <input key={ad} type="hidden" name={ad} value={deger} />)}</>;
@@ -730,7 +738,7 @@ export default async function ContractDetailPage({ params }: Props) {
                 <span className="kd-kutu-dip"><span>{data.payment_plan || ""}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="Hizmet kapsamı ve ücret"
-              description="Sözleşme başlığı, verilecek hizmetler, tutar ve başlangıç tarihi. Taksitler “Ödeme planı” kartında."
+              description="Sözleşme başlığı, verilecek hizmetler ve tutar. Taksitler “Ödeme planı” kartında; iş imza günü başlar."
               kicker={`SÖZLEŞME · ${data.contract_no}`}
               boy="buyuk"
               basaridaKapan
@@ -746,7 +754,6 @@ export default async function ContractDetailPage({ params }: Props) {
                           <label className="wide"><span>Sözleşme başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
                           <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
                           <label><span>Sözleşme tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(data.amount)} required /></label>
-                          <label>Başlangıç tarihi<TarihSecici name="start_date" defaultValue={data.start_date ?? ""} /></label>
                           <p className="wide kayit-formu-not">Taksitler ve vade tarihleri “Ödeme planı” kartından değişir; teslim tarihi “Termin” kartından; tutar değişirse taksitler yeni toplama göre ölçeklenir.</p>
 
                           {/* Yalnızca Arvo'nun kendi kurumunda: kiracının kendi
@@ -868,7 +875,7 @@ export default async function ContractDetailPage({ params }: Props) {
                 <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Termin</span>{terminKalan !== null ? <span className="kd-kutu-cip" data-tone={terminKalan < 0 ? "danger" : terminKalan <= 7 ? "warning" : undefined}>{terminKalan < 0 ? `${-terminKalan} gün geçti` : terminKalan === 0 ? "Bugün" : `${terminKalan} gün kaldı`}</span> : <span className="kd-kutu-cip">Tarih yok</span>}</span>
                 {data.due_date ? <span className="kd-kutu-deger">{date(data.due_date)}<small>teslim</small></span> : <span className="kd-kutu-deger is-sessiz">—<small>teslim tarihi girilmemiş</small></span>}
                 <span className="kd-kutu-satirlar">
-                  <span><span><b>Başlangıç</b></span><time>{data.start_date ? date(data.start_date) : "belirtilmedi"}</time></span>
+                  <span><span><b>Başlangıç</b></span><time>{baslangicGunu ? date(baslangicGunu) : "imza günü"}</time></span>
                   {sureGun !== null ? <span><span><b>Toplam süre</b></span><time>{sureGun} gün</time></span> : null}
                 </span>
                 <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
@@ -895,7 +902,7 @@ export default async function ContractDetailPage({ params }: Props) {
               ) : (
                 <dl className="talep-liste">
                   <div><dt>Teslim</dt><dd>{tarih(data.due_date) ?? <em>Belirtilmedi</em>}</dd></div>
-                  <div><dt>Başlangıç</dt><dd>{tarih(data.start_date) ?? <em>Belirtilmedi</em>}</dd></div>
+                  <div><dt>Başlangıç</dt><dd>{baslangicGunu ? date(baslangicGunu) : <em>İmza günü</em>}</dd></div>
                 </dl>
               )}
             </PanelModal>
