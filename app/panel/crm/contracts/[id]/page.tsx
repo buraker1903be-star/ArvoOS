@@ -38,9 +38,9 @@ import { ADDENDUM_STATUS_LABELS, normalizeAddenda, normalizeWorkPlan } from "@/l
 import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
-import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
 import { PanelModal } from "../../../components/panel-modal";
-import { mesajKanali, postaKanali, whatsappKanali, yorumKanali } from "../../kayit-detay/akis-kanallari";
+import { ozetZamani, yorumOzetiOku } from "../../kayit-detay/akis-kanallari";
+import { KanalDugmesi } from "../../kayit-detay/kanal-dugmesi";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
 import "../../crm.css";
@@ -86,7 +86,7 @@ export default async function ContractDetailPage({ params }: Props) {
   /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
      22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
   if (!kimlikMi(id)) notFound();
-  const { supabase, membership, modules, organization, izin } = await getPanelContext();
+  const { supabase, membership, modules, organization, izin, userId } = await getPanelContext();
   modulGerek(modules, "crm");
   const { data, error } = await supabase
     .from("crm_contracts")
@@ -191,8 +191,11 @@ export default async function ContractDetailPage({ params }: Props) {
     postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [data.opportunity_id], eposta: customer?.contact_email }) : Promise.resolve([]),
     // Düzenleme formundaki hizmet türü önerileri (Ayarlar → Hizmet türleri).
     kurumHizmetTurleri(supabase, membership.organization_id),
-    yorumKanali(supabase, membership.organization_id, data.opportunity_id),
+    yorumOzetiOku(supabase, membership.organization_id, data.opportunity_id, userId),
   ]);
+  /* WhatsApp düğmesi yalnızca kurumun kendi hesabı bağlıysa (iş detayıyla aynı kural). */
+  const whatsappEntegre = waDurum.connected && waDurum.status !== "disabled";
+  const sonMusteriMesajiZamani = customerMessages.filter((m) => m.sender_type === "customer").map((m) => m.created_at).sort().at(-1) ?? null;
   const messages = shareUrl
     ? contractMessages({
         organizationName: brandName,
@@ -244,6 +247,10 @@ export default async function ContractDetailPage({ params }: Props) {
           <details className="os-menu talep-menu">
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
+              {/* Kayıt geçmişi (03.11.2026): eskiden yazışma çekmecesinin son sekmesiydi. */}
+              <PanelModal triggerClassName="os-menu-item" triggerLabel="Kayıt geçmişi" title="Kayıt geçmişi" description="Alan değişiklikleri ve durum geçişleri." kicker={`SÖZLEŞME · ${data.contract_no}`} boy="buyuk">
+                <RecordHistory opportunityId={data.opportunity_id} />
+              </PanelModal>
               {!locked ? (
                 <PanelDrawer triggerLabel="Düzenle" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Sözleşmeyi düzenle" description="Kapsam, tutar, müşteri ve fatura bilgileri. Değişiklik imza bağlantısındaki metne de yansır." triggerClassName="os-menu-item">
                   {/* DÜZEN (2026-10): talep girişi ve teklif formuyla aynı ortak
@@ -375,16 +382,14 @@ export default async function ContractDetailPage({ params }: Props) {
         </ol>
       )}
 
-      <div className="talep-izgara">
-        {/* Müşteri, imza bağlantısı ve takip kodu */}
-        {/*
-          SOL SÜTUN (03.11.2026, iş detayıyla aynı düzen): müşteri kartı ve
-          yazışmalar. Eskiden yazışmalar ayrı bir üçüncü sütundaydı; bağlantılar
-          sütunun içinde uzun bir liste olarak duruyordu, artık "Ayrıntılar"
-          penceresinde. Orta sütun ekranın kalanını alıyor.
-        */}
-        <div className="talep-musteri kd-sol">
-        <section className="panel-card kd-sol-kart" aria-label="Müşteri">
+      {/*
+        DETAY DÜZENİ (03.11.2026, iş detayıyla aynı): solda üstte müşteri ve
+        iletişim kartları, altlarında imza bağlantısı ile takip ekranı ve
+        kaydın bağlantıları; sağda sözleşmenin kendisi. Yazışmalar ortada
+        açılan pencerede, kayıt geçmişi ⋯ menüsünde.
+      */}
+      <div className="kd-duzen-v4">
+        <section className="panel-card opd-kart opd-musteri kd-musteri" aria-label="Müşteri">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
             <div>
@@ -392,61 +397,113 @@ export default async function ContractDetailPage({ params }: Props) {
               {/* Müşterinin bütün kayıtları tek sayfada (/panel/crm/musteri). */}
               <small><Link className="personel-tumu" href={`/panel/crm/musteri/${data.opportunity_id}`}>Müşteri sayfası</Link></small>
             </div>
-            <PanelModal
-              triggerClassName="kd-sol-baglanti"
-              triggerLabel="Ayrıntılar"
-              title={musteri}
-              description="Talep, kaynak teklif ve iş."
-              kicker={`SÖZLEŞME · ${data.contract_no}`}
-              boy="genis"
-            >
-              <div className="kd-ayrinti">
-              {/* BAĞLANTILAR: talep, kaynak teklif ve iş; teklif detayındakiyle aynı blok. */}
-              <div className="talep-gecmis">
-                <h3>Bağlantılar</h3>
-                <ul>
-                  <li>
-                    <Link href={`/panel/crm/requests/${data.opportunity_id}`}>
-                      <span className="talep-gecmis-metin"><b>Talep</b><small>{formatSubject(customer?.title) || "Talebe git"}</small></span>
-                    </Link>
-                  </li>
-                  {kaynakTeklif?.id ? (
-                    <li>
-                      <Link href={`/panel/crm/proposals/${kaynakTeklif.id}`}>
-                        <span className="talep-gecmis-metin">
-                          <b>Teklif {kaynakTeklif.proposal_no}</b>
-                          <small>{kaynakTeklif.status ? TEKLIF_GRUP_ADLARI[teklifGrubu({ status: kaynakTeklif.status, archive_reason: kaynakTeklif.archive_reason ?? null, superseded_by: null })] ?? proposalStatusLabel(kaynakTeklif.status) : "Teklif"}</small>
-                        </span>
-                      </Link>
-                    </li>
-                  ) : null}
-                  {data.workflow_id ? (
-                    <li>
-                      <Link href={`/panel/operations/${data.workflow_id}`}>
-                        <span className="talep-gecmis-metin">
-                          <b>İş</b>
-                          <small>{is ? `${workflowStatusNames[is.status] ?? is.status}${isIlerleme !== null ? ` · %${isIlerleme}` : ""}` : "İşe git"}</small>
-                        </span>
-                      </Link>
-                    </li>
-                  ) : null}
-                </ul>
-              </div>
-              </div>
-            </PanelModal>
           </div>
-          <div className="talep-iletisim">
+          {customer?.contact_phone || customer?.contact_email ? (
+            <div className="opd-iletisim-dugmeleri">
             {customer?.contact_phone ? <a className="panel-secondary" href={`tel:${customer.contact_phone}`}>Ara</a> : null}
             {customer?.contact_email ? <a className="panel-secondary" href={`mailto:${customer.contact_email}`}>E-posta</a> : null}
-          </div>
-          <dl className="talep-liste">
+            </div>
+          ) : null}
+          <dl className="talep-liste opd-musteri-liste">
             <div><dt>Telefon</dt><dd>{formatPhone(customer?.contact_phone) || <em>Yok</em>}</dd></div>
             <div><dt>E-posta</dt><dd>{customer?.contact_email || <em>Yok</em>}</dd></div>
             <div><dt>Temsilci</dt><dd>{representative ? formatPersonName(representative) : <em>Atanmamış</em>}</dd></div>
             {data.customer_tax_number ? <div><dt>Vergi no</dt><dd>{data.customer_tax_number}{data.customer_tax_office ? ` · ${data.customer_tax_office}` : ""}</dd></div> : null}
             {data.customer_address ? <div><dt>Adres</dt><dd>{data.customer_address}</dd></div> : null}
           </dl>
+        </section>
 
+        <section className="panel-card opd-kart kd-iletisim" aria-label="İletişim">
+          <h2 className="opd-kart-baslik">İletişim</h2>
+          <h3 className="opd-kanal-grup">Kurum içi</h3>
+          <p className="opd-kanal-ozet">
+            {!yorumOzeti ? "Yorumlar okunamadı"
+              : yorumOzeti.sayi && yorumOzeti.son ? <>{yorumOzeti.sayi} yorum · son <time dateTime={yorumOzeti.son}>{ozetZamani(yorumOzeti.son)}</time></>
+              : "Henüz yorum yok"}
+          </p>
+          <KanalDugmesi
+            anahtar={`kanal:sozlesme:${data.id}:yorum`}
+            etiket="Yorumlar"
+            olaylar={yorumOzeti?.baskalari ?? []}
+            varsayilanGorulme={yorumOzeti?.benimSon ?? ""}
+            title="Ekip içi yorumlar"
+            description="Yalnızca ekip görür; müşteriye gitmez."
+            kicker={`SÖZLEŞME · ${data.contract_no}`}
+          >
+            <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} gorunum="akis" />
+          </KanalDugmesi>
+          <h3 className="opd-kanal-grup">Müşteri</h3>
+          <p className="opd-kanal-ozet">
+            {sonMusteriMesajiZamani ? <>Son mesaj <time dateTime={sonMusteriMesajiZamani}>{ozetZamani(sonMusteriMesajiZamani)}</time></> : "Müşteri henüz yazmadı"}
+          </p>
+          <KanalDugmesi
+            anahtar={`kanal:sozlesme:${data.id}:mesaj`}
+            etiket="Mesajlar"
+            olaylar={customerMessages.filter((m) => m.sender_type === "customer" && !m.read_at).map((m) => m.created_at)}
+            title={musteri}
+            description="Müşterinin takip ekranından yazdıkları; yanıtınız orada görünür."
+            kicker="MÜŞTERİ MESAJLARI"
+          >
+            <div className="sozlesme-mesaj" id="musteri-mesajlari">
+              {customerMessages.length ? (
+                <div className="contract-chat">
+                  {customerMessages.map((message) => {
+                    const fromCustomer = message.sender_type === "customer";
+                    return (
+                      <article key={message.id} className={`contract-bubble ${fromCustomer ? "is-customer" : "is-staff"}`}>
+                        <header>
+                          <b>{fromCustomer ? musteri : formatPersonName(message.sender_name)}</b>
+                          <time>{dateTime(message.created_at)}</time>
+                          {fromCustomer && !message.read_at ? <em>Yeni</em> : null}
+                        </header>
+                        <p>{message.body}</p>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="ic-akis-bos">Müşteri henüz mesaj yazmadı. Takip kodunu paylaştığınızda müşteri takip ekranından soru sorabilir.</p>
+              )}
+              {messagingOpen ? (
+                <form className="contract-reply" action={replyContractMessage}>
+                  <input type="hidden" name="contract_id" value={data.id} />
+                  <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
+                  <div><small>Yanıt müşterinin takip ekranında görünür.{data.workflow_id ? " İş başladığı için mesajlar iş detayında da görünür." : ""}</small><button className="panel-primary" type="submit">Gönder</button></div>
+                </form>
+              ) : null}
+            </div>
+          </KanalDugmesi>
+          {whatsappEntegre ? (
+            <KanalDugmesi
+              anahtar={`kanal:sozlesme:${data.id}:whatsapp`}
+              etiket="WhatsApp"
+              olaylar={whatsappMesajlari[0]?.direction === "inbound" ? [whatsappMesajlari[0].createdAt] : []}
+              title={musteri}
+              kicker="WHATSAPP"
+            >
+              <WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} />
+            </KanalDugmesi>
+          ) : null}
+          {postaGorur ? (
+            <KanalDugmesi
+              anahtar={`kanal:sozlesme:${data.id}:posta`}
+              etiket="Postalar"
+              olaylar={postalar.filter((posta) => posta.okunmamis).map((posta) => posta.son_mesaj_at ?? "").filter(Boolean)}
+              title={musteri}
+              kicker="POSTALAR"
+            >
+              <PostaAkisi
+                postalar={postalar}
+                epostaVar={Boolean(customer?.contact_email)}
+                eylem={izin("posta.yanitla") && customer?.contact_email ? (
+                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(customer.contact_email)}&firsat=${encodeURIComponent(data.opportunity_id)}&konu=${encodeURIComponent(`${data.contract_no} · ${data.title}`)}`}>Posta gönder</Link>
+                ) : null}
+              />
+            </KanalDugmesi>
+          ) : null}
+        </section>
+
+        <section className="panel-card opd-kart kd-alt-sol kd-eylemler" aria-label="İmza ve takip">
           {/* İMZA BAĞLANTISI. Eskiden sayfanın en üstünde ayrı bir kart ve
               tam adresle duruyordu; teklif detayında olduğu gibi müşteri
               kartının içinde. */}
@@ -539,65 +596,39 @@ export default async function ContractDetailPage({ params }: Props) {
           ) : null}
         </section>
 
-        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi). */}
-        <AkisCekmecesi
-          baslik="Yazışmalar"
-          kicker={`SÖZLEŞME · ${data.contract_no}`}
-          kanallar={[
-            mesajKanali(customerMessages, musteri),
-            yorumOzeti,
-            whatsappKanali(whatsappMesajlari),
-            ...(postaGorur ? [postaKanali(postalar)] : []),
-            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri.", ozetteGizli: true },
-          ]}
-        >
-          <div className="sozlesme-mesaj" id="musteri-mesajlari">
-            {customerMessages.length ? (
-              <div className="contract-chat">
-                {customerMessages.map((message) => {
-                  const fromCustomer = message.sender_type === "customer";
-                  return (
-                    <article key={message.id} className={`contract-bubble ${fromCustomer ? "is-customer" : "is-staff"}`}>
-                      <header>
-                        <b>{fromCustomer ? musteri : formatPersonName(message.sender_name)}</b>
-                        <time>{dateTime(message.created_at)}</time>
-                        {fromCustomer && !message.read_at ? <em>Yeni</em> : null}
-                      </header>
-                      <p>{message.body}</p>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="ic-akis-bos">Müşteri henüz mesaj yazmadı. Takip kodunu paylaştığınızda müşteri takip ekranından soru sorabilir.</p>
-            )}
-            {messagingOpen ? (
-              <form className="contract-reply" action={replyContractMessage}>
-                <input type="hidden" name="contract_id" value={data.id} />
-                <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
-                <div><small>Yanıt müşterinin takip ekranında görünür.{data.workflow_id ? " İş başladığı için mesajlar iş detayında da görünür." : ""}</small><button className="panel-primary" type="submit">Gönder</button></div>
-              </form>
-            ) : null}
-          </div>
-          <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} gorunum="akis" />
-          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
-          {postaGorur ? (
-            <div>
-              <PostaAkisi
-                postalar={postalar}
-                epostaVar={Boolean(customer?.contact_email)}
-                eylem={izin("posta.yanitla") && customer?.contact_email ? (
-                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(customer.contact_email)}&firsat=${encodeURIComponent(data.opportunity_id)}&konu=${encodeURIComponent(`${data.contract_no} · ${data.title}`)}`}>Posta gönder</Link>
-                ) : null}
-              />
-            </div>
-          ) : null}
-          <RecordHistory opportunityId={data.opportunity_id} />
-        </AkisCekmecesi>
-        </div>
+        {/* BAĞLANTILAR: talep, kaynak teklif ve iş (eskiden Ayrıntılar penceresindeydi). */}
+        <section className="panel-card opd-kart kd-alt-sag talep-gecmis" aria-label="Bağlantılar">
+          <h3 className="opd-kanal-grup">Bağlantılar</h3>
+                <ul>
+                  <li>
+                    <Link href={`/panel/crm/requests/${data.opportunity_id}`}>
+                      <span className="talep-gecmis-metin"><b>Talep</b><small>{formatSubject(customer?.title) || "Talebe git"}</small></span>
+                    </Link>
+                  </li>
+                  {kaynakTeklif?.id ? (
+                    <li>
+                      <Link href={`/panel/crm/proposals/${kaynakTeklif.id}`}>
+                        <span className="talep-gecmis-metin">
+                          <b>Teklif {kaynakTeklif.proposal_no}</b>
+                          <small>{kaynakTeklif.status ? TEKLIF_GRUP_ADLARI[teklifGrubu({ status: kaynakTeklif.status, archive_reason: kaynakTeklif.archive_reason ?? null, superseded_by: null })] ?? proposalStatusLabel(kaynakTeklif.status) : "Teklif"}</small>
+                        </span>
+                      </Link>
+                    </li>
+                  ) : null}
+                  {data.workflow_id ? (
+                    <li>
+                      <Link href={`/panel/operations/${data.workflow_id}`}>
+                        <span className="talep-gecmis-metin">
+                          <b>İş</b>
+                          <small>{is ? `${workflowStatusNames[is.status] ?? is.status}${isIlerleme !== null ? ` · %${isIlerleme}` : ""}` : "İşe git"}</small>
+                        </span>
+                      </Link>
+                    </li>
+                  ) : null}
+                </ul>
+        </section>
 
-        {/* Sözleşme */}
-        <section className="panel-card talep-bilgi" aria-label="Sözleşme bilgileri">
+        <section className="panel-card talep-bilgi kd-ana" aria-label="Sözleşme bilgileri">
           <div className="teklif-tutar">
             <div>
               <h2>Sözleşme tutarı</h2>
@@ -701,10 +732,6 @@ export default async function ContractDetailPage({ params }: Props) {
             </div>
           ) : null}
         </section>
-
-        {/* Akış: müşteri mesajları (takip ekranı), iç yorumlar, WhatsApp,
-            posta, kayıt geçmişi. WhatsApp ve Postalar eskiden yoktu;
-            yazışmayı görmek için ayrı ekranlarda müşteri aranıyordu. */}
       </div>
     </main>
   );
