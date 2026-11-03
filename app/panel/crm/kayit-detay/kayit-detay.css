@@ -1033,6 +1033,12 @@
     min-height:0;overflow:hidden;
   }
   .os-root main.kd-tek-sayfa>*{flex:0 0 auto}
-  .os-root main.kd-tek-sayfa>.kd-duzen-v4.kd-tek-ekran{flex:1 1 auto;min-height:0;grid-template-rows:minmax(0,1fr) minmax(0,1fr);align-items:stretch}
-  .os-root main.kd-tek-sayfa>.kd-tek-ekran>:is(.kd-musteri,.kd-iletisim,.kd-alt-sol,.kd-alt-sag,.kd-ana){min-height:0;max-height:none;overflow:auto;scrollbar-width:thin}
+  /*
+    Üst satır İÇERİK boyunda (iş detayındaki gibi): müşteri ve iletişim
+    kartları hiç kaymaz. İlk sürümde iki satır eşit bölünüyordu ve
+    iletişim kartının içinde kaydırma çubuğu çıkıyordu. Kalan yükseklik
+    alt satıra; orada içerik sığmazsa yalnızca o kart kayar.
+  */
+  .os-root main.kd-tek-sayfa>.kd-duzen-v4.kd-tek-ekran{flex:1 1 auto;min-height:0;grid-template-rows:auto minmax(0,1fr);align-items:stretch}
+  .os-root main.kd-tek-sayfa>.kd-tek-ekran>:is(.kd-alt-sol,.kd-alt-sag,.kd-ana){min-height:0;max-height:none;overflow:auto;scrollbar-width:thin}
 }
