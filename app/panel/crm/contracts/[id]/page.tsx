@@ -264,7 +264,9 @@ export default async function ContractDetailPage({ params }: Props) {
     ],
   };
   const gizliAlanlar = (haric: "hizmet" | "musteri" | "termin") => {
-    const satirlar = haric === "hizmet" ? [...gizliDegerler.musteri, ...gizliDegerler.sozlesme.filter(([ad]) => ad === "due_date")]
+    /* Hizmet penceresinde teslim tarihi (termin kartı) ve ödeme planı açıklaması yok; açıklama
+       03.11.2026'da kurum sahibinin isteğiyle formdan kalktı (taksitler ödeme planı kartında), değeri korunuyor. */
+    const satirlar = haric === "hizmet" ? [...gizliDegerler.musteri, ...gizliDegerler.sozlesme.filter(([ad]) => ad === "due_date" || ad === "payment_plan")]
       : haric === "musteri" ? gizliDegerler.sozlesme
       : [...gizliDegerler.musteri, ...gizliDegerler.sozlesme.filter(([ad]) => ad !== "due_date")];
     return <>{satirlar.map(([ad, deger]) => <input key={ad} type="hidden" name={ad} value={deger} />)}</>;
@@ -725,10 +727,10 @@ export default async function ContractDetailPage({ params }: Props) {
                 <span className="kd-kutu-deger">{money(Number(data.amount), data.currency || "TRY")}</span>
                 <span className="kd-kutu-aciklama">{data.title}</span>
                 <span className="kd-kutu-ozet">{data.scope || "Kapsam yazılmamış."}</span>
-                <span className="kd-kutu-dip"><span>{data.payment_plan || "Ödeme planı açıklaması yok"}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
+                <span className="kd-kutu-dip"><span>{data.payment_plan || ""}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="Hizmet kapsamı ve ücret"
-              description="Sözleşme başlığı, verilecek hizmetler, tutar ve başlangıç tarihi."
+              description="Sözleşme başlığı, verilecek hizmetler, tutar ve başlangıç tarihi. Taksitler “Ödeme planı” kartında."
               kicker={`SÖZLEŞME · ${data.contract_no}`}
               boy="buyuk"
               basaridaKapan
@@ -744,9 +746,8 @@ export default async function ContractDetailPage({ params }: Props) {
                           <label className="wide"><span>Sözleşme başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
                           <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
                           <label><span>Sözleşme tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(data.amount)} required /></label>
-                          <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
                           <label>Başlangıç tarihi<TarihSecici name="start_date" defaultValue={data.start_date ?? ""} /></label>
-                          <p className="wide kayit-formu-not">Taksitler ve vade tarihleri “Ödeme planı” kartından değişir; teslim tarihi “İş termin tarihi” kartından; tutar değişirse taksitler yeni toplama göre ölçeklenir.</p>
+                          <p className="wide kayit-formu-not">Taksitler ve vade tarihleri “Ödeme planı” kartından değişir; teslim tarihi “Termin” kartından; tutar değişirse taksitler yeni toplama göre ölçeklenir.</p>
 
                           {/* Yalnızca Arvo'nun kendi kurumunda: kiracının kendi
                               müşterisiyle yaptığı sözleşme bizim aboneliğimizi açmaz. */}
