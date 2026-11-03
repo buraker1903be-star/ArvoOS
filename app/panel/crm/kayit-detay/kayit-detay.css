@@ -660,10 +660,33 @@
 .cari-pencere{display:flex;flex-direction:column;gap:var(--sp-4)}
 .cari-pencere-eylem{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--sp-2)}
 .os-root .cari-pencere>.kayit-serit{margin:0}
-.cari-pencere-izgara{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:var(--sp-5);align-items:start}
+/*
+  CARİ PENCERESİ (03.11.2026): özet şeridi ile işlem düğmeleri tek
+  satırda; altında üç kart (hareketler · ödeme takvimi · sözleşmeler ve
+  bakiye). Eskiden iki sütundu ve sağ sütun takvim + bakiye hesabıyla
+  pencereyi aşağı uzatıyordu. Pencerede tek cari varsa pencere sabit
+  boyludur ve uzun kalan kart kendi içinde kayar; birden çok cari alt
+  alta dizildiğinde pencere bilerek kayar.
+*/
+.cari-pencere-ust{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3)}
+.cari-pencere-ust>.kayit-serit{flex:1 1 720px;order:0}
+.cari-pencere-ust>.cari-pencere-eylem{order:1;margin-left:auto}
+.cari-siradaki dd small{display:block;margin-top:1px;color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.cari-pencere-izgara{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,.85fr);gap:var(--sp-4);align-items:start}
 .cari-pencere-izgara>section{min-width:0}
+.cari-sutun{display:flex;flex-direction:column;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);scrollbar-width:thin}
+.cari-sutun>.talep-not:first-child{margin-top:0;padding-top:0;border-top:0}
 .cari-pencere-izgara h3{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
-@media (max-width:900px){.cari-pencere-izgara{grid-template-columns:minmax(0,1fr)}}
+@media (min-width:1101px){
+  .panel-modal:has(.panel-modal-body>.cari-pencere-bolum:only-child){height:min(94dvh,1100px)}
+  .panel-modal-body:has(>.cari-pencere-bolum:only-child){display:flex;flex-direction:column;overflow:hidden}
+  .panel-modal-body>.cari-pencere-bolum:only-child{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+  .panel-modal-body>.cari-pencere-bolum:only-child>.cari-pencere{flex:1 1 auto;min-height:0}
+  .panel-modal-body>.cari-pencere-bolum:only-child .cari-pencere-izgara{flex:1 1 auto;min-height:0;grid-template-rows:minmax(0,1fr);align-items:stretch}
+  .panel-modal-body>.cari-pencere-bolum:only-child .cari-sutun{min-height:0;overflow:auto}
+}
+@media (max-width:1100px){.cari-pencere-izgara{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.cari-pencere-izgara{grid-template-columns:minmax(0,1fr)}}
 /* Müşteri bilgileri formunun ara başlıkları (Künye, Fatura bilgileri). */
 /* Müşterinin birden çok carisi: her biri ayrı bölüm, aralarında çizgi. */
 .cari-coklu-not{margin:0 0 var(--sp-4);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);background:var(--warning-soft);color:var(--warning);font-size:var(--fs-sm)}
