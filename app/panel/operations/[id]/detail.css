@@ -692,6 +692,8 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-evrak span{color:var(--muted);font-size:var(--fs-sm)}
 .opd-evrak.is-bekliyor{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));background:var(--danger-soft)}
 .opd-evrak.is-bekliyor span{color:var(--danger)}
+/* Nötr: sözleşmesiz iş, tarihi yaklaşmamış görev, bitmiş liste. */
+.opd-evrak.is-notr{background:var(--surface)}
 .opd-evrak.is-tamam{border-color:color-mix(in srgb,var(--success) 45%,var(--line))}
 
 /* Başlıktaki termin */
@@ -770,5 +772,10 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   .opd-step-meta{justify-content:flex-start;padding:0 8px 10px 52px}
 }
 
-/* Kayıt geçmişi düğmesi evrak düğmesinin sade ikizi; son hareket tek satır. */
-.opd-gecmis-dugme span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Sıradaki görev: evrak düğmesinin ikizi, bağlantı; geciktiyse kırmızı, yaklaştıysa sarı. */
+.opd-siradaki{margin:0;text-decoration:none}
+.opd-siradaki b,.opd-siradaki span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opd-evrak.is-yaklasti{border-color:color-mix(in srgb,var(--warning) 45%,var(--line));background:color-mix(in srgb,var(--warning) 10%,var(--surface))}
+.opd-evrak.is-yaklasti span{color:var(--warning)}
+/* Sıradaki göreve inilince satır kaydırma alanının en üstüne yapışmasın. */
+.opd-step{scroll-margin-top:var(--sp-6)}

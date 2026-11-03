@@ -153,6 +153,8 @@ export default async function OperationDetailPage({
   if (!workflowData) notFound();
   const workflow = workflowData as Workflow;
   const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+  /* Sıradaki görev: listede tamamlanmamış ilk görev (sıra çalışma türünün sırası). */
+  const siradakiGorev = steps.find((step) => !step.is_completed) ?? null;
   const completedCount = steps.filter((step) => step.is_completed).length;
   const progress = steps.length ? Math.round((completedCount / steps.length) * 100) : 0;
   /*
@@ -392,6 +394,7 @@ export default async function OperationDetailPage({
     yorum var mı" sorusunun cevabı. Hiç yazmadıysa başkalarının bütün yorumları.
     Pencere açılınca rozetler tarayıcıda "görüldü" sayılıp söner (kanal-dugmesi.tsx).
   */
+  const siradakiUyari = siradakiGorev ? hatirlatmaDurumu(siradakiGorev, bugunIstanbul) : null;
   const sonYorumum = comments.filter((c) => c.created_by === userId).map((c) => c.created_at).sort().at(-1) ?? "";
   const baskalarininYorumlari = comments.filter((c) => c.created_by !== userId).map((c) => c.created_at);
   const sonYorumZamani = comments.map((c) => c.created_at).sort().at(-1) ?? null;
@@ -497,6 +500,31 @@ export default async function OperationDetailPage({
                 ) : (
                   <SahaDosyalari workflowId={workflow.id} organizationId={organizationId} portalAcik={portalPayment.hasContract && !portalSetupMissing} dosyalar={ekipDosyalari} />
                 )}
+              </PanelModal>
+              <PanelModal
+                triggerClassName="os-menu-item"
+                triggerLabel="Kayıt geçmişi"
+                title="Kayıt geçmişi"
+                description="Son hareketler ve alan değişiklikleri."
+                kicker={`İŞ · ${formatSubject(workflow.title)}`}
+                boy="buyuk"
+                baslangicAcik={acilacakPencere === "kayitlar"}
+              >
+            <div className="opd-kayit">
+              <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
+              <ul className="opd-activity">
+                {activities.map((activity) => (
+                  <li key={activity.id} data-kind={activity.kind}>
+                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
+                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
+                  </li>
+                ))}
+              </ul>
+              <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
+              <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
+                <RecordHistory workflowId={workflow.id} baslik={false} />
+              </Suspense>
+            </div>
               </PanelModal>
               {/* Sözleşme tutar taşıyor; operasyon personeli göremiyor. */}
               {contract && canAssign ? <Link className="os-menu-item" href={`/panel/crm/contracts/${contract.id}`}>Sözleşmeye git</Link> : null}
@@ -791,12 +819,10 @@ export default async function OperationDetailPage({
 
         {/*
           Alt sıra iki kart (03.11.2026, kurum sahibinin isteği): müşteri
-          kartının altında evrak teslimi ve kayıt geçmişi, iletişim kartının
-          altında durum ve top kimde alt alta. Kayıt geçmişi ⋯ menüsündeydi;
-          düğmesi artık son hareketi de söylüyor, pencereyi açmadan "en son
-          ne oldu" görünsün.
+          kartının altında evrak teslimi ve sıradaki görev, iletişim kartının
+          altında durum ve top kimde alt alta.
         */}
-        <section className="panel-card opd-kart opd-evrak-kart" aria-label="Evrak ve kayıt geçmişi">
+        <section className="panel-card opd-kart opd-evrak-kart" aria-label="Evrak ve sıradaki görev">
           <h3 className="opd-kanal-grup">Evrak teslimi</h3>
           {/*
             MÜŞTERİ NİHAİ EVRAK TESLİMİ. Düğmenin rengi ve cümlesi ödeme
@@ -828,36 +854,25 @@ export default async function OperationDetailPage({
               <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
             )}
           </PanelModal>
-          <h3 className="opd-kanal-grup">Kayıt geçmişi</h3>
-          <PanelModal
-            triggerClassName="opd-evrak is-notr opd-gecmis-dugme"
-            triggerLabel="Kayıt geçmişi"
-            tetik={<>
-              <b>Kayıt geçmişi</b>
-              <span>{activities[0] ? `Son hareket: ${activities[0].title} · ${formatDate(activities[0].at, true)}` : "Henüz hareket yok"}</span>
-            </>}
-            title="Kayıt geçmişi"
-            description="Son hareketler ve alan değişiklikleri."
-            kicker={`İŞ · ${formatSubject(workflow.title)}`}
-            boy="buyuk"
-            baslangicAcik={acilacakPencere === "kayitlar"}
-          >
-            <div className="opd-kayit">
-              <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
-              <ul className="opd-activity">
-                {activities.map((activity) => (
-                  <li key={activity.id} data-kind={activity.kind}>
-                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
-                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
-                  </li>
-                ))}
-              </ul>
-              <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
-              <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
-                <RecordHistory workflowId={workflow.id} baslik={false} />
-              </Suspense>
-            </div>
-          </PanelModal>
+          {/*
+            SIRADAKİ GÖREV (03.11.2026, kurum sahibinin seçimi): tamamlanmamış
+            ilk görev ve teslim tarihi. Personelin en sık sorusu "şimdi ne
+            yapmalıyım"; kayıt geçmişi bu yerdeydi, ⋯ menüsüne döndü.
+            Tıklayınca görev listesinde o satıra iner.
+          */}
+          <h3 className="opd-kanal-grup">Sıradaki görev</h3>
+          {siradakiGorev ? (
+            <a className={`opd-evrak opd-siradaki is-${siradakiUyari === "overdue" ? "bekliyor" : siradakiUyari === "due_soon" ? "yaklasti" : "notr"}`} href={`#gorev-${siradakiGorev.id}`}>
+              <b>{formatSubject(siradakiGorev.title)}</b>
+              <span>
+                {siradakiGorev.due_date ? formatDate(siradakiGorev.due_date) : "Tarih yok"}
+                {siradakiUyari ? ` · ${siradakiUyari === "overdue" ? "gecikti" : "yaklaştı"}` : ""}
+                {siradakiGorev.assigned_employee_id && employeeNames.get(siradakiGorev.assigned_employee_id) ? ` · ${formatPersonName(employeeNames.get(siradakiGorev.assigned_employee_id)!)}` : ""}
+              </span>
+            </a>
+          ) : (
+            <p className="opd-evrak is-notr opd-siradaki"><b>{steps.length ? "Bütün görevler tamamlandı" : "Henüz görev yok"}</b></p>
+          )}
         </section>
 
         <section className="panel-card opd-kart opd-durum-kart" aria-label="Durum">
@@ -976,7 +991,7 @@ export default async function OperationDetailPage({
                       <small>{grup.biten}/{grup.toplam} görev</small>
                     </h3>
                   ) : null}
-                  <div className={`opd-step${step.is_completed ? " is-done" : ""}`}>
+                  <div className={`opd-step${step.is_completed ? " is-done" : ""}`} id={`gorev-${step.id}`}>
                     <form action={toggleWorkflowStep}>
                       <input type="hidden" name="step_id" value={step.id} />
                       <input type="hidden" name="workflow_id" value={workflow.id} />
