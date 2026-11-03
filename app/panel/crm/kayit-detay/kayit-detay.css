@@ -1229,3 +1229,17 @@
 /* Penceredeki dağılım da hizalı: değer sütunu "auto" iken çubuklar tutarın uzunluğuna göre kayıyordu (kartta 03.11.2026'da düzeltilen hatanın aynısı). */
 .istat-pencere li{grid-template-columns:minmax(0,1fr) minmax(0,2fr) 96px}
 .istat-pencere strong{text-align:right;white-space:nowrap}
+/*
+  BÜTÜN DAĞILIMLAR HİZALI (03.11.2026). Her kalem kendi ızgarası olduğu
+  için "auto" bir değer sütunu satırdan satıra farklı genişlik alıyor,
+  çubuklar ve tutarlar alt alta denk gelmiyordu. Temel kurallar da sabit
+  değer sütunuyla: istatistik kartı dışında kullanılan dağılımlar
+  (posta, platform ekranları) aynı hizada.
+*/
+.istat-cubuklar li{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 88px}
+.istat-cubuklar strong{text-align:right;white-space:nowrap}
+.talep-istatistik .istat-cubuklar li{grid-template-columns:minmax(0,1fr) 88px}
+.istat-kart-satir{grid-template-columns:minmax(0,1fr) 88px}
+.istat-kart-satir>strong{text-align:right;white-space:nowrap}
+/* Pencere kuralı temel kuraldan SONRA: aynı özgüllükte, yoksa temel kural penceredeki geniş çubuğu ezer. */
+.istat-cubuklar.istat-pencere li{grid-template-columns:minmax(0,1fr) minmax(0,2fr) 96px}

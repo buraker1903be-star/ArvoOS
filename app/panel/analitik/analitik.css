@@ -174,3 +174,6 @@
   .an-harita{flex:none;height:220px}
   .an-akis-liste{max-height:320px}
 }
+/* Ek sütun ve sayı sabit genişlikte (03.11.2026): her satır ayrı ızgara, "auto" sütunlar satırdan satıra kayıyor, başlıkla sayılar hizalanmıyordu. */
+.an-satir-ek,.an-satir-baslik>small:first-of-type{width:72px;text-align:right}
+.an-satir>b,.an-satir-baslik>small:last-of-type{width:64px;text-align:right}
