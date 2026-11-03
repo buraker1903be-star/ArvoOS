@@ -225,14 +225,15 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
         <div><dt>Ödenen</dt><dd data-tone="success">{money(toplam.paid)}</dd><small>tüm zamanlar</small></div>
         <div className="pp-bakiye" data-tone={toplam.balance > 0 ? "warning" : toplam.balance < 0 ? "danger" : "success"}>
           <dt>Ödenecek bakiye</dt><dd>{money(toplam.balance)}</dd>
-          <small>{toplam.balance > 0 ? "ödenmeyi bekliyor" : toplam.balance < 0 ? "fazla ödenmiş" : "hesap kapalı"}</small>
+          {/* Fazla ödeme açıklaması hücrenin içinde (03.11.2026): eskiden şeridin
+              altında ayrı bir uyarı kutusuydu ve pencereyi aşağı uzatıyordu. */}
+          <small>{toplam.balance > 0 ? "ödenmeyi bekliyor" : toplam.balance < 0 ? "fazla ödenmiş · sonraki primlerden mahsup edilir" : "hesap kapalı"}</small>
         </div>
       </dl>
-      {toplam.balance < 0 ? <p className="pp-uyari">Bu personele hak ettiğinden <b>{money(-toplam.balance)}</b> fazla ödenmiş görünüyor; sonraki primlerden mahsup edilir.</p> : null}
 
       <section className="pp-kartlar-alan" aria-label="Prim dökümleri">
-        <header className="pp-bolum-bas"><h3>Dökümler</h3><small>Dönem: {d.donemYazisi}</small></header>
-        {donemSecici()}
+        {/* Başlık ve dönem seçimi tek satırda; seçili dönem kartların kendi alt başlığında yazıyor. */}
+        <header className="pp-bolum-bas pp-bolum-suzgec"><h3>Dökümler</h3>{donemSecici()}</header>
         <div className="pp-kartlar">
           {ayrinti("ozet", "Dönem özeti", <>
             {kartBasi("Σ", "Dönem özeti", d.donemYazisi)}

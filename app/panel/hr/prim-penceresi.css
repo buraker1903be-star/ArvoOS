@@ -37,6 +37,11 @@
 .pp-aralik{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1)}
 .pp-aralik input{min-height:32px;padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}
 .pp-aralik span{color:var(--muted)}
+/* Tarih seçici kendi kutusunda tam genişlik alıyordu; esnek satırda iki
+   kutu ve düğme alt alta diziliyor, "–" ayrı satıra düşüyordu. */
+.os-root .pp-aralik .tsc{flex:0 0 150px;width:150px;min-width:0}
+.pp-bolum-suzgec{margin-bottom:var(--sp-3)}
+.pp-bolum-suzgec>.pp-suzgec{flex:1 1 auto;justify-content:flex-end;gap:var(--sp-3);margin:0}
 .os-root .pp-aralik button{min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
 
 .os-root .pp-liste{list-style:none;margin:0;padding:0;border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
