@@ -39,6 +39,9 @@ import "../hr.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../../components/kayit-formu.css";
 import { modulGerek } from "@/lib/modul-kapisi";
+import { ayinSonGunu } from "@/lib/rapor-donemi";
+import { sozlesmeleriBagla } from "@/lib/rapor-personel";
+import { gerceklesme } from "@/lib/personel-hedefi";
 
 /*
   PERSONEL DETAYI (2026-10): talep, teklif, sözleşme, iş ve cari
@@ -137,12 +140,14 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
     (check:rakamlar).
   */
   const bos = Promise.resolve({ data: [], count: 0 });
+  const maasGorur = izin("hr.maas.yonet");
+  const buAyBasi = `${todayInIstanbul().slice(0, 7)}-01`;
   const [
     { data: employeeData, error: employeeError },
     { data: departmentData },
     docResult, talepResult, talepSayisi, isResult, isSayisi,
     sozlesmeSonuc, teklifSonuc, isSonuc,
-    prim, gizlilikSonuc,
+    prim, gizlilikSonuc, hedefSonuc, maasSonuc, hakedisSonuc,
   ] = await Promise.all([
     supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests,commission_rate,operation_commission_rate").eq("id", id).eq("organization_id", org).maybeSingle(),
     supabase.from("hr_departments").select("id,name,is_active").eq("organization_id", org).order("name"),
@@ -157,13 +162,22 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
       personele atanmış taleplerden), operasyonda teslim edilen işler ve
       zamanında teslim oranı. Okunamayan modül (RLS) boş kalır.
     */
-    crmVar ? supabase.from("crm_contracts").select("amount,signed_at,crm_opportunities!inner(assigned_employee_id)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", id).in("status", ["signed", "completed"]) : bos,
+    crmVar ? supabase.from("crm_contracts").select("id,contract_no,title,opportunity_id,amount,status,signed_at,created_at,crm_opportunities!inner(assigned_employee_id,customer_name)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", id).in("status", ["signed", "completed"]) : bos,
     crmVar ? supabase.from("crm_proposals").select("status,archive_reason,superseded_by,crm_opportunities!inner(assigned_employee_id)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", id) : bos,
-    opsVar ? supabase.from("operation_workflows").select("due_date,delivered_at").eq("organization_id", org).eq("assigned_employee_id", id).not("delivered_at", "is", null) : bos,
+    opsVar ? supabase.from("operation_workflows").select("id,title,customer_name,due_date,delivered_at").eq("organization_id", org).eq("assigned_employee_id", id).not("delivered_at", "is", null) : bos,
     /* Prim (tahakkuk kurum genelinden hesaplanıyor) ve gizlilik sözleşmeleri
        yalnızca yetkisi olana okunur. */
     primGorebilir ? primVerisi(supabase, org) : Promise.resolve(null),
     gizlilikGorur ? supabase.from("hr_confidentiality_agreements").select("id,agreement_no,status,created_at,signed_at,signer_name").eq("organization_id", org).eq("employee_id", id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    /*
+      KARTLAR (03.11.2026): bu ayın satış hedefi (Hedefler ekranıyla aynı
+      kayıt) ve maaş/hakediş durumu (Maaşlar ve Hakedişler ekranlarıyla
+      aynı tablolar; yalnızca hr.maas.yonet). Çalışma tipi personel
+      kaydıyla aynı anda okunduğu için ikisi birden soruluyor.
+    */
+    crmVar ? supabase.from("hr_personel_hedefleri").select("tutar").eq("organization_id", org).eq("employee_id", id).eq("donem", buAyBasi).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    maasGorur ? supabase.from("hr_maaslar").select("anlasilan_net,odendi_on,odenen").eq("organization_id", org).eq("employee_id", id).eq("donem", buAyBasi).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    maasGorur ? supabase.from("hr_hakedisler").select("tutar").eq("organization_id", org).eq("employee_id", id).eq("durum", "bekliyor") : Promise.resolve({ data: [], error: null }),
   ]);
   if (employeeError) throw new Error("Personel okunamadı: " + employeeError.message);
   if (!employeeData) notFound();
@@ -206,19 +220,35 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const acikIs = isSayisi.count ?? 0;
 
   const an = simdi();
-  const imzalananlar = (sozlesmeSonuc.data ?? []) as { amount: number; signed_at: string | null }[];
+  const bugunAnahtari = todayInIstanbul();
+  type Imzali = { id: string; contract_no: string | null; title: string | null; opportunity_id: string | null; amount: number; status: string; signed_at: string | null; created_at: string; crm_opportunities: { customer_name: string | null } | null };
+  const imzalananlar = ((sozlesmeSonuc.data ?? []) as unknown as Imzali[]).sort((a, b) => (b.signed_at ?? b.created_at).localeCompare(a.signed_at ?? a.created_at));
+  const satisToplami = imzalananlar.reduce((sum, s) => sum + Number(s.amount), 0);
   const son90Imza = imzalananlar.filter((s) => s.signed_at && gunOnce(s.signed_at, an) < 90);
   const son90Deger = son90Imza.reduce((sum, s) => sum + Number(s.amount), 0);
   const teklifGruplari = ((teklifSonuc.data ?? []) as { status: string; archive_reason: string | null; superseded_by: string | null }[]).map(teklifGrubu);
   const kabul = teklifGruplari.filter((g) => g === "accepted").length;
   const kabulOrani = oran(kabul, teklifGruplari.filter((g) => g === "accepted" || g === "rejected" || g === "expired").length);
-  const teslimler = (isSonuc.data ?? []) as { due_date: string | null; delivered_at: string }[];
+  const teslimler = ((isSonuc.data ?? []) as { id: string; title: string; customer_name: string | null; due_date: string | null; delivered_at: string }[]).sort((a, b) => b.delivered_at.localeCompare(a.delivered_at));
   const son90Teslim = teslimler.filter((t) => gunOnce(t.delivered_at, an) < 90).length;
   const teslimGunu = (deger: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(Date.parse(deger));
   const terminli = teslimler.filter((t) => t.due_date);
   const zamaninda = oran(terminli.filter((t) => teslimGunu(t.delivered_at) <= t.due_date!).length, terminli.length);
   const primToplami = prim ? ledgerTotals(employee.id, prim.accruals, prim.payments) : null;
   const gizlilikler = (gizlilikSonuc.data ?? []) as Gizlilik[];
+  /* Aylık hedef: gerçekleşen Hedefler ekranının kuralıyla (imza günü bu ay). */
+  const hedefTutari = hedefSonuc.error ? null : ((hedefSonuc.data as { tutar: number } | null)?.tutar ?? null);
+  const buAyDonemi = { startKey: buAyBasi, endKey: ayinSonGunu(Number(buAyBasi.slice(0, 4)), Number(buAyBasi.slice(5, 7))), key: "ay" };
+  const buAyGerceklesen = sozlesmeleriBagla({
+    sozlesmeler: imzalananlar,
+    talebinPersoneli: new Map(imzalananlar.flatMap((c) => (c.opportunity_id ? [[c.opportunity_id, employee.id] as [string, string]] : []))),
+    donem: buAyDonemi,
+  }).get(employee.id) ?? { adet: 0, tutar: 0 };
+  const hedefOrani = gerceklesme(buAyGerceklesen.tutar, hedefTutari);
+  const hakedisli = employee.employment_type === "contractor";
+  const buAyMaas = maasSonuc.error ? null : (maasSonuc.data as { anlasilan_net: number | null; odendi_on: string | null; odenen: number | null } | null);
+  const bekleyenHakedis = hakedisSonuc.error ? null : ((hakedisSonuc.data ?? []) as { tutar: number }[]);
+  const gecikenIs = isler.filter((is) => is.due_date && is.due_date.slice(0, 10) < bugunAnahtari).length;
   const temelAdres = `/panel/hr/${employee.id}`;
   const pencere = arama.pencere === "prim" || arama.pencere === "yetki" ? arama.pencere : null;
   /*
@@ -267,39 +297,12 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
       </section>
         </div>
         <div className="talep-bas-eylem">
-          {prim && primToplami ? (
-            <PanelModal
-              triggerLabel="Prim"
-              triggerClassName="panel-primary"
-              kicker="PRİM HESABI"
-              title={employee.full_name}
-              description={`Ödenecek bakiye ${money(primToplami.balance)}`}
-              boy="ekran"
-              baslangicAcik={pencere === "prim"}
-              kapaninca={pencere === "prim" ? temelAdres : undefined}
-            >
-              <PrimPenceresi veri={prim} employeeId={employee.id} temelAdres={temelAdres} donemKodu={arama.prim} baslangic={arama.prim_bas} bitis={arama.prim_bit} isSekmesi={arama.prim_is} kart={arama.prim_kart} />
-            </PanelModal>
-          ) : null}
-          {yetkiDuzenler && employee.user_id ? (
-            <PanelModal
-              triggerLabel="Yetkiler"
-              triggerClassName="panel-secondary"
-              kicker="YETKİLER"
-              title={employee.full_name}
-              description="Görebildiği modüller ve yapabildiği işlemler; rol kuralı ya da kişiye özel istisna."
-              boy="tam"
-              baslangicAcik={pencere === "yetki"}
-              kapaninca={pencere === "yetki" ? temelAdres : undefined}
-            >
-              <KisiYetkileri hedef={employee.user_id} />
-            </PanelModal>
-          ) : null}
+          {/* Prim ve Yetkiler eskiden burada düğmeydi; ikisinin de artık kendi kartı var (prim kartı, Yetkiler kartı). */}
           {canManageTeam ? (
-            <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary" kicker={`PERSONEL · ${employee.full_name}`} title="Personeli düzenle" description="Kimlik, görev, iletişim ve prim oranları. Panel rolü ve yetkiler ayrı yerden değişir.">{editForm}</PanelDrawer>
+            <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary kd-bas-dugme" kicker={`PERSONEL · ${employee.full_name}`} title="Personeli düzenle" description="Kimlik, görev, iletişim ve prim oranları. Panel rolü ve yetkiler ayrı yerden değişir.">{editForm}</PanelDrawer>
           ) : null}
           <details className="os-menu talep-menu">
-            <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
+            <summary className="panel-secondary kd-bas-dugme" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               <Link className="os-menu-item" href="/panel/hr">Ekip listesi</Link>
               {/* Yanlış açılan kaydı silme: yalnızca panel hesabı olmayan
@@ -419,23 +422,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               </KanalDugmesi>
             </>
           ) : null}
-          {hareketGorur ? (
-            <>
-              {/* Aralık ve sayfa bağlantıları sayfayı yeniden yüklüyor; adreste ?hareket= varsa pencere açık gelir. */}
-              <PanelModal
-                triggerLabel="Panel hareketleri"
-                triggerClassName="opd-kanal"
-                kicker="PANEL HAREKETLERİ"
-                title={employee.full_name}
-                boy="buyuk"
-                baslangicAcik={Boolean(arama.hareket || arama.hsayfa)}
-                kapaninca={arama.hareket || arama.hsayfa ? temelAdres : undefined}
-              >
-                <PersonelHareketleri supabase={supabase} orgId={org} userId={employee.user_id} temelAdres={temelAdres} aralik={arama.hareket} sayfa={arama.hsayfa} />
-              </PanelModal>
-            </>
-          ) : null}
-          {!crmVar && !postaGorur && !hareketGorur ? <p className="talep-bos">Görebileceğiniz bir iletişim kanalı yok.</p> : null}
+          {!crmVar && !postaGorur ? <p className="talep-bos">Görebileceğiniz bir iletişim kanalı yok.</p> : null}
         </section>
 
         {/* PRİM VE SATIŞ: bakiye büyük rakam, oranlar altında; hareketler Prim penceresinde. */}
@@ -460,11 +447,28 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
             <div><dt>Satış primi</dt><dd>%{percent(employee.commission_rate)}</dd></div>
             <div><dt>Operasyon primi</dt><dd>%{percent(employee.operation_commission_rate)}</dd></div>
           </dl>
-          {prim && primToplami ? <Link className="panel-secondary opd-ayrinti-dugme" href={`${temelAdres}?pencere=prim`} scroll={false}>Prim hareketleri</Link> : null}
+          {prim && primToplami ? (
+            <PanelModal
+              triggerLabel="Prim hareketleri"
+              triggerClassName="panel-secondary opd-ayrinti-dugme"
+              kicker="PRİM HESABI"
+              title={employee.full_name}
+              description={`Ödenecek bakiye ${money(primToplami.balance)}`}
+              boy="ekran"
+              baslangicAcik={pencere === "prim"}
+              kapaninca={pencere === "prim" ? temelAdres : undefined}
+            >
+              <PrimPenceresi veri={prim} employeeId={employee.id} temelAdres={temelAdres} donemKodu={arama.prim} baslangic={arama.prim_bas} bitis={arama.prim_bit} isSekmesi={arama.prim_is} kart={arama.prim_kart} />
+            </PanelModal>
+          ) : null}
         </section>
 
-        {/* ERİŞİM VE ÖZLÜK: eskiden sağ sütunun iki sekmesiydi; durum kartta, içerik pencerede. */}
-        <section className="panel-card opd-kart kd-alt-sag" aria-label="Erişim ve özlük dosyası">
+        {/*
+          PANEL: erişim ve panel hareketleri. Özlük dosyası 03.11.2026'da
+          ana bölümdeki kendi kartına taşındı; hareketler iletişim kartından
+          buraya geldi (bir kanal değil, panel kullanımı).
+        */}
+        <section className="panel-card opd-kart kd-alt-sag" aria-label="Panel erişimi ve hareketleri">
           {canManageTeam ? (
             <>
               <h3 className="opd-kanal-grup">Panel erişimi</h3>
@@ -579,13 +583,236 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               </PanelModal>
             </>
           ) : null}
-          {canManageTeam || gizlilikGorur ? (
+          {hareketGorur ? (
             <>
-              <h3 className="opd-kanal-grup">Özlük dosyası</h3>
-              <p className="opd-kanal-ozet">{[gizlilikGorur ? `${gizlilikler.length} gizlilik sözleşmesi` : null, canManageTeam ? `${docs.length} belge` : null].filter(Boolean).join(" · ")}</p>
+              <h3 className="opd-kanal-grup">Panel hareketleri</h3>
+              <p className="opd-kanal-ozet">Giriş, görüntüleme ve işlem kayıtları</p>
+              {/* Aralık ve sayfa bağlantıları sayfayı yeniden yüklüyor; adreste ?hareket= varsa pencere açık gelir. */}
               <PanelModal
-                triggerLabel="Özlük dosyası"
+                triggerLabel="Panel hareketleri"
                 triggerClassName="opd-kanal"
+                kicker="PANEL HAREKETLERİ"
+                title={employee.full_name}
+                boy="buyuk"
+                baslangicAcik={Boolean(arama.hareket || arama.hsayfa)}
+                kapaninca={arama.hareket || arama.hsayfa ? temelAdres : undefined}
+              >
+                <PersonelHareketleri supabase={supabase} orgId={org} userId={employee.user_id} temelAdres={temelAdres} aralik={arama.hareket} sayfa={arama.hsayfa} />
+              </PanelModal>
+            </>
+          ) : null}
+          {!canManageTeam && !hareketGorur ? <p className="talep-bos">Panel erişimini görme yetkiniz yok.</p> : null}
+        </section>
+
+        <section className="panel-card talep-bilgi kd-ana" aria-label="Üstündekiler">
+          <div className="kd-tutar-satir">
+            <div><h2 className="kd-ana-baslik">Üstündekiler</h2></div>
+          </div>
+          {/*
+            KARTLAR (03.11.2026, kurum sahibinin çizimi). Eskiden performans
+            şeridinin altında açık talepler ve yürüttüğü işler alt alta liste
+            olarak duruyordu ve kart kendi içinde kayıyordu. Artık iki sıra
+            dört kart: üstte satış ve operasyon (talepler, satışlar, işler,
+            tamamlanan işler; performans sayıları kartların içinde), altta
+            yetkiler, özlük dosyası, aylık hedef ve maaş/hakediş. Karta
+            basınca liste ortada açılan pencerede.
+          */}
+          <div className="kd-kutular kd-kutular-personel">
+            {crmVar ? (
+              <PanelModal
+                triggerClassName="kd-kutu"
+                triggerLabel="Elindeki talepler"
+                tetik={<>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Elindeki talepler</span><span className="kd-kutu-cip">{kabulOrani === null ? "kabul —" : `kabul %${kabulOrani}`}</span></span>
+                  <span className={acikTalep ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{acikTalep}<small>açık talep</small></span>
+                  <span className="kd-kutu-satirlar">
+                    {talepler.slice(0, 2).map((t) => <span key={t.id}><b>{t.customer_name || t.title || "Talep"}</b><small>{requestStageNames[t.stage ?? ""] ?? t.stage}</small></span>)}
+                  </span>
+                  <span className="kd-kutu-dip"><span>{kabul} teklif kabul</span><span className="kd-kutu-ac">Aç →</span></span>
+                </>}
+                kicker={`PERSONEL · ${employee.full_name}`}
+                title="Elindeki talepler"
+                description={`${acikTalep} açık talep · teklif kabul oranı ${kabulOrani === null ? "—" : `%${kabulOrani}`}`}
+                boy="buyuk"
+              >
+                <div className="personel personel-ustunde kd-pencere-liste">
+                  {talepler.length ? (
+                    <ul className="pu-liste">
+                      {talepler.map((talep) => (
+                        <li key={talep.id}>
+                          <Link href={`/panel/crm/requests/${talep.id}`}>
+                            <span className="pu-govde">
+                              <b>{talep.customer_name || talep.title || "Talep"}</b>
+                              <small>{[talep.customer_name ? talep.title : null, `Açılış ${shortDate(talep.created_at)}`].filter(Boolean).join(" · ")}</small>
+                            </span>
+                            <span className="status-pill" data-tone={statusTone(talep.stage ?? "")}>{requestStageNames[talep.stage ?? ""] ?? talep.stage}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="pu-bos">Üstünde açık talep yok.</p>}
+                  <Link className="pu-tumu" href={`/panel/crm?temsilci=${employee.id}`}>{acikTalep > talepler.length ? `Tümünü listede gör (${acikTalep})` : "Listede aç"} →</Link>
+                </div>
+              </PanelModal>
+            ) : null}
+            {crmVar ? (
+              <PanelModal
+                triggerClassName="kd-kutu"
+                triggerLabel="Satışa dönen talepler"
+                tetik={<>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Satışlar</span><span className="kd-kutu-cip">son 90 gün {son90Imza.length}</span></span>
+                  <span className={imzalananlar.length ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{imzalananlar.length}<small>imzalı sözleşme</small></span>
+                  <span className="kd-kutu-satirlar">
+                    {imzalananlar.slice(0, 2).map((c) => <span key={c.id}><b>{c.crm_opportunities?.customer_name || c.title || c.contract_no}</b><small>{tamPara(Number(c.amount))}</small></span>)}
+                  </span>
+                  <span className="kd-kutu-dip"><span>{satisToplami ? tamPara(satisToplami) : "—"} toplam</span><span className="kd-kutu-ac">Aç →</span></span>
+                </>}
+                kicker={`PERSONEL · ${employee.full_name}`}
+                title="Satışa dönen talepler"
+                description={`${imzalananlar.length} imzalı sözleşme · son 90 günde ${son90Imza.length} (${son90Deger ? tamPara(son90Deger) : "—"})`}
+                boy="buyuk"
+              >
+                <div className="personel personel-ustunde kd-pencere-liste">
+                  {imzalananlar.length ? (
+                    <ul className="pu-liste">
+                      {imzalananlar.map((c) => (
+                        <li key={c.id}>
+                          <Link href={`/panel/crm/contracts/${c.id}`}>
+                            <span className="pu-govde">
+                              <b>{c.crm_opportunities?.customer_name || c.title || "Sözleşme"}</b>
+                              <small>{[c.contract_no, c.title, c.signed_at ? `İmza ${shortDate(c.signed_at)}` : null].filter(Boolean).join(" · ")}</small>
+                            </span>
+                            <span className="pu-tutar">{tamPara(Number(c.amount))}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="pu-bos">Henüz satışa dönen talebi yok.</p>}
+                </div>
+              </PanelModal>
+            ) : null}
+            {opsVar ? (
+              <PanelModal
+                triggerClassName="kd-kutu"
+                triggerLabel="Yürüttüğü işler"
+                tetik={<>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Yürüttüğü işler</span><span className="kd-kutu-cip" data-tone={gecikenIs ? "warning" : undefined}>{gecikenIs ? `${gecikenIs} gecikti` : "gecikme yok"}</span></span>
+                  <span className={acikIs ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{acikIs}<small>açık iş</small></span>
+                  <span className="kd-kutu-satirlar">
+                    {isler.slice(0, 2).map((is) => <span key={is.id}><b>{is.title}</b><small>{is.due_date ? `Termin ${shortDate(is.due_date)}` : "Termin yok"}</small></span>)}
+                  </span>
+                  <span className="kd-kutu-dip"><span>{workflowStatusNames[isler[0]?.status ?? ""] ?? ""}</span><span className="kd-kutu-ac">Aç →</span></span>
+                </>}
+                kicker={`PERSONEL · ${employee.full_name}`}
+                title="Yürüttüğü işler"
+                description={`${acikIs} açık iş${gecikenIs ? ` · ${gecikenIs} gecikmiş` : ""}`}
+                boy="buyuk"
+              >
+                <div className="personel personel-ustunde kd-pencere-liste">
+                  {isler.length ? (
+                    <ul className="pu-liste">
+                      {isler.map((is) => {
+                        const gecikti = Boolean(is.due_date && is.due_date.slice(0, 10) < bugun);
+                        return (
+                          <li key={is.id}>
+                            <Link href={`/panel/operations/${is.id}`}>
+                              <span className="pu-govde">
+                                <b>{is.title}</b>
+                                <small>
+                                  {is.customer_name ? `${is.customer_name} · ` : ""}
+                                  {is.due_date ? <span data-tone={gecikti ? "danger" : undefined}>{gecikti ? "Gecikti · " : "Termin "}{shortDate(is.due_date)}</span> : "Termin yok"}
+                                </small>
+                              </span>
+                              <span className="status-pill" data-tone={statusTone(is.status)}>{workflowStatusNames[is.status] ?? is.status}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : <p className="pu-bos">Üstünde iş yok.</p>}
+                  <Link className="pu-tumu" href={`/panel/operations/isler?sorumlu=${employee.id}`}>{acikIs > isler.length ? `Tümünü listede gör (${acikIs})` : "Listede aç"} →</Link>
+                </div>
+              </PanelModal>
+            ) : null}
+            {opsVar ? (
+              <PanelModal
+                triggerClassName="kd-kutu"
+                triggerLabel="Tamamladığı işler"
+                tetik={<>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Tamamladığı işler</span><span className="kd-kutu-cip" data-tone={zamaninda !== null && zamaninda < 70 ? "warning" : undefined}>{zamaninda === null ? "zamanında —" : `zamanında %${zamaninda}`}</span></span>
+                  <span className={teslimler.length ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{teslimler.length}<small>teslim</small></span>
+                  <span className="kd-kutu-satirlar">
+                    {teslimler.slice(0, 2).map((t) => <span key={t.id}><b>{t.title}</b><small>{shortDate(t.delivered_at)}</small></span>)}
+                  </span>
+                  <span className="kd-kutu-dip"><span>son 90 gün {son90Teslim}</span><span className="kd-kutu-ac">Aç →</span></span>
+                </>}
+                kicker={`PERSONEL · ${employee.full_name}`}
+                title="Tamamladığı işler"
+                description={`${teslimler.length} teslim · son 90 günde ${son90Teslim} · ${terminli.length} terminli işte zamanında ${zamaninda === null ? "—" : `%${zamaninda}`}`}
+                boy="buyuk"
+              >
+                <div className="personel personel-ustunde kd-pencere-liste">
+                  {teslimler.length ? (
+                    <ul className="pu-liste">
+                      {teslimler.map((t) => {
+                        const gec = Boolean(t.due_date && teslimGunu(t.delivered_at) > t.due_date);
+                        return (
+                          <li key={t.id}>
+                            <Link href={`/panel/operations/${t.id}`}>
+                              <span className="pu-govde">
+                                <b>{t.title}</b>
+                                <small>{[t.customer_name, `Teslim ${shortDate(t.delivered_at)}`, t.due_date ? `termin ${shortDate(t.due_date)}` : null].filter(Boolean).join(" · ")}</small>
+                              </span>
+                              <span className="status-pill" data-tone={gec ? "warning" : "success"}>{t.due_date ? (gec ? "Geç teslim" : "Zamanında") : "Terminsiz"}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : <p className="pu-bos">Henüz teslim ettiği iş yok.</p>}
+                </div>
+              </PanelModal>
+            ) : null}
+
+            {/* İKİNCİ SIRA: yetkiler, özlük dosyası, aylık hedef, maaş/hakediş. */}
+            {yetkiDuzenler && employee.user_id ? (
+              <PanelModal
+                triggerClassName="kd-kutu"
+                triggerLabel="Yetkiler"
+                tetik={<>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Yetkiler</span><span className="kd-kutu-cip" data-tone={member && !member.is_active ? "danger" : undefined}>{member ? (member.is_active ? "erişim açık" : "erişim kapalı") : "hesap yok"}</span></span>
+                  <span className="kd-kutu-deger kd-kutu-deger-metin">{erisim}</span>
+                  <span className="kd-kutu-ozet">Görebildiği modüller ve yapabildiği işlemler; rol kuralı ya da kişiye özel istisna.</span>
+                  <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">Düzenle →</span></span>
+                </>}
+                kicker="YETKİLER"
+                title={employee.full_name}
+                description="Görebildiği modüller ve yapabildiği işlemler; rol kuralı ya da kişiye özel istisna."
+                boy="tam"
+                baslangicAcik={pencere === "yetki"}
+                kapaninca={pencere === "yetki" ? temelAdres : undefined}
+              >
+                <KisiYetkileri hedef={employee.user_id} />
+              </PanelModal>
+            ) : (
+              <div className="kd-kutu is-kapali" aria-disabled="true">
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Yetkiler</span></span>
+                <span className="kd-kutu-deger kd-kutu-deger-metin">{erisim}</span>
+                <span className="kd-kutu-ozet">{employee.user_id ? "Yetkileri değiştirme izniniz yok." : "Panel hesabı yok; davet edilince yetkileri buradan düzenlenir."}</span>
+              </div>
+            )}
+            {canManageTeam || gizlilikGorur ? (
+              <PanelModal
+                triggerClassName="kd-kutu"
+                triggerLabel="Özlük dosyası"
+                tetik={<>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Özlük dosyası</span>{gizlilikGorur ? <span className="kd-kutu-cip" data-tone={gizlilikler.some((g) => g.signed_at) ? undefined : "warning"}>{gizlilikler.some((g) => g.signed_at) ? "gizlilik imzalı" : "gizlilik imzasız"}</span> : null}</span>
+                  <span className={docs.length ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{docs.length}<small>belge</small></span>
+                  <span className="kd-kutu-satirlar">
+                    {docs.slice(0, 2).map((doc) => <span key={doc.id}><b>{doc.file_name}</b><small>{shortDate(doc.created_at)}</small></span>)}
+                  </span>
+                  <span className="kd-kutu-dip"><span>{gizlilikGorur ? `${gizlilikler.length} gizlilik sözleşmesi` : ""}</span><span className="kd-kutu-ac">Aç →</span></span>
+                </>}
                 kicker="ÖZLÜK DOSYASI"
                 title={employee.full_name}
                 description="Gizlilik sözleşmesi ve yüklenen belgeler; yalnızca yetkili ekip görür."
@@ -648,90 +875,35 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
             </div>
                 </div>
               </PanelModal>
-            </>
-          ) : <p className="talep-bos">Erişim ve özlük bilgilerini görme yetkiniz yok.</p>}
-        </section>
-
-        <section className="panel-card talep-bilgi kd-ana" aria-label="Üstündekiler">
-          <div className="kd-tutar-satir">
-            <div><h2 className="kd-ana-baslik">Üstündekiler</h2></div>
-          </div>
-          <div className="personel-ustunde">
-            {crmVar || opsVar ? (
-              <section aria-label="Performans">
-                <header className="phr-bas"><h2>Performans</h2><small>son 90 gün</small></header>
-                <dl className="pu-serit">
-                  {crmVar ? (
-                    <div><dt>İmzalanan sözleşme</dt><dd>{son90Imza.length}</dd><small>{son90Deger ? tamPara(son90Deger) : "—"} · toplam {imzalananlar.length}</small></div>
-                  ) : null}
-                  {crmVar ? (
-                    <div><dt>Teklif kabul oranı</dt><dd>{kabulOrani === null ? "—" : `%${kabulOrani}`}</dd><small>{kabul} kabul · tüm zamanlar</small></div>
-                  ) : null}
-                  {opsVar ? (
-                    <div><dt>Teslim edilen iş</dt><dd>{son90Teslim}</dd><small>toplam {teslimler.length}</small></div>
-                  ) : null}
-                  {opsVar ? (
-                    <div><dt>Zamanında teslim</dt><dd>{zamaninda === null ? "—" : `%${zamaninda}`}</dd><small>{terminli.length} terminli iş</small></div>
-                  ) : null}
-                </dl>
-              </section>
             ) : null}
             {crmVar ? (
-              <section aria-label="Açık talepler">
-                <header className="phr-bas">
-                  <h2>Açık talepler <small className="pu-sayi">{acikTalep}</small></h2>
-                  {/* Talepler listesinin temsilci süzgeci: hepsini aynı süzgeçle açar. */}
-                  <Link className="pu-tumu" href={`/panel/crm?temsilci=${employee.id}`}>{acikTalep > talepler.length ? `Tümünü gör (${acikTalep})` : "Listede aç"} →</Link>
-                </header>
-                {talepler.length ? (
-                  <ul className="pu-liste">
-                    {talepler.map((talep) => (
-                      <li key={talep.id}>
-                        <Link href={`/panel/crm/requests/${talep.id}`}>
-                          <span className="pu-govde">
-                            <b>{talep.customer_name || talep.title || "Talep"}</b>
-                            <small>{[talep.customer_name ? talep.title : null, `Açılış ${shortDate(talep.created_at)}`].filter(Boolean).join(" · ")}</small>
-                          </span>
-                          <span className="status-pill" data-tone={statusTone(talep.stage ?? "")}>{requestStageNames[talep.stage ?? ""] ?? talep.stage}</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : <p className="pu-bos">Üstünde açık talep yok.</p>}
-              </section>
+              <Link className="kd-kutu" href="/panel/hr/hedefler">
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Bu ayın hedefi</span><span className="kd-kutu-cip" data-tone={hedefOrani !== null && hedefOrani < 50 ? "warning" : undefined}>{hedefOrani === null ? "hedef yok" : `%${hedefOrani}`}</span></span>
+                <span className={buAyGerceklesen.tutar ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{tamPara(buAyGerceklesen.tutar)}<small>{hedefTutari ? `/ ${tamPara(hedefTutari)}` : "gerçekleşen"}</small></span>
+                {hedefTutari ? <span className="kd-kutu-cubuk" aria-hidden="true"><i style={{ width: `${Math.min(100, hedefOrani ?? 0)}%` }} /></span> : null}
+                <span className="kd-kutu-ozet">{hedefSonuc.error ? "Hedef okunamadı." : hedefTutari ? `${buAyGerceklesen.adet} sözleşme imzalandı.` : "Bu ay için satış hedefi girilmemiş."}</span>
+                <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">Hedefler →</span></span>
+              </Link>
             ) : null}
-            {opsVar ? (
-              <section aria-label="Yürüttüğü işler">
-                <header className="phr-bas">
-                  <h2>Yürüttüğü işler <small className="pu-sayi">{acikIs}</small></h2>
-                  {/* İşler listesinin sorumlu süzgeci. */}
-                  <Link className="pu-tumu" href={`/panel/operations/isler?sorumlu=${employee.id}`}>{acikIs > isler.length ? `Tümünü gör (${acikIs})` : "Listede aç"} →</Link>
-                </header>
-                {isler.length ? (
-                  <ul className="pu-liste">
-                    {isler.map((is) => {
-                      // Gün anahtarları (YYYY-MM-DD, Türkiye günü) metin olarak karşılaştırılabilir.
-                      const gecikti = Boolean(is.due_date && is.due_date.slice(0, 10) < bugun);
-                      return (
-                        <li key={is.id}>
-                          <Link href={`/panel/operations/${is.id}`}>
-                            <span className="pu-govde">
-                              <b>{is.title}</b>
-                              <small>
-                                {is.customer_name ? `${is.customer_name} · ` : ""}
-                                {is.due_date ? <span data-tone={gecikti ? "danger" : undefined}>{gecikti ? "Gecikti · " : "Termin "}{shortDate(is.due_date)}</span> : "Termin yok"}
-                              </small>
-                            </span>
-                            <span className="status-pill" data-tone={statusTone(is.status)}>{workflowStatusNames[is.status] ?? is.status}</span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : <p className="pu-bos">Üstünde iş yok.</p>}
-              </section>
+            {maasGorur ? (
+              <Link className="kd-kutu" href={hakedisli ? "/panel/hr/hakedisler" : "/panel/hr/maaslar"}>
+                {hakedisli ? (
+                  <>
+                    <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Hakediş</span><span className="kd-kutu-cip" data-tone={bekleyenHakedis?.length ? "warning" : undefined}>{bekleyenHakedis === null ? "okunamadı" : bekleyenHakedis.length ? `${bekleyenHakedis.length} bekliyor` : "bekleyen yok"}</span></span>
+                    <span className={bekleyenHakedis?.length ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{tamPara((bekleyenHakedis ?? []).reduce((t, h) => t + Number(h.tutar), 0))}<small>ödeme bekleyen</small></span>
+                    <span className="kd-kutu-ozet">Sözleşmeli çalışan bordroya girmez; ödemesi hakedişle yapılır.</span>
+                    <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">Hakedişler →</span></span>
+                  </>
+                ) : (
+                  <>
+                    <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Bu ayın maaşı</span><span className="kd-kutu-cip" data-tone={buAyMaas && !buAyMaas.odendi_on ? "warning" : undefined}>{maasSonuc.error ? "okunamadı" : !buAyMaas ? "girilmemiş" : buAyMaas.odendi_on ? "ödendi" : "bekliyor"}</span></span>
+                    <span className={buAyMaas?.anlasilan_net ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{buAyMaas?.anlasilan_net ? tamPara(buAyMaas.anlasilan_net) : "—"}<small>anlaşılan net</small></span>
+                    <span className="kd-kutu-ozet">{buAyMaas?.odendi_on ? `Ödendi ${shortDate(buAyMaas.odendi_on)}${buAyMaas.odenen ? ` · ${tamPara(buAyMaas.odenen)}` : ""}` : "Bordro Maaşlar ekranında hazırlanır."}</span>
+                    <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">Maaşlar →</span></span>
+                  </>
+                )}
+              </Link>
             ) : null}
-            {!crmVar && !opsVar ? <p className="ic-akis-bos">Talep ve iş modülleri açık değil.</p> : null}
           </div>
         </section>
       </div>
