@@ -195,7 +195,6 @@ const BILINEN_BORC = new Set([
   "maliyet-pencere", // yalnız: öğenin hiç stili yok — app/panel/finance/costs/maliyet-detayi.tsx
   "ml-side", // kanca (ml-col) — app/(site)/_components/mock-lab.tsx
   "ntf-card", // kanca (panel-card talep-bilgi) — app/panel/notifications/page.tsx
-  "opd-mesaj", // yalnız: öğenin hiç stili yok — app/panel/operations/[id]/page.tsx
   "opd-pf", // kanca (opd-card) — app/panel/operations/[id]/portal-files.tsx
   "panel-form-error", // kanca (wide kayit-formu-hata) — app/panel/crm/contract-addendum-form.tsx
   "panel-form-success", // kanca (wide kayit-formu-basari) — app/panel/crm/contract-addendum-form.tsx

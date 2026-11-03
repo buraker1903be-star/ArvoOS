@@ -31,7 +31,7 @@ import { contractStatusLabel, proposalStatusLabel } from "../../crm/status-label
 import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
 import { MusteriSohbeti } from "./musteri-sohbet";
-import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { AkisCekmecesi, type AkisKanali } from "../../crm/kayit-detay/akis-cekmecesi";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import { AnindaForm, AnindaYedek } from "./aninda";
 import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
@@ -376,24 +376,67 @@ export default async function OperationDetailPage({
     .slice(0, 10);
 
   /*
-    AKIŞ SEKMELERİ. Açılışta hangisinin seçili olacağını adres ya da
-    okunmamış mesaj söylüyor; yoksa ekibin kendi yorumları.
+    YAZIŞMALAR ÇEKMECESİ (03.11.2026, crm/kayit-detay/akis-cekmecesi).
+    Sütunda kanal başına bir özet satırı, okumak için sağdan açılan geniş
+    çekmece. Eskiden bu kanallar sütunun içinde sekmeliydi ve sütun
+    dizüstünde iki mesaj boyundaydı: uzun mesajlar kaydırılarak okunuyordu.
+
+    Okunmamış mesaj artık çekmeceyi KENDİLİĞİNDEN açmıyor (eskiden
+    Mesajlar sekmesini seçip mesajları okundu sayıyordu): rozet özette
+    görünüyor, okundu işareti personel çekmeceyi açınca gidiyor. Adres
+    (?pencere=mesajlar, ?pencere=kayitlar) çekmeceyi yine o sekmede açar.
   */
   const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await yazismaSozu;
-  const sekmeler = [
-    unreadCustomerMessages ? `Mesajlar · ${unreadCustomerMessages}` : "Mesajlar",
-    ...(contract?.opportunity_id ? ["Yorumlar"] : []),
-    ...(whatsappGorur ? [whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp"] : []),
-    ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
-    "Geçmiş",
+  const kisalt = (metin: string) => {
+    const tek = metin.replace(/\s+/g, " ").trim();
+    return tek.length > 180 ? `${tek.slice(0, 180)}…` : tek;
+  };
+  const sonMusteriMesaji = customerMessages.at(-1);
+  const sonYorum = [...comments].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  const sonWhatsapp = whatsappMesajlari[0];
+  const sonPosta = [...postalar].sort((a, b) => String(b.son_mesaj_at ?? "").localeCompare(String(a.son_mesaj_at ?? "")))[0];
+  const kanallar: AkisKanali[] = [
+    {
+      ad: "Mesajlar",
+      rozet: unreadCustomerMessages ? `${unreadCustomerMessages} yeni` : null,
+      onizleme: sonMusteriMesaji
+        ? { kim: sonMusteriMesaji.sender_type === "staff" ? "Ekip" : formatPersonName(sonMusteriMesaji.sender_name), metin: kisalt(sonMusteriMesaji.body), zaman: formatDate(sonMusteriMesaji.created_at, true) }
+        : null,
+      bos: "Müşteriyle henüz yazışma yok.",
+    },
+    ...(contract?.opportunity_id
+      ? [{
+          ad: "Yorumlar",
+          onizleme: sonYorum
+            ? { kim: uploaderNames.get(sonYorum.created_by) ?? "Ekip", metin: kisalt(sonYorum.body), zaman: formatDate(sonYorum.created_at, true) }
+            : null,
+          bos: "Ekip içi yorum yok.",
+        }]
+      : []),
+    ...(whatsappGorur
+      ? [{
+          ad: "WhatsApp",
+          rozet: sonWhatsapp?.direction === "inbound" ? "yeni" : null,
+          onizleme: sonWhatsapp
+            ? { kim: sonWhatsapp.direction === "inbound" ? "Müşteri" : "Ekip", metin: kisalt(sonWhatsapp.body ?? sonWhatsapp.template ?? "Ek"), zaman: formatDate(sonWhatsapp.createdAt, true) }
+            : null,
+          bos: "WhatsApp yazışması yok.",
+        }]
+      : []),
+    ...(postaGorur
+      ? [{
+          ad: "Postalar",
+          rozet: postalar.some((posta) => posta.okunmamis) ? "yeni" : null,
+          onizleme: sonPosta
+            ? { kim: sonPosta.son_gonderen_ad || sonPosta.son_gonderen_adres || "Posta", metin: kisalt(sonPosta.konu || sonPosta.ozet || "Konusuz"), zaman: formatDate(sonPosta.son_mesaj_at, true) }
+            : null,
+          bos: "Posta yok.",
+        }]
+      : []),
+    { ad: "Geçmiş", bos: `${activities.length} hareket · alan değişiklikleri` },
   ];
-  // Mesajlar (0) ve yazışma sekmeleri ilk seçilene kadar kurulmuyor.
-  const yazismaSiralari = sekmeler.map((ad, sira) => (/^(WhatsApp|Postalar)/.test(ad) ? sira : -1)).filter((sira) => sira >= 0);
-  const gecmisSirasi = sekmeler.length - 1;
-  const ilkSekme =
-    acilacakPencere === "mesajlar" || unreadCustomerMessages ? 0
-    : acilacakPencere === "kayitlar" ? gecmisSirasi
-    : contract?.opportunity_id ? 1 : 0;
+  const gecmisSirasi = kanallar.length - 1;
+  const acikBaslar = acilacakPencere === "mesajlar" ? 0 : acilacakPencere === "kayitlar" ? gecmisSirasi : null;
   const musteriAdi = customerName === "Kurum içi iş" ? null : customerName;
 
   return (
@@ -944,7 +987,7 @@ export default async function OperationDetailPage({
           Gizli panel de kurulsaydı sayfayı açmak okumak sayılır, okunmamış
           rozeti kimse görmeden sönerdi.
         */}
-        <TalepAkis sekmeler={sekmeler} baslangic={ilkSekme} tembel={[0, ...yazismaSiralari]}>
+        <AkisCekmecesi kanallar={kanallar} baslik="Yazışmalar" kicker={`İŞ · ${formatSubject(workflow.title)}`} acikBaslar={acikBaslar} telefondaAcma={acilacakPencere === "mesajlar"}>
           {/* div, Fragment değil: sunucudan gelen Fragment düzleşiyor ve iki ayrı sekme paneli oluyordu. */}
           <div className="opd-mesaj">
             <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
@@ -980,7 +1023,7 @@ export default async function OperationDetailPage({
               <RecordHistory workflowId={workflow.id} baslik={false} />
             </Suspense>
           </div>
-        </TalepAkis>
+        </AkisCekmecesi>
       </div>
     </main>
   );
