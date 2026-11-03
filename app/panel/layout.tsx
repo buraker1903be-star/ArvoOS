@@ -1,3 +1,4 @@
+import { sureOlcer } from "@/lib/sure-olcumu";
 import { uygulamalariSuz } from "@/lib/konsol-alanlari";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
@@ -138,7 +139,10 @@ const DEFAULT_APP_HOST = "app.arvo-os.com";
 const cevrimiciEsigi = () => new Date(Date.now() - 3 * 60_000).toISOString();
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { supabase, userId, membership, organization, modules, isPlatformOwner, konsolKapsami, workspaces, hiddenModuleKeys, izin, yetkiler } = await getPanelContext();
+  /* Okuma başına süre (lib/sure-olcumu): kabuk her panel sayfasını sarıyor;
+     yavaşlık buradaysa günlükte "[süre] kabuk …" satırı söylüyor. */
+  const sure = sureOlcer("kabuk");
+  const { supabase, userId, membership, organization, modules, isPlatformOwner, konsolKapsami, workspaces, hiddenModuleKeys, izin, yetkiler } = await sure.olc("baglam", getPanelContext());
 
   /*
     Kurucu konsolu (yonetim.arvo-os.com) normal panel kabuğunu KULLANMAZ.
@@ -336,8 +340,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const {
     notificationUnreadCount, ownEmployee, messagesInit, pendingAgreement, urunLisanslari,
     postaBilgisi, postaSayimi, varlikSatirlari, ekipSatirlari, kurumSimgesi,
-  } = (await tekCagri()) ?? (await eskiYol());
-  const sozlesmeGerekli = await sozlesmeSorgusu;
+  } = (await sure.olc("kabuk_rpc", tekCagri())) ?? (await sure.olc("kabuk_eski_yol", eskiYol()));
+  const sozlesmeGerekli = await sure.olc("gizlilik", sozlesmeSorgusu);
   const messageUnreadCount = messagesInit ? Object.values(messagesInit.unread).reduce((total, count) => total + count, 0) : 0;
 
   /*
@@ -430,6 +434,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       .map((s) => ({ userId: s.user_id, ad: formatPersonName(s.full_name) || "Ekip üyesi" }));
     const benimAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
+    sure.bitir();
     return <div className="panel-root os-root" style={tenantStyle}>{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
       <PresenceHeartbeat />
       <NavProgress />
@@ -524,7 +529,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   let bekleyenDestek = 0;
   try {
     /* Düşen istek yukarıda günlüğe yazıldı (null); rozet çizilmez. */
-    const rozetler = await rozetIstegi;
+    const rozetler = await (rozetIstegi ? sure.olc("rozetler", rozetIstegi) : null);
     if (rozetler) {
       const [odemeSonucu, sozlesmeSonucu, destekSonucu] = rozetler;
       bekleyenOdeme = odemeSonucu.error ? 0 : odemeSonucu.count ?? 0;
@@ -540,6 +545,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
   const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
+  sure.bitir();
   return <div className="panel-root os-root os-konsol">{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
     <PresenceHeartbeat />
     <NavProgress />
