@@ -949,24 +949,40 @@
   ipucu, sağ altta sabit.
 */
 .kd-kutular{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--sp-3);margin-top:var(--sp-4)}
-.kd-kutu{display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-2);min-width:0;min-height:200px;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface-2);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
-.kd-kutu:hover{border-color:var(--primary);background:var(--surface);box-shadow:var(--shadow-sm)}
+/*
+  KART İSKELETİ (03.11.2026, ikinci tur: "biraz salma olmuş"). Dört kart
+  aynı düzende: üstte etiket + durum rozeti, ortada tek büyük değer ve
+  altında bir satır açıklama, sonra en fazla üç satırlık kısa liste, en
+  altta ince çizginin üstünde ipucu ve "Düzenle →". Eskiden her kart
+  kendi biçimindeydi (biri büyük rakam, biri düz liste, biri boş metin)
+  ve yükseklikler içerik kadar dağılıyordu.
+*/
+.kd-kutu{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-2);min-width:0;min-height:248px;padding:var(--sp-4) var(--sp-4) var(--sp-3);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);box-shadow:var(--shadow-xs);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.kd-kutu:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--line));box-shadow:var(--shadow-md);transform:translateY(-1px)}
 .kd-kutu:focus-visible{outline:none;box-shadow:0 0 0 2px var(--focus)}
-.kd-kutu-baslik{padding-bottom:var(--sp-2);border-bottom:1px solid var(--line);color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
-.kd-kutu-liste{display:flex;flex-direction:column;gap:6px}
-.kd-kutu-liste>span{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px var(--sp-2);color:var(--ink);font-size:var(--fs-sm)}
-.kd-kutu-liste>span:has(>time:first-child){justify-content:flex-start}
-.kd-kutu-liste time{color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums;white-space:nowrap}
-.kd-kutu-liste small{flex-basis:100%;color:var(--muted);font-size:var(--fs-micro)}
-.kd-kutu .sozlesme-odeme-ozet{margin:0}
-.kd-kutu-buyuk{display:flex;flex-direction:column;gap:4px;color:var(--ink);font-size:var(--fs-2xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;line-height:1.1}
-.kd-kutu-buyuk small{color:var(--ink-soft);font-size:var(--fs-md);font-weight:var(--fw-medium)}
-.kd-kutu-buyuk small[data-tone="warning"]{color:var(--warning)}
-.kd-kutu-buyuk small[data-tone="danger"]{color:var(--danger)}
-.kd-kutu-alt{color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
-/* Kapsam kartta üç satır; tamamı pencerede. */
+@media(prefers-reduced-motion:reduce){.kd-kutu,.kd-kutu:hover{transition:none;transform:none}}
+.kd-kutu-ust{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2)}
+.kd-kutu-etiket{color:var(--muted);font-size:var(--fs-micro);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.kd-kutu-cip{flex:none;padding:2px 8px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-micro);font-weight:var(--fw-medium);white-space:nowrap}
+.kd-kutu-cip[data-tone="warning"]{background:color-mix(in srgb,var(--warning) 14%,var(--surface));color:var(--warning)}
+.kd-kutu-cip[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
+.kd-kutu-deger{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px var(--sp-2);margin-top:var(--sp-1);color:var(--ink);font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.15}
+.kd-kutu-deger small{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium);letter-spacing:0}
+.kd-kutu-deger.is-sessiz{color:var(--n-300)}
+.kd-kutu-aciklama{overflow:hidden;color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-overflow:ellipsis;white-space:nowrap}
 .kd-kutu-ozet{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;color:var(--muted);font-size:var(--fs-sm);line-height:1.45;white-space:pre-line}
-.kd-kutu-ac{align-self:flex-end;margin-top:auto;color:var(--primary);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.kd-kutu-cubuk{display:block;height:6px;border-radius:var(--r-pill);background:var(--surface-2);overflow:hidden}
+.kd-kutu-cubuk i{display:block;height:100%;border-radius:inherit;background:var(--success)}
+.kd-kutu-satirlar{display:flex;flex-direction:column;margin-top:var(--sp-1);border-top:1px solid var(--line-soft)}
+.kd-kutu-satirlar>span{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:var(--fs-sm)}
+.kd-kutu-satirlar>span>span{display:flex;flex-direction:column;min-width:0}
+.kd-kutu-satirlar b{overflow:hidden;color:var(--ink);font-weight:var(--fw-medium);text-overflow:ellipsis;white-space:nowrap}
+.kd-kutu-satirlar>span>span time{color:var(--muted);font-size:var(--fs-micro)}
+.kd-kutu-satirlar>span>time{flex:none;color:var(--ink-soft);font-size:var(--fs-micro);font-variant-numeric:tabular-nums}
+.kd-kutu-satirlar strong{flex:none;color:var(--ink);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+.kd-kutu-dip{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin-top:auto;padding-top:var(--sp-2);border-top:1px solid var(--line-soft);color:var(--muted);font-size:var(--fs-micro)}
+.kd-kutu-dip>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kd-kutu-ac{flex:none;color:var(--primary);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
 .kd-kutu:hover .kd-kutu-ac{text-decoration:underline}
 .kd-ana-baslik{margin:0;font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--ink)}
 .kd-salt{margin:0;white-space:pre-line}

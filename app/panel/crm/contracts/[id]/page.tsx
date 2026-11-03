@@ -143,7 +143,6 @@ export default async function ContractDetailPage({ params }: Props) {
   const bugunAnahtari = todayInIstanbul();
   const taksitSonucu = installments.length ? await cariTaksitSonuclari(supabase, membership.organization_id, data, bugunAnahtari) : null;
   const taksitDurumu = (row: AddendumInstallment) => taksitDurumuCoz({ no: row.sequence, amount: row.amount, status: row.status, due_date: row.due_date }, taksitSonucu, bugunAnahtari);
-  const odenen = installments.filter((row) => taksitDurumu(row).durum === "odendi");
   const odenenTutar = installments.reduce((sum, row) => sum + taksitDurumu(row).odenen, 0);
   const taksitToplami = installments.reduce((sum, row) => sum + row.amount, 0);
   /*
@@ -244,6 +243,9 @@ export default async function ContractDetailPage({ params }: Props) {
 
   /* İş termin tarihine kalan gün; iki gün anahtarı da UTC gece yarısına sabitli (saat dilimi kaymaz). */
   const imzaKalan = !locked && data.imza_son_tarihi ? Math.round((Date.parse(`${data.imza_son_tarihi}T00:00:00Z`) - Date.parse(`${bugunAnahtari}T00:00:00Z`)) / 86400000) : null;
+  /* Kartlar için: sıradaki (bugün ve sonrası) ara teslim, işin toplam süresi. */
+  const siradakiTeslim = currentPlan.find((item) => item.due_date >= bugunAnahtari) ?? null;
+  const sureGun = data.start_date && data.due_date ? Math.round((Date.parse(`${data.due_date}T00:00:00Z`) - Date.parse(`${data.start_date}T00:00:00Z`)) / 86400000) : null;
   const terminKalan = data.due_date ? Math.round((Date.parse(`${data.due_date}T00:00:00Z`) - Date.parse(`${bugunAnahtari}T00:00:00Z`)) / 86400000) : null;
   const kunyeSatirlari = doluAlanlar((customer?.request_details ?? {}) as Kunye);
   /*
@@ -719,11 +721,11 @@ export default async function ContractDetailPage({ params }: Props) {
               triggerClassName="kd-kutu"
               triggerLabel="Hizmet kapsamı ve ücret"
               tetik={<>
-                <span className="kd-kutu-baslik">Hizmet kapsamı ve ücret</span>
-                <span className="kd-kutu-buyuk">{money(Number(data.amount), data.currency || "TRY")}</span>
-                <span className="kd-kutu-alt">{data.title}</span>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Hizmet ve ücret</span><span className="kd-kutu-cip">{data.currency || "TRY"}</span></span>
+                <span className="kd-kutu-deger">{money(Number(data.amount), data.currency || "TRY")}</span>
+                <span className="kd-kutu-aciklama">{data.title}</span>
                 <span className="kd-kutu-ozet">{data.scope || "Kapsam yazılmamış."}</span>
-                <span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span>
+                <span className="kd-kutu-dip"><span>{data.payment_plan || "Ödeme planı açıklaması yok"}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="Hizmet kapsamı ve ücret"
               description="Sözleşme başlığı, verilecek hizmetler, tutar ve başlangıç tarihi."
@@ -769,26 +771,27 @@ export default async function ContractDetailPage({ params }: Props) {
               triggerClassName="kd-kutu"
               triggerLabel="Ödeme planı"
               tetik={<>
-                <span className="kd-kutu-baslik">Ödeme planı</span>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Ödeme planı</span><span className="kd-kutu-cip" data-tone={gecikenTaksit ? "warning" : undefined}>{paymentRows.length ? `${paymentRows.length} taksit` : "Plan yok"}</span></span>
                 {installments.length ? (
-                  <span className="sozlesme-odeme-ozet">
-                    <span><b>{money(odenenTutar, data.currency)}</b> ödendi · {odenen.length}/{installments.length} taksit</span>
-                    {gecikenTaksit ? <span className="status-pill" data-tone="warning">{gecikenTaksit} taksidin vadesi geçti</span> : null}
-                    <i aria-hidden="true"><b style={{ width: `${taksitToplami ? Math.round((odenenTutar / taksitToplami) * 100) : 0}%` }} /></i>
-                  </span>
-                ) : null}
+                  <>
+                    <span className="kd-kutu-deger">{money(odenenTutar, data.currency)}<small>/ {money(taksitToplami, data.currency)} ödendi</small></span>
+                    <span className="kd-kutu-cubuk" aria-hidden="true"><i style={{ width: `${taksitToplami ? Math.round((odenenTutar / taksitToplami) * 100) : 0}%` }} /></span>
+                  </>
+                ) : paymentRows.length ? (
+                  /* İmzadan önce taksit kaydı yok; planlanan toplam gösterilir, tahsilat imzadan sonra izlenir. */
+                  <span className="kd-kutu-deger">{money(paymentRows.reduce((toplam, row) => toplam + row.amount, 0), data.currency)}<small>planlanan</small></span>
+                ) : <span className="kd-kutu-deger is-sessiz">—<small>taksit girilmemiş</small></span>}
                 {paymentRows.length ? (
-                  <span className="kd-kutu-liste">
-                    {paymentRows.map((row) => (
+                  <span className="kd-kutu-satirlar">
+                    {paymentRows.slice(0, 3).map((row) => (
                       <span key={row.sequence}>
-                        <span>{row.label}: <b>{money(row.amount, data.currency)}</b></span>
-                        <time>{row.when}</time>
-                        {row.status || row.missing ? <small>{row.status ?? ""}{row.missing ? "vade tarihi girin" : ""}</small> : null}
+                        <span><b>{row.label}</b><time>{row.when}</time></span>
+                        <strong>{money(row.amount, data.currency)}</strong>
                       </span>
                     ))}
                   </span>
-                ) : <span className="kd-kutu-ozet">{data.payment_plan || "Taksit girilmemiş."}</span>}
-                <span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span>
+                ) : null}
+                <span className="kd-kutu-dip"><span>{gecikenTaksit ? `${gecikenTaksit} taksidin vadesi geçti` : paymentRows.length > 3 ? `+${paymentRows.length - 3} taksit daha` : data.payment_plan || ""}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="Ödeme planı"
               description={locked ? "İmzalanan ödeme planı; vade değişikliği ek protokolle." : "Müşterinin talebiyle ödeme planını ve vade tarihlerini revize edin."}
@@ -814,18 +817,23 @@ export default async function ContractDetailPage({ params }: Props) {
               triggerClassName="kd-kutu"
               triggerLabel="İş planı"
               tetik={<>
-                <span className="kd-kutu-baslik">İş planı</span>
-                {!planFeature ? (
-                  <span className="kd-kutu-ozet">İş planı için veritabanı güncellemesi bekleniyor.</span>
-                ) : currentPlan.length ? (
-                  <span className="kd-kutu-liste">
-                    {currentPlan.map((item) => <span key={item.sequence}><time dateTime={item.due_date}>{date(item.due_date)}</time><span>{item.title}</span></span>)}
-                  </span>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">İş planı</span><span className="kd-kutu-cip">{planFeature && currentPlan.length ? `${currentPlan.length} ara teslim` : "Takvim yok"}</span></span>
+                {planFeature && siradakiTeslim ? (
+                  <>
+                    <span className="kd-kutu-deger">{date(siradakiTeslim.due_date)}<small>sıradaki teslim</small></span>
+                    <span className="kd-kutu-aciklama">{siradakiTeslim.title}</span>
+                  </>
                 ) : (
-                  <span className="kd-kutu-ozet">{signed ? "Ara teslim takvimi yok; ek protokolle eklenir." : "Henüz ara teslim takvimi yok."}</span>
+                  <span className="kd-kutu-deger is-sessiz">—<small>{!planFeature ? "veritabanı güncellemesi bekleniyor" : currentPlan.length ? "bütün teslimlerin tarihi geçti" : signed ? "ek protokolle eklenir" : "ara teslim takvimi yok"}</small></span>
                 )}
-                {acceptedPlan ? <span className="kd-kutu-ozet">Ek Protokol {acceptedPlan.addendum_no} ile belirlendi.</span> : null}
-                <span className="kd-kutu-ac">{!locked ? "Düzenle" : signed ? "Ek protokol" : "Görüntüle"} →</span>
+                {planFeature && currentPlan.length ? (
+                  <span className="kd-kutu-satirlar">
+                    {currentPlan.slice(0, 3).map((item) => (
+                      <span key={item.sequence}><span><b>{item.title}</b></span><time dateTime={item.due_date}>{date(item.due_date)}</time></span>
+                    ))}
+                  </span>
+                ) : null}
+                <span className="kd-kutu-dip"><span>{acceptedPlan ? `Ek Protokol ${acceptedPlan.addendum_no} ile belirlendi` : currentPlan.length > 3 ? `+${currentPlan.length - 3} teslim daha` : ""}</span><span className="kd-kutu-ac">{!locked ? "Düzenle" : signed ? "Ek protokol" : "Görüntüle"} →</span></span>
               </>}
               title={signed ? "Ek protokol" : "İş planı"}
               description={signed ? "Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun." : "Ara teslim takvimini sözleşmeye yazın (madde 4)."}
@@ -856,15 +864,13 @@ export default async function ContractDetailPage({ params }: Props) {
               triggerClassName="kd-kutu"
               triggerLabel="İş termin tarihi"
               tetik={<>
-                <span className="kd-kutu-baslik">İş termin tarihi</span>
-                {data.due_date ? (
-                  <span className="kd-kutu-buyuk">
-                    {date(data.due_date)}
-                    {terminKalan !== null ? <small data-tone={terminKalan < 0 ? "danger" : terminKalan <= 7 ? "warning" : undefined}>{terminKalan < 0 ? `${-terminKalan} gün geçti` : terminKalan === 0 ? "Bugün" : `${terminKalan} gün kaldı`}</small> : null}
-                  </span>
-                ) : <span className="kd-kutu-ozet">Teslim tarihi girilmemiş.</span>}
-                <span className="kd-kutu-alt">Başlangıç: {tarih(data.start_date) ?? "belirtilmedi"}</span>
-                <span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Termin</span>{terminKalan !== null ? <span className="kd-kutu-cip" data-tone={terminKalan < 0 ? "danger" : terminKalan <= 7 ? "warning" : undefined}>{terminKalan < 0 ? `${-terminKalan} gün geçti` : terminKalan === 0 ? "Bugün" : `${terminKalan} gün kaldı`}</span> : <span className="kd-kutu-cip">Tarih yok</span>}</span>
+                {data.due_date ? <span className="kd-kutu-deger">{date(data.due_date)}<small>teslim</small></span> : <span className="kd-kutu-deger is-sessiz">—<small>teslim tarihi girilmemiş</small></span>}
+                <span className="kd-kutu-satirlar">
+                  <span><span><b>Başlangıç</b></span><time>{data.start_date ? date(data.start_date) : "belirtilmedi"}</time></span>
+                  {sureGun !== null ? <span><span><b>Toplam süre</b></span><time>{sureGun} gün</time></span> : null}
+                </span>
+                <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="İş termin tarihi"
               description="Sözleşmede yazan teslim tarihi. Değişiklik imza bağlantısındaki metne de yansır."
