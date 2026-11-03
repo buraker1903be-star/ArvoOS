@@ -305,10 +305,10 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
         <div className="talep-bas-eylem">
           {/* Prim ve Yetkiler eskiden burada düğmeydi; ikisinin de artık kendi kartı var (prim kartı, Yetkiler kartı). */}
           {canManageTeam ? (
-            <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary kd-bas-dugme" kicker={`PERSONEL · ${employee.full_name}`} title="Personeli düzenle" description="Kimlik, görev, iletişim ve prim oranları. Panel rolü ve yetkiler ayrı yerden değişir.">{editForm}</PanelDrawer>
+            <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary" kicker={`PERSONEL · ${employee.full_name}`} title="Personeli düzenle" description="Kimlik, görev, iletişim ve prim oranları. Panel rolü ve yetkiler ayrı yerden değişir.">{editForm}</PanelDrawer>
           ) : null}
           <details className="os-menu talep-menu">
-            <summary className="panel-secondary kd-bas-dugme" aria-label="Diğer işlemler">⋯</summary>
+            <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               <Link className="os-menu-item" href="/panel/hr">Ekip listesi</Link>
               {/* Yanlış açılan kaydı silme: yalnızca panel hesabı olmayan

@@ -408,3 +408,14 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 @media (prefers-reduced-motion:reduce){.os-root .os-posta-uyari{animation:none}}
 @media (max-width:760px){.os-root .os-posta-uyari{left:var(--sp-3);right:var(--sp-3);max-width:none}}
 
+
+/* ---------- BAŞLIK DÜĞMELERİ (03.11.2026) ----------
+   Kurum sahibinin isteği: "her yerde farklı tarz düğme var". Sayfa
+   başlığının sağındaki düğmeler (birincil, ikincil, tehlikeli, ⋯ menüsü)
+   bütün panelde aynı boy ve hap biçiminde. Yalnızca başlığın DOĞRUDAN
+   çocukları: açılır menünün içindeki öğeler ve pencere içleri etkilenmez. */
+.os-root .talep-bas-eylem>:is(.panel-primary,.panel-secondary,.panel-danger),
+.os-root .talep-bas-eylem>form>:is(.panel-primary,.panel-secondary,.panel-danger){
+  min-height:40px;padding:0 var(--sp-5);border-radius:var(--r-pill);font-size:var(--fs-sm);font-weight:var(--fw-medium);white-space:nowrap
+}
+.os-root .talep-bas-eylem>.talep-menu>summary{min-width:40px;min-height:40px;padding:0 var(--sp-3);border-radius:var(--r-pill);justify-content:center}

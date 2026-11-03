@@ -208,7 +208,6 @@ const BILINEN_BORC = new Set([
   "schedule-dates", // kanca (wide custom-plan-editor) — app/panel/crm/schedule-date-rows.tsx
   "status-lookup", // yalnız: öğenin hiç stili yok — app/durum/[slug]/lookup-form.tsx
   "suite", // kanca (section) — app/(site)/_views/home.tsx
-  "talep-menu", // kanca (os-menu) — app/panel/accounts/cari-hesap.tsx
   "trio-phone", // yalnız: öğenin hiç stili yok — app/(site)/_components/trio.tsx
   "trio-win", // kanca (mock-win) — app/(site)/_components/trio.tsx
   "trk-offer-card", // kanca (trk-card) — app/takip/takip-form.tsx
