@@ -143,6 +143,7 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
 
   /* ---- Cari özeti (şeritteki açık bakiye, bütün carilerin toplamı) ---- */
   let bakiye: number | null = null;
+  let cariToplam: { debt: number; collections: number } | null = null;
   let cariler: { id: string; name: string }[] = [];
   if (cariModulu && cariIdleri.length) {
     const [{ data: partyData }, { data: partyContracts }] = await Promise.all([
@@ -157,11 +158,12 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
       /* Bakiye işlevi artık toplam alıyor; bu ekran hareketleri zaten
          okuyor (ayrıntı penceresinde gösteriliyor), toplamı aynı
          kuraldan çıkarıyor. */
-      const { accounts } = buildAccountBalances(
+      const { accounts, totals } = buildAccountBalances(
         partiler.map((p) => ({ id: p.id, ...hareketToplamlari((p as { account_entries?: never[] }).account_entries) })),
         (partyContracts ?? []) as { party_id: string | null; amount: number }[],
       );
       bakiye = (accounts as unknown as { balance: number }[]).reduce((toplam, a) => toplam + a.balance, 0);
+      cariToplam = { debt: totals.debt, collections: totals.collections };
     }
   }
   const cariKimligi = cariKaydi?.id ?? null;
@@ -210,7 +212,7 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
   const sonPostaZamani = postalar.map((posta) => posta.son_mesaj_at ?? "").sort().at(-1) || null;
 
   return (
-    <main className="talep musteri-sayfa">
+    <main className="crm-page-stack talep musteri-sayfa kd-tek-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
           <small className="panel-kicker">MÜŞTERİ</small>
@@ -296,7 +298,7 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
         "Müşteri ayrıntıları" penceresinde, yazışmalar ortada açılan
         pencerelerde (rozet okununca söner).
       */}
-      <div className="kd-duzen-v4">
+      <div className="kd-duzen-v4 kd-tek-ekran">
         <section className="panel-card opd-kart opd-musteri kd-musteri" aria-label="Müşteri">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
@@ -431,6 +433,22 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
                 {bakiye !== null ? money(bakiye) : "—"}
                 <small>{bakiye !== null && bakiye > 0 ? "açık bakiye" : "açık bakiye yok"}{cariler.length > 1 ? ` · ${cariler.length} cari` : ""}</small>
               </p>
+              {/*
+                Borç ve tahsilat kartta (03.11.2026): eskiden kartta yalnızca
+                bakiye vardı ve kartın kalanı boş duruyordu; "ne kadarı
+                ödendi" sorusu için cari penceresini açmak gerekiyordu.
+                Sayılar bakiyeyle aynı hesaptan (buildAccountBalances).
+              */}
+              {cariToplam && cariToplam.debt > 0 ? (
+                <>
+                  <span className="kd-kutu-cubuk" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.round((cariToplam.collections / cariToplam.debt) * 100))}%` }} /></span>
+                  <dl className="talep-liste opd-musteri-liste">
+                    <div><dt>Toplam borç</dt><dd>{money(cariToplam.debt)}</dd></div>
+                    <div><dt>Tahsil edilen</dt><dd>{money(cariToplam.collections)}</dd></div>
+                    <div><dt>Tahsilat oranı</dt><dd>%{Math.min(100, Math.round((cariToplam.collections / cariToplam.debt) * 100))}</dd></div>
+                  </dl>
+                </>
+              ) : null}
             <PanelModal
               triggerLabel="Cari hesabı aç"
               triggerClassName="panel-secondary opd-ayrinti-dugme"
