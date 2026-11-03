@@ -735,7 +735,6 @@ export default async function ContractDetailPage({ params }: Props) {
                 <span className="kd-kutu-deger">{money(Number(data.amount), data.currency || "TRY")}</span>
                 <span className="kd-kutu-aciklama">{data.title}</span>
                 <span className="kd-kutu-ozet">{data.scope || "Kapsam yazılmamış."}</span>
-                <span className="kd-kutu-dip"><span>{data.payment_plan || ""}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="Hizmet kapsamı ve ücret"
               description="Sözleşme başlığı, verilecek hizmetler ve tutar. Taksitler “Ödeme planı” kartında; iş imza günü başlar."
@@ -785,10 +784,10 @@ export default async function ContractDetailPage({ params }: Props) {
                     <span className="kd-kutu-deger">{money(odenenTutar, data.currency)}<small>/ {money(taksitToplami, data.currency)} ödendi</small></span>
                     <span className="kd-kutu-cubuk" aria-hidden="true"><i style={{ width: `${taksitToplami ? Math.round((odenenTutar / taksitToplami) * 100) : 0}%` }} /></span>
                   </>
-                ) : paymentRows.length ? (
-                  /* İmzadan önce taksit kaydı yok; planlanan toplam gösterilir, tahsilat imzadan sonra izlenir. */
-                  <span className="kd-kutu-deger">{money(paymentRows.reduce((toplam, row) => toplam + row.amount, 0), data.currency)}<small>planlanan</small></span>
-                ) : <span className="kd-kutu-deger is-sessiz">—<small>taksit girilmemiş</small></span>}
+                ) : paymentRows.length ? null : <span className="kd-kutu-deger is-sessiz">—<small>taksit girilmemiş</small></span>}
+                {/* İmzadan önce büyük rakam yok (03.11.2026): planlanan toplam
+                    "Hizmet ve ücret" kartındaki tutarın aynısıydı; taksitler
+                    aşağıda. İmzadan sonra ödenen / toplam kalır. */}
                 {paymentRows.length ? (
                   <span className="kd-kutu-satirlar">
                     {paymentRows.slice(0, 3).map((row) => (
@@ -799,7 +798,6 @@ export default async function ContractDetailPage({ params }: Props) {
                     ))}
                   </span>
                 ) : null}
-                <span className="kd-kutu-dip"><span>{gecikenTaksit ? `${gecikenTaksit} taksidin vadesi geçti` : paymentRows.length > 3 ? `+${paymentRows.length - 3} taksit daha` : data.payment_plan || ""}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="Ödeme planı"
               description={locked ? "İmzalanan ödeme planı; vade değişikliği ek protokolle." : "Müşterinin talebiyle ödeme planını ve vade tarihlerini revize edin."}
@@ -841,7 +839,6 @@ export default async function ContractDetailPage({ params }: Props) {
                     ))}
                   </span>
                 ) : null}
-                <span className="kd-kutu-dip"><span>{acceptedPlan ? `Ek Protokol ${acceptedPlan.addendum_no} ile belirlendi` : currentPlan.length > 3 ? `+${currentPlan.length - 3} teslim daha` : ""}</span><span className="kd-kutu-ac">{!locked ? "Düzenle" : signed ? "Ek protokol" : "Görüntüle"} →</span></span>
               </>}
               title={signed ? "Ek protokol" : "İş planı"}
               description={signed ? "Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun." : "Ara teslim takvimini sözleşmeye yazın (madde 4)."}
@@ -878,7 +875,6 @@ export default async function ContractDetailPage({ params }: Props) {
                   <span><span><b>Başlangıç</b></span><time>{baslangicGunu ? date(baslangicGunu) : "imza günü"}</time></span>
                   {sureGun !== null ? <span><span><b>Toplam süre</b></span><time>{sureGun} gün</time></span> : null}
                 </span>
-                <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="İş termin tarihi"
               description="Sözleşmede yazan teslim tarihi. Değişiklik imza bağlantısındaki metne de yansır."
