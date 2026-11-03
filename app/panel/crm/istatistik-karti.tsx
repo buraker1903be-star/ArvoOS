@@ -21,12 +21,20 @@ export function IstatistikKarti({ kapsam, kutular, gruplar }: { kapsam: string; 
         <h2>İstatistikler</h2>
         <small>{kapsam}</small>
       </div>
-      <dl className="istat-kutular">
+      {/*
+        SAYILAR SATIR (03.11.2026): eskiden 2×2 kutuydu; dar sütunda
+        etiket ve alt yazı iki-üç satıra kırılıyor, rakamlar farklı
+        hizalarda duruyordu. Artık her sayı bir satır: solda ne olduğu ve
+        bağlamı, sağda rakam.
+      */}
+      <dl className="istat-satirlar">
         {kutular.map((kutu) => (
           <div key={kutu.ad}>
-            <dt>{kutu.ad}</dt>
+            <dt>
+              {kutu.ad}
+              {kutu.alt ? <small className={kutu.ton === "arti" ? TON_SINIFI.arti : kutu.ton === "uyari" ? TON_SINIFI.uyari : undefined}>{kutu.alt}</small> : null}
+            </dt>
             <dd className={kutu.ton === "uyari" ? TON_SINIFI.uyari : undefined}>{kutu.deger}</dd>
-            {kutu.alt ? <small className={kutu.ton === "arti" ? TON_SINIFI.arti : kutu.ton === "uyari" ? TON_SINIFI.uyari : undefined}>{kutu.alt}</small> : null}
           </div>
         ))}
       </dl>
