@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { MobilSatir } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../accounts/confirm-delete-button";
 import { postaDurumu } from "@/lib/posta-hesabi";
@@ -9,10 +8,10 @@ import { imzaHtml } from "@/lib/posta-imza";
 import { redirect } from "next/navigation";
 import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { istanbulTarihSaat } from "./bicim";
-import { SatirTiklama } from "../crm/satir-tiklama";
 import { konusmayiGeriAl, postaImzasi, taslakSil, topluGeriAl, topluOkundu } from "./actions";
 import { TopluIslem } from "./toplu-islem";
-import { OtomatikSecim } from "../crm/otomatik-secim";
+import { KonusmaGorunumu } from "./konusma-gorunumu";
+import { PanelModal } from "../components/panel-modal";
 import "../crm/kayit-detay/kayit-detay.css";
 import "./posta.css";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
@@ -80,9 +79,11 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   kapali: { ad: "Kapalı", ton: "neutral" },
 };
 
-export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string }> }) {
+export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string; k?: string }> }) {
   const parametreler = await searchParams;
   const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket, kapsam, ilgilenen: ilgilenenSuzgeci } = parametreler;
+  /* Okuma bölmesinde açık yazışma (Gmail'deki gibi; 04.11.2026). */
+  const acikKonusma = typeof parametreler.k === "string" && parametreler.k.trim() ? parametreler.k.trim().slice(0, 200) : null;
   const { supabase, membership, userId, izin, organization } = await getPanelContext();
   /* Çöp kutusu kendi görünümü: silinen yazışma öteki kutuların
      hiçbirinde çıkmamalı, yalnızca burada. */
@@ -220,7 +221,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   /* Süzgeçler birbirini silmesin: biri değişirken diğer ikisi korunuyor.
      Elle dizilen adreslerde bu üç kez unutulmuştu. */
-  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string }) => {
+  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string; k?: string }) => {
     const p = new URLSearchParams();
     const al = (ad: "durum" | "q" | "kutu" | "okunmamis" | "etiket" | "kapsam" | "ilgilenen", simdiki: string | undefined) =>
       (ad in degisen ? degisen[ad] : simdiki) || "";
@@ -237,6 +238,9 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     /* Sayfa yalnızca açıkça isteniyorsa korunuyor: süzgeç değişince
        üçüncü sayfada kalmak, çoğu zaman boş bir liste gösterirdi. */
     if (degisen.sayfa) p.set("sayfa", degisen.sayfa);
+    /* Açık yazışma yalnızca açıkça veriliyorsa: klasör ya da süzgeç
+       değişince okuma bölmesi boşalır (Gmail de öyle). */
+    if (degisen.k) p.set("k", degisen.k);
     return p.size ? `?${p}` : "";
   };
 
@@ -281,6 +285,26 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     listelenen: suzgecSayisi ?? konusmalar.length,
   };
 
+  /*
+    ÜÇ BÖLME (04.11.2026, kurum sahibinin isteği: "tam bir Gmail gibi").
+    Solda klasörler ve süzgeçler, ortada yazışma listesi, sağda açık
+    yazışma. Eskiden liste tam genişlik bir tabloydu ve yazışmaya
+    tıklamak ayrı bir sayfa açıyordu; listeye dönmek süzgeci ve kaydırma
+    yerini kaybettiriyordu. Açık yazışma adreste (?k=…): geri tuşu ve
+    paylaşılan bağlantı çalışıyor. Sayaç şeridi klasör sütununa geçti;
+    kutu durumu ve imza başlıktaki "Kutu ayarları" penceresinde.
+  */
+  const sayfaKoru = sayfaNo > 1 ? String(sayfaNo) : "";
+  const satirAdresi = (threadId: string) => `/panel/posta${adresEki({ k: threadId, sayfa: sayfaKoru })}`;
+  const listeAdresi = `/panel/posta${adresEki({ sayfa: sayfaKoru })}`;
+  const klasor = (etkin: boolean, href: string, ad: string, sayac?: number, vurgu?: boolean) => (
+    <Link href={href} className={etkin ? "is-active" : undefined} aria-current={etkin ? "page" : undefined} scroll={false}>
+      <span>{ad}</span>
+      {sayac ? <small className={vurgu ? "is-vurgu" : undefined}>{sayac}</small> : null}
+    </Link>
+  );
+  const tumKutular = !secilenKutu && kutu !== "taslak" && !copGorunumu;
+
   return <main className="talep cari ekip talepler liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
@@ -291,95 +315,55 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         {/* Hazır cevaplar ayrı sayfada: yan karttaki imza formunun
             altına bir liste daha koymak kartı okunmaz yapardı. */}
         {izin("posta.gor") ? <Link className="panel-secondary" href="/panel/posta/hazir-cevaplar">Hazır cevaplar</Link> : null}
+        <PanelModal triggerLabel="Kutu ayarları" triggerClassName="panel-secondary" kicker="ORTAK POSTA KUTUSU" title="Kutu durumu ve imza" description={hesap.adres ?? undefined} boy="genis">
+          <IstatistikKarti hesap={hesap} sayi={sayi} imzaDuzenlenebilir={izin("posta.yonet") && hesap.kayitliMi}
+            kurum={{ ad: organization.display_name || organization.name, logo: organization.logo_url, renk: organization.brand_color }} />
+        </PanelModal>
         {izin("posta.yanitla") ? <Link className="panel-primary" href="/panel/posta/yeni">Yeni posta</Link> : null}
       </div>
     </header>
 
-    {/* Sayaç şeridi aynı zamanda süzgeç: panelin diğer listelerinde de
-        rakama tıklanıyor, posta ayrı davranmasın. */}
-    <nav className="kayit-serit talep-serit" aria-label="Posta kutusu ve durum">
-      <dl>
-        <div className={!secilenKutu && kutu !== "taslak" && !copGorunumu ? "is-active" : undefined}>
-          <dt>Tümü</dt>
-          <dd><Link href={`/panel/posta${adresEki({ kutu: "" })}`}>{sayi.tumu}</Link></dd>
-        </div>
-        {KUTULAR.map((kutuSecenegi) => (
-          <div key={kutuSecenegi.anahtar} className={secilenKutu?.anahtar === kutuSecenegi.anahtar ? "is-active" : undefined}>
-            <dt>{kutuSecenegi.ad}</dt>
-            <dd><Link href={`/panel/posta${adresEki({ kutu: kutuSecenegi.anahtar })}`} aria-current={secilenKutu?.anahtar === kutuSecenegi.anahtar ? "page" : undefined}>{kutuSecenegi.anahtar === "gelen" ? sayi.gelen : sayi.giden}</Link></dd>
-          </div>
+    <div className="posta-uc posta-uc-kok" data-acik={acikKonusma ? "evet" : undefined}>
+      {/* KLASÖRLER: sayılar kurumun bütün kutusu için, süzgeçten bağımsız (yukarıda). */}
+      <nav className="panel-card posta-klasorler" aria-label="Klasörler ve süzgeçler">
+        {klasor(secilenKutu?.anahtar === "gelen", `/panel/posta${adresEki({ kutu: "gelen" })}`, "Gelen kutusu", sayi.gelen)}
+        {klasor(secilenKutu?.anahtar === "giden", `/panel/posta${adresEki({ kutu: "giden" })}`, "Gönderilenler", sayi.giden)}
+        {klasor(tumKutular, `/panel/posta${adresEki({ kutu: "" })}`, "Tüm postalar", sayi.tumu)}
+        {klasor(kutu === "taslak", `/panel/posta${adresEki({ kutu: "taslak" })}`, "Taslaklar", sayi.taslak)}
+        {klasor(copGorunumu, `/panel/posta${adresEki({ kutu: "cop" })}`, "Çöp kutusu", sayi.cop)}
+        <small className="posta-klasor-baslik">Süzgeçler</small>
+        {klasor(yalnizOkunmamis === "1", `/panel/posta${adresEki({ okunmamis: yalnizOkunmamis === "1" ? "" : "1" })}`, "Okunmamış", sayi.okunmamis, true)}
+        {Object.entries(DURUM_ETIKETI).map(([anahtar, etiket]) => (
+          <span key={anahtar} className="posta-klasor-sar">
+            {klasor(suzgec === anahtar, `/panel/posta${adresEki({ durum: suzgec === anahtar ? "" : anahtar })}`, etiket.ad, anahtar === "acik" ? sayi.acik : anahtar === "yanitlandi" ? sayi.yanitlandi : undefined)}
+          </span>
         ))}
-        <div className={kutu === "taslak" ? "is-active" : undefined}>
-          <dt>Taslaklar</dt>
-          <dd><Link href={`/panel/posta${adresEki({ kutu: kutu === "taslak" ? "" : "taslak" })}`}>{sayi.taslak}</Link></dd>
-        </div>
-        <div className={copGorunumu ? "is-active" : undefined}>
-          <dt>Çöp kutusu</dt>
-          <dd><Link href={`/panel/posta${adresEki({ kutu: copGorunumu ? "" : "cop" })}`}>{sayi.cop}</Link></dd>
-        </div>
-        <div className={suzgec === "acik" ? "is-active" : undefined}>
-          <dt>Açık</dt>
-          <dd><Link href={`/panel/posta${adresEki({ durum: suzgec === "acik" ? "" : "acik" })}`}>{sayi.acik}</Link></dd>
-        </div>
-        <div className={yalnizOkunmamis === "1" ? "is-active" : undefined}>
-          <dt>Okunmamış</dt>
-          <dd className={sayi.okunmamis ? "talep-uyari" : undefined}>
-            <Link href={`/panel/posta${adresEki({ okunmamis: yalnizOkunmamis === "1" ? "" : "1" })}`}>{sayi.okunmamis}</Link>
-          </dd>
-        </div>
-      </dl>
-    </nav>
+        {/* Ortak kutuda günlük iki soru: "bende olanlar" ve "kimsenin almadıkları". */}
+        {klasor(ilgilenenSuzgeci === "ben", `/panel/posta${adresEki({ ilgilenen: ilgilenenSuzgeci === "ben" ? "" : "ben", sayfa: "" })}`, "Bende", sayi.bende)}
+        {klasor(ilgilenenSuzgeci === "yok", `/panel/posta${adresEki({ ilgilenen: ilgilenenSuzgeci === "yok" ? "" : "yok", sayfa: "" })}`, "Sahipsiz", sayi.sahipsiz)}
+        {/* Etiketler Gmail'den geliyor; hiç etiketi olmayan kurumda başlık çıkmıyor. */}
+        {etiketler.length ? <small className="posta-klasor-baslik">Etiketler</small> : null}
+        {etiketler.map((etiket) => (
+          <span key={etiket.label_id} className="posta-klasor-sar">
+            {klasor(secilenEtiket === etiket.label_id, `/panel/posta${adresEki({ etiket: secilenEtiket === etiket.label_id ? "" : etiket.label_id, sayfa: "" })}`, etiket.ad)}
+          </span>
+        ))}
+      </nav>
 
-    <div className="talep-izgara personel-iki ekip-izgara">
-      <section className="panel-card talep-bilgi" aria-label="Posta listesi">
-        <div className="ekip-suzgec talep-suzgec">
-          <Link href={`/panel/posta${adresEki({ durum: "" })}`} className={!suzgec ? "is-active" : undefined}>Tümü <small>{sayi.tumu}</small></Link>
-          {Object.entries(DURUM_ETIKETI).map(([anahtar, etiket]) => (
-            <Link key={anahtar} href={`/panel/posta${adresEki({ durum: anahtar })}`} className={suzgec === anahtar ? "is-active" : undefined}>{etiket.ad}</Link>
-          ))}
-          {/* Ortak kutuda günlük iki soru: "bende olanlar" ve "kimsenin
-              almadıkları". Sütun vardı, süzgeci yoktu. */}
-          <Link href={`/panel/posta${adresEki({ ilgilenen: ilgilenenSuzgeci === "ben" ? "" : "ben", sayfa: "" })}`}
-            className={ilgilenenSuzgeci === "ben" ? "is-active" : undefined}>
-            Bende <small>{sayi.bende}</small>
-          </Link>
-          <Link href={`/panel/posta${adresEki({ ilgilenen: ilgilenenSuzgeci === "yok" ? "" : "yok", sayfa: "" })}`}
-            className={ilgilenenSuzgeci === "yok" ? "is-active" : undefined}>
-            Sahipsiz <small>{sayi.sahipsiz}</small>
-          </Link>
+      <section className="panel-card posta-liste-bolme" aria-label="Posta listesi">
+        {/* Arama sunucuda: GET formu kendi sayfasına gönderiyor, sonuç
+            paylaşılabilir bir adres oluyor ve geri tuşu çalışıyor. */}
+        <form className="talep-ara posta-ara" method="get" action="/panel/posta" role="search">
+          {suzgec ? <input type="hidden" name="durum" value={suzgec} /> : null}
+          {kutu ? <input type="hidden" name="kutu" value={kutu} /> : null}
+          {yalnizOkunmamis === "1" ? <input type="hidden" name="okunmamis" value="1" /> : null}
+          {secilenEtiket ? <input type="hidden" name="etiket" value={secilenEtiket} /> : null}
+          {ilgilenenSuzgeci ? <input type="hidden" name="ilgilenen" value={ilgilenenSuzgeci} /> : null}
+          <input name="q" defaultValue={aranan ?? ""} placeholder="Postalarda ara: konu, gönderen" aria-label="Postalarda ara" />
+        </form>
 
-          {/* Etiketler Gmail'den geliyor; kurum klasörünü panelde de
-              süzebilsin. Hiç etiketi olmayan kurumda kutu çıkmıyor. */}
-          {etiketler.length ? (
-            <form className="posta-etiket-suzgec" method="get" action="/panel/posta">
-              {suzgec ? <input type="hidden" name="durum" value={suzgec} /> : null}
-              {kutu ? <input type="hidden" name="kutu" value={kutu} /> : null}
-              {yalnizOkunmamis === "1" ? <input type="hidden" name="okunmamis" value="1" /> : null}
-              {desen ? <input type="hidden" name="q" value={desen} /> : null}
-              <OtomatikSecim name="etiket" defaultValue={secilenEtiket ?? ""} className="talep-temsilci-sec" label="Etiket">
-                <option value="">Tüm etiketler</option>
-                {etiketler.map((etiket) => <option key={etiket.label_id} value={etiket.label_id}>{etiket.ad}</option>)}
-              </OtomatikSecim>
-            </form>
-          ) : null}
-
-          {/* Arama sunucuda: GET formu kendi sayfasına gönderiyor, sonuç
-              paylaşılabilir bir adres oluyor ve geri tuşu çalışıyor. */}
-          <form className="talep-ara" method="get" action="/panel/posta" role="search">
-            {suzgec ? <input type="hidden" name="durum" value={suzgec} /> : null}
-            {kutu ? <input type="hidden" name="kutu" value={kutu} /> : null}
-            {yalnizOkunmamis === "1" ? <input type="hidden" name="okunmamis" value="1" /> : null}
-            {secilenEtiket ? <input type="hidden" name="etiket" value={secilenEtiket} /> : null}
-            {ilgilenenSuzgeci ? <input type="hidden" name="ilgilenen" value={ilgilenenSuzgeci} /> : null}
-            <input name="q" defaultValue={aranan ?? ""} placeholder="Konu, gönderen ara" aria-label="Postalarda ara" />
-          </form>
-        </div>
-
-        {/*
-          Gövdede arama bağlantısı sonucun ÜSTÜNDE: kullanıcı önce üst
-          veri sonucunu görüyor, bulamazsa buradan genişletiyor. Tek
-          Gmail çağrısı ve yalnızca istenince.
-        */}
+        {/* Gövdede arama bağlantısı sonucun ÜSTÜNDE: önce üst veri sonucu,
+            bulunamazsa buradan genişletiliyor. Tek Gmail çağrısı ve yalnızca istenince. */}
         {desen ? (
           <p className="posta-arama-kapsam">
             {govdedeAra ? (
@@ -401,51 +385,30 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           taslaklar.length === 0 ? (
             <div className="crm-empty-state talep-bos-kutu"><p>Kayıtlı taslak yok.</p></div>
           ) : (
-            <div className="talep-tablo">
-              <table className="crm-data-table">
-                <thead><tr><th>Alıcı</th><th>Konu</th><th>Başlangıç</th><th className="crm-col-date">Güncellendi</th><th></th></tr></thead>
-                <tbody>
-                  {taslaklar.map((satir) => (
-                    <tr key={satir.id}>
-                      <td data-label="Alıcı">
-                        <Link className="crm-row-link" href={satir.thread_id ? `/panel/posta/${satir.thread_id}` : `/panel/posta/yeni?taslak=${satir.id}`}>
-                          <span className="crm-table-title">{satir.alici || (satir.thread_id ? "Yanıt taslağı" : "Alıcı yazılmamış")}</span>
-                          <span className="crm-table-sub">{satir.govde.slice(0, 90)}</span>
-                        </Link>
-                      </td>
-                      <td data-label="Konu">{satir.konu || <span className="talep-bos">—</span>}</td>
-                      <td data-label="Başlangıç">
-                        <span className="crm-table-sub">{satir.olusturan ? adlar.get(satir.olusturan) ?? "Ekipten biri" : "—"}</span>
-                      </td>
-                      <td data-label="Güncellendi" className="crm-table-mono">{istanbulTarihSaat(satir.updated_at)}</td>
-                      <td className="crm-table-actions">
-                        {/* Yazılmış taslak: silinince geri gelmiyor. */}
-                        <form action={taslakSil}>
-                          <input type="hidden" name="taslak_id" value={satir.id} />
-                          <ConfirmDeleteButton label="Sil" confirmMessage="Bu taslağı silmek istediğinize emin misiniz?" />
-                        </form>
-                      </td>
-                      <MobilSatir
-                        href={satir.thread_id ? `/panel/posta/${satir.thread_id}` : `/panel/posta/yeni?taslak=${satir.id}`}
-                        baslik={satir.alici || (satir.thread_id ? "Yanıt taslağı" : "Alıcı yazılmamış")}
-                        alt={[satir.konu || "Konusuz"]}
-                        isaretler={[
-                          { metin: istanbulTarihSaat(satir.updated_at), ton: "bilgi" },
-                          { metin: satir.olusturan ? adlar.get(satir.olusturan) ?? "Ekipten biri" : "—", ton: "sessiz" },
-                        ]}
-                      />
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {/* Liste 50 ile sınırlı; şeritteki sayaç daha büyükse
-                  kullanıcı eksiğin farkında olsun. */}
+            <ul className="posta-satirlar">
+              {taslaklar.map((satir) => (
+                <li key={satir.id}>
+                  <Link className="posta-satir" href={satir.thread_id ? satirAdresi(satir.thread_id) : `/panel/posta/yeni?taslak=${satir.id}`} scroll={false}>
+                    <span className="posta-satir-ust">
+                      <b>{satir.alici || (satir.thread_id ? "Yanıt taslağı" : "Alıcı yazılmamış")}</b>
+                      <time>{istanbulTarihSaat(satir.updated_at)}</time>
+                    </span>
+                    <span className="posta-satir-konu">{satir.konu || "Konusuz"}</span>
+                    <span className="posta-satir-ozet">{satir.govde.slice(0, 140)}</span>
+                    <span className="posta-satir-alt"><i>{satir.olusturan ? adlar.get(satir.olusturan) ?? "Ekipten biri" : "—"}</i></span>
+                  </Link>
+                  {/* Yazılmış taslak: silinince geri gelmiyor. */}
+                  <form action={taslakSil} className="posta-satir-eylem">
+                    <input type="hidden" name="taslak_id" value={satir.id} />
+                    <ConfirmDeleteButton label="Sil" confirmMessage="Bu taslağı silmek istediğinize emin misiniz?" />
+                  </form>
+                </li>
+              ))}
+              {/* Liste 50 ile sınırlı; sayaç daha büyükse eksiğin farkında olunsun. */}
               {sayi.taslak > taslaklar.length ? (
-                <p className="posta-not">
-                  En son güncellenen {taslaklar.length} taslak gösteriliyor ({sayi.taslak} taslak var).
-                </p>
+                <li className="posta-not">En son güncellenen {taslaklar.length} taslak gösteriliyor ({sayi.taslak} taslak var).</li>
               ) : null}
-            </div>
+            </ul>
           )
         ) : konusmalar.length === 0 ? (
           <div className="crm-empty-state talep-bos-kutu">
@@ -462,117 +425,63 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           </div>
         ) : (
           /*
-            Tablo bir formun içinde: seçim kutucukları (name="secili") ve
+            Liste bir formun içinde: seçim kutucukları (name="secili") ve
             toplu işlem düğmeleri aynı gönderime giriyor. Satırdaki tekil
-            "Geri al" de bu formun düğmesi — iç içe form HTML'de geçersiz
-            ve tarayıcı onu sessizce atıyordu.
+            "Geri al" de bu formun düğmesi — iç içe form HTML'de geçersiz.
           */
           <form className="posta-liste-form" action={copGorunumu ? topluGeriAl : topluOkundu}>
             <input type="hidden" name="donus" value="liste" />
-            <TopluIslem copte={copGorunumu} silebilir={izin("posta.sil")} />
-            <div className="talep-tablo">
-            <table className="crm-data-table">
-              <thead><tr>
-                <th className="posta-sec-sutun">
-                  <input type="checkbox" id="posta-tumunu-sec" aria-label="Listedeki yazışmaların tümünü seç" />
-                </th>
-                <th>Gönderen</th><th>Konu</th><th>Müşteri</th>
-                {copGorunumu ? <th>Silen</th> : <><th>Durum</th><th>İlgilenen</th></>}
-                <th className="crm-col-date">{copGorunumu ? "Çöpe atıldı" : "Son mesaj"}</th>
-                <th></th>
-              </tr></thead>
-              <tbody>
-                {konusmalar.map((konusma) => {
-                  const etiket = DURUM_ETIKETI[konusma.durum] ?? DURUM_ETIKETI.acik;
-                  const ilgilenen = konusma.ilgilenen_user_id ? adlar.get(konusma.ilgilenen_user_id) ?? "Ekipten biri" : null;
-                  const gonderen = konusma.son_gonderen_ad || konusma.son_gonderen_adres || "Bilinmeyen gönderen";
-                  const silen = konusma.silen_user_id
-                    ? (konusma.silen_user_id === userId ? "Siz" : adlar.get(konusma.silen_user_id) ?? "Ekipten biri")
-                    : null;
-                  return (
-                    <tr key={konusma.thread_id} data-okunmamis={konusma.okunmamis ? "evet" : undefined}>
-                      <td className="posta-sec-sutun">
-                        <input type="checkbox" name="secili" value={konusma.thread_id}
-                          aria-label={`${konusma.konu || "konusuz"} yazışmasını seç`} />
-                      </td>
-                      <td data-label="Gönderen">
-                        <Link className="crm-row-link" href={`/panel/posta/${konusma.thread_id}`} aria-label={`${konusma.konu || "konusuz"} yazışmasını aç`}>
-                          <span className="crm-table-title" title={gonderen}>{gonderen}</span>
-                          <span className="crm-table-sub">{konusma.son_gonderen_adres}</span>
-                        </Link>
-                      </td>
-                      <td data-label="Konu">
-                        <span className="crm-table-title" title={konusma.konu ?? ""}>
-                          {konusma.konu || "(konu yok)"}{konusma.mesaj_sayisi > 1 ? ` (${konusma.mesaj_sayisi})` : ""}
-                        </span>
-                        {/* Özet eşitleme anında yazılıyor; bugünden eski satırlarda ham
-                            varlık ("&ccedil;") kalmış olabilir. Okurken çözülüyor:
-                            düzelmesi için yeniden eşitlenmeyi beklemesin. */}
-                        <span className="crm-table-sub">{htmlVarliklariniCoz(konusma.ozet ?? "")}</span>
-                        {/* Etiket rozetleri konunun altında: satırın kendi
-                            sütununu açmak dar ekranda tabloyu taşırıyordu. */}
-                        {konusma.etiketler?.length ? (
-                          <span className="posta-etiketler">
-                            {konusma.etiketler.map((kimlik) => etiketAdi.get(kimlik)).filter(Boolean)
-                              .map((ad) => <i key={ad as string}>{ad}</i>)}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td data-label="Müşteri">{musteriAdi(konusma) ?? <span className="talep-bos">—</span>}</td>
-                      {copGorunumu ? (
-                        <td data-label="Silen">
-                          <span className="crm-table-sub">{silen ?? "—"}</span>
-                        </td>
-                      ) : (
-                        <>
-                          <td data-label="Durum"><span className="status-pill" data-tone={etiket.ton}>{etiket.ad}</span></td>
-                          <td data-label="İlgilenen">
-                            {ilgilenen
-                              ? <span className="crm-table-sub">{konusma.ilgilenen_user_id === userId ? "Siz" : ilgilenen}</span>
-                              : <span className="talep-bos">—</span>}
-                          </td>
-                        </>
-                      )}
-                      <td data-label={copGorunumu ? "Çöpe atıldı" : "Son mesaj"} className="crm-table-mono">
-                        {istanbulTarihSaat(copGorunumu ? konusma.silindi_at : konusma.son_mesaj_at)}
-                      </td>
-                      <td className="crm-table-actions">
-                        {/* Geri alma satırda: çöp kutusunda yapılacak tek iş bu,
-                            yazışmayı açmayı şart koşmak gereksiz bir adım olurdu. */}
-                        {copGorunumu && izin("posta.sil") ? (
-                          /* Düğmenin kendi name/value'su gönderime giriyor;
-                             konusmayiGeriAl seçimi değil bu tek yazışmayı okuyor. */
-                          <button className="panel-secondary" type="submit" formAction={konusmayiGeriAl}
-                            name="thread_id" value={konusma.thread_id}>Geri al</button>
-                        ) : <span className="crm-row-chevron" aria-hidden="true">›</span>}
-                      </td>
-                      {/* Telefonda: gönderen + durum / konu / zaman, müşteri, ilgilenen.
-                          Seçim kutusu telefonda yok (toplu işlem masaüstünde). */}
-                      <MobilSatir
-                        href={`/panel/posta/${konusma.thread_id}`}
-                        baslik={gonderen}
-                        durum={copGorunumu ? null : { etiket: etiket.ad, ton: etiket.ton }}
-                        alt={[`${konusma.konu || "(konu yok)"}${konusma.mesaj_sayisi > 1 ? ` (${konusma.mesaj_sayisi})` : ""}`]}
-                        isaretler={[
-                          { metin: istanbulTarihSaat(copGorunumu ? konusma.silindi_at : konusma.son_mesaj_at), ton: konusma.okunmamis ? "guclu" : "bilgi" },
-                          musteriAdi(konusma) ? { metin: String(musteriAdi(konusma)), ton: "bilgi" } : null,
-                          copGorunumu ? (silen ? { metin: `Silen: ${silen}`, ton: "sessiz" } : null)
-                            : ilgilenen ? { metin: konusma.ilgilenen_user_id === userId ? "Siz ilgileniyorsunuz" : ilgilenen, ton: "sessiz" } : null,
-                        ]}
-                      />
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <SatirTiklama />
+            <div className="posta-liste-ust">
+              <label className="posta-tumu-sec">
+                <input type="checkbox" id="posta-tumunu-sec" aria-label="Listedeki yazışmaların tümünü seç" />
+              </label>
+              <TopluIslem copte={copGorunumu} silebilir={izin("posta.sil")} />
+              <small className="posta-liste-sayi">{typeof suzgecSayisi === "number" ? `${suzgecSayisi} yazışma` : ""}</small>
             </div>
+            <ul className="posta-satirlar">
+              {konusmalar.map((konusma) => {
+                const etiket = DURUM_ETIKETI[konusma.durum] ?? DURUM_ETIKETI.acik;
+                const ilgilenen = konusma.ilgilenen_user_id ? (konusma.ilgilenen_user_id === userId ? "Siz" : adlar.get(konusma.ilgilenen_user_id) ?? "Ekipten biri") : null;
+                const gonderen = konusma.son_gonderen_ad || konusma.son_gonderen_adres || "Bilinmeyen gönderen";
+                const silen = konusma.silen_user_id
+                  ? (konusma.silen_user_id === userId ? "Siz" : adlar.get(konusma.silen_user_id) ?? "Ekipten biri")
+                  : null;
+                const musteri = musteriAdi(konusma);
+                return (
+                  <li key={konusma.thread_id} data-okunmamis={konusma.okunmamis ? "evet" : undefined} data-acik={acikKonusma === konusma.thread_id ? "evet" : undefined}>
+                    <input type="checkbox" name="secili" value={konusma.thread_id} className="posta-satir-sec"
+                      aria-label={`${konusma.konu || "konusuz"} yazışmasını seç`} />
+                    <Link className="posta-satir" href={satirAdresi(konusma.thread_id)} scroll={false}
+                      aria-current={acikKonusma === konusma.thread_id ? "true" : undefined}>
+                      <span className="posta-satir-ust">
+                        <b title={konusma.son_gonderen_adres ?? gonderen}>{gonderen}</b>
+                        <time>{istanbulTarihSaat(copGorunumu ? konusma.silindi_at : konusma.son_mesaj_at)}</time>
+                      </span>
+                      <span className="posta-satir-konu">{konusma.konu || "(konu yok)"}{konusma.mesaj_sayisi > 1 ? <small> {konusma.mesaj_sayisi}</small> : null}</span>
+                      {/* Özet eşitleme anında yazılıyor; eski satırlarda ham varlık kalmış olabilir, okurken çözülüyor. */}
+                      <span className="posta-satir-ozet">{htmlVarliklariniCoz(konusma.ozet ?? "")}</span>
+                      <span className="posta-satir-alt">
+                        {copGorunumu ? <i>{silen ? `Silen: ${silen}` : "Çöpte"}</i> : <span className="status-pill" data-tone={etiket.ton}>{etiket.ad}</span>}
+                        {musteri ? <i>{musteri}</i> : null}
+                        {!copGorunumu && ilgilenen ? <i>{ilgilenen === "Siz" ? "Siz ilgileniyorsunuz" : ilgilenen}</i> : null}
+                        {konusma.etiketler?.map((kimlik) => etiketAdi.get(kimlik)).filter(Boolean).map((ad) => <em key={ad as string}>{ad}</em>)}
+                      </span>
+                    </Link>
+                    {/* Çöp kutusunda yapılacak tek iş geri almak; yazışmayı açmayı şart koşmak gereksiz bir adım olurdu. */}
+                    {copGorunumu && izin("posta.sil") ? (
+                      <button className="panel-secondary posta-satir-eylem" type="submit" formAction={konusmayiGeriAl}
+                        name="thread_id" value={konusma.thread_id}>Geri al</button>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
             {sonSayfa > 1 ? (
               <nav className="liste-sayfalar" aria-label="Sayfalar">
                 {sayfaNo > 1
                   ? <Link href={`/panel/posta${adresEki({ sayfa: sayfaNo === 2 ? "" : String(sayfaNo - 1) })}`}>← Önceki</Link>
                   : <span aria-hidden="true">← Önceki</span>}
-                <b>{sayfaNo} / {sonSayfa}{typeof suzgecSayisi === "number" ? ` · ${suzgecSayisi} yazışma` : ""}</b>
+                <b>{sayfaNo} / {sonSayfa}</b>
                 {sayfaNo < sonSayfa
                   ? <Link href={`/panel/posta${adresEki({ sayfa: String(sayfaNo + 1) })}`}>Sonraki →</Link>
                   : <span aria-hidden="true">Sonraki →</span>}
@@ -582,8 +491,16 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         )}
       </section>
 
-      <IstatistikKarti hesap={hesap} sayi={sayi} imzaDuzenlenebilir={izin("posta.yonet") && hesap.kayitliMi}
-        kurum={{ ad: organization.display_name || organization.name, logo: organization.logo_url, renk: organization.brand_color }} />
+      <section className="panel-card posta-okuma" aria-label="Açık yazışma">
+        {acikKonusma ? (
+          <KonusmaGorunumu threadId={acikKonusma} bolme={{ listeAdresi, kendiAdresi: satirAdresi(acikKonusma) }} />
+        ) : (
+          <div className="posta-bolme-bos">
+            <b>Bir yazışma seçin</b>
+            <p>Listeden bir yazışmaya tıklayınca burada açılır; liste ve süzgeçler yerinde kalır.</p>
+          </div>
+        )}
+      </section>
     </div>
   </main>;
 }

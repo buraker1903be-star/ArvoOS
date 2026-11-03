@@ -268,3 +268,97 @@
 .os-root .posta-gomulu-gorseller .posta-ekler{margin:0}
 .os-root .posta-gomulu-gorseller .posta-ekler li{padding:4px 10px;background:transparent}
 .os-root .posta-gomulu-gorseller .posta-ekler a{color:var(--muted);font-weight:500;font-size:var(--fs-micro)}
+
+/* =====================================================================
+   ÜÇ BÖLMELİ GELEN KUTUSU (04.11.2026, "tam bir Gmail gibi").
+   Klasörler · liste · okuma bölmesi. Sayfa liste düzeninde (ekran
+   yüksekliğine sabit, os-shell.css main.liste-sayfa); her bölme kendi
+   içinde kayar, sayfa kaymaz.
+   ===================================================================== */
+/* .posta-uc iki kez: os-shell'in `main.liste-sayfa>:not(.talep-izgara):not(.talep-bilgi)` kuralı (flex:0 0 auto) daha özgül. */
+.os-root main.liste-sayfa>.posta-uc.posta-uc-kok{flex:1 1 auto;min-height:0}
+.posta-uc{display:grid;grid-template-columns:208px minmax(320px,.95fr) minmax(0,1.45fr);gap:var(--sp-4);align-items:stretch;min-height:0}
+.posta-uc>*{min-width:0;min-height:0}
+
+/* Klasörler */
+.os-root .posta-klasorler{display:flex;flex-direction:column;gap:2px;margin:0;padding:var(--sp-3);overflow:auto;scrollbar-width:thin}
+.posta-klasor-sar{display:contents}
+.os-root .posta-klasorler a{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);min-height:34px;padding:0 var(--sp-3);border-radius:var(--r-pill);color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none}
+.os-root .posta-klasorler a>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.os-root .posta-klasorler a:hover{background:var(--surface-2);color:var(--ink)}
+.os-root .posta-klasorler a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
+.posta-klasorler a small{flex:none;color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums}
+.posta-klasorler a small.is-vurgu{color:var(--primary);font-weight:var(--fw-semibold)}
+.posta-klasor-baslik{margin:var(--sp-3) var(--sp-3) var(--sp-1);color:var(--muted);font-size:var(--fs-micro);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+
+/* Liste */
+.os-root .posta-liste-bolme{display:flex;flex-direction:column;margin:0;padding:var(--sp-3) 0 0;overflow:hidden}
+.os-root .posta-liste-bolme>.posta-ara{margin:0 var(--sp-3) var(--sp-2)}
+.os-root .posta-liste-bolme>.posta-ara input{width:100%}
+.os-root .posta-liste-bolme>.posta-arama-kapsam,.os-root .posta-liste-bolme>.posta-uyari,.os-root .posta-liste-bolme>.crm-empty-state{margin-left:var(--sp-3);margin-right:var(--sp-3)}
+.os-root .posta-liste-bolme>.posta-liste-form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.posta-liste-ust{display:flex;align-items:center;gap:var(--sp-2);min-height:40px;padding:0 var(--sp-3) var(--sp-1);border-bottom:1px solid var(--line-soft)}
+.posta-tumu-sec{display:grid;place-items:center;width:28px}
+.posta-liste-sayi{margin-left:auto;color:var(--muted);font-size:var(--fs-micro)}
+.os-root .posta-liste-bolme>.posta-satirlar,.os-root .posta-liste-form>.posta-satirlar{flex:1 1 auto;min-height:0;overflow:auto;scrollbar-width:thin}
+.os-root .posta-satirlar{margin:0;padding:0;list-style:none}
+.os-root .posta-satirlar>li{position:relative;display:flex;align-items:flex-start;gap:var(--sp-1);margin:0;padding:0 var(--sp-2) 0 var(--sp-3);border-bottom:1px solid var(--line-soft)}
+.os-root .posta-satirlar>li:hover{background:var(--surface-2)}
+.os-root .posta-satirlar>li[data-acik="evet"]{background:color-mix(in srgb,var(--primary) 7%,var(--surface));box-shadow:inset 3px 0 0 var(--primary)}
+.posta-satir-sec{flex:none;width:16px;height:16px;margin:15px 6px 0 0}
+.os-root .posta-satirlar a.posta-satir{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;padding:var(--sp-3) var(--sp-1);color:inherit;font-size:inherit;font-weight:400;text-decoration:none}
+.posta-satir-ust{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2)}
+.posta-satir-ust b{overflow:hidden;color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-overflow:ellipsis;white-space:nowrap}
+.posta-satir-ust time{flex:none;color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums}
+.posta-satir-konu{overflow:hidden;color:var(--ink-soft);font-size:var(--fs-sm);text-overflow:ellipsis;white-space:nowrap}
+.posta-satir-konu small{color:var(--muted);font-size:var(--fs-micro)}
+.posta-satir-ozet{overflow:hidden;color:var(--muted);font-size:var(--fs-micro);text-overflow:ellipsis;white-space:nowrap}
+.posta-satir-alt{display:flex;flex-wrap:wrap;align-items:center;gap:4px var(--sp-2);margin-top:3px}
+.posta-satir-alt .status-pill{font-size:11px}
+.posta-satir-alt i{color:var(--muted);font-size:var(--fs-micro);font-style:normal}
+.posta-satir-alt em{padding:0 6px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink-soft);font-size:11px;font-style:normal}
+/* Okunmamış: kalın gönderen ve konu + sol şerit (yalnızca renk renk körlüğünde kayboluyordu). */
+.os-root .posta-satirlar>li[data-okunmamis="evet"]{box-shadow:inset 3px 0 0 var(--primary)}
+.posta-satirlar>li[data-okunmamis="evet"] .posta-satir-ust b,.posta-satirlar>li[data-okunmamis="evet"] .posta-satir-konu{color:var(--ink);font-weight:var(--fw-semibold)}
+.posta-satirlar>li[data-okunmamis="evet"] .posta-satir-ust time{color:var(--primary);font-weight:var(--fw-semibold)}
+.os-root .posta-satir-eylem{flex:none;align-self:center;margin:0}
+.os-root .posta-satirlar>.posta-not{display:block;padding:var(--sp-3);border:0}
+.os-root .posta-liste-form>.liste-sayfalar{flex:none;padding:var(--sp-2);border-top:1px solid var(--line-soft)}
+
+/* Okuma bölmesi */
+.os-root .posta-okuma{display:flex;flex-direction:column;gap:var(--sp-3);margin:0;padding:var(--sp-4) var(--sp-5);overflow:auto;scrollbar-width:thin}
+.posta-bolme-bos{display:grid;place-content:center;justify-items:center;gap:var(--sp-1);height:100%;min-height:200px;color:var(--muted);text-align:center}
+.posta-bolme-bos b{color:var(--ink);font-size:var(--fs-md)}
+.posta-bolme-bos p{max-width:320px;margin:0;font-size:var(--fs-sm)}
+.posta-bolme-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);padding-bottom:var(--sp-3);border-bottom:1px solid var(--line-soft)}
+.posta-bolme-bas h2{margin:0;color:var(--ink);font-size:var(--fs-lg);font-weight:var(--fw-semibold);line-height:1.3;overflow-wrap:anywhere}
+.posta-bolme-bas p{margin:2px 0 0;color:var(--muted);font-size:var(--fs-micro)}
+.posta-bolme-eylem{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-1)}
+.posta-bolme-eylem form{margin:0}
+.os-root .posta-bolme-eylem :is(.panel-secondary,.panel-primary){min-height:32px;padding:0 var(--sp-3);border-radius:var(--r-pill);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.posta-bolme-geri{display:none !important}
+.posta-bolme-govde{display:flex;flex-direction:column;gap:var(--sp-3)}
+/* Yan bilgi bölmede yazışmanın ÜSTÜNDE, katlı: önce okunur, durum gerekince açılır. */
+.posta-bolme-govde>.posta-bolme-detay{order:-1}
+.posta-bolme-detay{border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
+.posta-bolme-detay>summary{padding:var(--sp-2) var(--sp-3);color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer}
+.posta-bolme-detay>.posta-yan{padding:0 var(--sp-3) var(--sp-3)}
+
+/* Orta genişlik: klasörler üstte yatay şerit. */
+@media (max-width:1400px){
+  .posta-uc{grid-template-columns:minmax(300px,.9fr) minmax(0,1.4fr);grid-template-rows:auto minmax(0,1fr)}
+  .os-root .posta-klasorler{grid-column:1/-1;flex-direction:row;flex-wrap:nowrap;align-items:center;overflow-x:auto;padding:var(--sp-2)}
+  .os-root .posta-klasorler a{flex:none}
+  .posta-klasor-baslik{display:none}
+}
+/* Dar ekran: liste ya da açık yazışma, ikisinden biri. */
+@media (max-width:900px){
+  .posta-uc{grid-template-columns:minmax(0,1fr)}
+  .posta-uc[data-acik="evet"]>:is(.posta-klasorler,.posta-liste-bolme){display:none}
+  .posta-uc:not([data-acik="evet"])>.posta-okuma{display:none}
+  .posta-bolme-geri{display:inline-flex !important}
+}
+/* Arama kutusu satır boyunda (talep-ara listelerde esniyor); mesaj listesi kartın liste girintisini almasın. */
+.os-root .posta-liste-bolme>.posta-ara{flex:none;width:auto}
+.os-root .posta-okuma .posta-mesajlar{margin:0;padding:0}
+.os-root .posta-okuma .posta-mesajlar>li{margin:0}
