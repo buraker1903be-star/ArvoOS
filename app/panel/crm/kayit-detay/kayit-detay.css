@@ -1055,6 +1055,13 @@
   .os-root main.kd-tek-sayfa{
     height:calc(100dvh - var(--os-bar-h) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
     min-height:0;overflow:hidden;
+    /*
+      Taşan içerik kesilsin diye overflow:hidden; ama üzerine gelinen
+      düğmenin gölgesi ve 1px kalkışı da başlıkta kesiliyordu (Düzenle ve
+      ⋯, 03.11.2026). Gölge payı kadar iç boşluk, aynı kadar eksi dış boşluk:
+      yerleşim değişmez, gölge kutunun içinde kalır.
+    */
+    padding:8px;margin:-8px;box-sizing:content-box;
   }
   .os-root main.kd-tek-sayfa>*{flex:0 0 auto}
   /*
@@ -1141,8 +1148,7 @@
   Düzenle ve ⋯ aynı boy ve aynı hap biçiminde, öteki detayların başlık
   düğmeleriyle (kd-hap) aynı dilde.
 */
-.os-root .talep-bas-eylem .kd-bas-dugme{min-height:40px;padding:0 var(--sp-5);border-radius:var(--r-pill);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
-.os-root .talep-bas-eylem summary.kd-bas-dugme{min-width:40px;padding:0 var(--sp-3);justify-content:center}
+/* Başlık düğmelerinin biçimi artık bütün panelde ortak: os-shell.css → BAŞLIK DÜĞMELERİ. */
 /*
   Bağlantı olan kart (Hedef, Maaş/Hakediş) yazıları kalın çıkıyordu:
   panel.css'in `.panel-card a` kuralı (12px/800, birincil renk) karta da
