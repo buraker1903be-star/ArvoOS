@@ -32,7 +32,8 @@ import { teklifGrubu } from "@/lib/teklif-grubu";
 import { gunOnce, oran } from "@/lib/liste-istatistik";
 import { tamPara } from "../../crm/istatistik-karti";
 import { simdi } from "../../os/genel-bakis";
-import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { KanalDugmesi } from "../../crm/kayit-detay/kanal-dugmesi";
+import { ozetZamani } from "../../crm/kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import "../hr.css";
 import "../../crm/kayit-detay/kayit-detay.css";
@@ -237,15 +238,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const erisim = member ? (member.is_active ? roleNames[member.role] ?? member.role : "Erişim kapalı") : pendingInvite ? "Davet bekliyor" : "Erişim yok";
   const bugun = todayInIstanbul();
 
-  /* Orta sütun sekmeleri; "Hareketler" adreste ?hareket= varsa açık başlar
-     (aralık ve sayfa bağlantıları sayfayı yeniden yüklüyor). */
-  const sekmeler = [
-    "Üstündekiler",
-    ...(crmVar ? [whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp"] : []),
-    ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
-    ...(hareketGorur ? ["Hareketler"] : []),
-  ];
-  const hareketSekmesi = sekmeler.indexOf("Hareketler");
+  const sonPosta = postalar.map((posta) => posta.son_mesaj_at ?? "").sort().at(-1) || null;
 
   /* DÜZEN (2026-10): talep, teklif ve sözleşme çekmeceleriyle aynı ortak
      form (components/kayit-formu.css): bölüm ayırıcıları, zorunlu alan
@@ -254,11 +247,24 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const editForm = <PersonelFormu action={updateEmployee} departmanlar={departments} personel={employee} />;
 
   return (
-    <main className="talep cari personel">
+    <main className="talep cari personel kd-tek-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
           <small className="panel-kicker">{employee.employee_no ? `PERSONEL · NO ${employee.employee_no}` : "PERSONEL"}</small>
           <h1>{employee.full_name}</h1>
+        </div>
+        {/* ÖZET ŞERİDİ başlıkta, diğer detaylardaki aşama çizgisinin yerinde. */}
+        <div className="kd-bas-asama kd-bas-ozet">
+      <section className="kayit-serit" aria-label="Personel özeti">
+        <dl>
+          <div><dt>Durum</dt><dd><span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span></dd></div>
+          <div><dt>Çalışma tipi</dt><dd>{typeNames[employee.employment_type] ?? "—"}</dd></div>
+          <div><dt>Kıdem</dt><dd>{employee.start_date ? kidem(employee.start_date, bugun) : "—"}</dd></div>
+          {crmVar ? <div><dt>Açık talep</dt><dd>{acikTalep}</dd></div> : null}
+          {opsVar ? <div><dt>Üstündeki iş</dt><dd>{acikIs}</dd></div> : null}
+          {canManageTeam ? <div><dt>Panel erişimi</dt><dd>{erisim}</dd></div> : null}
+        </dl>
+      </section>
         </div>
         <div className="talep-bas-eylem">
           {prim && primToplami ? (
@@ -314,174 +320,158 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
         </div>
       </header>
 
-      {/* ÖZET ŞERİDİ: diğer detaylardaki aşama çizgisinin yerinde. */}
-      <section className="kayit-serit" aria-label="Personel özeti">
-        <dl>
-          <div><dt>Durum</dt><dd><span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span></dd></div>
-          <div><dt>Çalışma tipi</dt><dd>{typeNames[employee.employment_type] ?? "—"}</dd></div>
-          <div><dt>Kıdem</dt><dd>{employee.start_date ? kidem(employee.start_date, bugun) : "—"}</dd></div>
-          {crmVar ? <div><dt>Açık talep</dt><dd>{acikTalep}</dd></div> : null}
-          {opsVar ? <div><dt>Üstündeki iş</dt><dd>{acikIs}</dd></div> : null}
-          {canManageTeam ? <div><dt>Panel erişimi</dt><dd>{erisim}</dd></div> : null}
-        </dl>
-      </section>
-
-      <div className={canManageTeam || gizlilikGorur ? "talep-izgara" : "talep-izgara personel-iki"}>
+      <div className="kd-duzen-v4 kd-tek-ekran">
         {/*
-          Sol sütun (29.10.2026, kurum sahibinin isteği): orta ve sağ sütun
-          gibi sekmeli kart. Eskiden kimlik, iletişim ve prim bilgisi tek
-          uzun kartta alt alta duruyordu; prim bakiyesi en altta kalıyor,
-          telefon ve e-posta tıklanamıyordu. Prim oranları ve bakiye
-          artık şerit hâlinde, orta sütunun performans şeridiyle aynı.
+          DÜZEN (03.11.2026, kurum sahibinin isteği: "personel detayını da
+          aynı kalitede birebir düzenle"). Sözleşme, teklif ve müşteri
+          detayıyla aynı iskelet: solda kimlik ve iletişim kanalları, altta
+          prim ile erişim/özlük kartları, sağda "Üstündekiler". Eskiden üç
+          sekmeli sütun vardı; WhatsApp, posta ve hareketler orta sütunun
+          sekmelerindeydi, panel erişimi ve özlük dosyası sağ sütunun.
+          Artık her biri karttaki düğmeden ortada açılan pencerede; sayfa
+          kaymıyor.
         */}
-        <TalepAkis kimlik="personel-sol" sinif="personel-sol" etiket="Personel bilgileri" sekmeler={["Bilgiler", "Prim ve satış"]}>
-          <div className="ps-panel">
-            <div className="pk-kimlik">
-              <span className="talep-avatar" aria-hidden="true">{initials(employee.full_name)}</span>
-              <div>
-                <h2>{employee.full_name}</h2>
-                <small>{employee.job_title || "Pozisyon belirtilmedi"}{departmentName ? ` · ${departmentName}` : ""}</small>
-              </div>
+        <section className="panel-card opd-kart opd-musteri kd-musteri" aria-label="Personel">
+          <div className="talep-musteri-kimlik">
+            <span className="talep-avatar" aria-hidden="true">{initials(employee.full_name)}</span>
+            <div>
+              <h2>{employee.full_name}</h2>
+              <small>{employee.job_title || "Pozisyon belirtilmedi"}{departmentName ? ` · ${departmentName}` : ""}</small>
             </div>
-            {employee.phone || employee.email ? (
-              <div className="pk-iletisim">
-                {employee.phone ? <a className="panel-secondary" href={`tel:${employee.phone.replace(/\s+/g, "")}`}>Ara</a> : null}
-                {employee.email ? <a className="panel-secondary" href={`mailto:${employee.email}`}>E-posta</a> : null}
-              </div>
-            ) : null}
-            <dl className="pk-liste">
-              <div><dt>Telefon</dt><dd>{employee.phone ? <a href={`tel:${employee.phone.replace(/\s+/g, "")}`}>{formatPhone(employee.phone)}</a> : <em>Yok</em>}</dd></div>
-              <div><dt>E-posta</dt><dd>{employee.email ? <a href={`mailto:${employee.email}`}>{employee.email}</a> : <em>Yok</em>}</dd></div>
-              <div><dt>Departman</dt><dd>{departmentName || <em>Yok</em>}</dd></div>
-              <div><dt>Personel no</dt><dd>{employee.employee_no || <em>Yok</em>}</dd></div>
-              <div><dt>İşe giriş</dt><dd>{employee.start_date ? shortDate(employee.start_date) : <em>Belirtilmedi</em>}</dd></div>
-            </dl>
           </div>
-          <div className="ps-panel">
-            <dl className="pu-serit pk-serit">
-              <div><dt>Satış primi</dt><dd>%{percent(employee.commission_rate)}</dd></div>
-              <div><dt>Operasyon primi</dt><dd>%{percent(employee.operation_commission_rate)}</dd></div>
-            </dl>
-            {primToplami ? (
-              <Link className="pk-bakiye" href={`${temelAdres}?pencere=prim`} scroll={false} data-tone={primToplami.balance < 0 ? "danger" : undefined}>
-                <span><small>Prim bakiyesi</small><b>{money(primToplami.balance)}</b></span>
-                <span className="pk-bakiye-git">Prim hareketleri →</span>
-              </Link>
-            ) : null}
-            <dl className="pk-liste">
-              <div><dt>Satış talepleri</dt><dd><span className="status-pill" data-tone={employee.can_receive_sales_requests ? "success" : "neutral"}>{employee.can_receive_sales_requests ? "Atanabilir" : "Atanmaz"}</span></dd></div>
-            </dl>
-          </div>
-        </TalepAkis>
-
-        {/* Orta sütun sekmeli (2026-10): üstündekiler (performans, talepler,
-            işler), WhatsApp ve posta. Eskiden yalnızca üstündekiler vardı. */}
-        <TalepAkis
-          sekmeler={sekmeler}
-          tembel={sekmeler.map((_, sira) => sira).filter((sira) => sira > 0)}
-          baslangic={hareketSekmesi >= 0 && arama.hareket ? hareketSekmesi : 0}
-        >
-          {/*
-            Üstündekiler sekmesi (29.10.2026): Hareketler sekmesiyle aynı dil.
-            Eskiden başlıklar ve liste satırları kenarsız akıyor, performans
-            kutuları listeyle aynı ağırlıkta duruyordu. Artık üstte tek şerit
-            hâlinde performans, altında çerçeveli listeler; gecikmiş termin
-            satırda ayrıca işaretleniyor — yöneticinin bu sekmede aradığı ilk
-            şey "geciken bir şey var mı".
-          */}
-          <div className="personel-ustunde">
-            {crmVar || opsVar ? (
-              <section aria-label="Performans">
-                <header className="phr-bas"><h2>Performans</h2><small>son 90 gün</small></header>
-                <dl className="pu-serit">
-                  {crmVar ? (
-                    <div><dt>İmzalanan sözleşme</dt><dd>{son90Imza.length}</dd><small>{son90Deger ? tamPara(son90Deger) : "—"} · toplam {imzalananlar.length}</small></div>
-                  ) : null}
-                  {crmVar ? (
-                    <div><dt>Teklif kabul oranı</dt><dd>{kabulOrani === null ? "—" : `%${kabulOrani}`}</dd><small>{kabul} kabul · tüm zamanlar</small></div>
-                  ) : null}
-                  {opsVar ? (
-                    <div><dt>Teslim edilen iş</dt><dd>{son90Teslim}</dd><small>toplam {teslimler.length}</small></div>
-                  ) : null}
-                  {opsVar ? (
-                    <div><dt>Zamanında teslim</dt><dd>{zamaninda === null ? "—" : `%${zamaninda}`}</dd><small>{terminli.length} terminli iş</small></div>
-                  ) : null}
+          {employee.phone || employee.email ? (
+            <div className="opd-iletisim-dugmeleri">
+              {employee.phone ? <a className="panel-secondary" href={`tel:${employee.phone.replace(/\s+/g, "")}`}>Ara</a> : null}
+              {employee.email ? <a className="panel-secondary" href={`mailto:${employee.email}`}>E-posta</a> : null}
+            </div>
+          ) : null}
+          <dl className="talep-liste opd-musteri-liste">
+            <div><dt>Telefon</dt><dd>{employee.phone ? <a href={`tel:${employee.phone.replace(/\s+/g, "")}`}>{formatPhone(employee.phone)}</a> : <em>Yok</em>}</dd></div>
+            <div><dt>E-posta</dt><dd>{employee.email ? <a href={`mailto:${employee.email}`}>{employee.email}</a> : <em>Yok</em>}</dd></div>
+            <div><dt>Departman</dt><dd>{departmentName || <em>Yok</em>}</dd></div>
+          </dl>
+          <PanelModal
+            triggerClassName="panel-secondary opd-ayrinti-dugme"
+            triggerLabel="Personel ayrıntıları"
+            title={employee.full_name}
+            description="Kimlik, görev ve iletişim bilgileri. Değiştirmek için başlıktaki “Düzenle”."
+            kicker={employee.employee_no ? `PERSONEL · NO ${employee.employee_no}` : "PERSONEL"}
+            boy="buyuk"
+          >
+            <div className="opd-ayrinti">
+              <section className="opd-ayrinti-bolum">
+                <h3>Kimlik</h3>
+                <dl className="talep-liste">
+                  <div><dt>Personel no</dt><dd>{employee.employee_no || <em>Yok</em>}</dd></div>
+                  <div><dt>İşe giriş</dt><dd>{employee.start_date ? shortDate(employee.start_date) : <em>Belirtilmedi</em>}</dd></div>
+                  <div><dt>Kıdem</dt><dd>{employee.start_date ? kidem(employee.start_date, bugun) : <em>—</em>}</dd></div>
+                  <div><dt>Çalışma tipi</dt><dd>{typeNames[employee.employment_type] ?? <em>—</em>}</dd></div>
+                  <div><dt>Durum</dt><dd><span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span></dd></div>
                 </dl>
               </section>
-            ) : null}
-            {crmVar ? (
-              <section aria-label="Açık talepler">
-                <header className="phr-bas">
-                  <h2>Açık talepler <small className="pu-sayi">{acikTalep}</small></h2>
-                  {/* Talepler listesinin temsilci süzgeci: hepsini aynı süzgeçle açar. */}
-                  <Link className="pu-tumu" href={`/panel/crm?temsilci=${employee.id}`}>{acikTalep > talepler.length ? `Tümünü gör (${acikTalep})` : "Listede aç"} →</Link>
-                </header>
-                {talepler.length ? (
-                  <ul className="pu-liste">
-                    {talepler.map((talep) => (
-                      <li key={talep.id}>
-                        <Link href={`/panel/crm/requests/${talep.id}`}>
-                          <span className="pu-govde">
-                            <b>{talep.customer_name || talep.title || "Talep"}</b>
-                            <small>{[talep.customer_name ? talep.title : null, `Açılış ${shortDate(talep.created_at)}`].filter(Boolean).join(" · ")}</small>
-                          </span>
-                          <span className="status-pill" data-tone={statusTone(talep.stage ?? "")}>{requestStageNames[talep.stage ?? ""] ?? talep.stage}</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : <p className="pu-bos">Üstünde açık talep yok.</p>}
+              <section className="opd-ayrinti-bolum">
+                <h3>Görev ve iletişim</h3>
+                <dl className="talep-liste">
+                  <div><dt>Pozisyon</dt><dd>{employee.job_title || <em>Belirtilmedi</em>}</dd></div>
+                  <div><dt>Departman</dt><dd>{departmentName || <em>Yok</em>}</dd></div>
+                  <div><dt>Telefon</dt><dd>{employee.phone ? formatPhone(employee.phone) : <em>Yok</em>}</dd></div>
+                  <div><dt>E-posta</dt><dd>{employee.email || <em>Yok</em>}</dd></div>
+                </dl>
               </section>
-            ) : null}
-            {opsVar ? (
-              <section aria-label="Yürüttüğü işler">
-                <header className="phr-bas">
-                  <h2>Yürüttüğü işler <small className="pu-sayi">{acikIs}</small></h2>
-                  {/* İşler listesinin sorumlu süzgeci. */}
-                  <Link className="pu-tumu" href={`/panel/operations/isler?sorumlu=${employee.id}`}>{acikIs > isler.length ? `Tümünü gör (${acikIs})` : "Listede aç"} →</Link>
-                </header>
-                {isler.length ? (
-                  <ul className="pu-liste">
-                    {isler.map((is) => {
-                      // Gün anahtarları (YYYY-MM-DD, Türkiye günü) metin olarak karşılaştırılabilir.
-                      const gecikti = Boolean(is.due_date && is.due_date.slice(0, 10) < bugun);
-                      return (
-                        <li key={is.id}>
-                          <Link href={`/panel/operations/${is.id}`}>
-                            <span className="pu-govde">
-                              <b>{is.title}</b>
-                              <small>
-                                {is.customer_name ? `${is.customer_name} · ` : ""}
-                                {is.due_date ? <span data-tone={gecikti ? "danger" : undefined}>{gecikti ? "Gecikti · " : "Termin "}{shortDate(is.due_date)}</span> : "Termin yok"}
-                              </small>
-                            </span>
-                            <span className="status-pill" data-tone={statusTone(is.status)}>{workflowStatusNames[is.status] ?? is.status}</span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : <p className="pu-bos">Üstünde iş yok.</p>}
-              </section>
-            ) : null}
-            {!crmVar && !opsVar ? <p className="ic-akis-bos">Talep ve iş modülleri açık değil.</p> : null}
-          </div>
-          {crmVar ? <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={employee.full_name} kisi="personel" /></div> : null}
-          {postaGorur ? <div><PostaAkisi postalar={postalar} epostaVar={Boolean(employee.email)} kisi="personel" /></div> : null}
-          {hareketGorur ? <div><PersonelHareketleri supabase={supabase} orgId={org} userId={employee.user_id} temelAdres={temelAdres} aralik={arama.hareket} sayfa={arama.hsayfa} /></div> : null}
-        </TalepAkis>
+            </div>
+          </PanelModal>
+        </section>
 
-        {/*
-          Sağ sütun (29.10.2026, kurum sahibinin isteği): ortadaki gibi
-          sekmeli kart — Panel erişimi ve Özlük dosyası alt alta durunca
-          sütun ekrandan taşıyor, belgelere ulaşmak için kaydırmak
-          gerekiyordu. İçerik orta sütunla aynı dilde: sayı rozeti,
-          çerçeveli listeler, gerekçeli boş durum. Erişimin açık/kapalı olduğu eskiden yalnızca düğmenin
-          adından ("Erişimi kapat") çıkarılıyordu; artık başlıkta yazıyor.
-        */}
-        {canManageTeam || gizlilikGorur ? (
-          <TalepAkis kimlik="personel-sag" sinif="personel-sag" etiket="Erişim ve özlük dosyası" sekmeler={[...(canManageTeam ? ["Panel erişimi"] : []), "Özlük dosyası"]}>
-            {canManageTeam ? (
+        {/* İLETİŞİM: kanallar düğme, içerik ortada açılan pencerede (iş detayıyla aynı). */}
+        <section className="panel-card opd-kart kd-iletisim" aria-label="İletişim">
+          <h2 className="opd-kart-baslik">İletişim</h2>
+          {crmVar ? (
+            <>
+              <h3 className="opd-kanal-grup">WhatsApp</h3>
+              <p className="opd-kanal-ozet">
+                {whatsappMesajlari[0]?.createdAt ? <>Son mesaj <time dateTime={whatsappMesajlari[0].createdAt}>{ozetZamani(whatsappMesajlari[0].createdAt)}</time></> : "Henüz yazışma yok"}
+              </p>
+              <KanalDugmesi
+                anahtar={`kanal:personel:${employee.id}:whatsapp`}
+                etiket="WhatsApp"
+                olaylar={whatsappMesajlari[0]?.direction === "inbound" ? [whatsappMesajlari[0].createdAt] : []}
+                title={employee.full_name}
+                kicker="WHATSAPP"
+              >
+                <WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={employee.full_name} kisi="personel" />
+              </KanalDugmesi>
+            </>
+          ) : null}
+          {postaGorur ? (
+            <>
+              <h3 className="opd-kanal-grup">Posta</h3>
+              <p className="opd-kanal-ozet">
+                {sonPosta ? <>Son posta <time dateTime={sonPosta}>{ozetZamani(sonPosta)}</time></> : "Henüz posta yok"}
+              </p>
+              <KanalDugmesi
+                anahtar={`kanal:personel:${employee.id}:posta`}
+                etiket="Postalar"
+                olaylar={postalar.filter((posta) => posta.okunmamis).map((posta) => posta.son_mesaj_at ?? "").filter(Boolean)}
+                title={employee.full_name}
+                kicker="POSTALAR"
+              >
+                <PostaAkisi postalar={postalar} epostaVar={Boolean(employee.email)} kisi="personel" />
+              </KanalDugmesi>
+            </>
+          ) : null}
+          {hareketGorur ? (
+            <>
+              <h3 className="opd-kanal-grup">Panel</h3>
+              <p className="opd-kanal-ozet">Giriş ve işlem kayıtları</p>
+              {/* Aralık ve sayfa bağlantıları sayfayı yeniden yüklüyor; adreste ?hareket= varsa pencere açık gelir. */}
+              <PanelModal
+                triggerLabel="Hareketler"
+                triggerClassName="opd-kanal"
+                kicker="PANEL HAREKETLERİ"
+                title={employee.full_name}
+                boy="buyuk"
+                baslangicAcik={Boolean(arama.hareket || arama.hsayfa)}
+                kapaninca={arama.hareket || arama.hsayfa ? temelAdres : undefined}
+              >
+                <PersonelHareketleri supabase={supabase} orgId={org} userId={employee.user_id} temelAdres={temelAdres} aralik={arama.hareket} sayfa={arama.hsayfa} />
+              </PanelModal>
+            </>
+          ) : null}
+          {!crmVar && !postaGorur && !hareketGorur ? <p className="talep-bos">Görebileceğiniz bir iletişim kanalı yok.</p> : null}
+        </section>
+
+        {/* PRİM VE SATIŞ: bakiye büyük rakam, oranlar altında; hareketler Prim penceresinde. */}
+        <section className="panel-card opd-kart kd-alt-sol" aria-label="Prim ve satış">
+          <h3 className="opd-kanal-grup">Prim ve satış</h3>
+          {primToplami ? (
+            <p className="kd-buyuk-rakam" data-tone={primToplami.balance < 0 ? "warning" : undefined}>
+              {money(primToplami.balance)}
+              <small>prim bakiyesi</small>
+            </p>
+          ) : null}
+          <dl className="talep-liste opd-musteri-liste">
+            <div><dt>Satış primi</dt><dd>%{percent(employee.commission_rate)}</dd></div>
+            <div><dt>Operasyon primi</dt><dd>%{percent(employee.operation_commission_rate)}</dd></div>
+            <div><dt>Satış talepleri</dt><dd><span className="status-pill" data-tone={employee.can_receive_sales_requests ? "success" : "neutral"}>{employee.can_receive_sales_requests ? "Atanabilir" : "Atanmaz"}</span></dd></div>
+          </dl>
+          {prim && primToplami ? <Link className="panel-secondary opd-ayrinti-dugme" href={`${temelAdres}?pencere=prim`} scroll={false}>Prim hareketleri</Link> : null}
+        </section>
+
+        {/* ERİŞİM VE ÖZLÜK: eskiden sağ sütunun iki sekmesiydi; durum kartta, içerik pencerede. */}
+        <section className="panel-card opd-kart kd-alt-sag" aria-label="Erişim ve özlük dosyası">
+          {canManageTeam ? (
+            <>
+              <h3 className="opd-kanal-grup">Panel erişimi</h3>
+              <p className="opd-kanal-ozet">{erisim}{member ? (member.is_active ? " · açık" : "") : ""}</p>
+              <PanelModal
+                triggerLabel="Erişimi yönet"
+                triggerClassName="opd-kanal"
+                kicker="PANEL ERİŞİMİ"
+                title={employee.full_name}
+                description="Panel rolü, erişimin açılıp kapanması ve hazır yetki profilleri."
+                boy="orta"
+              >
+                <div className="personel personel-sag">
               <div className="ps-panel">
               <header className="phr-bas ps-bas">
                 <h2>Rol {member ? <span className="status-pill" data-tone={member.is_active ? "success" : "danger"}>{member.is_active ? "Erişim açık" : "Erişim kapalı"}</span> : null}</h2>
@@ -579,7 +569,23 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 ) : null}
               </div>
               </div>
-            ) : null}
+                </div>
+              </PanelModal>
+            </>
+          ) : null}
+          {canManageTeam || gizlilikGorur ? (
+            <>
+              <h3 className="opd-kanal-grup">Özlük dosyası</h3>
+              <p className="opd-kanal-ozet">{[gizlilikGorur ? `${gizlilikler.length} gizlilik sözleşmesi` : null, canManageTeam ? `${docs.length} belge` : null].filter(Boolean).join(" · ")}</p>
+              <PanelModal
+                triggerLabel="Özlük dosyası"
+                triggerClassName="opd-kanal"
+                kicker="ÖZLÜK DOSYASI"
+                title={employee.full_name}
+                description="Gizlilik sözleşmesi ve yüklenen belgeler; yalnızca yetkili ekip görür."
+                boy="buyuk"
+              >
+                <div className="personel personel-sag">
             <div className="ps-panel">
               {/* ÖZLÜK DOSYASI: gizlilik sözleşmesi (eskiden ayrı arşiv sayfasıydı,
                   /panel/hr/confidentiality) ve yüklenen belgeler. İkisi de gizli:
@@ -634,8 +640,94 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               </div>
               ) : null}
             </div>
-          </TalepAkis>
-        ) : null}
+                </div>
+              </PanelModal>
+            </>
+          ) : <p className="talep-bos">Erişim ve özlük bilgilerini görme yetkiniz yok.</p>}
+        </section>
+
+        <section className="panel-card talep-bilgi kd-ana" aria-label="Üstündekiler">
+          <div className="kd-tutar-satir">
+            <div><h2 className="kd-ana-baslik">Üstündekiler</h2></div>
+          </div>
+          <div className="personel-ustunde">
+            {crmVar || opsVar ? (
+              <section aria-label="Performans">
+                <header className="phr-bas"><h2>Performans</h2><small>son 90 gün</small></header>
+                <dl className="pu-serit">
+                  {crmVar ? (
+                    <div><dt>İmzalanan sözleşme</dt><dd>{son90Imza.length}</dd><small>{son90Deger ? tamPara(son90Deger) : "—"} · toplam {imzalananlar.length}</small></div>
+                  ) : null}
+                  {crmVar ? (
+                    <div><dt>Teklif kabul oranı</dt><dd>{kabulOrani === null ? "—" : `%${kabulOrani}`}</dd><small>{kabul} kabul · tüm zamanlar</small></div>
+                  ) : null}
+                  {opsVar ? (
+                    <div><dt>Teslim edilen iş</dt><dd>{son90Teslim}</dd><small>toplam {teslimler.length}</small></div>
+                  ) : null}
+                  {opsVar ? (
+                    <div><dt>Zamanında teslim</dt><dd>{zamaninda === null ? "—" : `%${zamaninda}`}</dd><small>{terminli.length} terminli iş</small></div>
+                  ) : null}
+                </dl>
+              </section>
+            ) : null}
+            {crmVar ? (
+              <section aria-label="Açık talepler">
+                <header className="phr-bas">
+                  <h2>Açık talepler <small className="pu-sayi">{acikTalep}</small></h2>
+                  {/* Talepler listesinin temsilci süzgeci: hepsini aynı süzgeçle açar. */}
+                  <Link className="pu-tumu" href={`/panel/crm?temsilci=${employee.id}`}>{acikTalep > talepler.length ? `Tümünü gör (${acikTalep})` : "Listede aç"} →</Link>
+                </header>
+                {talepler.length ? (
+                  <ul className="pu-liste">
+                    {talepler.map((talep) => (
+                      <li key={talep.id}>
+                        <Link href={`/panel/crm/requests/${talep.id}`}>
+                          <span className="pu-govde">
+                            <b>{talep.customer_name || talep.title || "Talep"}</b>
+                            <small>{[talep.customer_name ? talep.title : null, `Açılış ${shortDate(talep.created_at)}`].filter(Boolean).join(" · ")}</small>
+                          </span>
+                          <span className="status-pill" data-tone={statusTone(talep.stage ?? "")}>{requestStageNames[talep.stage ?? ""] ?? talep.stage}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="pu-bos">Üstünde açık talep yok.</p>}
+              </section>
+            ) : null}
+            {opsVar ? (
+              <section aria-label="Yürüttüğü işler">
+                <header className="phr-bas">
+                  <h2>Yürüttüğü işler <small className="pu-sayi">{acikIs}</small></h2>
+                  {/* İşler listesinin sorumlu süzgeci. */}
+                  <Link className="pu-tumu" href={`/panel/operations/isler?sorumlu=${employee.id}`}>{acikIs > isler.length ? `Tümünü gör (${acikIs})` : "Listede aç"} →</Link>
+                </header>
+                {isler.length ? (
+                  <ul className="pu-liste">
+                    {isler.map((is) => {
+                      // Gün anahtarları (YYYY-MM-DD, Türkiye günü) metin olarak karşılaştırılabilir.
+                      const gecikti = Boolean(is.due_date && is.due_date.slice(0, 10) < bugun);
+                      return (
+                        <li key={is.id}>
+                          <Link href={`/panel/operations/${is.id}`}>
+                            <span className="pu-govde">
+                              <b>{is.title}</b>
+                              <small>
+                                {is.customer_name ? `${is.customer_name} · ` : ""}
+                                {is.due_date ? <span data-tone={gecikti ? "danger" : undefined}>{gecikti ? "Gecikti · " : "Termin "}{shortDate(is.due_date)}</span> : "Termin yok"}
+                              </small>
+                            </span>
+                            <span className="status-pill" data-tone={statusTone(is.status)}>{workflowStatusNames[is.status] ?? is.status}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : <p className="pu-bos">Üstünde iş yok.</p>}
+              </section>
+            ) : null}
+            {!crmVar && !opsVar ? <p className="ic-akis-bos">Talep ve iş modülleri açık değil.</p> : null}
+          </div>
+        </section>
       </div>
     </main>
   );
