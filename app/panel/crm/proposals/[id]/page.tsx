@@ -623,10 +623,9 @@ export default async function ProposalDetailPage({ params }: Props) {
               triggerLabel="Hizmet ve ücret"
               tetik={<>
                 <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Hizmet ve ücret</span>{taxStatus ? <span className="kd-kutu-cip">{KDV_ADI[taxStatus]}</span> : null}</span>
-                <span className="kd-kutu-deger">{money(Number(data.amount), data.currency || "TRY")}</span>
+                <span className="kd-kutu-deger">{money(Number(data.amount), data.currency || "TRY")}{taxStatus === "excluded" && data.gross_amount ? <small>KDV dahil {money(Number(data.gross_amount), data.currency || "TRY")}</small> : null}</span>
                 <span className="kd-kutu-aciklama">{data.title}</span>
                 <span className="kd-kutu-ozet">{data.scope || "Kapsam yazılmamış."}</span>
-                <span className="kd-kutu-dip"><span>{taxStatus === "excluded" && data.gross_amount ? `KDV dahil ${money(Number(data.gross_amount), data.currency || "TRY")}` : ""}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="Hizmet ve ücret"
               description="Teklif başlığı, verilecek hizmetler, tutar ve KDV."
@@ -676,9 +675,8 @@ export default async function ProposalDetailPage({ params }: Props) {
               triggerLabel="Ödeme takvimi"
               tetik={<>
                 <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Ödeme takvimi</span><span className="kd-kutu-cip">{odemeTakvimi.length ? `${odemeTakvimi.length} taksit` : "Takvim yok"}</span></span>
-                {odemeTakvimi.length ? (
-                  <span className="kd-kutu-deger">{money(odemeTakvimi.reduce((toplam, taksit) => toplam + taksit.amount, 0), data.currency || "TRY")}<small>planlanan</small></span>
-                ) : <span className="kd-kutu-deger is-sessiz">—<small>taksit girilmemiş</small></span>}
+                {/* Planlanan toplam "Hizmet ve ücret" kartındaki tutarın aynısıydı (03.11.2026); taksitler aşağıda. */}
+                {odemeTakvimi.length ? null : <span className="kd-kutu-deger is-sessiz">—<small>taksit girilmemiş</small></span>}
                 {odemeTakvimi.length ? (
                   <span className="kd-kutu-satirlar">
                     {odemeTakvimi.slice(0, 3).map((taksit) => (
@@ -689,7 +687,6 @@ export default async function ProposalDetailPage({ params }: Props) {
                     ))}
                   </span>
                 ) : null}
-                <span className="kd-kutu-dip"><span>{odemeTakvimi.length > 3 ? `+${odemeTakvimi.length - 3} taksit daha` : data.payment_plan || ""}</span><span className="kd-kutu-ac">Görüntüle →</span></span>
               </>}
               title="Ödeme takvimi"
               description="Teklifte müşteriye sunulan taksitler. Değiştirmek için teklifin yeni bir sürümünü oluşturun."
@@ -720,7 +717,6 @@ export default async function ProposalDetailPage({ params }: Props) {
                   <span><span><b>Oluşturulma</b></span><time>{tarih(data.created_at)}</time></span>
                   <span><span><b>Sürüm</b></span><time>{data.revision_no > 0 ? `R${data.revision_no}` : "İlk sürüm"}</time></span>
                 </span>
-                <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
               </>}
               title="Geçerlilik tarihi"
               description="Müşteri teklifi bu güne kadar onaylayabilir."
@@ -759,7 +755,6 @@ export default async function ProposalDetailPage({ params }: Props) {
                   <span><span><b>Gönderim</b></span><time>{tarih(data.sent_at) ?? "gönderilmedi"}</time></span>
                   <span><span><b>İlk görüntüleme</b></span><time>{tarih(data.first_viewed_at) ?? "—"}</time></span>
                 </span>
-                <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">Ayrıntılar →</span></span>
               </>}
               title="Müşteri yanıtı"
               description="Teklifin müşteriye gönderimi ve müşterinin teklif sayfasındaki hareketi."
