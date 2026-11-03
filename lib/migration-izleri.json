@@ -336,5 +336,23 @@
         "ad": "public.platform_konsol_ana_ozeti"
       }
     ]
+  },
+  {
+    "migration": "20261103142231_sozlesme_imza_son_tarihi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.arvo_public_contract_deadline"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.sign_crm_contract_v2"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.crm_contracts",
+        "sutun": "imza_son_tarihi"
+      }
+    ]
   }
 ]

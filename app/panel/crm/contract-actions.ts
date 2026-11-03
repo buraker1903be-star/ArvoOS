@@ -19,6 +19,7 @@ import {
 } from "./sales-shared";
 import { rescaleSchedule, splitTax } from "@/lib/sales-amounts";
 import { niyetiFormdanOku } from "@/lib/abonelik-niyeti";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 
 // Talep sayfasından "Direkt Sözleşme Oluştur" ile çağrılır: fiyat/ödeme
 // planı yine teklif kaydı olarak tutulur (iç kayıt, raporlama için), ama
@@ -427,6 +428,21 @@ async function issueContractLink__impl(formData: FormData) {
   });
   if (error)
     throw new Error("Sözleşme bağlantısı oluşturulamadı: " + error.message);
+  /*
+    İMZA SON TARİHİ VARSAYILANI (03.11.2026, 20261103142231): tarih yoksa
+    bağlantıyla birlikte 30 gün sonrası yazılır; personel başlıktan
+    değiştirir ya da kaldırır. Yazılamazsa (migration henüz yok) bağlantı
+    yine çalışır, sözleşme süresiz kalır — yalnızca log'a düşer.
+  */
+  const otuzGunSonra = new Date(`${todayInIstanbul()}T00:00:00Z`);
+  otuzGunSonra.setUTCDate(otuzGunSonra.getUTCDate() + 30);
+  const { error: sonTarihHatasi } = await supabase
+    .from("crm_contracts")
+    .update({ imza_son_tarihi: otuzGunSonra.toISOString().slice(0, 10) })
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
+    .is("imza_son_tarihi", null);
+  if (sonTarihHatasi) console.error("[sözleşme] imza son tarihi yazılamadı", contractId, sonTarihHatasi.message);
   revalidatePath("/panel/crm/contracts");
   revalidatePath(`/panel/crm/contracts/${contractId}`);
   revalidatePath("/panel/crm");
@@ -645,6 +661,44 @@ async function deleteContract__impl(formData: FormData) {
 }
 
 
+/*
+  İMZA SON TARİHİ (03.11.2026). Yalnızca imzaya açık (taslak / gönderilmiş)
+  sözleşmede; boş bırakılırsa süresiz. Geçmiş gün yazılamaz: yazılsaydı
+  sözleşme o anda imzaya kapanırdı ve personel bunu fark etmezdi.
+*/
+async function setContractSignDeadline__impl(formData: FormData) {
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.sozlesme.yonet"))
+    throw new Error("İmza son tarihini değiştirme yetkiniz yok. Ayarlar → Yetkilendirme'den \"Sözleşme yönetimi\" açılmalı.");
+  const contractId = text(formData, "contract_id", 80);
+  const tarih = text(formData, "imza_son_tarihi", 20) || null;
+  if (tarih && !/^\d{4}-\d{2}-\d{2}$/.test(tarih)) throw new Error("Geçerli bir tarih seçin.");
+  if (tarih && tarih < todayInIstanbul()) throw new Error("İmza son tarihi bugünden önce olamaz.");
+  const { data, error } = await supabase
+    .from("crm_contracts")
+    .update({ imza_son_tarihi: tarih })
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
+    .in("status", ["draft", "sent"])
+    .select("id,opportunity_id");
+  if (error) throw new Error("İmza son tarihi kaydedilemedi: " + error.message);
+  /* Satır dönmediyse RLS ya da durum süzgeci eledi: "kaydedildi" demek yanlış olurdu. */
+  if (!data?.length) throw new Error("İmzalanmış ya da kapanmış sözleşmenin imza son tarihi değiştirilemez.");
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "update",
+    entityType: "crm_contract",
+    entityId: contractId,
+    opportunityId: String(data[0].opportunity_id ?? ""),
+    note: tarih ? `İmza son tarihi ${tarih.split("-").reverse().join(".")}` : "İmza son tarihi kaldırıldı",
+  });
+  revalidatePath(`/panel/crm/contracts/${contractId}`);
+}
+
+export async function setContractSignDeadline(...args: Parameters<typeof setContractSignDeadline__impl>) {
+  return runPanelAction(() => setContractSignDeadline__impl(...args), "İmza son tarihi kaydedildi");
+}
 export async function updateContract(...args: Parameters<typeof updateContract__impl>) {
   return runPanelAction(() => updateContract__impl(...args), "Sözleşme güncellendi");
 }
