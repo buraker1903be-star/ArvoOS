@@ -1202,3 +1202,16 @@
 .talep-istatistik .istat-kartlar{margin-top:var(--sp-2)}
 .os-root .talep-istatistik .istat-kart{background:var(--surface-2);border-color:transparent}
 .os-root .talep-istatistik .istat-kart:hover{background:var(--surface);border-color:color-mix(in srgb,var(--primary) 45%,var(--line))}
+/*
+  İstatistik sütunu sığsın (03.11.2026, "kaydırma istemiyorum"): dağılım
+  kalemi iki satırdı (ad + değer, altında çubuk); sözleşmede altı ay ve
+  dört sayı satırı sütuna sığmayıp kaydırma çıkarıyordu. Kalem tek satır
+  (ad · çubuk · değer), sayı satırları biraz sıkı.
+*/
+.talep-istatistik .istat-satirlar>div{padding:var(--sp-2) 0}
+.talep-istatistik .istat-satirlar dd{font-size:var(--fs-lg)}
+.talep-istatistik .istat-kart{gap:var(--sp-2)}
+.talep-istatistik .istat-kart-satir{grid-template-columns:minmax(0,1fr) 56px minmax(44px,auto);grid-template-areas:"ad cubuk deger";align-items:center;row-gap:0}
+.talep-istatistik .istat-satirlar>div{padding:6px 0}
+.os-root .talep-istatistik .istat-kart{gap:6px;padding:var(--sp-2) var(--sp-3)}
+.talep-istatistik .cari-baslik{margin-bottom:0}
