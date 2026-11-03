@@ -1098,3 +1098,13 @@
   .os-root .kd-tek-ekran .crm-data-table[data-cols="musteri"] td[data-label="Kayıt"] :is(.crm-table-title,.crm-table-sub){display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .kd-tek-ekran :is(.kd-alt-sol,.kd-alt-sag) :is(.panel-secondary,.panel-primary){min-height:34px}
 }
+
+/*
+  PERSONEL DETAYI (03.11.2026): sözleşme/teklif/müşteri iskeleti. Özet
+  şeridi başlıkta, öteki detaylardaki aşama çizgisinin yerinde ve aynı
+  hap biçiminde; "Üstündekiler" ana kartın içinde, kendi iç boşluğu
+  kartınkiyle üst üste binmesin diye sıfırlanır.
+*/
+.kd-bas-ozet>.kayit-serit{width:100%;max-width:860px;justify-content:center;padding:var(--sp-2) var(--sp-5);border-radius:var(--r-pill)}
+.kd-bas-ozet>.kayit-serit dl{gap:var(--sp-5)}
+.kd-ana>.personel-ustunde{padding:var(--sp-4) 0 0}
