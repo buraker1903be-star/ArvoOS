@@ -1226,3 +1226,6 @@
 .musteri-tahsil-iki .cari-oran-cubuk{height:5px}
 /* Dar masaüstünde (sütun sayısı arttı) son hareket gizlenir; temsilci 1360px altında zaten gizli. Telefonda satır MobilSatir'le çiziliyor. */
 @media (max-width:1500px) and (min-width:761px){.os-root .talep-tablo .crm-data-table[data-cols="musteriler"] .musteri-son{display:none}}
+/* Penceredeki dağılım da hizalı: değer sütunu "auto" iken çubuklar tutarın uzunluğuna göre kayıyordu (kartta 03.11.2026'da düzeltilen hatanın aynısı). */
+.istat-pencere li{grid-template-columns:minmax(0,1fr) minmax(0,2fr) 96px}
+.istat-pencere strong{text-align:right;white-space:nowrap}
