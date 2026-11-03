@@ -39,7 +39,7 @@ import { contractMessages, organizationBrandName } from "@/lib/customer-message-
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
 import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
-import { mesajKanali, postaKanali, whatsappKanali } from "../../kayit-detay/akis-kanallari";
+import { mesajKanali, postaKanali, whatsappKanali, yorumKanali } from "../../kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
 import "../../crm.css";
@@ -185,11 +185,12 @@ export default async function ContractDetailPage({ params }: Props) {
      müşteri sayfasıyla aynı kural (../../musteri-yazismalari.tsx). Posta
      sözleşmenin talebine bağlı ya da müşterinin adresiyle eşleşenler. */
   const postaGorur = izin("posta.gor");
-  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, hizmetTurleri] = await Promise.all([
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, hizmetTurleri, yorumOzeti] = await Promise.all([
     musteriWhatsapp(membership.organization_id, customer?.contact_phone),
     postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [data.opportunity_id], eposta: customer?.contact_email }) : Promise.resolve([]),
     // Düzenleme formundaki hizmet türü önerileri (Ayarlar → Hizmet türleri).
     kurumHizmetTurleri(supabase, membership.organization_id),
+    yorumKanali(supabase, membership.organization_id, data.opportunity_id),
   ]);
   const messages = shareUrl
     ? contractMessages({
@@ -635,7 +636,7 @@ export default async function ContractDetailPage({ params }: Props) {
           kicker={`SÖZLEŞME · ${data.contract_no}`}
           kanallar={[
             mesajKanali(customerMessages, musteri),
-            { ad: "Yorumlar", bos: "Ekip içi yorumlar ve notlar." },
+            yorumOzeti,
             whatsappKanali(whatsappMesajlari),
             ...(postaGorur ? [postaKanali(postalar)] : []),
             { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri." },

@@ -34,7 +34,7 @@ import { PanelDrawer } from "../../../components/panel-drawer";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
 import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
-import { postaKanali, whatsappKanali } from "../../kayit-detay/akis-kanallari";
+import { postaKanali, whatsappKanali, yorumKanali } from "../../kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
 import "../../crm.css";
@@ -195,11 +195,12 @@ export default async function ProposalDetailPage({ params }: Props) {
   /* Müşteriyle yazışmalar (WhatsApp ve Postalar sekmeleri): talep,
      sözleşme ve iş detayıyla aynı kural (../../musteri-yazismalari.tsx). */
   const postaGorur = izin("posta.gor");
-  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, hizmetTurleri] = await Promise.all([
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, hizmetTurleri, yorumOzeti] = await Promise.all([
     musteriWhatsapp(membership.organization_id, customer?.contact_phone),
     postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [data.opportunity_id], eposta: customer?.contact_email }) : Promise.resolve([]),
     // Düzenleme formundaki hizmet türü önerileri (Ayarlar → Hizmet türleri).
     kurumHizmetTurleri(supabase, membership.organization_id),
+    yorumKanali(supabase, membership.organization_id, data.opportunity_id),
   ]);
   const bugun = todayInIstanbul();
   const kalan = data.valid_until && !locked ? kalanGun(data.valid_until, bugun) : null;
@@ -525,7 +526,7 @@ export default async function ProposalDetailPage({ params }: Props) {
           baslik="Yazışmalar"
           kicker={`TEKLİF · ${data.proposal_no}`}
           kanallar={[
-            { ad: "Yorumlar", bos: "Ekip içi yorumlar ve notlar." },
+            yorumOzeti,
             ...(revizyonlar.length > 1 ? [{ ad: "Revizyonlar", bos: `${revizyonlar.length} sürüm` }] : []),
             whatsappKanali(whatsappMesajlari),
             ...(postaGorur ? [postaKanali(postalar)] : []),
