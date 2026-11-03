@@ -1047,7 +1047,15 @@
     bağlantısı kartı birkaç piksel taşıp kaydırma çubuğu çıkarıyordu.
     Başlık-ızgara aralığı, kanal ve eylem düğmeleri biraz alçaldı.
   */
-  .os-root main.kd-tek-sayfa{gap:var(--sp-4)}
+  /*
+    Sütun düzeni burada, crm-page-stack'ten değil: müşteri sayfasına o
+    sınıf eklenince panel-tables.css'in liste tablosu kuralları
+    (.crm-page-stack .crm-data-table → ızgara satırlar, sekiz sütunluk
+    --cols) kayıt tablosuna da uygulandı ve hücreler kayıp telefon
+    satırı yanında göründü (03.11.2026).
+  */
+  .os-root main.kd-tek-sayfa{display:flex;flex-direction:column;gap:var(--sp-4)}
+  .os-root .kd-tek-ekran>.kd-ana>.talep-tablo .crm-data-table thead th{top:0}
   .kd-tek-ekran .opd-kanal{min-height:36px}
   /*
     Müşteri sayfasının kayıt kartı: süzgeç yerinde kalır, yalnızca tablo

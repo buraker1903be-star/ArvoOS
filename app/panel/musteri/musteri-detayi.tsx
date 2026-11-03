@@ -212,7 +212,7 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
   const sonPostaZamani = postalar.map((posta) => posta.son_mesaj_at ?? "").sort().at(-1) || null;
 
   return (
-    <main className="crm-page-stack talep musteri-sayfa kd-tek-sayfa">
+    <main className="talep musteri-sayfa kd-tek-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
           <small className="panel-kicker">MÜŞTERİ</small>
