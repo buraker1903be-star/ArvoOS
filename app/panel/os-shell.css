@@ -363,6 +363,9 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 .os-root main.liste-sayfa .talep-bilgi>.talep-tablo::-webkit-scrollbar-thumb{border-radius:9px;background:var(--n-300)}
 /* Yan sütun kendi boyunda kalır, taşarsa kendi içinde kayar. */
 .os-root main.liste-sayfa>.talep-izgara>:not(.talep-bilgi){align-self:start;max-height:100%;overflow:auto}
+/* İstatistik sütunu listeyle aynı boyda (03.11.2026): içeriği kadar
+   kısa kalınca iki kartın alt kenarı farklı hizada duruyordu. */
+.os-root main.liste-sayfa>.talep-izgara>.talep-istatistik{align-self:stretch}
 
 @media (max-width:1200px){
   /* Tek sütuna düşen dar ekranda iki ayrı kaydırma alanı birbirine giriyor:
