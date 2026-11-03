@@ -752,8 +752,13 @@ export default async function OperationDetailPage({
           <h2 className="opd-kart-baslik">İletişim</h2>
           {contract?.opportunity_id ? (
             <>
-              {/* Grup başlığının yanında son olayın zamanı: pencereyi açmadan "en son ne zaman yazıldı" görünsün. */}
-              <h3 className="opd-kanal-grup"><span>Kurum içi</span>{sonYorumZamani ? <time dateTime={sonYorumZamani}>{ozetZamani(sonYorumZamani)}</time> : null}</h3>
+              {/* Başlığın altında özet: pencereyi açmadan kaç yorum olduğu ve en son ne zaman yazıldığı görünsün. */}
+              <h3 className="opd-kanal-grup">Kurum içi</h3>
+              <p className="opd-kanal-ozet">
+                {comments.length && sonYorumZamani
+                  ? <>{comments.length} yorum · son <time dateTime={sonYorumZamani}>{ozetZamani(sonYorumZamani)}</time></>
+                  : "Henüz yorum yok"}
+              </p>
               <KanalDugmesi
                 anahtar={`kanal:${workflow.id}:yorum`}
                 etiket="Yorumlar"
@@ -767,7 +772,12 @@ export default async function OperationDetailPage({
               </KanalDugmesi>
             </>
           ) : null}
-          <h3 className="opd-kanal-grup"><span>Müşteri</span>{sonMusteriMesajiZamani ? <time dateTime={sonMusteriMesajiZamani}>{ozetZamani(sonMusteriMesajiZamani)}</time> : null}</h3>
+          <h3 className="opd-kanal-grup">Müşteri</h3>
+          <p className="opd-kanal-ozet">
+            {sonMusteriMesajiZamani
+              ? <>Son mesaj <time dateTime={sonMusteriMesajiZamani}>{ozetZamani(sonMusteriMesajiZamani)}</time></>
+              : "Müşteri henüz yazmadı"}
+          </p>
           <KanalDugmesi
             anahtar={`kanal:${workflow.id}:mesaj`}
             etiket="Mesajlar"

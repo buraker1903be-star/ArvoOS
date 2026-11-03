@@ -656,9 +656,10 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
    .panel-card h2/h3 genel kuralı 19/16 px veriyordu; seçici o yüzden kartla birlikte. */
 .opd-kart :is(.opd-kart-baslik,.opd-kanal-grup){margin:0;color:var(--muted);font-family:inherit;font-size:var(--fs-micro);font-weight:700;letter-spacing:.02em;line-height:1.3;text-transform:uppercase}
 .opd-kart .opd-kart-baslik{color:var(--ink)}
-.opd-kart .opd-kanal-grup{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);margin-top:var(--sp-1)}
-.opd-kart .opd-kanal-grup>span{white-space:nowrap}
-.opd-kart .opd-kanal-grup time{min-width:0;overflow:hidden;color:var(--muted);font-weight:var(--fw-medium);letter-spacing:0;text-overflow:ellipsis;text-transform:none;white-space:nowrap}
+.opd-kart .opd-kanal-grup{margin-top:var(--sp-1)}
+/* Grup başlığının altındaki özet ("3 yorum · son 3 Kas 19:22", "Son mesaj 29 Eki 18:22"). */
+.opd-kanal-ozet{margin:-6px 0 0;color:var(--muted);font-size:var(--fs-micro);line-height:1.4}
+.opd-kanal-ozet time{color:var(--ink);font-weight:var(--fw-medium);white-space:nowrap}
 
 /* Müşteri kartı */
 .opd-iletisim-dugmeleri{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:var(--sp-2)}
