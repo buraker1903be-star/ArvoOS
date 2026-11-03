@@ -9,8 +9,8 @@ import { PanelModal } from "../components/panel-modal";
 export type IstatistikKutusu = { ad: string; deger: string; alt?: string; ton?: "arti" | "uyari" };
 export type IstatistikGrubu = { baslik: string; satirlar: { ad: string; adet: number; etiket?: string }[] };
 
-/** Dağılım kartında görünen kalem sayısı; kalanı pencerede. */
-const ILK = 3;
+/** Dağılım kartında görünen kalem sayısı; kalanı pencerede. Sütun listeyle aynı boya uzayınca (03.11.2026) üçten beşe çıktı: altta boş yer kalıyordu. */
+const ILK = 5;
 
 const TON_SINIFI = { arti: "cari-arti", uyari: "talep-uyari" } as const;
 
