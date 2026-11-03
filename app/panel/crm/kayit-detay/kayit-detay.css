@@ -1116,3 +1116,30 @@
 .kd-oranlar>div{display:flex;flex-direction:column;gap:2px;padding:var(--sp-2) var(--sp-3);border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
 .kd-oranlar dt{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
 .kd-oranlar dd{margin:0;color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+
+/*
+  PERSONEL KARTLARI (03.11.2026): ana bölümde iki sıra dört kart.
+  Sözleşmenin dört kartıyla aynı bileşen (kd-kutu); yükseklik sabit 248px
+  değil, iki sıra kartın kalan yüksekliği paylaşır — sabit boyla ikinci
+  sıra ekranın altına taşıyordu.
+*/
+.kd-kutular-personel{grid-auto-rows:minmax(0,1fr)}
+.kd-kutular-personel .kd-kutu{min-height:0;text-decoration:none}
+.kd-kutu.is-kapali{cursor:default;background:var(--surface-2);box-shadow:none}
+.kd-kutu.is-kapali:hover{border-color:var(--line);box-shadow:none;transform:none}
+.kd-kutu-deger.kd-kutu-deger-metin{font-size:var(--fs-lg)}
+.kd-pencere-liste{display:flex;flex-direction:column;gap:var(--sp-3)}
+.kd-pencere-liste>.pu-tumu{align-self:flex-end}
+.pu-tutar{flex:none;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+@media (min-width:1201px){
+  .os-root main.kd-tek-sayfa>.kd-tek-ekran>.kd-ana:has(>.kd-kutular-personel){display:flex;flex-direction:column}
+  .os-root .kd-ana>.kd-kutular-personel{flex:1 1 auto;min-height:0}
+}
+@media (max-width:1200px){.kd-kutular-personel{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/*
+  Başlık düğmeleri (03.11.2026, "her yerde farklı tarz düğme var"):
+  Düzenle ve ⋯ aynı boy ve aynı hap biçiminde, öteki detayların başlık
+  düğmeleriyle (kd-hap) aynı dilde.
+*/
+.os-root .talep-bas-eylem .kd-bas-dugme{min-height:40px;padding:0 var(--sp-5);border-radius:var(--r-pill);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.os-root .talep-bas-eylem summary.kd-bas-dugme{min-width:40px;padding:0 var(--sp-3);justify-content:center}
