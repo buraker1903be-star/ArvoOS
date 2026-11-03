@@ -732,13 +732,25 @@ async function konusmayiGeriAl__impl(formData: FormData) {
   revalidatePath("/panel", "layout");
 }
 
+/*
+  OKUMA BÖLMESİNE DÖNÜŞ (04.11.2026). Gelen kutusunun okuma bölmesinden
+  (/panel/posta?k=…) yapılan işlem tam ekran konuşma sayfasına
+  yönlendiriyordu; bölme formları kendi adresini "donus_adres" ile
+  gönderiyor. Yalnızca /panel/posta altı kabul edilir: formdan gelen
+  adrese körü körüne yönlendirmek açık yönlendirme olurdu.
+*/
+function bolmeDonusu(formData: FormData): string | null {
+  const adres = String(formData.get("donus_adres") ?? "");
+  return /^\/panel\/posta(\?|$)/.test(adres) ? adres : null;
+}
+
 export async function konusmayiGeriAl(formData: FormData) {
   /* Çöp listesinden geri alınca listeye, yazışmanın içinden geri alınca
      yazışmaya dönülüyor: ikisinde de kullanıcı baktığı yerde kalıyor. */
   const threadId = String(formData.get("thread_id") ?? "").trim();
   const listeden = String(formData.get("donus") ?? "") === "liste";
   await runPanelAction(() => konusmayiGeriAl__impl(formData), "Yazışma gelen kutusuna geri alındı");
-  redirect(!listeden && threadId ? `/panel/posta/${threadId}` : "/panel/posta");
+  redirect(bolmeDonusu(formData) ?? (!listeden && threadId ? `/panel/posta/${threadId}` : "/panel/posta"));
 }
 
 /*
@@ -817,7 +829,7 @@ export async function taslakKaydet(formData: FormData) {
   const ekVar = formData.getAll("ekler").some((aday) => aday instanceof File && aday.size > 0);
   const hedef = await runPanelAction(() => taslakKaydet__impl(formData));
   if (typeof hedef === "string") await flashSuccess(ekVar ? "Taslak kaydedildi. Ekler taslakta saklanmaz; gönderirken yeniden ekleyin." : "Taslak kaydedildi");
-  if (typeof hedef === "string") redirect(hedef);
+  if (typeof hedef === "string") redirect(bolmeDonusu(formData) ?? hedef);
 }
 
 async function taslakSil__impl(formData: FormData) {
