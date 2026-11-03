@@ -1016,14 +1016,23 @@
 
 /*
   TEK EKRAN (03.11.2026, sözleşme ve teklif detayı; kurum sahibinin isteği:
-  "tek sayfa, kaydırma olmayacak"). Izgara görünür alanın boyunda: üst
-  çubuk, başlık ve alttaki gezinme çubuğu düşülünce kalan yükseklik
-  (196px ölçüldü, 1850×852). İki satır eşit paylaşılır; uzun kalan kart
-  kendi içinde kayar, sayfa kaymaz. Kısa ekranda (640px altı) ve 1200px
-  altında bu kural yok: orada içerik alt alta akar ve sayfa kayar.
+  "aşağıya kaydırma hiçbir şekilde olmayacak"). Sayfanın kendisi liste
+  sayfalarıyla AYNI formülle görünür alana sabitlenir (os-shell.css
+  main.liste-sayfa): üst çubuk, üst boşluk ve alttaki gezinme çubuğunun
+  payı token'lardan düşülür. Başlık kendi boyunda kalır, ızgara kalanı
+  doldurur, uzun kalan kart kendi içinde kayar.
+
+  Eskiden ızgaraya sabit bir sayı veriliyordu (100dvh - 196px, tek bir
+  ekranda ölçülmüş): main'in alttaki gezinme çubuğu için bıraktığı 104px
+  boşluk hesaba katılmadığından sayfa yine aşağı kayıyordu.
+  1200px altında bu kural yok: orada sütunlar alt alta akar.
 */
-@media (min-width:1201px) and (min-height:640px){
-  .os-root .kd-duzen-v4.kd-tek-ekran{height:calc(100dvh - 196px);grid-template-rows:minmax(0,1fr) minmax(0,1fr);align-items:stretch}
-  .kd-tek-ekran>:is(.kd-musteri,.kd-iletisim,.kd-alt-sol,.kd-alt-sag){min-height:0;overflow:auto;scrollbar-width:thin}
-  .os-root .kd-duzen-v4.kd-tek-ekran>.kd-ana{min-height:0}
+@media (min-width:1201px){
+  .os-root main.kd-tek-sayfa{
+    height:calc(100dvh - var(--os-bar-h) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
+    min-height:0;overflow:hidden;
+  }
+  .os-root main.kd-tek-sayfa>*{flex:0 0 auto}
+  .os-root main.kd-tek-sayfa>.kd-duzen-v4.kd-tek-ekran{flex:1 1 auto;min-height:0;grid-template-rows:minmax(0,1fr) minmax(0,1fr);align-items:stretch}
+  .os-root main.kd-tek-sayfa>.kd-tek-ekran>:is(.kd-musteri,.kd-iletisim,.kd-alt-sol,.kd-alt-sag,.kd-ana){min-height:0;max-height:none;overflow:auto;scrollbar-width:thin}
 }
