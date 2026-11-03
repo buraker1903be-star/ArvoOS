@@ -20,7 +20,8 @@ type PanelModalProps = {
   kicker?: string;
   /** Pencerenin genişliği: dar (sohbet) ya da genis (dosya yükleme). */
   /** "ekran": ekranın neredeyse tamamı — çok sütunlu hesap pencereleri (prim hesabı). */
-  boy?: "dar" | "orta" | "sohbet" | "genis" | "tam" | "ekran";
+  /** "yazisma" ve "buyuk": iş detayının yazışma ve ayrıntı pencereleri (03.11.2026) — sohbet/genis o ekranda dar ve kısa kalıyordu. */
+  boy?: "dar" | "orta" | "sohbet" | "yazisma" | "genis" | "buyuk" | "tam" | "ekran";
   /** Adresten gelen derin bağlantı pencereyi açık başlatır. */
   baslangicAcik?: boolean;
   /**
