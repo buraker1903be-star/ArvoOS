@@ -31,8 +31,6 @@ import { contractStatusLabel, proposalStatusLabel } from "../../crm/status-label
 import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
 import { MusteriSohbeti } from "./musteri-sohbet";
-import { AkisCekmecesi, type AkisKanali } from "../../crm/kayit-detay/akis-cekmecesi";
-import { kisalt, mesajKanali, ozetZamani, postaKanali, whatsappKanali } from "../../crm/kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import { AnindaForm, AnindaYedek } from "./aninda";
 import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
@@ -50,7 +48,7 @@ import { modulGerek } from "@/lib/modul-kapisi";
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null; phase_title: string | null };
 type Workflow = { id: string; step_template_set: string | null; waiting_party: string; waiting_note: string | null; waiting_since: string | null; revision_days: number | null; delivered_at: string | null; revision_until: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
 type Contract = { id: string; contract_no: string; proposal_id: string | null; opportunity_id: string; status: string; tracking_code: string | null; share_token: string | null };
-type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null; kunye: Kunye | null };
+type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null; kunye: Kunye | null; assigned_employee_id: string | null };
 type Proposal = { id: string; proposal_no: string; status: string };
 type Comment = { id: string; body: string; created_at: string; created_by: string; context_type: "request" | "proposal" | "contract" | "operation" };
 type CustomerMessage = { id: string; sender_type: "customer" | "staff"; sender_name: string; body: string; created_at: string; read_at: string | null };
@@ -256,7 +254,7 @@ export default async function OperationDetailPage({
   /* Yalnızca sözleşmeye bağlı okumalar ikinci turda. */
   const [opportunityResult, proposalResult, commentsResult] = await Promise.all([
     contract?.opportunity_id
-      ? supabase.from("ops_opportunities").select("customer_name,contact_email,contact_phone,title,stage,kunye").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
+      ? supabase.from("ops_opportunities").select("customer_name,contact_email,contact_phone,title,stage,kunye,assigned_employee_id").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
     contract?.proposal_id
       ? supabase.from("ops_proposals").select("id,proposal_no,status").eq("id", contract.proposal_id).eq("organization_id", organizationId).maybeSingle()
@@ -377,36 +375,22 @@ export default async function OperationDetailPage({
     .slice(0, 10);
 
   /*
-    YAZIŞMALAR ÇEKMECESİ (03.11.2026, crm/kayit-detay/akis-cekmecesi).
-    Sütunda kanal başına bir özet satırı, okumak için sağdan açılan geniş
-    çekmece. Eskiden bu kanallar sütunun içinde sekmeliydi ve sütun
-    dizüstünde iki mesaj boyundaydı: uzun mesajlar kaydırılarak okunuyordu.
-
-    Okunmamış mesaj artık çekmeceyi KENDİLİĞİNDEN açmıyor (eskiden
-    Mesajlar sekmesini seçip mesajları okundu sayıyordu): rozet özette
-    görünüyor, okundu işareti personel çekmeceyi açınca gidiyor. Adres
-    (?pencere=mesajlar, ?pencere=kayitlar) çekmeceyi yine o sekmede açar.
+    YAZIŞMALAR (03.11.2026). Kanal başına bir düğme (İletişim kartı),
+    yazışma ortada açılan pencerede. Önce sütunun içinde sekmeliydi, sonra
+    sağdan açılan bir çekmecedeydi; kurum sahibinin çiziminde pencere.
+    Okunmamış mesaj pencereyi KENDİLİĞİNDEN açmıyor: rozet düğmede,
+    okundu işareti pencere açılınca gidiyor. ?pencere=mesajlar pencereyi açar.
   */
   const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await yazismaSozu;
-  const sonYorum = [...comments].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-  const kanallar: AkisKanali[] = [
-    mesajKanali(customerMessages),
-    ...(contract?.opportunity_id
-      ? [{
-          ad: "Yorumlar",
-          onizleme: sonYorum
-            ? { kim: uploaderNames.get(sonYorum.created_by) ?? "Ekip", metin: kisalt(sonYorum.body), zaman: ozetZamani(sonYorum.created_at) }
-            : null,
-          bos: "Ekip içi yorum yok.",
-        }]
-      : []),
-    ...(whatsappGorur ? [whatsappKanali(whatsappMesajlari)] : []),
-    ...(postaGorur ? [postaKanali(postalar)] : []),
-    /* Özette satırı yok (sütun ekrana sığsın); çekmecenin son sekmesi, ?pencere=kayitlar onu açar. */
-    { ad: "Geçmiş", bos: `${activities.length} hareket · alan değişiklikleri`, ozetteGizli: true },
-  ];
-  const gecmisSirasi = kanallar.length - 1;
-  const acikBaslar = acilacakPencere === "mesajlar" ? 0 : acilacakPencere === "kayitlar" ? gecmisSirasi : null;
+  /*
+    BİLDİRİM ROZETLERİ. Mesajlar: müşterinin okunmamış mesajı. Postalar:
+    okunmamış konuşma. Yorumlar okunma kaydı tutmuyor; rozet, görüntüleyenin
+    SON YORUMUNDAN sonra başkalarının yazdığı yorum sayısı — "yanıtlamadığım
+    yorum var mı" sorusunun cevabı. Hiç yazmadıysa başkalarının bütün yorumları.
+  */
+  const sonYorumum = comments.filter((c) => c.created_by === userId).map((c) => c.created_at).sort().at(-1) ?? "";
+  const yorumRozeti = comments.filter((c) => c.created_by !== userId && c.created_at > sonYorumum).length;
+  const okunmamisPosta = postalar.filter((posta) => posta.okunmamis).length;
   const musteriAdi = customerName === "Kurum içi iş" ? null : customerName;
 
   return (
@@ -419,6 +403,28 @@ export default async function OperationDetailPage({
           <h1>{formatSubject(workflow.title)}</h1>
         </div>
         <div className="talep-bas-eylem">
+          {/* TERMİN başlıkta (03.11.2026): işin en çok bakılan tarihi; eskiden sol sütunda bir formdu. */}
+          <div className="opd-bas-termin" id="termin">
+            <p><b>Termin tarihi:</b> {workflow.due_date ? formatDate(workflow.due_date) : "Belirlenmedi"}</p>
+            {workflow.due_date ? <p><span className="status-pill" data-tone={due.tone}>{due.label}</span></p> : null}
+            {canEditDue ? (
+              <PanelModal
+                triggerClassName="panel-secondary opd-bas-termin-dugme"
+                triggerLabel={workflow.due_date ? "Yeni termin tarihi belirle" : "Termin belirle"}
+                title="Termin tarihi"
+                description="İşin müşteriye teslim edileceği gün."
+                kicker={`İŞ · ${formatSubject(workflow.title)}`}
+                boy="dar"
+                basaridaKapan
+              >
+                <form className="opd-due-form" action={setWorkflowDueDate}>
+                  <input type="hidden" name="workflow_id" value={workflow.id} />
+                  <TarihSecici className="tsc-kucuk" key={workflow.due_date ?? "yok"} name="due_date" defaultValue={workflow.due_date ?? ""} min={workflow.start_date ?? undefined} required aria-label="Termin tarihi" />
+                  <button className="panel-primary" type="submit">Kaydet</button>
+                </form>
+              </PanelModal>
+            ) : null}
+          </div>
           {canArchive && workflow.status === "completed" ? (
             <form action={archiveWorkflow}>
               <input type="hidden" name="workflow_id" value={workflow.id} />
@@ -469,6 +475,47 @@ export default async function OperationDetailPage({
                   </form>
                 </PanelDrawer>
               ) : null}
+              {/* Sahadan fotoğraf ve dosya (13.10.2026, saha-dosyalari.tsx): çizimde kart yok, menüden; telefonda alt çubukta da var. */}
+              <PanelModal
+                triggerClassName="os-menu-item"
+                triggerLabel={ekipKurulumEksik ? "Fotoğraflar ve dosyalar" : `Fotoğraflar ve dosyalar · ${ekipDosyalari.length}`}
+                title="Fotoğraflar ve dosyalar"
+                description="Sahadan çekilen fotoğrafı ya da belgeyi işe (yalnızca ekip) ya da müşteriye ekleyin."
+                kicker="OPERASYON"
+                boy="genis"
+                baslangicAcik={istenenPencere === "dosya"}
+              >
+                {ekipKurulumEksik ? (
+                  <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20261013065421_is_ekip_dosyalari) henüz çalıştırılmadı. Çalıştırıldığında fotoğraf ve dosya ekleme burada açılır.</span></p>
+                ) : (
+                  <SahaDosyalari workflowId={workflow.id} organizationId={organizationId} portalAcik={portalPayment.hasContract && !portalSetupMissing} dosyalar={ekipDosyalari} />
+                )}
+              </PanelModal>
+              <PanelModal
+                triggerClassName="os-menu-item"
+                triggerLabel="Kayıt geçmişi"
+                title="Kayıt geçmişi"
+                description="Son hareketler ve alan değişiklikleri."
+                kicker={`İŞ · ${formatSubject(workflow.title)}`}
+                boy="genis"
+                baslangicAcik={acilacakPencere === "kayitlar"}
+              >
+            <div className="opd-kayit">
+              <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
+              <ul className="opd-activity">
+                {activities.map((activity) => (
+                  <li key={activity.id} data-kind={activity.kind}>
+                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
+                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
+                  </li>
+                ))}
+              </ul>
+              <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
+              <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
+                <RecordHistory workflowId={workflow.id} baslik={false} />
+              </Suspense>
+            </div>
+              </PanelModal>
               {/* Sözleşme tutar taşıyor; operasyon personeli göremiyor. */}
               {contract && canAssign ? <Link className="os-menu-item" href={`/panel/crm/contracts/${contract.id}`}>Sözleşmeye git</Link> : null}
               {canArchive && isArchived ? (
@@ -520,7 +567,6 @@ export default async function OperationDetailPage({
           title={musteriAdi ?? "Müşteri mesajları"}
           kicker="MÜŞTERİ MESAJLARI"
           boy="sohbet"
-          baslangicAcik={acilacakPencere === "mesajlar"}
           yalnizcaTelefonda
         >
           <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
@@ -546,101 +592,83 @@ export default async function OperationDetailPage({
       </nav>
 
       {/*
-        DURUM ŞERİDİ: talep ve teklifteki aşama çizgisinin yerinde. Bu üç
-        alan nadiren değişir ama sürekli görünmesi gerekir; değişince
-        anında kaydeder.
+        İŞ DETAYI DÜZENİ (03.11.2026, kurum sahibinin çizimi). Solda üstte
+        iki kart (müşteri, iletişim), altında durum ve evrak teslimi; sağda
+        görevler. Durum ve "top kimde" eskiden sayfanın üstünde ayrı bir
+        şeritteydi, termin sol sütunun içinde bir formdu; şimdi durum kartın
+        içinde, termin başlıkta. Yazışmalar sağdan açılan çekmece yerine
+        ortada açılan pencerede (PanelModal) — içerik yalnızca açıkken
+        basıldığı için müşteri mesajları pencere açılınca okundu sayılıyor.
       */}
-      <div className="opd-serit">
-        <AnindaForm action={setWorkflowStatus} className="opd-ff">
-          <input type="hidden" name="workflow_id" value={workflow.id} />
-          <span className="opd-ff-etiket">Durum</span>
-          {/* Ortak durum seçici (components/durum-secici): tarayıcının <select>'i yerine hap düğme + liste, ArvoARC'ta da aynı. */}
-          <DurumSecici name="status" etiket="İş durumu" deger={workflow.status} disabled={isArchived}
-            secenekler={statusOptions.map(([value, label]) => ({ deger: value, etiket: label, ton: statusTone(value) }))} />
-        </AnindaForm>
-
-        <AnindaForm action={setWaitingParty} className="opd-ff opd-ff-genis">
-          <input type="hidden" name="workflow_id" value={workflow.id} />
-          <span className="opd-ff-etiket">Top kimde</span>
-          <DurumSecici name="waiting_party" etiket="Top kimde" deger={bekleyenTaraf} disabled={isArchived}
-            secenekler={BEKLEYEN_TARAFLAR.map((taraf) => ({ deger: taraf, etiket: BEKLEYEN_TARAF_ADLARI[taraf], ton: BEKLEYEN_TARAF_TONLARI[taraf] }))} />
-          {/* "Ne bekleniyor" yalnızca top bizde değilken sorulur. */}
-          {bekleyenTaraf === "us" ? null : (
-            <input key={workflow.waiting_note ?? "bos"} type="text" name="waiting_note" defaultValue={workflow.waiting_note ?? ""} maxLength={200} disabled={isArchived} placeholder="Ne bekleniyor?" aria-label="Beklenen şey" />
-          )}
-          <span className="opd-ff-not">{beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}</span>
-        </AnindaForm>
-
-        <AnindaForm action={setRevisionDays} className="opd-ff">
-          <input type="hidden" name="workflow_id" value={workflow.id} />
-          <span className="opd-ff-etiket">Revizyon</span>
-          <DurumSecici name="revision_days" etiket="Revizyon süresi" deger={workflow.revision_days ? String(workflow.revision_days) : ""} disabled={isArchived}
-            secenekler={[{ deger: "", etiket: "Kurum varsayılanı" }, ...[30, 45, 60, 90, 180].map((gun) => ({ deger: String(gun), etiket: `${gun} gün` }))]} />
-          {revizyon && revizyonYazi ? <span className="opd-ff-not" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span> : null}
-        </AnindaForm>
-      </div>
-
-      {/*
-        ÜÇ SÜTUN (2026-10), talep/teklif/sözleşme detayıyla aynı: solda
-        müşteri, termin, künye ve evrak teslimi; ortada asıl iş olan
-        görevler; sağda müşteri mesajları, yorumlar ve kayıt geçmişi.
-
-        Eskiden üstte dört özet kutusu, altında görevler ve "bu işte başka
-        ne var" rayı vardı; mesajlar ve kayıt geçmişi ortada açılan
-        pencerelerdeydi, görevleri işlerken müşterinin ne yazdığı yine bir
-        tık ötedeydi. Artık akış sütununda sürekli açık.
-      */}
-      <div className="talep-izgara opd-izgara">
-        {/*
-          SOL SÜTUN (03.11.2026): müşteri, yazışmalar, dosyalar. Eskiden üç
-          sütun vardı ve solda dokuz bölüm üst üste duruyordu (künye,
-          bağlantılar, takip kodu, termin formu…); sütun ekrandan uzundu,
-          en çok bakılan termin ve dosyalar aşağıda kalıyordu. Sağdaki
-          sütunda ise yalnızca yazışma özeti vardı. Şimdi iki sütun: solda
-          "bu işte bugün ne var" (sorumlu, termin, yeni mesaj, dosya
-          sayısı), geri kalan her şey "Ayrıntılar" penceresinde; görevler
-          ekranın kalanını alıyor.
-        */}
-        <div className="talep-musteri opd-sol">
-          <section className="panel-card opd-sol-kart" aria-label="Müşteri ve iş bilgileri">
-            <div className="talep-musteri-kimlik">
-              <span className="talep-avatar" aria-hidden="true">{initials(musteriAdi ?? workflow.title)}</span>
-              <div>
-                <h2>{musteriAdi ?? "Kurum içi iş"}</h2>
-                <small>{musteriAdi ? "Müşteri" : "Sözleşmeye bağlı değil"}</small>
-              </div>
-              {/* İletişim, takip kodu, bağlantılar ve künye: sık bakılmıyor, sütunda yer kaplıyordu. */}
-            <PanelModal
-              triggerClassName="opd-sol-degistir opd-sol-ayrinti"
-              triggerLabel="Ayrıntılar"
-              title={musteriAdi ?? "Kurum içi iş"}
-              description="Müşteri bilgileri ve işin bağlantıları."
-              kicker={`İŞ · ${formatSubject(workflow.title)}`}
-              boy="genis"
-            >
-              {/* .opd-v3 ve .talep-musteri: künyenin ve listelerin kuralları bu sınıflara bağlı; pencere sayfanın dışında (panel kökünde) çiziliyor. */}
-              <div className="opd-v3"><div className="talep-musteri opd-ayrinti">
+      <div className="opd-duzen-v4">
+        <section className="panel-card opd-kart opd-musteri" aria-label="Müşteri">
+          <div className="talep-musteri-kimlik">
+            <span className="talep-avatar" aria-hidden="true">{initials(musteriAdi ?? workflow.title)}</span>
+            <div>
+              <h2>{musteriAdi ?? "Kurum içi iş"}</h2>
+              <small>{musteriAdi ? "Müşteri" : "Sözleşmeye bağlı değil"}</small>
+            </div>
+          </div>
+          {opportunity?.contact_phone || opportunity?.contact_email || (contract?.tracking_code && takipAdresi) ? (
+            <div className="opd-iletisim-dugmeleri">
+              {opportunity?.contact_phone ? <a className="panel-secondary" href={`tel:${opportunity.contact_phone}`}>Ara</a> : null}
+              {opportunity?.contact_email ? <a className="panel-secondary" href={`mailto:${opportunity.contact_email}`}>E-posta</a> : null}
+              {contract?.tracking_code && takipAdresi ? (
+                <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${takipAdresi}?code=${encodeURIComponent(contract.tracking_code)}`}>Takip</a>
+              ) : null}
+            </div>
+          ) : null}
+          <dl className="talep-liste opd-musteri-liste">
+            {opportunity ? (
+              <div><dt>Satış temsilcisi</dt><dd>{opportunity.assigned_employee_id ? formatPersonName(employeeNames.get(opportunity.assigned_employee_id) ?? "Pasif personel") : <em>Atanmamış</em>}</dd></div>
+            ) : null}
+            <div className="is-grup"><dt>Operasyon sorumlusu</dt><dd>{assigneeRow ? formatPersonName(assigneeRow.full_name) : <em>Atanmamış</em>}</dd></div>
+            {ekSorumluIdleri.length ? (
+              <div><dt>Ek sorumlu</dt><dd>{ekSorumluIdleri.map((id) => formatPersonName(employeeNames.get(id) ?? "Pasif personel")).join(", ")}</dd></div>
+            ) : null}
+            {/* Müşteri takip portalına girdi mi, kaç kez (20261012131639). */}
+            {contract?.tracking_code ? <div className="is-grup"><dt>Müşteri portalı</dt><dd><PortalZiyareti contractId={contract.id} /></dd></div> : null}
+          </dl>
+          <PanelModal
+            triggerClassName="panel-secondary opd-ayrinti-dugme"
+            triggerLabel="Müşteri ayrıntıları"
+            title={musteriAdi ?? "Kurum içi iş"}
+            description="İletişim bilgileri, takip kodu, bağlantılı kayıtlar ve müşteri künyesi."
+            kicker={`İŞ · ${formatSubject(workflow.title)}`}
+            boy="genis"
+          >
+            {/* .opd-v3 ve .talep-musteri: künyenin ve listelerin kuralları bu sınıflara bağlı; pencere sayfanın dışında (panel kökünde) çiziliyor. */}
+            <div className="opd-v3"><div className="talep-musteri opd-ayrinti">
+              <section className="opd-ayrinti-bolum">
+                <h3>İletişim</h3>
                 <dl className="talep-liste">
                   <div><dt>Telefon</dt><dd>{formatPhone(opportunity?.contact_phone) || <em>Yok</em>}</dd></div>
                   <div><dt>E-posta</dt><dd>{opportunity?.contact_email || <em>Yok</em>}</dd></div>
-                  <div><dt>Başlangıç</dt><dd>{workflow.start_date ? formatDate(workflow.start_date) : <em>Belirtilmedi</em>}</dd></div>
-                  <div><dt>Takip kodu</dt><dd>{contract?.tracking_code ? <code>{contract.tracking_code}</code> : <em>Yok</em>}</dd></div>
                 </dl>
-              {/*
-                TAKİP KODU ÖLÜ METİN DEĞİL. Kod yukarıda yazıyordu ve
-                yapabileceğin hiçbir şey yoktu: müşteriye telefonda söylemek
-                için altı karakteri elle seçmek, müşterinin ne gördüğüne
-                bakmak için adresi kendin yazmak gerekiyordu. Oysa ekran
-                müşterinin portala girdiğini zaten söylüyor (üstteki satır).
-                Gönderim akışının tamamı sözleşme detayında duruyor (menüdeki
-                "Sözleşmeye git"); burada günlük iki iş var: aç ve kopyala.
-              */}
+              </section>
+              <section className="opd-ayrinti-bolum">
+                <h3>İş</h3>
+                <dl className="talep-liste">
+                  <div><dt>Başlangıç</dt><dd>{workflow.start_date ? formatDate(workflow.start_date) : <em>Belirtilmedi</em>}</dd></div>
+                  <div><dt>Öncelik</dt><dd><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></dd></div>
+                  <div><dt>Oluşturuldu</dt><dd>{formatDate(workflow.created_at, true)}</dd></div>
+                  <div><dt>Güncellendi</dt><dd>{formatDate(workflow.updated_at, true)}</dd></div>
+                </dl>
+              </section>
+              <section className="opd-ayrinti-bolum">
+                <h3>Takip ekranı</h3>
                 {contract?.tracking_code ? (
-                  <div className="talep-iletisim">
-                    {takipAdresi ? <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${takipAdresi}?code=${encodeURIComponent(contract.tracking_code)}`}>Takip ekranını aç</a> : null}
-                    <KopyalaDugmesi metin={contract.tracking_code} etiket="Kodu kopyala" />
-                  </div>
-                ) : null}
+                  <>
+                    <p className="opd-takip-kod"><code>{contract.tracking_code}</code></p>
+                    {/* Müşteriye telefonda söylemek ve müşterinin ne gördüğüne bakmak: günlük iki iş, aç ve kopyala. */}
+                    <div className="talep-iletisim">
+                      {takipAdresi ? <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${takipAdresi}?code=${encodeURIComponent(contract.tracking_code)}`}>Takip ekranını aç</a> : null}
+                      <KopyalaDugmesi metin={contract.tracking_code} etiket="Kodu kopyala" />
+                    </div>
+                  </>
+                ) : <p className="talep-bos">Takip kodu yok (sözleşmeye bağlı değil).</p>}
+              </section>
+              <section className="opd-ayrinti-bolum">
               {/*
                 BAĞLANTILAR (teklif ve sözleşme detayıyla eşitleme): talep, teklif
                 ve sözleşme. Eskiden düz metindi ve sütunun en altındaydı.
@@ -689,6 +717,8 @@ export default async function OperationDetailPage({
                   )}
                 </ul>
               </div>
+              </section>
+              <section className="opd-ayrinti-bolum is-genis">
               {/* Operasyon sözleşmeyi ve teklifi göremiyor; müşteri hakkında bildikleri bu künye. */}
               <MusteriKunyesi
                 kunye={(opportunity?.kunye ?? null) as Kunye | null}
@@ -698,161 +728,137 @@ export default async function OperationDetailPage({
                 opportunityId={contract?.opportunity_id ?? null}
                 workflowId={workflow.id}
                 duzenlenebilir={canEditDue}
-                /* Ad, e-posta ve telefon kartın üstünde zaten yazıyor; künyede
-                   ikinci kez yazılması sütunu uzatıyordu. */
+                /* Ad, e-posta ve telefon bu pencerenin üstünde, İletişim bölümünde. */
                 iletisimGoster={false}
               />
-              <p className="opd-zaman">Oluşturuldu {formatDate(workflow.created_at, true)} · güncellendi {formatDate(workflow.updated_at, true)}</p>
-              </div></div>
+              </section>
+            </div></div>
+          </PanelModal>
+        </section>
+
+        {/*
+          İLETİŞİM: kanal başına bir düğme, üstünde bildirim rozeti. Kurum
+          içi (yorumlar) ile müşteriyle yazışma ayrı başlıkta: hangisinin
+          müşteriye gittiği ilk bakışta belli olsun.
+        */}
+        <section className="panel-card opd-kart opd-iletisim" aria-label="İletişim">
+          <h2 className="opd-kart-baslik">İletişim</h2>
+          {contract?.opportunity_id ? (
+            <>
+              <h3 className="opd-kanal-grup">Kurum içi</h3>
+              <PanelModal
+                triggerClassName="opd-kanal"
+                triggerLabel="Yorumlar"
+                triggerBadge={yorumRozeti ? String(yorumRozeti) : null}
+                title="Ekip içi yorumlar"
+                description="Yalnızca ekip görür; müşteriye gitmez."
+                kicker={`İŞ · ${formatSubject(workflow.title)}`}
+                boy="sohbet"
+              >
+                <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} gorunum="akis" />
+              </PanelModal>
+            </>
+          ) : null}
+          <h3 className="opd-kanal-grup">Müşteri</h3>
+          <PanelModal
+            triggerClassName="opd-kanal"
+            triggerLabel="Mesajlar"
+            triggerBadge={unreadCustomerMessages ? String(unreadCustomerMessages) : null}
+            title={musteriAdi ?? "Müşteri mesajları"}
+            description="Müşterinin takip ekranından yazdıkları; yanıtınız orada görünür."
+            kicker="MÜŞTERİ MESAJLARI"
+            boy="sohbet"
+            baslangicAcik={acilacakPencere === "mesajlar"}
+          >
+            <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
+            <MusteriSohbeti workflowId={workflow.id} messages={customerMessages} customerName={customerName} canReply={Boolean(contract)} bugun={bugunIstanbul} />
+          </PanelModal>
+          {whatsappGorur ? (
+            <PanelModal
+              triggerClassName="opd-kanal"
+              triggerLabel="WhatsApp"
+              triggerBadge={whatsappMesajlari[0]?.direction === "inbound" ? "1" : null}
+              title={musteriAdi ?? "WhatsApp"}
+              kicker="WHATSAPP"
+              boy="sohbet"
+            >
+              <WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteriAdi ?? customerName} />
             </PanelModal>
-            </div>
-            {opportunity?.contact_phone || opportunity?.contact_email || (contract?.tracking_code && takipAdresi) ? <div className="talep-iletisim">
-              {opportunity?.contact_phone ? <a className="panel-secondary" href={`tel:${opportunity.contact_phone}`}>Ara</a> : null}
-              {opportunity?.contact_email ? <a className="panel-secondary" href={`mailto:${opportunity.contact_email}`}>E-posta</a> : null}
-              {contract?.tracking_code && takipAdresi ? (
-                <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${takipAdresi}?code=${encodeURIComponent(contract.tracking_code)}`}>Takip ekranı</a>
-              ) : null}
-            </div> : null}
-            <dl className="talep-liste">
-              <div><dt>Sorumlu</dt><dd>{assigneeRow ? formatPersonName(assigneeRow.full_name) : <em>Atanmamış</em>}</dd></div>
-              {ekSorumluIdleri.length ? (
-                <div><dt>Ek sorumlu</dt><dd>{ekSorumluIdleri.map((id) => formatPersonName(employeeNames.get(id) ?? "Pasif personel")).join(", ")}</dd></div>
-              ) : null}
-              {/* TERMİN: tarih ve durumu; değiştirme küçük pencerede (eskiden form sütunda hep açıktı). */}
-              <div id="termin">
-                <dt>Termin</dt>
-                <dd className="opd-sol-termin">
-                  <span>{workflow.due_date ? formatDate(workflow.due_date) : <em>Belirlenmedi</em>}</span>
-                  <span className="status-pill" data-tone={due.tone}>{due.label}</span>
-                  {canEditDue ? (
-                    <PanelModal
-                      triggerClassName="opd-sol-degistir"
-                      triggerLabel={workflow.due_date ? "Değiştir" : "Belirle"}
-                      title="Termin"
-                      description="İşin müşteriye teslim edileceği gün."
-                      kicker={`İŞ · ${formatSubject(workflow.title)}`}
-                      boy="dar"
-                      basaridaKapan
-                    >
-                        <form className="opd-due-form" action={setWorkflowDueDate}>
-                          <input type="hidden" name="workflow_id" value={workflow.id} />
-                          <TarihSecici className="tsc-kucuk" key={workflow.due_date ?? "yok"} name="due_date" defaultValue={workflow.due_date ?? ""} min={workflow.start_date ?? undefined} required aria-label="Termin tarihi" />
-                          <button className={workflow.due_date ? "panel-secondary" : "panel-primary"} type="submit">{workflow.due_date ? "Güncelle" : "Termin belirle"}</button>
-                        </form>
-                    </PanelModal>
-                  ) : null}
-                </dd>
-              </div>
-              <div><dt>Öncelik</dt><dd><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></dd></div>
-              {/* Müşteri takip portalına girdi mi, şu an ekranda mı (20261012131639). */}
-              {contract?.tracking_code ? <div><dt>Portal</dt><dd><PortalZiyareti contractId={contract.id} sade /></dd></div> : null}
-            </dl>
-          </section>
+          ) : null}
+          {postaGorur ? (
+            <PanelModal
+              triggerClassName="opd-kanal"
+              triggerLabel="Postalar"
+              triggerBadge={okunmamisPosta ? String(okunmamisPosta) : null}
+              title={musteriAdi ?? "Postalar"}
+              kicker="POSTALAR"
+              boy="genis"
+            >
+              <PostaAkisi postalar={postalar} epostaVar={Boolean(opportunity?.contact_email)} />
+            </PanelModal>
+          ) : null}
+        </section>
 
+        <section className="panel-card opd-kart opd-durum-kart" aria-label="Durum ve evrak">
+          <div className="opd-durum-alanlar">
+            <AnindaForm action={setWorkflowStatus} className="opd-ff">
+              <input type="hidden" name="workflow_id" value={workflow.id} />
+              <span className="opd-ff-etiket">Durum</span>
+              {/* Ortak durum seçici (components/durum-secici): tarayıcının <select>'i yerine hap düğme + liste, ArvoARC'ta da aynı. */}
+              <DurumSecici name="status" etiket="İş durumu" deger={workflow.status} disabled={isArchived}
+                secenekler={statusOptions.map(([value, label]) => ({ deger: value, etiket: label, ton: statusTone(value) }))} />
+            </AnindaForm>
+            <AnindaForm action={setWaitingParty} className="opd-ff">
+              <input type="hidden" name="workflow_id" value={workflow.id} />
+              <span className="opd-ff-etiket">Top kimde</span>
+              <DurumSecici name="waiting_party" etiket="Top kimde" deger={bekleyenTaraf} disabled={isArchived}
+                secenekler={BEKLEYEN_TARAFLAR.map((taraf) => ({ deger: taraf, etiket: BEKLEYEN_TARAF_ADLARI[taraf], ton: BEKLEYEN_TARAF_TONLARI[taraf] }))} />
+              {/* "Ne bekleniyor" yalnızca top bizde değilken sorulur. */}
+              {bekleyenTaraf === "us" ? null : (
+                <input key={workflow.waiting_note ?? "bos"} type="text" name="waiting_note" defaultValue={workflow.waiting_note ?? ""} maxLength={200} disabled={isArchived} placeholder="Ne bekleniyor?" aria-label="Beklenen şey" />
+              )}
+              <span className="opd-ff-not">{beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}</span>
+            </AnindaForm>
+            <AnindaForm action={setRevisionDays} className="opd-ff">
+              <input type="hidden" name="workflow_id" value={workflow.id} />
+              <span className="opd-ff-etiket">Revizyon</span>
+              <DurumSecici name="revision_days" etiket="Revizyon süresi" deger={workflow.revision_days ? String(workflow.revision_days) : ""} disabled={isArchived}
+                secenekler={[{ deger: "", etiket: "Kurum varsayılanı" }, ...[30, 45, 60, 90, 180].map((gun) => ({ deger: String(gun), etiket: `${gun} gün` }))]} />
+              {revizyon && revizyonYazi ? <span className="opd-ff-not" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span> : null}
+            </AnindaForm>
+          </div>
+          <h3 className="opd-kanal-grup">Evrak teslimi</h3>
           {/*
-            Mesajlar sekmesi TEMBEL: okundu işareti panel kurulunca gidiyor.
-            Gizli panel de kurulsaydı sayfayı açmak okumak sayılır, okunmamış
-            rozeti kimse görmeden sönerdi.
+            MÜŞTERİ NİHAİ EVRAK TESLİMİ. Düğmenin rengi ve cümlesi ödeme
+            durumunu söylüyor: ödeme kapanmamışsa "ödeme tamamlanınca açılır"
+            kuralındaki dosyalar müşteride kilitli görünür.
           */}
-          <AkisCekmecesi kanallar={kanallar} baslik="Yazışmalar" kicker={`İŞ · ${formatSubject(workflow.title)}`} acikBaslar={acikBaslar} telefondaAcma={acilacakPencere === "mesajlar"} ek={<>
-            {/* Dosyalar yazışmalarla aynı kartta: ayrı kart başlığıyla sütun ekrana sığmıyordu. */}
-            <h3 className="akis-ozet-baslik akis-ozet-ara">Dosyalar</h3>
-            <ul>
-              <li>
-            {/*
-              MÜŞTERİ NİHAİ EVRAK TESLİMİ. Satırdaki "Ödeme bekleniyor"
-              rozeti ödeme durumunu söylüyor: ödeme kapanmamışsa ve "ödeme tamamlanınca
-              açılır" kuralındaki dosyalar müşteride kilitli görünecek.
-            */}
-              <PanelModal
-                triggerClassName="akis-ozet-satir"
-                triggerLabel="Nihai evrak"
-                tetik={<>
-                  <span className="akis-ozet-ust">
-                    <b>Nihai evrak</b>
-                    {portalPayment.hasContract && !portalPayment.settled ? <span className="akis-rozet">Ödeme bekleniyor</span> : null}
-                    <time>{portalFiles.length} dosya</time>
-                  </span>
-                  <span className="akis-ozet-metin is-bos">{!portalPayment.hasContract ? "Sözleşmesiz iş" : portalPayment.settled ? "Ödeme tamamlandı; müşteri dosyaları indirebilir." : "Ödeme kapanmadan kilitli dosyalar müşteride açılmaz."}</span>
-                </>}
-                title="Müşteri nihai evrak teslimi"
-                description="Müşterinin takip ekranındaki “Dosyalarınız” bölümüne giden dosyalar."
-                kicker="OPERASYON"
-                boy="genis"
-                baslangicAcik={acilacakPencere === "evrak"}
-              >
-                {portalSetupMissing ? (
-                  <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
-                ) : (
-                  <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
-                )}
-              </PanelModal>
-              </li>
-              <li>
-            {/*
-              SAHADAN FOTOĞRAF VE DOSYA (13.10.2026). Telefonda kameradan çekip
-              işe (ekip içi) ya da müşteriye eklemek; saha-dosyalari.tsx.
-            */}
-              <PanelModal
-                triggerClassName="akis-ozet-satir"
-                triggerLabel="Fotoğraf ve dosya"
-                tetik={<>
-                  <span className="akis-ozet-ust"><b>Fotoğraf ve dosya</b><time>{ekipKurulumEksik ? "" : `${ekipDosyalari.length} dosya`}</time></span>
-                  <span className="akis-ozet-metin is-bos">{ekipKurulumEksik ? "Kurulum bekleniyor." : "Ekip içi; sahadan ekleyin ya da müşteriye gönderin."}</span>
-                </>}
-                title="Fotoğraflar ve dosyalar"
-                description="Sahadan çekilen fotoğrafı ya da belgeyi işe (yalnızca ekip) ya da müşteriye ekleyin."
-                kicker="OPERASYON"
-                boy="genis"
-                baslangicAcik={istenenPencere === "dosya"}
-              >
-                {ekipKurulumEksik ? (
-                  <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20261013065421_is_ekip_dosyalari) henüz çalıştırılmadı. Çalıştırıldığında fotoğraf ve dosya ekleme burada açılır.</span></p>
-                ) : (
-                  <SahaDosyalari workflowId={workflow.id} organizationId={organizationId} portalAcik={portalPayment.hasContract && !portalSetupMissing} dosyalar={ekipDosyalari} />
-                )}
-              </PanelModal>
-              </li>
-            </ul>
-          </>}>
-            {/* div, Fragment değil: sunucudan gelen Fragment düzleşiyor ve iki ayrı sekme paneli oluyordu. */}
-            <div className="opd-mesaj">
-              <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
-              <MusteriSohbeti
-                workflowId={workflow.id}
-                messages={customerMessages}
-                customerName={customerName}
-                canReply={Boolean(contract)}
-                bugun={bugunIstanbul}
-              />
-            </div>
-            {contract?.opportunity_id ? (
-              <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} gorunum="akis" />
-            ) : null}
-            {whatsappGorur ? (
-              <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteriAdi ?? customerName} /></div>
-            ) : null}
-            {postaGorur ? (
-              <div><PostaAkisi postalar={postalar} epostaVar={Boolean(opportunity?.contact_email)} /></div>
-            ) : null}
-            <div className="opd-kayit">
-              <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
-              <ul className="opd-activity">
-                {activities.map((activity) => (
-                  <li key={activity.id} data-kind={activity.kind}>
-                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
-                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
-                  </li>
-                ))}
-              </ul>
-              <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
-              <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
-                <RecordHistory workflowId={workflow.id} baslik={false} />
-              </Suspense>
-            </div>
-          </AkisCekmecesi>
-
-        </div>
+          <PanelModal
+            triggerClassName={`opd-evrak is-${!portalPayment.hasContract ? "notr" : portalPayment.settled ? "tamam" : "bekliyor"}`}
+            triggerLabel="Nihai evrak gönderimi"
+            tetik={<>
+              <b>Nihai evrak gönderimi</b>
+              <span>
+                {!portalPayment.hasContract
+                  ? "Sözleşmesiz iş; müşteriye evrak gönderilmez."
+                  : portalPayment.settled
+                    ? `Ödeme tamamlandı · ${portalFiles.length} dosya`
+                    : `Ödeme bekleniyor; kilitli dosyalar müşteride açılmaz · ${portalFiles.length} dosya`}
+              </span>
+            </>}
+            title="Müşteri nihai evrak teslimi"
+            description="Müşterinin takip ekranındaki “Dosyalarınız” bölümüne giden dosyalar."
+            kicker="OPERASYON"
+            boy="genis"
+            baslangicAcik={acilacakPencere === "evrak"}
+          >
+            {portalSetupMissing ? (
+              <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
+            ) : (
+              <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
+            )}
+          </PanelModal>
+        </section>
 
         <section className="panel-card talep-bilgi opd-gorevler" aria-label="Görevler">
           <header className="opd-gorev-bas">
