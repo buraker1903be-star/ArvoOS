@@ -1218,3 +1218,11 @@
 /* Her kalem kendi ızgarası: değer sütunu "auto" iken "₺0" ile "₺828,8 B" çubuğu farklı yere itiyordu. Sabit sütun, sağa yaslı değer. */
 .talep-istatistik .istat-kart-satir{grid-template-columns:minmax(0,1fr) 64px 76px}
 .talep-istatistik .istat-kart-satir>strong{text-align:right;white-space:nowrap}
+/* Müşteriler tablosu (03.11.2026): tahsil edilen tutar ve oran üstte, çubuk altta; satır yüksekliği öteki sütunlarla (tutar + alt yazı) aynı. */
+.musteri-tahsil-iki{display:flex;flex-direction:column;gap:5px;min-width:120px;max-width:200px}
+.musteri-tahsil-ust{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2)}
+.musteri-tahsil-ust b{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+.musteri-tahsil-ust small{color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums}
+.musteri-tahsil-iki .cari-oran-cubuk{height:5px}
+/* Dar masaüstünde (sütun sayısı arttı) son hareket gizlenir; temsilci 1360px altında zaten gizli. Telefonda satır MobilSatir'le çiziliyor. */
+@media (max-width:1500px) and (min-width:761px){.os-root .talep-tablo .crm-data-table[data-cols="musteriler"] .musteri-son{display:none}}
