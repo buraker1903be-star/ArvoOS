@@ -27,7 +27,7 @@ import { formatPersonName } from "@/lib/format-name";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
-import { deleteContract, issueContractLink, markContractStatus, updateContract } from "../../contract-actions";
+import { deleteContract, issueContractLink, markContractStatus, setContractSignDeadline, updateContract } from "../../contract-actions";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
 import { ContractWorkPlanForm } from "../../contract-work-plan-form";
@@ -94,7 +94,7 @@ export default async function ContractDetailPage({ params }: Props) {
   modulGerek(modules, "crm");
   const { data, error } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,subscription_intent,opportunity_id,payment_schedule,payment_plan_id,party_id,crm_proposals(id,proposal_no,status,archive_reason,payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
+    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,subscription_intent,opportunity_id,payment_schedule,payment_plan_id,party_id,imza_son_tarihi,crm_proposals(id,proposal_no,status,archive_reason,payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
@@ -242,6 +242,7 @@ export default async function ContractDetailPage({ params }: Props) {
   );
 
   /* İş termin tarihine kalan gün; iki gün anahtarı da UTC gece yarısına sabitli (saat dilimi kaymaz). */
+  const imzaKalan = !locked && data.imza_son_tarihi ? Math.round((Date.parse(`${data.imza_son_tarihi}T00:00:00Z`) - Date.parse(`${bugunAnahtari}T00:00:00Z`)) / 86400000) : null;
   const terminKalan = data.due_date ? Math.round((Date.parse(`${data.due_date}T00:00:00Z`) - Date.parse(`${bugunAnahtari}T00:00:00Z`)) / 86400000) : null;
   const kunyeSatirlari = doluAlanlar((customer?.request_details ?? {}) as Kunye);
   /*
@@ -292,6 +293,34 @@ export default async function ContractDetailPage({ params }: Props) {
           )}
         </div>
         <div className="talep-bas-eylem">
+          {/*
+            İMZA SON TARİHİ (03.11.2026, 20261103142231). Yalnızca imzaya açık
+            sözleşmede; geçince müşteri imzalayamaz (kural imza işlevinde).
+            Boşsa süresiz; bağlantı oluşturulurken 30 gün önerilir.
+          */}
+          {!locked ? (
+            <div className="opd-bas-termin">
+              <p><b>İmza son tarihi:</b> {data.imza_son_tarihi ? tarih(`${data.imza_son_tarihi}T12:00:00`) : "Süresiz"}</p>
+              {imzaKalan !== null ? <p><span className="status-pill" data-tone={imzaKalan < 0 ? "danger" : imzaKalan <= 3 ? "warning" : "info"}>{imzaKalan < 0 ? "Süresi doldu" : imzaKalan === 0 ? "Bugün son gün" : `${imzaKalan} gün kaldı`}</span></p> : null}
+              {imzayaGonderir ? (
+                <PanelModal
+                  triggerClassName="panel-secondary opd-bas-termin-dugme"
+                  triggerLabel={data.imza_son_tarihi ? "Yeni imza son tarihi belirle" : "İmza son tarihi belirle"}
+                  title="İmza son tarihi"
+                  description="Müşteri sözleşmeyi bu güne kadar (bu gün dahil) imzalayabilir. Boş bırakılırsa süresiz."
+                  kicker={`SÖZLEŞME · ${data.contract_no}`}
+                  boy="dar"
+                  basaridaKapan
+                >
+                  <form className="kd-tarih-form" action={setContractSignDeadline}>
+                    <input type="hidden" name="contract_id" value={data.id} />
+                    <TarihSecici className="tsc-kucuk" key={data.imza_son_tarihi ?? "yok"} name="imza_son_tarihi" defaultValue={data.imza_son_tarihi ?? ""} min={bugunAnahtari} aria-label="İmza son tarihi" />
+                    <button className="panel-primary" type="submit">Kaydet</button>
+                  </form>
+                </PanelModal>
+              ) : null}
+            </div>
+          ) : null}
           {data.workflow_id ? (
             <Link className="panel-primary" href={`/panel/operations/${data.workflow_id}`}>İşe git</Link>
           ) : !locked && !shareUrl && imzayaGonderir ? imzayaGonder : null}

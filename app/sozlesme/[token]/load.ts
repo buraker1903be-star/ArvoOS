@@ -17,13 +17,17 @@ export const loadPublicContract = cache(async (token: string) => {
   const { data, error } = await supabase.rpc("get_public_crm_contract", { public_token: token });
   const base = first(data as DocumentRow | DocumentRow[] | null);
   if (error || !base) return null;
-  const [auditResult, linkResult, legalResult, planResult, metinResult] = await Promise.all([
+  const [auditResult, linkResult, legalResult, planResult, metinResult, sonTarihResult] = await Promise.all([
     supabase.rpc("arvo_public_contract_audit", { public_token: token }),
     supabase.rpc("arvo_public_contract_links", { public_token: token }),
     supabase.rpc("arvo_public_organization_legal", { public_token: token, document_type: "contract" }),
     supabase.rpc("arvo_public_contract_plan", { public_token: token }),
     supabase.rpc("arvo_public_document_text", { public_token: token, document_type: "contract" }),
+    /* İmza son tarihi (20261103142231). Okunamazsa (migration yok) süresiz sayılır; asıl kural imza işlevinde. */
+    supabase.rpc("arvo_public_contract_deadline", { public_token: token }),
   ]);
+  if (sonTarihResult.error) console.error("arvo_public_contract_deadline failed", { code: sonTarihResult.error.code, message: sonTarihResult.error.message });
+  const imzaSonTarihi = !sonTarihResult.error && typeof sonTarihResult.data === "string" ? sonTarihResult.data : null;
   // Kurumun metni okunamazsa (migration yok) belge Arvo'nun metniyle açılır.
   if (metinResult.error) console.error("arvo_public_document_text failed", { code: metinResult.error.code, message: metinResult.error.message });
   // İş planı / ek protokoller okunamazsa (migration uygulanmadıysa) belge onlarsız açılır.
@@ -36,5 +40,5 @@ export const loadPublicContract = cache(async (token: string) => {
   const audit = auditResult.error ? null : (first(auditResult.data as DocumentRow | DocumentRow[] | null) as ContractAudit | null);
   const links = linkResult.error ? null : (first(linkResult.data as DocumentRow | DocumentRow[] | null) as { proposal_share_token: string | null; proposal_no: string | null } | null);
   const verificationHash = await contractVerificationHash(row);
-  return { supabase, row, audit, auditAvailable: !auditResult.error, links, verificationHash, workPlan: plan?.work_plan ?? null, addenda: normalizeAddenda(plan?.addenda), trackingCode: typeof plan?.tracking_code === "string" && plan.tracking_code ? plan.tracking_code : null, kurum: metinResult.error ? null : (metinResult.data as unknown) };
+  return { supabase, row, audit, auditAvailable: !auditResult.error, links, verificationHash, workPlan: plan?.work_plan ?? null, addenda: normalizeAddenda(plan?.addenda), trackingCode: typeof plan?.tracking_code === "string" && plan.tracking_code ? plan.tracking_code : null, kurum: metinResult.error ? null : (metinResult.data as unknown), imzaSonTarihi };
 });

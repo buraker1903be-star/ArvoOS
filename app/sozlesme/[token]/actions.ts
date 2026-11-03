@@ -73,7 +73,8 @@ export async function signContract(token: string, formData: FormData) {
 
   if (error) {
     console.error("sign_crm_contract_v2 failed", { code: error.code, message: error.message });
-    redirect(contractUrl(token, { error: "failed" }));
+    /* İmza son tarihi geçmişse (20261103142231) genel "imzalanamadı" yerine sebebi söyle. */
+    redirect(contractUrl(token, { error: error.message.includes("contract_expired") ? "expired" : "failed" }));
   }
 
   // Hangi yasal metin sürümünün ve hangi beyanların onaylandığı kaydedilir;

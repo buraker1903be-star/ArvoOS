@@ -86,6 +86,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261102205003_lisans_kayip_nedeni.sql",
   "20261103062213_kurucu_bildirim_sayim_dizini.sql",
   "20261103065144_konsol_ana_ozeti.sql",
+  "20261103142231_sozlesme_imza_son_tarihi.sql",
 ];
 
 /*

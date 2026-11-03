@@ -5,6 +5,7 @@ import { requestOrigin } from "@/app/_components/request-origin";
 import { ContractSignatureForm } from "./signature-form";
 import { AddendumDecisionForm } from "./addendum-form";
 import { loadPublicContract } from "./load";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 
 export async function generateMetadata({params}:{params:Promise<{token:string}>}):Promise<Metadata>{
  const {token}=await params;
@@ -41,6 +42,7 @@ const contractErrors:Record<string,string>={
  consent:"Lütfen zorunlu onay beyanlarının tamamını işaretleyin.",
  signature:"Lütfen imza alanına imzanızı çiziniz.",
  closed:"Bu sözleşme artık imzaya açık değil. Sorunuz varsa bizimle iletişime geçin.",
+ expired:"Bu sözleşmenin imza süresi doldu. Güncel sözleşme için bizimle iletişime geçin.",
  failed:"Sözleşme imzalanamadı. Lütfen tekrar deneyin; sorun devam ederse bizimle iletişime geçin.",
  addendum_name:"Ek protokol için ad soyadınızı yazın.",
  addendum_consent:"Onaylamak için “Ek protokolü okudum ve onaylıyorum” kutusunu işaretleyin.",
@@ -58,11 +60,14 @@ export default async function PublicContractPage({params,searchParams}:{params:P
  const query=await searchParams;
  const loaded=await loadPublicContract(token);
  if(!loaded)notFound();
- const {supabase,row,audit,auditAvailable,links,verificationHash,workPlan,addenda,trackingCode,kurum}=loaded;
+ const {supabase,row,audit,auditAvailable,links,verificationHash,workPlan,addenda,trackingCode,kurum,imzaSonTarihi}=loaded;
  await supabase.rpc("mark_crm_contract_viewed",{public_token:token});
  const origin=await requestOrigin();
  // Yalnızca taslak/gönderilmiş ve imzalanmamış sözleşme imzaya açık.
  const signable=!row.signed_at&&["draft","sent"].includes(row.status);
+ // İmza son tarihi (03.11.2026): Türkiye günüyle geçtiyse imza alanı yerine açıklama; asıl red imza işlevinde.
+ const sonGun=imzaSonTarihi?imzaSonTarihi.split("-").reverse().join("."):null;
+ const suresiDoldu=Boolean(signable&&imzaSonTarihi&&imzaSonTarihi<todayInIstanbul());
  const pendingAddendum=addenda.find((addendum)=>addendum.status==="sent");
  const notice=query.addendum==="accepted"
   ?"Ek protokolü onayladınız. Güncel takvim, belgenin sonundaki “Ek Protokoller” bölümünde yer alır."
@@ -72,7 +77,9 @@ export default async function PublicContractPage({params,searchParams}:{params:P
     ?"Teklif kabul edildi. Sözleşme onayınıza hazırlandı; belgenin sonundaki imza alanından onaylayabilirsiniz."
     :query.signed
      ?"Sözleşme imzalandı. İmzalı nüshayı “PDF olarak indir” ile kaydedebilirsiniz."
-     :closedNotices[row.status]??(pendingAddendum?`Onayınızı bekleyen Ek Protokol ${pendingAddendum.addendum_no} var. Belgenin sonundaki “Ek Protokoller” bölümünden inceleyip onaylayabilirsiniz.`:null);
+     :suresiDoldu
+      ?`Bu sözleşmenin imza süresi ${sonGun} tarihinde doldu. Güncel sözleşme için bizimle iletişime geçin.`
+      :closedNotices[row.status]??(pendingAddendum?`Onayınızı bekleyen Ek Protokol ${pendingAddendum.addendum_no} var. Belgenin sonundaki “Ek Protokoller” bölümünden inceleyip onaylayabilirsiniz.`:signable&&sonGun?`Bu sözleşmeyi en geç ${sonGun} tarihine kadar imzalayabilirsiniz.`:null);
  return <ContractDocument
   row={row}
   workPlan={workPlan}
@@ -88,6 +95,6 @@ export default async function PublicContractPage({params,searchParams}:{params:P
   notice={notice}
   errorMessage={query.error?contractErrors[query.error]??null:null}
   proposalLink={links?.proposal_share_token?{token:links.proposal_share_token,no:links.proposal_no}:null}
-  signatureForm={signable?<ContractSignatureForm token={token} consumer={contractCustomerKind(row)==="consumer"}/>:null}
+  signatureForm={signable&&!suresiDoldu?<ContractSignatureForm token={token} consumer={contractCustomerKind(row)==="consumer"}/>:null}
  />;
 }
