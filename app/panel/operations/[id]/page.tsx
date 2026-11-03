@@ -8,7 +8,7 @@ import { reportActionFailure } from "@/lib/action-diagnostics";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
-import { setWorkflowAssistants, archiveWorkflow, changeWorkType, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { setWorkflowAssistants, archiveWorkflow, changeWorkType, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { dueBadge, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
@@ -18,7 +18,6 @@ import { PanelModal } from "../../components/panel-modal";
 import { MusteriKunyesi } from "./musteri-kunyesi";
 import type { Kunye } from "@/lib/musteri-kunyesi";
 import { BEKLEYEN_TARAFLAR, BEKLEYEN_TARAF_ADLARI, BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
-import { REVIZYON_TONLARI, revizyonBilgisi, revizyonOzeti } from "@/lib/revizyon";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { KopyalaDugmesi } from "../../accounts/kopyala-dugmesi";
 import { formatPersonName } from "@/lib/format-name";
@@ -32,6 +31,7 @@ import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
 import { MusteriSohbeti } from "./musteri-sohbet";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
+import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { AnindaForm, AnindaYedek } from "./aninda";
 import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
 import { SahaDosyalari, type EkipDosyasi } from "./saha-dosyalari";
@@ -235,13 +235,7 @@ export default async function OperationDetailPage({
   const employeeNames = new Map(employees.map((employee) => [employee.id, employee.full_name]));
   // Saat bileşen gövdesinde okunmaz (react-hooks/purity); yardımcı ops-shared'da.
   const bugunIstanbul = todayIstanbul();
-  /*
-    Revizyon penceresi TÜRETİLMİŞ: teslim anı + gün sayısı (veritabanı
-    yazıyor). Ekran yalnızca gün sayısını değiştirtiyor; elle tarih
-    yazdırsaydık teslim ertelendiğinde o tarih sessizce yanlış kalırdı.
-  */
-  const revizyon = revizyonBilgisi(workflow.revision_until, bugunIstanbul);
-  const revizyonYazi = revizyonOzeti(workflow.revision_until, bugunIstanbul);
+  /* Revizyon alanı 03.11.2026'da iş detayından kaldırıldı (kurum sahibinin isteği); kurum varsayılanı geçerli, veritabanı revizyon penceresini yine kendisi hesaplıyor. */
   /* PostgREST gömülü ilişkiyi nesne ya da tek elemanlı dizi döndürebiliyor. */
   const sorumluHam = (workflowData as { sorumlu?: unknown }).sorumlu as { id: string; full_name: string; job_title: string | null } | { id: string; full_name: string; job_title: string | null }[] | null | undefined;
   const assigneeRow = (Array.isArray(sorumluHam) ? sorumluHam[0] : sorumluHam) ?? null;
@@ -294,6 +288,13 @@ export default async function OperationDetailPage({
   const postaGorur = Boolean(contract?.opportunity_id) && izin("posta.gor");
   const yazismaSozu = Promise.all([
     whatsappGorur ? musteriWhatsapp(organizationId, yazismaFirsati?.contact_phone) : Promise.resolve({ numara: null, mesajlar: [] }),
+    /*
+      WHATSAPP DÜĞMESİ YALNIZCA KURUM BAĞLIYSA (03.11.2026, kurum sahibinin
+      isteği). Kendi numarası bağlı olmayan kurumda düğme hep boş bir
+      pencere açıyordu. Kural teklif ve sözleşme detayındakiyle aynı:
+      hesap bağlı ve kapatılmamış.
+    */
+    whatsappGorur ? getWhatsappStatus(organizationId).then((durum) => durum.connected && durum.status !== "disabled") : Promise.resolve(false),
     postaGorur && contract?.opportunity_id
       ? musteriPostalari(supabase, organizationId, { talepIdleri: [contract.opportunity_id], eposta: yazismaFirsati?.contact_email })
       : Promise.resolve([]),
@@ -381,7 +382,7 @@ export default async function OperationDetailPage({
     Okunmamış mesaj pencereyi KENDİLİĞİNDEN açmıyor: rozet düğmede,
     okundu işareti pencere açılınca gidiyor. ?pencere=mesajlar pencereyi açar.
   */
-  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await yazismaSozu;
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, whatsappEntegre, postalar] = await yazismaSozu;
   /*
     BİLDİRİM ROZETLERİ. Mesajlar: müşterinin okunmamış mesajı. Postalar:
     okunmamış konuşma. Yorumlar okunma kaydı tutmuyor; rozet, görüntüleyenin
@@ -482,7 +483,7 @@ export default async function OperationDetailPage({
                 title="Fotoğraflar ve dosyalar"
                 description="Sahadan çekilen fotoğrafı ya da belgeyi işe (yalnızca ekip) ya da müşteriye ekleyin."
                 kicker="OPERASYON"
-                boy="genis"
+                boy="buyuk"
                 baslangicAcik={istenenPencere === "dosya"}
               >
                 {ekipKurulumEksik ? (
@@ -497,7 +498,7 @@ export default async function OperationDetailPage({
                 title="Kayıt geçmişi"
                 description="Son hareketler ve alan değişiklikleri."
                 kicker={`İŞ · ${formatSubject(workflow.title)}`}
-                boy="genis"
+                boy="buyuk"
                 baslangicAcik={acilacakPencere === "kayitlar"}
               >
             <div className="opd-kayit">
@@ -635,7 +636,7 @@ export default async function OperationDetailPage({
             title={musteriAdi ?? "Kurum içi iş"}
             description="İletişim bilgileri, takip kodu, bağlantılı kayıtlar ve müşteri künyesi."
             kicker={`İŞ · ${formatSubject(workflow.title)}`}
-            boy="genis"
+            boy="buyuk"
           >
             {/* .opd-v3 ve .talep-musteri: künyenin ve listelerin kuralları bu sınıflara bağlı; pencere sayfanın dışında (panel kökünde) çiziliyor. */}
             <div className="opd-v3"><div className="talep-musteri opd-ayrinti">
@@ -753,7 +754,7 @@ export default async function OperationDetailPage({
                 title="Ekip içi yorumlar"
                 description="Yalnızca ekip görür; müşteriye gitmez."
                 kicker={`İŞ · ${formatSubject(workflow.title)}`}
-                boy="sohbet"
+                boy="yazisma"
               >
                 <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} gorunum="akis" />
               </PanelModal>
@@ -767,20 +768,20 @@ export default async function OperationDetailPage({
             title={musteriAdi ?? "Müşteri mesajları"}
             description="Müşterinin takip ekranından yazdıkları; yanıtınız orada görünür."
             kicker="MÜŞTERİ MESAJLARI"
-            boy="sohbet"
+            boy="yazisma"
             baslangicAcik={acilacakPencere === "mesajlar"}
           >
             <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
             <MusteriSohbeti workflowId={workflow.id} messages={customerMessages} customerName={customerName} canReply={Boolean(contract)} bugun={bugunIstanbul} />
           </PanelModal>
-          {whatsappGorur ? (
+          {whatsappGorur && whatsappEntegre ? (
             <PanelModal
               triggerClassName="opd-kanal"
               triggerLabel="WhatsApp"
               triggerBadge={whatsappMesajlari[0]?.direction === "inbound" ? "1" : null}
               title={musteriAdi ?? "WhatsApp"}
               kicker="WHATSAPP"
-              boy="sohbet"
+              boy="yazisma"
             >
               <WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteriAdi ?? customerName} />
             </PanelModal>
@@ -792,7 +793,7 @@ export default async function OperationDetailPage({
               triggerBadge={okunmamisPosta ? String(okunmamisPosta) : null}
               title={musteriAdi ?? "Postalar"}
               kicker="POSTALAR"
-              boy="genis"
+              boy="yazisma"
             >
               <PostaAkisi postalar={postalar} epostaVar={Boolean(opportunity?.contact_email)} />
             </PanelModal>
@@ -813,18 +814,8 @@ export default async function OperationDetailPage({
               <span className="opd-ff-etiket">Top kimde</span>
               <DurumSecici name="waiting_party" etiket="Top kimde" deger={bekleyenTaraf} disabled={isArchived}
                 secenekler={BEKLEYEN_TARAFLAR.map((taraf) => ({ deger: taraf, etiket: BEKLEYEN_TARAF_ADLARI[taraf], ton: BEKLEYEN_TARAF_TONLARI[taraf] }))} />
-              {/* "Ne bekleniyor" yalnızca top bizde değilken sorulur. */}
-              {bekleyenTaraf === "us" ? null : (
-                <input key={workflow.waiting_note ?? "bos"} type="text" name="waiting_note" defaultValue={workflow.waiting_note ?? ""} maxLength={200} disabled={isArchived} placeholder="Ne bekleniyor?" aria-label="Beklenen şey" />
-              )}
+              {/* "Ne bekleniyor" kutusu 03.11.2026'da kaldırıldı (kurum sahibinin isteği); kayıtlı not silinmiyor, yalnızca burada sorulmuyor. */}
               <span className="opd-ff-not">{beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}</span>
-            </AnindaForm>
-            <AnindaForm action={setRevisionDays} className="opd-ff">
-              <input type="hidden" name="workflow_id" value={workflow.id} />
-              <span className="opd-ff-etiket">Revizyon</span>
-              <DurumSecici name="revision_days" etiket="Revizyon süresi" deger={workflow.revision_days ? String(workflow.revision_days) : ""} disabled={isArchived}
-                secenekler={[{ deger: "", etiket: "Kurum varsayılanı" }, ...[30, 45, 60, 90, 180].map((gun) => ({ deger: String(gun), etiket: `${gun} gün` }))]} />
-              {revizyon && revizyonYazi ? <span className="opd-ff-not" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span> : null}
             </AnindaForm>
           </div>
           <h3 className="opd-kanal-grup">Evrak teslimi</h3>
@@ -849,7 +840,7 @@ export default async function OperationDetailPage({
             title="Müşteri nihai evrak teslimi"
             description="Müşterinin takip ekranındaki “Dosyalarınız” bölümüne giden dosyalar."
             kicker="OPERASYON"
-            boy="genis"
+            boy="buyuk"
             baslangicAcik={acilacakPencere === "evrak"}
           >
             {portalSetupMissing ? (
