@@ -33,7 +33,8 @@ import {
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
-import { TalepAkis } from "../../kayit-detay/kayit-akis";
+import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
+import { postaKanali, whatsappKanali } from "../../kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
 import "../../crm.css";
@@ -519,15 +520,17 @@ export default async function ProposalDetailPage({ params }: Props) {
 
         {/* Akış: revizyon zinciri birden çok sürümse "Revizyonlar" sekmesi;
             WhatsApp ve Postalar müşteriyle yazışma (eskiden yoktu). */}
-        <TalepAkis
-          sekmeler={[
-            "Yorumlar",
-            ...(revizyonlar.length > 1 ? [`Revizyonlar · ${revizyonlar.length}`] : []),
-            whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp",
-            ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
-            "Geçmiş",
+        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi). */}
+        <AkisCekmecesi
+          baslik="Yazışmalar"
+          kicker={`TEKLİF · ${data.proposal_no}`}
+          kanallar={[
+            { ad: "Yorumlar", bos: "Ekip içi yorumlar ve notlar." },
+            ...(revizyonlar.length > 1 ? [{ ad: "Revizyonlar", bos: `${revizyonlar.length} sürüm` }] : []),
+            whatsappKanali(whatsappMesajlari),
+            ...(postaGorur ? [postaKanali(postalar)] : []),
+            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri." },
           ]}
-          tembel={revizyonlar.length > 1 ? (postaGorur ? [2, 3] : [2]) : (postaGorur ? [1, 2] : [1])}
         >
           <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} gorunum="akis" />
           {revizyonlar.length > 1 ? (
@@ -564,7 +567,7 @@ export default async function ProposalDetailPage({ params }: Props) {
             </div>
           ) : null}
           <RecordHistory opportunityId={data.opportunity_id} />
-        </TalepAkis>
+        </AkisCekmecesi>
       </div>
     </main>
   );

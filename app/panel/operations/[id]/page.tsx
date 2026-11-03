@@ -32,6 +32,7 @@ import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
 import { MusteriSohbeti } from "./musteri-sohbet";
 import { AkisCekmecesi, type AkisKanali } from "../../crm/kayit-detay/akis-cekmecesi";
+import { kisalt, mesajKanali, ozetZamani, postaKanali, whatsappKanali } from "../../crm/kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import { AnindaForm, AnindaYedek } from "./aninda";
 import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
@@ -387,26 +388,9 @@ export default async function OperationDetailPage({
     (?pencere=mesajlar, ?pencere=kayitlar) çekmeceyi yine o sekmede açar.
   */
   const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await yazismaSozu;
-  /* Özet satırında yıl yer kaplıyor ve dar sütunda saati alt satıra itiyordu; tam tarih çekmecede. */
-  const kisaZaman = new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const ozetZamani = (deger?: string | null) => (deger ? kisaZaman.format(new Date(deger)) : "");
-  const kisalt = (metin: string) => {
-    const tek = metin.replace(/\s+/g, " ").trim();
-    return tek.length > 180 ? `${tek.slice(0, 180)}…` : tek;
-  };
-  const sonMusteriMesaji = customerMessages.at(-1);
   const sonYorum = [...comments].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-  const sonWhatsapp = whatsappMesajlari[0];
-  const sonPosta = [...postalar].sort((a, b) => String(b.son_mesaj_at ?? "").localeCompare(String(a.son_mesaj_at ?? "")))[0];
   const kanallar: AkisKanali[] = [
-    {
-      ad: "Mesajlar",
-      rozet: unreadCustomerMessages ? `${unreadCustomerMessages} yeni` : null,
-      onizleme: sonMusteriMesaji
-        ? { kim: sonMusteriMesaji.sender_type === "staff" ? "Ekip" : formatPersonName(sonMusteriMesaji.sender_name), metin: kisalt(sonMusteriMesaji.body), zaman: ozetZamani(sonMusteriMesaji.created_at) }
-        : null,
-      bos: "Müşteriyle henüz yazışma yok.",
-    },
+    mesajKanali(customerMessages),
     ...(contract?.opportunity_id
       ? [{
           ad: "Yorumlar",
@@ -416,26 +400,8 @@ export default async function OperationDetailPage({
           bos: "Ekip içi yorum yok.",
         }]
       : []),
-    ...(whatsappGorur
-      ? [{
-          ad: "WhatsApp",
-          rozet: sonWhatsapp?.direction === "inbound" ? "yeni" : null,
-          onizleme: sonWhatsapp
-            ? { kim: sonWhatsapp.direction === "inbound" ? "Müşteri" : "Ekip", metin: kisalt(sonWhatsapp.body ?? sonWhatsapp.template ?? "Ek"), zaman: ozetZamani(sonWhatsapp.createdAt) }
-            : null,
-          bos: "WhatsApp yazışması yok.",
-        }]
-      : []),
-    ...(postaGorur
-      ? [{
-          ad: "Postalar",
-          rozet: postalar.some((posta) => posta.okunmamis) ? "yeni" : null,
-          onizleme: sonPosta
-            ? { kim: (sonPosta.son_gonderen_ad ? formatPersonName(sonPosta.son_gonderen_ad) : null) || sonPosta.son_gonderen_adres || "Posta", metin: kisalt(sonPosta.konu || sonPosta.ozet || "Konusuz"), zaman: ozetZamani(sonPosta.son_mesaj_at) }
-            : null,
-          bos: "Posta yok.",
-        }]
-      : []),
+    ...(whatsappGorur ? [whatsappKanali(whatsappMesajlari)] : []),
+    ...(postaGorur ? [postaKanali(postalar)] : []),
     { ad: "Geçmiş", bos: `${activities.length} hareket · alan değişiklikleri` },
   ];
   const gecmisSirasi = kanallar.length - 1;
