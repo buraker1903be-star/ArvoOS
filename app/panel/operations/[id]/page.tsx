@@ -498,31 +498,6 @@ export default async function OperationDetailPage({
                   <SahaDosyalari workflowId={workflow.id} organizationId={organizationId} portalAcik={portalPayment.hasContract && !portalSetupMissing} dosyalar={ekipDosyalari} />
                 )}
               </PanelModal>
-              <PanelModal
-                triggerClassName="os-menu-item"
-                triggerLabel="Kayıt geçmişi"
-                title="Kayıt geçmişi"
-                description="Son hareketler ve alan değişiklikleri."
-                kicker={`İŞ · ${formatSubject(workflow.title)}`}
-                boy="buyuk"
-                baslangicAcik={acilacakPencere === "kayitlar"}
-              >
-            <div className="opd-kayit">
-              <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
-              <ul className="opd-activity">
-                {activities.map((activity) => (
-                  <li key={activity.id} data-kind={activity.kind}>
-                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
-                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
-                  </li>
-                ))}
-              </ul>
-              <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
-              <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
-                <RecordHistory workflowId={workflow.id} baslik={false} />
-              </Suspense>
-            </div>
-              </PanelModal>
               {/* Sözleşme tutar taşıyor; operasyon personeli göremiyor. */}
               {contract && canAssign ? <Link className="os-menu-item" href={`/panel/crm/contracts/${contract.id}`}>Sözleşmeye git</Link> : null}
               {canArchive && isArchived ? (
@@ -814,8 +789,78 @@ export default async function OperationDetailPage({
           ) : null}
         </section>
 
-        <section className="panel-card opd-kart opd-durum-kart" aria-label="Durum ve evrak">
-          <div className="opd-durum-alanlar">
+        {/*
+          Alt sıra iki kart (03.11.2026, kurum sahibinin isteği): müşteri
+          kartının altında evrak teslimi ve kayıt geçmişi, iletişim kartının
+          altında durum ve top kimde alt alta. Kayıt geçmişi ⋯ menüsündeydi;
+          düğmesi artık son hareketi de söylüyor, pencereyi açmadan "en son
+          ne oldu" görünsün.
+        */}
+        <section className="panel-card opd-kart opd-evrak-kart" aria-label="Evrak ve kayıt geçmişi">
+          <h3 className="opd-kanal-grup">Evrak teslimi</h3>
+          {/*
+            MÜŞTERİ NİHAİ EVRAK TESLİMİ. Düğmenin rengi ve cümlesi ödeme
+            durumunu söylüyor: ödeme kapanmamışsa "ödeme tamamlanınca açılır"
+            kuralındaki dosyalar müşteride kilitli görünür.
+          */}
+          <PanelModal
+            triggerClassName={`opd-evrak is-${!portalPayment.hasContract ? "notr" : portalPayment.settled ? "tamam" : "bekliyor"}`}
+            triggerLabel="Nihai evrak gönderimi"
+            tetik={<>
+              <b>Nihai evrak gönderimi</b>
+              <span>
+                {!portalPayment.hasContract
+                  ? "Sözleşmesiz iş"
+                  : portalPayment.settled
+                    ? `Ödeme tamamlandı · ${portalFiles.length} dosya`
+                    : `Ödeme bekleniyor · ${portalFiles.length} dosya`}
+              </span>
+            </>}
+            title="Müşteri nihai evrak teslimi"
+            description="Müşterinin takip ekranındaki “Dosyalarınız” bölümüne giden dosyalar."
+            kicker="OPERASYON"
+            boy="buyuk"
+            baslangicAcik={acilacakPencere === "evrak"}
+          >
+            {portalSetupMissing ? (
+              <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
+            ) : (
+              <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
+            )}
+          </PanelModal>
+          <h3 className="opd-kanal-grup">Kayıt geçmişi</h3>
+          <PanelModal
+            triggerClassName="opd-evrak is-notr opd-gecmis-dugme"
+            triggerLabel="Kayıt geçmişi"
+            tetik={<>
+              <b>Kayıt geçmişi</b>
+              <span>{activities[0] ? `Son hareket: ${activities[0].title} · ${formatDate(activities[0].at, true)}` : "Henüz hareket yok"}</span>
+            </>}
+            title="Kayıt geçmişi"
+            description="Son hareketler ve alan değişiklikleri."
+            kicker={`İŞ · ${formatSubject(workflow.title)}`}
+            boy="buyuk"
+            baslangicAcik={acilacakPencere === "kayitlar"}
+          >
+            <div className="opd-kayit">
+              <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
+              <ul className="opd-activity">
+                {activities.map((activity) => (
+                  <li key={activity.id} data-kind={activity.kind}>
+                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
+                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
+                  </li>
+                ))}
+              </ul>
+              <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
+              <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
+                <RecordHistory workflowId={workflow.id} baslik={false} />
+              </Suspense>
+            </div>
+          </PanelModal>
+        </section>
+
+        <section className="panel-card opd-kart opd-durum-kart" aria-label="Durum">
             <AnindaForm action={setWorkflowStatus} className="opd-ff">
               <input type="hidden" name="workflow_id" value={workflow.id} />
               <span className="opd-ff-etiket">Durum</span>
@@ -831,38 +876,6 @@ export default async function OperationDetailPage({
               {/* "Ne bekleniyor" kutusu 03.11.2026'da kaldırıldı (kurum sahibinin isteği); kayıtlı not silinmiyor, yalnızca burada sorulmuyor. */}
               <span className="opd-ff-not">{beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}</span>
             </AnindaForm>
-          </div>
-          <h3 className="opd-kanal-grup">Evrak teslimi</h3>
-          {/*
-            MÜŞTERİ NİHAİ EVRAK TESLİMİ. Düğmenin rengi ve cümlesi ödeme
-            durumunu söylüyor: ödeme kapanmamışsa "ödeme tamamlanınca açılır"
-            kuralındaki dosyalar müşteride kilitli görünür.
-          */}
-          <PanelModal
-            triggerClassName={`opd-evrak is-${!portalPayment.hasContract ? "notr" : portalPayment.settled ? "tamam" : "bekliyor"}`}
-            triggerLabel="Nihai evrak gönderimi"
-            tetik={<>
-              <b>Nihai evrak gönderimi</b>
-              <span>
-                {!portalPayment.hasContract
-                  ? "Sözleşmesiz iş; müşteriye evrak gönderilmez."
-                  : portalPayment.settled
-                    ? `Ödeme tamamlandı · ${portalFiles.length} dosya`
-                    : `Ödeme bekleniyor; kilitli dosyalar müşteride açılmaz · ${portalFiles.length} dosya`}
-              </span>
-            </>}
-            title="Müşteri nihai evrak teslimi"
-            description="Müşterinin takip ekranındaki “Dosyalarınız” bölümüne giden dosyalar."
-            kicker="OPERASYON"
-            boy="buyuk"
-            baslangicAcik={acilacakPencere === "evrak"}
-          >
-            {portalSetupMissing ? (
-              <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
-            ) : (
-              <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
-            )}
-          </PanelModal>
         </section>
 
         <section className="panel-card talep-bilgi opd-gorevler" aria-label="Görevler">
