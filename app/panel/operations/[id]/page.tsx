@@ -387,6 +387,9 @@ export default async function OperationDetailPage({
     (?pencere=mesajlar, ?pencere=kayitlar) çekmeceyi yine o sekmede açar.
   */
   const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await yazismaSozu;
+  /* Özet satırında yıl yer kaplıyor ve dar sütunda saati alt satıra itiyordu; tam tarih çekmecede. */
+  const kisaZaman = new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const ozetZamani = (deger?: string | null) => (deger ? kisaZaman.format(new Date(deger)) : "");
   const kisalt = (metin: string) => {
     const tek = metin.replace(/\s+/g, " ").trim();
     return tek.length > 180 ? `${tek.slice(0, 180)}…` : tek;
@@ -400,7 +403,7 @@ export default async function OperationDetailPage({
       ad: "Mesajlar",
       rozet: unreadCustomerMessages ? `${unreadCustomerMessages} yeni` : null,
       onizleme: sonMusteriMesaji
-        ? { kim: sonMusteriMesaji.sender_type === "staff" ? "Ekip" : formatPersonName(sonMusteriMesaji.sender_name), metin: kisalt(sonMusteriMesaji.body), zaman: formatDate(sonMusteriMesaji.created_at, true) }
+        ? { kim: sonMusteriMesaji.sender_type === "staff" ? "Ekip" : formatPersonName(sonMusteriMesaji.sender_name), metin: kisalt(sonMusteriMesaji.body), zaman: ozetZamani(sonMusteriMesaji.created_at) }
         : null,
       bos: "Müşteriyle henüz yazışma yok.",
     },
@@ -408,7 +411,7 @@ export default async function OperationDetailPage({
       ? [{
           ad: "Yorumlar",
           onizleme: sonYorum
-            ? { kim: uploaderNames.get(sonYorum.created_by) ?? "Ekip", metin: kisalt(sonYorum.body), zaman: formatDate(sonYorum.created_at, true) }
+            ? { kim: uploaderNames.get(sonYorum.created_by) ?? "Ekip", metin: kisalt(sonYorum.body), zaman: ozetZamani(sonYorum.created_at) }
             : null,
           bos: "Ekip içi yorum yok.",
         }]
@@ -418,7 +421,7 @@ export default async function OperationDetailPage({
           ad: "WhatsApp",
           rozet: sonWhatsapp?.direction === "inbound" ? "yeni" : null,
           onizleme: sonWhatsapp
-            ? { kim: sonWhatsapp.direction === "inbound" ? "Müşteri" : "Ekip", metin: kisalt(sonWhatsapp.body ?? sonWhatsapp.template ?? "Ek"), zaman: formatDate(sonWhatsapp.createdAt, true) }
+            ? { kim: sonWhatsapp.direction === "inbound" ? "Müşteri" : "Ekip", metin: kisalt(sonWhatsapp.body ?? sonWhatsapp.template ?? "Ek"), zaman: ozetZamani(sonWhatsapp.createdAt) }
             : null,
           bos: "WhatsApp yazışması yok.",
         }]
@@ -428,7 +431,7 @@ export default async function OperationDetailPage({
           ad: "Postalar",
           rozet: postalar.some((posta) => posta.okunmamis) ? "yeni" : null,
           onizleme: sonPosta
-            ? { kim: sonPosta.son_gonderen_ad || sonPosta.son_gonderen_adres || "Posta", metin: kisalt(sonPosta.konu || sonPosta.ozet || "Konusuz"), zaman: formatDate(sonPosta.son_mesaj_at, true) }
+            ? { kim: (sonPosta.son_gonderen_ad ? formatPersonName(sonPosta.son_gonderen_ad) : null) || sonPosta.son_gonderen_adres || "Posta", metin: kisalt(sonPosta.konu || sonPosta.ozet || "Konusuz"), zaman: ozetZamani(sonPosta.son_mesaj_at) }
             : null,
           bos: "Posta yok.",
         }]
