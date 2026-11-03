@@ -10,7 +10,7 @@ import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/li
 import { PanelDrawer } from "../../components/panel-drawer";
 import { PanelModal } from "../../components/panel-modal";
 import { KisiYetkileri } from "../../settings/permissions/kisi-yetkileri";
-import { ledgerTotals } from "@/lib/commission-ledger";
+import { employeeLedger, ledgerTotals } from "@/lib/commission-ledger";
 import { primVerisi } from "../prim-verisi";
 import { DAVET_DURUM_ADLARI, kisininDaveti, OKUNAN_DAVET_DURUMLARI } from "../davet-durumu";
 import { PrimPenceresi } from "../prim-penceresi";
@@ -235,6 +235,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const terminli = teslimler.filter((t) => t.due_date);
   const zamaninda = oran(terminli.filter((t) => teslimGunu(t.delivered_at) <= t.due_date!).length, terminli.length);
   const primToplami = prim ? ledgerTotals(employee.id, prim.accruals, prim.payments) : null;
+  const primHareketleri = prim ? employeeLedger(employee.id, prim.accruals, prim.payments) : null;
+  const buAyHakEdis = (primHareketleri ?? []).filter((h) => h.kind === "accrual" && h.date.startsWith(buAyBasi.slice(0, 7))).reduce((t, h) => t + h.accrual, 0);
+  const sonOdeme = (primHareketleri ?? []).filter((h) => h.kind === "payment").at(-1) ?? null;
   const gizlilikler = (gizlilikSonuc.data ?? []) as Gizlilik[];
   /* Aylık hedef: gerçekleşen Hedefler ekranının kuralıyla (imza günü bu ay). */
   const hedefTutari = hedefSonuc.error ? null : ((hedefSonuc.data as { tutar: number } | null)?.tutar ?? null);
@@ -265,6 +268,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   // (Kurum Sahibi); elle değiştirilemez (ekip listesindeki kuralla aynı).
   const managedByDepartment = MANAGEMENT_EMPLOYMENT_STATUSES.includes(employee.employment_status) && isManagementDepartmentName(departmentName ?? "");
   const organizationName = organization.display_name || organization.name;
+  const sahipMi = member?.role === "owner" || managedByDepartment;
   const erisim = member ? (member.is_active ? roleNames[member.role] ?? member.role : "Erişim kapalı") : pendingInvite ? "Davet bekliyor" : "Erişim yok";
   const bugun = todayInIstanbul();
 
@@ -290,9 +294,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
           <div><dt>Durum</dt><dd><span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span></dd></div>
           <div><dt>Çalışma tipi</dt><dd>{typeNames[employee.employment_type] ?? "—"}</dd></div>
           <div><dt>Kıdem</dt><dd>{employee.start_date ? kidem(employee.start_date, bugun) : "—"}</dd></div>
-          {crmVar ? <div><dt>Açık talep</dt><dd>{acikTalep}</dd></div> : null}
-          {opsVar ? <div><dt>Üstündeki iş</dt><dd>{acikIs}</dd></div> : null}
-          {canManageTeam ? <div><dt>Panel erişimi</dt><dd>{erisim}</dd></div> : null}
+          {/* Açık talep, üstündeki iş ve panel erişimi 03.11.2026'dan beri kartlarda; şeritte yalnızca kişiye ait bilgiler. */}
+          <div><dt>İşe giriş</dt><dd>{employee.start_date ? shortDate(employee.start_date) : "—"}</dd></div>
+          {departmentName ? <div><dt>Departman</dt><dd>{departmentName}</dd></div> : null}
         </dl>
       </section>
         </div>
@@ -447,6 +451,13 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
             <div><dt>Satış primi</dt><dd>%{percent(employee.commission_rate)}</dd></div>
             <div><dt>Operasyon primi</dt><dd>%{percent(employee.operation_commission_rate)}</dd></div>
           </dl>
+          {/* Kartın ortası boş kalıyordu; bu ay hak edilen ve son ödeme prim defterinden (Prim penceresiyle aynı kayıt). */}
+          {primHareketleri ? (
+            <dl className="talep-liste opd-musteri-liste">
+              <div><dt>Bu ay hak edilen</dt><dd>{money(buAyHakEdis)}</dd></div>
+              <div><dt>Son ödeme</dt><dd>{sonOdeme ? `${money(sonOdeme.payment)} · ${shortDate(sonOdeme.date)}` : <em>Yok</em>}</dd></div>
+            </dl>
+          ) : null}
           {prim && primToplami ? (
             <PanelModal
               triggerLabel="Prim hareketleri"
@@ -623,11 +634,12 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 triggerClassName="kd-kutu"
                 triggerLabel="Elindeki talepler"
                 tetik={<>
-                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Elindeki talepler</span><span className="kd-kutu-cip">{kabulOrani === null ? "kabul —" : `kabul %${kabulOrani}`}</span></span>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Talepler</span><span className="kd-kutu-cip">{kabulOrani === null ? "kabul —" : `kabul %${kabulOrani}`}</span></span>
                   <span className={acikTalep ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{acikTalep}<small>açık talep</small></span>
                   <span className="kd-kutu-satirlar">
                     {talepler.slice(0, 2).map((t) => <span key={t.id}><b>{t.customer_name || t.title || "Talep"}</b><small>{requestStageNames[t.stage ?? ""] ?? t.stage}</small></span>)}
                   </span>
+                  {talepler.length ? null : <span className="kd-kutu-ozet">Üstünde açık talep yok.</span>}
                   <span className="kd-kutu-dip"><span>{kabul} teklif kabul</span><span className="kd-kutu-ac">Aç →</span></span>
                 </>}
                 kicker={`PERSONEL · ${employee.full_name}`}
@@ -665,6 +677,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                   <span className="kd-kutu-satirlar">
                     {imzalananlar.slice(0, 2).map((c) => <span key={c.id}><b>{c.crm_opportunities?.customer_name || c.title || c.contract_no}</b><small>{tamPara(Number(c.amount))}</small></span>)}
                   </span>
+                  {imzalananlar.length ? null : <span className="kd-kutu-ozet">Henüz satışa dönen talebi yok.</span>}
                   <span className="kd-kutu-dip"><span>{satisToplami ? tamPara(satisToplami) : "—"} toplam</span><span className="kd-kutu-ac">Aç →</span></span>
                 </>}
                 kicker={`PERSONEL · ${employee.full_name}`}
@@ -696,11 +709,12 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 triggerClassName="kd-kutu"
                 triggerLabel="Yürüttüğü işler"
                 tetik={<>
-                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Yürüttüğü işler</span><span className="kd-kutu-cip" data-tone={gecikenIs ? "warning" : undefined}>{gecikenIs ? `${gecikenIs} gecikti` : "gecikme yok"}</span></span>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">İşler</span><span className="kd-kutu-cip" data-tone={gecikenIs ? "warning" : undefined}>{gecikenIs ? `${gecikenIs} gecikti` : "gecikme yok"}</span></span>
                   <span className={acikIs ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{acikIs}<small>açık iş</small></span>
                   <span className="kd-kutu-satirlar">
                     {isler.slice(0, 2).map((is) => <span key={is.id}><b>{is.title}</b><small>{is.due_date ? `Termin ${shortDate(is.due_date)}` : "Termin yok"}</small></span>)}
                   </span>
+                  {isler.length ? null : <span className="kd-kutu-ozet">Üstünde iş yok. Operasyonda sorumlu atanınca burada görünür.</span>}
                   <span className="kd-kutu-dip"><span>{workflowStatusNames[isler[0]?.status ?? ""] ?? ""}</span><span className="kd-kutu-ac">Aç →</span></span>
                 </>}
                 kicker={`PERSONEL · ${employee.full_name}`}
@@ -739,11 +753,12 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 triggerClassName="kd-kutu"
                 triggerLabel="Tamamladığı işler"
                 tetik={<>
-                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Tamamladığı işler</span><span className="kd-kutu-cip" data-tone={zamaninda !== null && zamaninda < 70 ? "warning" : undefined}>{zamaninda === null ? "zamanında —" : `zamanında %${zamaninda}`}</span></span>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Teslimler</span><span className="kd-kutu-cip" data-tone={zamaninda !== null && zamaninda < 70 ? "warning" : undefined}>{zamaninda === null ? "zamanında —" : `zamanında %${zamaninda}`}</span></span>
                   <span className={teslimler.length ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{teslimler.length}<small>teslim</small></span>
                   <span className="kd-kutu-satirlar">
                     {teslimler.slice(0, 2).map((t) => <span key={t.id}><b>{t.title}</b><small>{shortDate(t.delivered_at)}</small></span>)}
                   </span>
+                  {teslimler.length ? null : <span className="kd-kutu-ozet">Henüz teslim ettiği iş yok.</span>}
                   <span className="kd-kutu-dip"><span>son 90 gün {son90Teslim}</span><span className="kd-kutu-ac">Aç →</span></span>
                 </>}
                 kicker={`PERSONEL · ${employee.full_name}`}
@@ -782,8 +797,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 tetik={<>
                   <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Yetkiler</span><span className="kd-kutu-cip" data-tone={member && !member.is_active ? "danger" : undefined}>{member ? (member.is_active ? "erişim açık" : "erişim kapalı") : "hesap yok"}</span></span>
                   <span className="kd-kutu-deger kd-kutu-deger-metin">{erisim}</span>
-                  <span className="kd-kutu-ozet">Görebildiği modüller ve yapabildiği işlemler; rol kuralı ya da kişiye özel istisna.</span>
-                  <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">Düzenle →</span></span>
+                  {/* Kurum Sahibi hiçbir zaman kısıtlanamaz (yetkiler.ts): pencere yalnızca gösterir. */}
+                  <span className="kd-kutu-ozet">{sahipMi ? "Kurum Sahibi kısıtlanamaz; bütün modülleri ve işlemleri açık." : "Görebildiği modüller ve yapabildiği işlemler; rol kuralı ya da kişiye özel istisna."}</span>
+                  <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">{sahipMi ? "Görüntüle" : "Düzenle"} →</span></span>
                 </>}
                 kicker="YETKİLER"
                 title={employee.full_name}
@@ -806,11 +822,12 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 triggerClassName="kd-kutu"
                 triggerLabel="Özlük dosyası"
                 tetik={<>
-                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Özlük dosyası</span>{gizlilikGorur ? <span className="kd-kutu-cip" data-tone={gizlilikler.some((g) => g.signed_at) ? undefined : "warning"}>{gizlilikler.some((g) => g.signed_at) ? "gizlilik imzalı" : "gizlilik imzasız"}</span> : null}</span>
+                  <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Özlük</span>{gizlilikGorur ? <span className="kd-kutu-cip" data-tone={gizlilikler.some((g) => g.signed_at) ? undefined : "warning"}>{gizlilikler.some((g) => g.signed_at) ? "gizlilik imzalı" : "gizlilik imzasız"}</span> : null}</span>
                   <span className={docs.length ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{docs.length}<small>belge</small></span>
                   <span className="kd-kutu-satirlar">
                     {docs.slice(0, 2).map((doc) => <span key={doc.id}><b>{doc.file_name}</b><small>{shortDate(doc.created_at)}</small></span>)}
                   </span>
+                  {docs.length ? null : <span className="kd-kutu-ozet">{canManageTeam ? "Henüz belge yüklenmedi. Sözleşme, kimlik, diploma gibi belgeler pencereden eklenir." : "Belgeleri ekip yöneticileri görür."}</span>}
                   <span className="kd-kutu-dip"><span>{gizlilikGorur ? `${gizlilikler.length} gizlilik sözleşmesi` : ""}</span><span className="kd-kutu-ac">Aç →</span></span>
                 </>}
                 kicker="ÖZLÜK DOSYASI"
@@ -878,7 +895,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
             ) : null}
             {crmVar ? (
               <Link className="kd-kutu" href="/panel/hr/hedefler">
-                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Bu ayın hedefi</span><span className="kd-kutu-cip" data-tone={hedefOrani !== null && hedefOrani < 50 ? "warning" : undefined}>{hedefOrani === null ? "hedef yok" : `%${hedefOrani}`}</span></span>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Hedef</span><span className="kd-kutu-cip" data-tone={hedefOrani !== null && hedefOrani < 50 ? "warning" : undefined}>{hedefOrani === null ? "bu ay hedef yok" : `bu ay %${hedefOrani}`}</span></span>
                 <span className={buAyGerceklesen.tutar ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{tamPara(buAyGerceklesen.tutar)}<small>{hedefTutari ? `/ ${tamPara(hedefTutari)}` : "gerçekleşen"}</small></span>
                 {hedefTutari ? <span className="kd-kutu-cubuk" aria-hidden="true"><i style={{ width: `${Math.min(100, hedefOrani ?? 0)}%` }} /></span> : null}
                 <span className="kd-kutu-ozet">{hedefSonuc.error ? "Hedef okunamadı." : hedefTutari ? `${buAyGerceklesen.adet} sözleşme imzalandı.` : "Bu ay için satış hedefi girilmemiş."}</span>
@@ -896,7 +913,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                   </>
                 ) : (
                   <>
-                    <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Bu ayın maaşı</span><span className="kd-kutu-cip" data-tone={buAyMaas && !buAyMaas.odendi_on ? "warning" : undefined}>{maasSonuc.error ? "okunamadı" : !buAyMaas ? "girilmemiş" : buAyMaas.odendi_on ? "ödendi" : "bekliyor"}</span></span>
+                    <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Maaş</span><span className="kd-kutu-cip" data-tone={buAyMaas && !buAyMaas.odendi_on ? "warning" : undefined}>{maasSonuc.error ? "okunamadı" : !buAyMaas ? "bu ay girilmemiş" : buAyMaas.odendi_on ? "bu ay ödendi" : "bu ay bekliyor"}</span></span>
                     <span className={buAyMaas?.anlasilan_net ? "kd-kutu-deger" : "kd-kutu-deger is-sessiz"}>{buAyMaas?.anlasilan_net ? tamPara(buAyMaas.anlasilan_net) : "—"}<small>anlaşılan net</small></span>
                     <span className="kd-kutu-ozet">{buAyMaas?.odendi_on ? `Ödendi ${shortDate(buAyMaas.odendi_on)}${buAyMaas.odenen ? ` · ${tamPara(buAyMaas.odenen)}` : ""}` : "Bordro Maaşlar ekranında hazırlanır."}</span>
                     <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">Maaşlar →</span></span>
