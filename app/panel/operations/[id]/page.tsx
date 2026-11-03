@@ -894,16 +894,28 @@ export default async function OperationDetailPage({
         </section>
 
         <section className="panel-card talep-bilgi opd-gorevler" aria-label="Görevler">
+          {/*
+            BAŞLIK (03.11.2026, panel kalitesinde toparlandı). Eskiden başlık,
+            sayaç ve çalışma türü üst üste üç düz satırdı, yüzde sağda tek
+            başına duruyordu ve ilerleme çubuğu başlığın dışındaydı. Şimdi:
+            başlık + sayaç + yüzde tek satır, altında çubuk, en altta tür.
+            Liste kayarken başlık üstte kalır.
+          */}
           <header className="opd-gorev-bas">
-            <div>
+            <div className="opd-gorev-ust">
               <h2>Görevler</h2>
-              <small>{completedCount}/{steps.length} tamamlandı{due.late ? " · termin geçti" : ""}</small>
+              <span className="opd-gorev-sayac">{completedCount}/{steps.length} tamamlandı</span>
+              {due.late ? <span className="status-pill" data-tone="danger">Termin geçti</span> : null}
+              <strong className="opd-gorev-yuzde">%{progress}</strong>
+            </div>
+            <div className="opd-bar" aria-hidden="true"><i style={{ "--p": `${progress}%` } as CSSProperties} /></div>
+            <div className="opd-gorev-alt">
               {calismaTurleri.length ? (
                 <span className="opd-tur">
-                  Çalışma türü: <b>{mevcutTur?.name ?? "Öntanımlı"}</b>
+                  Çalışma türü <b className="opd-tur-cip">{mevcutTur?.name ?? "Öntanımlı"}</b>
                   {!isArchived && calismaTurleri.length > 1 ? (
                     <PanelDrawer
-                      triggerLabel="Türü değiştir"
+                      triggerLabel="Değiştir"
                       triggerClassName="opd-tur-degistir"
                       kicker={`İŞ · ${formatSubject(workflow.title)}`}
                       title="Çalışma türünü değiştir"
@@ -935,10 +947,9 @@ export default async function OperationDetailPage({
                   ) : null}
                 </span>
               ) : null}
+              {steps.length > completedCount ? <span className="opd-gorev-kalan">{steps.length - completedCount} görev kaldı</span> : null}
             </div>
-            <strong>%{progress}</strong>
           </header>
-          <div className="opd-bar" aria-hidden="true"><i style={{ "--p": `${progress}%` } as CSSProperties} /></div>
           {/*
             TARİHLERİ DAĞIT. Canlıda işlerin hiçbirinde aşama tarihi
             yoktu; tek tek girmek iş başına sekiz giriş demek ve kimse

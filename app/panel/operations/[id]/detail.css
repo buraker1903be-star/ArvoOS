@@ -635,10 +635,17 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 /* Durum şeridi aşama çizgisinden ~70px uzun: sütun boyları ona göre. */
 .os-root .opd-v3 .talep-izgara>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 392px)}
 .opd-v3 .talep-akis-panel{max-height:calc(100dvh - 442px)}
-.opd-gorev-bas{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-3)}
-.opd-gorev-bas small{color:var(--muted);font-size:var(--fs-sm)}
-.opd-gorev-bas strong{font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+/* Görevler başlığı: tek satır başlık + sayaç + yüzde, çubuk, tür; kayarken üstte sabit. */
+/* Kartın üst dolgusu başlıkta: yapışkan başlık kartın kenarına kadar uzansın, altından görev satırı görünmesin. */
+.os-root .opd-v3 .opd-gorevler{padding:0 var(--sp-5) var(--sp-5)}
+.opd-gorev-bas{position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:var(--sp-2);margin:0 calc(var(--sp-5) * -1);padding:var(--sp-5) var(--sp-5) var(--sp-3);border-bottom:1px solid var(--line-soft);background:var(--surface)}
+.opd-gorev-ust{display:flex;align-items:center;gap:var(--sp-2)}
+.opd-gorevler .opd-gorev-ust h2{margin:0;font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--ink)}
+.opd-gorev-sayac{padding:2px 10px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium);font-variant-numeric:tabular-nums}
+.opd-gorev-yuzde{margin-left:auto;color:var(--ink);font-size:var(--fs-lg);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
 .opd-v3 .opd-gorevler .opd-bar{margin:0}
+.opd-gorev-alt{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-2)}
+.opd-gorev-kalan{color:var(--muted);font-size:var(--fs-micro)}
 
 /*
   İŞ DETAYI DÜZENİ (03.11.2026, kurum sahibinin çizimi). Solda üstte
@@ -750,9 +757,10 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 }
 
 /* Çalışma türü ve "Türü değiştir" (20261013110047). */
-.opd-tur{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;color:var(--muted);font-size:12.5px}
+.opd-tur{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;color:var(--muted);font-size:var(--fs-micro)}
+.opd-tur-cip{padding:1px 8px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--ink)}
 .opd-tur b{color:var(--ink-soft);font-weight:var(--fw-semibold)}
-.opd-tur-degistir{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:12.5px;font-weight:var(--fw-medium);cursor:pointer}
+.opd-tur-degistir{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:var(--fs-micro);font-weight:var(--fw-medium);cursor:pointer}
 .opd-tur-degistir:hover{text-decoration:underline}
 .opd-tur-bilgi{display:flex;flex-direction:column;gap:6px;margin:0;padding:12px 14px 12px 30px;border-radius:12px;background:var(--surface-2);color:var(--ink-soft);font-size:13.5px;line-height:1.45}
 
