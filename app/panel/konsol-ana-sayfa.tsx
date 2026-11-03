@@ -186,22 +186,55 @@ export async function KonsolAnaSayfa() {
   */
   const ayBasi = `${todayInIstanbul().slice(0, 7)}-01T00:00:00+03:00`;
   const seriBasi = seriBaslangici();
-  const sozlesmeIstegi = admin
-    ? Promise.all([
-        admin.from("platform_subscription_requests").select("id,contract_no,customer_name,amount,currency,created_at")
-          .eq("status", "pending").order("created_at", { ascending: false }),
-        admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at").order("created_at", { ascending: false }).limit(6),
-        /*
-          BEKLEYEN PROFORMALAR (29.10.2026): gönderilmiş, ödemesi gelmemiş
-          belgeler. Hepsi, sınırsız: bekleyen proforma bir iş kalemi ve
-          sayısı küçük. Geçerliliği en yakın olan başta — kurucunun
-          aradığı "hangisinin süresi dolmak üzere".
-        */
-        /* sınırsız-tamam: bekleyen proforma kuyruğu — kurucunun temizlediği iş listesi, sayısı küçük. */
-        admin.from("platform_proformalari").select("id,proforma_no,musteri_adi,product,toplam,para_birimi,gecerlilik_tarihi,gonderildi_at,bildirildi_at,gonderim_hatasi")
-          .eq("durum", "bekliyor").order("gecerlilik_tarihi", { ascending: true }),
-      ])
-    : Promise.resolve([{ data: null, error: null }, { data: [], error: null }, { data: null, error: null }] as const);
+  /*
+    KÜÇÜK OKUMALAR TEK ÇAĞRIDA (03.11.2026, migration 20261103065144).
+    Tek tura indirmek yetmedi: otuz beşe yakın istek aynı anda gidince
+    veritabanı havuzunda sıra bekliyordu — tek isteğin olağan süresi
+    ~85 ms iken buradaki en basit sayım 300–490 ms sürüyordu. On dört
+    küçük okuma (iş listeleri, sayımlar, grafik penceresi, ad) artık
+    platform_konsol_ana_ozeti'nde.
+
+    Çağrı düşerse (migration henüz uygulanmamış, ya da başka bir hata)
+    aşağıdaki her okuma ESKİ sorgusuna dönüyor: ekran yavaş açılır ama
+    yanlış açılmaz. Eski sorgu yalnızca o durumda başlıyor (`yedek`).
+  */
+  type Ozet = Record<string, unknown> & { yeni_kurum: number; yeni_abone: number; ad: string | null };
+  const ozetIstegi: Promise<Ozet | null> = Promise.resolve(supabase.rpc("platform_konsol_ana_ozeti", {
+    p_ay_basi: ayBasi, p_seri_basi: seriBasi, p_bugun: todayInIstanbul(), p_destek_durumlari: [...YANIT_BEKLEYEN_DURUMLAR],
+  })).then(({ data, error }) => {
+    if (error) {
+      console.error("[konsol] ana sayfa özeti okunamadı, eski okumalara dönülüyor", error.code, error.message);
+      return null;
+    }
+    return data as Ozet;
+  }, (hata: unknown) => {
+    console.error("[konsol] ana sayfa özeti okunamadı, eski okumalara dönülüyor", hata);
+    return null;
+  });
+  /* Özetin bir parçası, PostgREST yanıtının biçiminde; özet yoksa eski sorgu. */
+  const yedek = <A, B>(al: (o: Ozet) => A, eski: () => PromiseLike<B>): Promise<A | B> =>
+    ozetIstegi.then<A | B>((o) => (o ? al(o) : eski()));
+  const liste = (o: Ozet, anahtar: string) => ({ data: o[anahtar] as Record<string, unknown>[], error: null });
+  const sozlesmeIstegi = Promise.all([
+    yedek((o) => liste(o, "sozlesmeler"), async () => admin
+      ? admin.from("platform_subscription_requests").select("id,contract_no,customer_name,amount,currency,created_at")
+          .eq("status", "pending").order("created_at", { ascending: false })
+      : Promise.resolve({ data: null, error: null })),
+    yedek((o) => liste(o, "kurulum"), async () => admin
+      ? admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at").order("created_at", { ascending: false }).limit(6)
+      : Promise.resolve({ data: [], error: null })),
+    /*
+      BEKLEYEN PROFORMALAR (29.10.2026): gönderilmiş, ödemesi gelmemiş
+      belgeler. Hepsi, sınırsız: bekleyen proforma bir iş kalemi ve
+      sayısı küçük. Geçerliliği en yakın olan başta — kurucunun
+      aradığı "hangisinin süresi dolmak üzere".
+    */
+    yedek((o) => liste(o, "proformalar"), async () => admin
+      /* sınırsız-tamam: bekleyen proforma kuyruğu — kurucunun temizlediği iş listesi, sayısı küçük. */
+      ? admin.from("platform_proformalari").select("id,proforma_no,musteri_adi,product,toplam,para_birimi,gecerlilik_tarihi,gonderildi_at,bildirildi_at,gonderim_hatasi")
+          .eq("durum", "bekliyor").order("gecerlilik_tarihi", { ascending: true })
+      : Promise.resolve({ data: null, error: null })),
+  ]);
   /* Grup içi de ayrı ölçülüyor: ilk ölçümde bu grup ~470 ms ile en yavaştı
      ve beş okumadan hangisi olduğu görünmüyordu. */
   const odemeIstegi = Promise.all([
@@ -214,31 +247,37 @@ export async function KonsolAnaSayfa() {
     sure.olc("musteri_etkinligi", musteriEtkinlikleri()),
     /* Askıdaki lisanslar (02.11.2026, lib/askidakiler): kuyruk "açalım mı, kapatalım mı".
        sınırsız-tamam: askıdaki lisans sayısı küçük ve kurucunun temizlediği bir iş listesi. */
-    sure.olc("aski_cekirdek", (admin ?? supabase).from("organization_licenses").select("organization_id,suspended_at,suspension_reason").eq("license_status", "suspended")),
+    yedek((o) => liste(o, "aski_cekirdek"), () => (admin ?? supabase).from("organization_licenses").select("organization_id,suspended_at,suspension_reason").eq("license_status", "suspended")),
     /* sınırsız-tamam: aynı kuyruk, ek ürünler. */
-    sure.olc("aski_urun", (admin ?? supabase).from("organization_product_licenses").select("organization_id,product,suspended_at,suspension_reason").eq("status", "suspended")),
+    yedek((o) => liste(o, "aski_urun"), () => (admin ?? supabase).from("organization_product_licenses").select("organization_id,product,suspended_at,suspension_reason").eq("status", "suspended")),
   ]);
-  const yeniSayimIstegi = Promise.resolve((admin ?? supabase).from("organizations").select("id", { count: "exact", head: true })
-    .gte("created_at", ayBasi).neq("kind", "internal").eq("grup_markasi", false));
-  const yeniAboneIstegi = admin
-    ? Promise.resolve(admin.from("product_subscribers").select("id", { count: "exact", head: true }).is("kurum_id", null).gte("created_at", ayBasi))
-    : Promise.resolve({ count: null, error: { message: "sunucu anahtarı yok" } });
+  const yeniSayimIstegi = yedek(
+    (o) => ({ count: o.yeni_kurum as number | null, error: null as { message: string } | null }),
+    () => (admin ?? supabase).from("organizations").select("id", { count: "exact", head: true })
+      .gte("created_at", ayBasi).neq("kind", "internal").eq("grup_markasi", false));
+  const yeniAboneIstegi = yedek(
+    (o) => ({ count: o.yeni_abone as number | null, error: null as { message: string } | null }),
+    async () => admin
+      ? admin.from("product_subscribers").select("id", { count: "exact", head: true }).is("kurum_id", null).gte("created_at", ayBasi)
+      : Promise.resolve({ count: null, error: { message: "sunucu anahtarı yok" } }));
   /* sınırsız-tamam: zamanı gelen takipler — kurucunun temizlediği iş listesi, sayısı küçük. */
-  const takipIstegi = Promise.resolve(supabase.from("platform_musteri_notlari")
-    .select("id,organization_id,metin,takip_tarihi")
-    .lte("takip_tarihi", todayInIstanbul())
-    .is("tamamlandi_at", null)
-    .order("takip_tarihi", { ascending: true }));
+  const takipIstegi = yedek(
+    (o) => ({ ...liste(o, "takipler"), error: null as { code?: string; message: string } | null }),
+    () => supabase.from("platform_musteri_notlari")
+      .select("id,organization_id,metin,takip_tarihi")
+      .lte("takip_tarihi", todayInIstanbul())
+      .is("tamamlandi_at", null)
+      .order("takip_tarihi", { ascending: true }));
   /* sınırsız-tamam: yanıt bekleyen talepler — kurucunun temizlediği iş listesi, sayısı küçük. */
-  const destekIstegi = Promise.resolve(supabase.from("support_tickets")
+  const destekIstegi = yedek((o) => liste(o, "destek"), () => supabase.from("support_tickets")
     .select("id,subject,priority,status,last_message_at,organization_id")
     .in("status", YANIT_BEKLEYEN_DURUMLAR)
     .order("last_message_at", { ascending: true }));
   const grafikIstegi = Promise.all([
     /* sınırsız-tamam: 14 günlük grafik penceresi; okuma tarihle sınırlı. */
-    supabase.from("organization_payment_requests").select("id,organization_id,product,amount,payment_method,reviewed_at")
-      .eq("status", "approved").gte("reviewed_at", seriBasi),
-    supabase.from("subscriber_payments").select("id,amount,paid_at").gte("paid_at", seriBasi),
+    yedek((o) => liste(o, "havaleler"), () => supabase.from("organization_payment_requests").select("id,organization_id,product,amount,payment_method,reviewed_at")
+      .eq("status", "approved").gte("reviewed_at", seriBasi)),
+    yedek((o) => liste(o, "bireysel"), () => supabase.from("subscriber_payments").select("id,amount,paid_at").gte("paid_at", seriBasi)),
   ]);
   /* Köprü sağlığı 60 sn önbellekte (lib/kopru-sagliklari); Sistem sağlığı canlı okuyor. */
   const kopruSagligi = kopruSagliklari();
@@ -258,7 +297,7 @@ export async function KonsolAnaSayfa() {
   ]);
   /* Ölçüm başlangıç anında bağlanıyor: süre okumanın kendisi, bekleme yeri değil. */
   for (const [ad, is] of Object.entries({
-    sema: semaIstegi, sozlesme_kurulum_proforma: sozlesmeIstegi, odeme_kredi_etkinlik_aski: odemeIstegi,
+    ozet: ozetIstegi, sema: semaIstegi, sozlesme_kurulum_proforma: sozlesmeIstegi, odeme_kredi_etkinlik_aski: odemeIstegi,
     yeni_kurum: yeniSayimIstegi, yeni_abone: yeniAboneIstegi, takip: takipIstegi, destek: destekIstegi,
     grafik: grafikIstegi, kopru_kopya: kopruIstegi,
   } as Record<string, PromiseLike<unknown>>)) void sure.olc(ad, is).catch(() => {});
@@ -321,13 +360,13 @@ export async function KonsolAnaSayfa() {
       .catch((hata: unknown) => ({ data: null, error: { message: hata instanceof Error ? hata.message : String(hata) } })),
     /* Bekleyenlerin TAMAMI, sınırsız: kuyruk kurucunun bugünkü işi ve
        satır satır gösteriliyor (Ödeme onayları ekranındaki kuralın aynısı). */
-    supabase.from("organization_payment_requests").select("id,organization_id,product,plan_code,amount,currency,payment_method,created_at")
-      .eq("status", "pending").order("created_at", { ascending: false }),
-    supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+    yedek((o) => liste(o, "bekleyen_odemeler"), () => supabase.from("organization_payment_requests").select("id,organization_id,product,plan_code,amount,currency,payment_method,created_at")
+      .eq("status", "pending").order("created_at", { ascending: false })),
+    yedek((o) => ({ data: { full_name: o.ad } }), () => supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle()),
     /* Ad birden çok yerde olabilir ve hiçbiri zorunlu değil; davet
        akışından geçmeden açılmış bir hesabın profiles kaydı yok ve
        selamlama adsız kalıyordu. */
-    supabase.from("hr_employees").select("full_name").eq("user_id", userId).limit(1).maybeSingle(),
+    yedek((o) => ({ data: { full_name: o.ad } }), () => supabase.from("hr_employees").select("full_name").eq("user_id", userId).limit(1).maybeSingle()),
     /* Depolama storage.objects'ten geliyor; o tablo PostgREST'e açık değil
        ve olmamalı. Fonksiyon yalnızca kurum başına TOPLAM döndürüyor. */
     /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
