@@ -327,5 +327,14 @@
   {
     "migration": "20261103062213_kurucu_bildirim_sayim_dizini",
     "izler": []
+  },
+  {
+    "migration": "20261103065144_konsol_ana_ozeti",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.platform_konsol_ana_ozeti"
+      }
+    ]
   }
 ]
