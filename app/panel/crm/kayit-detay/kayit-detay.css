@@ -1157,3 +1157,6 @@
 .os-root .opd-kart p.kd-buyuk-rakam[data-tone="warning"]{color:var(--warning)}
 .os-root .opd-kart p.kd-buyuk-rakam[data-tone="success"]{color:var(--success)}
 .os-root .opd-kart p.kd-buyuk-rakam small{font-size:var(--fs-micro);font-weight:var(--fw-medium);color:var(--muted)}
+/* Personel kartları sade (03.11.2026): alt satır (dip) yok, kartın tamamı tıklanır; satır sağındaki tarih tek satır. */
+.kd-kutular-personel .kd-kutu-satirlar small{flex:none;color:var(--muted);font-size:var(--fs-micro);white-space:nowrap}
+.kd-kutular-personel .kd-kutu-satirlar>span>b{min-width:0}
