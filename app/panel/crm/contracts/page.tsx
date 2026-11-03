@@ -279,7 +279,6 @@ export default async function ContractsPage({ searchParams }: Props) {
   const imzaBekleyenSayisi = sayiAl(ozet.imza_bekleyen);
   const imzaBekleyenGec = sayiAl(ozet.imza_bekleyen_gec);
   const aylikImza = aylikDilimler(ozet.aylik ?? [], 6, an);
-  const hizmetler = (ozet.hizmetler ?? []).map((satir) => [satir.ad, Number(satir.adet)] as [string, number]);
   /* Temsilci seçimi: satış talebi alabilen aktif personel ve
      sözleşmelerde adı geçen herkes — ikincisi de özetten. */
   const atananlar = new Set(ozet.temsilciler ?? []);
@@ -445,7 +444,7 @@ export default async function ContractsPage({ searchParams }: Props) {
           ]}
           gruplar={[
             { baslik: "Son 6 ay · imzalanan değer", satirlar: aylikImza.map((ay) => ({ ad: `${ay.ad} · ${ay.adet} sözleşme`, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
-            { baslik: "Hizmet türüne göre", satirlar: hizmetler.map(([ad, adet]) => ({ ad, adet })) },
+            /* "Hizmet türüne göre" 03.11.2026'da kalktı (kurum sahibinin isteği): hizmet dağılımı Talepler'de; burada tek kart, aylık değer. */
           ]}
         />
       </div>

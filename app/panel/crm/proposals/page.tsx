@@ -296,7 +296,6 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const aktifDeger = sayiAl(ozet.aktif_deger);
   const istatistikKapsami = `${sayiAl(ozet.toplam)} teklif`;
   const aylikDeger = aylikDilimler(ozet.aylik ?? [], 6, an);
-  const hizmetler = (ozet.hizmetler ?? []).map((satir) => [satir.ad, Number(satir.adet)] as [string, number]);
   /* Temsilci seçimi: satış talebi alabilen aktif personel ve tekliflerde
      adı geçen herkes. "Adı geçenler" de özetten geliyor; eskiden
      listenin tamamını okumak gerekiyordu. */
@@ -462,7 +461,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
           ]}
           gruplar={[
             { baslik: "Son 6 ay · teklif değeri", satirlar: aylikDeger.map((ay) => ({ ad: `${ay.ad} · ${ay.adet} teklif`, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
-            { baslik: "Hizmet türüne göre", satirlar: hizmetler.map(([ad, adet]) => ({ ad, adet })) },
+            /* "Hizmet türüne göre" 03.11.2026'da kalktı (kurum sahibinin isteği): hizmet dağılımı Talepler'de; burada tek kart, aylık değer. */
           ]}
         />
       </div>
