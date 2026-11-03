@@ -281,7 +281,7 @@ export default async function ContractDetailPage({ params }: Props) {
   };
 
   return (
-    <main className="crm-page-stack crm-request-detail-page talep">
+    <main className="crm-page-stack crm-request-detail-page talep kd-tek-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
           <small className="panel-kicker">{data.contract_no}</small>
