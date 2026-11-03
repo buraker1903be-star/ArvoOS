@@ -63,3 +63,11 @@
 }
 /* Sözleşmenin mesaj paneli tek parça kayıyor; yanıt kutusu altta kalsın, uzun yazışmada en alta inmek gerekmesin. */
 .akis-cekmece .sozlesme-mesaj .contract-reply{position:sticky;bottom:0;margin:0;padding:var(--sp-3) var(--sp-5);border-top:1px solid var(--line-soft);background:var(--surface)}
+
+/* Özette satırı olmayan kanalların bağlantısı ve kartın ikinci başlığı (iş detayında Dosyalar). */
+.akis-ozet-alt{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin:2px 0 0}
+.akis-ozet-alt button{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-semibold);cursor:pointer}
+.akis-ozet-alt button:hover{text-decoration:underline}
+.akis-ozet-ara{margin-top:var(--sp-2)}
+.akis-ozet-bos{margin-left:auto;overflow:hidden;color:var(--muted);font-size:var(--fs-micro);font-style:italic;white-space:nowrap;text-overflow:ellipsis}
+.akis-ozet-ust{min-width:0}

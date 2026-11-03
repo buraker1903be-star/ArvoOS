@@ -647,8 +647,27 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   dar sütunda başlık iki satıra kırılıyordu.
 */
 @media (min-width:1201px){
-  .opd-v3 .talep-izgara.opd-izgara{grid-template-columns:minmax(260px,1fr) minmax(0,2.5fr) minmax(220px,.75fr)}
+  .opd-v3 .talep-izgara.opd-izgara{grid-template-columns:minmax(300px,360px) minmax(0,1fr)}
 }
+/*
+  Sol sütun üç kart (müşteri, yazışmalar, dosyalar); kabuk kart değil,
+  yalnızca kaydırma alanı (yükseklik sınırı talep-izgara kuralından).
+*/
+.opd-v3 .opd-sol{display:flex;flex-direction:column;gap:var(--sp-3)}
+.opd-v3 .opd-sol>.panel-card{flex:none;margin:0}
+.opd-sol-kart{display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-4)}
+.opd-sol-kart .talep-iletisim{margin:var(--sp-2) 0 0}
+.opd-sol-kart .talep-liste{margin:var(--sp-2) 0 0}
+.opd-sol-termin{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+.opd-sol-degistir{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-semibold);cursor:pointer}
+.opd-sol-degistir:hover{text-decoration:underline}
+.opd-sol-kart .talep-musteri-kimlik>.opd-sol-ayrinti{margin-left:auto;align-self:flex-start}
+/* Sol sütun yükseklik sınırı almıyor: üç bölüm birlikte okunuyor, sütunun içinde ayrıca kaydırmak istenmiyor (görevler kendi içinde kayar). */
+.os-root .opd-v3 .talep-izgara.opd-izgara>.talep-musteri.opd-sol{max-height:none;overflow:visible}
+/* Sütun tek ekrana sığsın: düğmeler ve satırlar sıkı, önizleme tek satır (tamamı çekmecede). */
+.opd-v3 .opd-sol .talep-liste>div{padding-block:7px}
+.opd-v3 .opd-sol .akis-ozet-metin{-webkit-line-clamp:1}
+.opd-ayrinti{display:flex;flex-direction:column;gap:var(--sp-3)}
 /* Akış: sohbet panelin boyunu doldurur, yazma alanı altta kalır. */
 .opd-v3 .talep-akis-panel .opd-sohbet{height:calc(100dvh - 442px);min-height:320px;gap:0}
 .opd-v3 .talep-akis-panel .opd-sohbet-liste{border-radius:0;background:var(--surface-2)}
