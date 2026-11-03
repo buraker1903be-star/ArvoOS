@@ -50,6 +50,7 @@ import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
 import { modulGerek } from "@/lib/modul-kapisi";
 import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
 import { PortalZiyareti } from "../../portal-ziyareti";
+import { SozlesmeMaddeleri } from "./sozlesme-maddeleri";
 import { KopyalaDugmesi } from "../../../accounts/kopyala-dugmesi";
 import { doluAlanlar, type Kunye } from "@/lib/musteri-kunyesi";
 import { liraYazisi } from "@/lib/turkish-amount";
@@ -260,8 +261,8 @@ export default async function ContractDetailPage({ params }: Props) {
       ["customer_address", data.customer_address ?? ""], ["customer_tax_number", data.customer_tax_number ?? ""], ["customer_tax_office", data.customer_tax_office ?? ""],
     ],
   };
-  const gizliAlanlar = (haric: "sozlesme" | "musteri" | "termin") => {
-    const satirlar = haric === "sozlesme" ? gizliDegerler.musteri
+  const gizliAlanlar = (haric: "hizmet" | "musteri" | "termin") => {
+    const satirlar = haric === "hizmet" ? [...gizliDegerler.musteri, ...gizliDegerler.sozlesme.filter(([ad]) => ad === "due_date")]
       : haric === "musteri" ? gizliDegerler.sozlesme
       : [...gizliDegerler.musteri, ...gizliDegerler.sozlesme.filter(([ad]) => ad !== "due_date")];
     return <>{satirlar.map(([ad, deger]) => <input key={ad} type="hidden" name={ad} value={deger} />)}</>;
@@ -653,29 +654,26 @@ export default async function ContractDetailPage({ params }: Props) {
 
         <section className="panel-card talep-bilgi kd-ana" aria-label="Sözleşme bilgileri">
           {/*
-            ANA BÖLÜM (03.11.2026, kurum sahibinin çizimi): tutar ve iki
-            düzenleme düğmesi; altında üç kutu (ödeme planı, iş planı, iş
-            termin tarihi) kendi "Düzenle"siyle; altında imza ve görüntüleme
-            bilgisi. Düzenleme eskiden ⋯ menüsünde dört ayrı satırdı ve tek
-            bir uzun formdu; müşteri bilgileri ile sözleşme maddeleri artık
-            ayrı pencerede (aynı sunucu işlemi, öteki bölümün değerleri gizli
-            alanla taşınıyor).
+            ANA BÖLÜM (03.11.2026, kurum sahibinin çizimi ve geri bildirimi).
+            Üstte iki düzenleme düğmesi (müşteri bilgileri, sözleşme
+            maddeleri) ve önizleme; altında dört kart: hizmet kapsamı ve
+            ücret, ödeme planı, iş planı, iş termin tarihi. Kartın HERHANGİ
+            bir yerine basınca ortada pencere açılır (eskiden kartın köşesindeki
+            "Düzenle →" sağdan çekmece açıyordu). İmzalı sözleşmede pencere
+            salt okunur; iş planı kartı ek protokolü açar.
+
+            Mükerrer bölümler kalktı: tutar başlığı (tutar artık hizmet
+            kartında), alttaki Kapsam bölümü (hizmet kartında) ve
+            olaylardaki Başlangıç (termin kartında).
           */}
           <div className="kd-tutar-satir">
-            <div className="teklif-tutar">
-              <div>
-                <h2>Sözleşme tutarı</h2>
-                <strong>{money(Number(data.amount), data.currency || "TRY")}</strong>
-              </div>
+            <div>
+              <h2 className="kd-ana-baslik">Sözleşme</h2>
               {pendingAddendum ? <span className="status-pill" data-tone={statusTone("pending")}>Ek protokol onay bekliyor</span> : null}
             </div>
-            {!locked ? (
-              <div className="kd-tutar-eylem">
-                <PanelDrawer triggerLabel="Müşteri bilgilerini düzenle" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Müşteri bilgileri" description="İletişim, künye ve fatura bilgileri. Değişiklik imza bağlantısındaki metne de yansır." triggerClassName="panel-secondary kd-hap">
-                    {/* DÜZEN (2026-10): talep girişi ve teklif formuyla aynı ortak
-                        form (components/kayit-formu.css), dört bölüm. Eskiden
-                        girilen metin kalın görünüyor, zorunlu alan belli
-                        değildi; müşteri adı boş kaydedilebiliyordu. */}
+            <div className="kd-tutar-eylem">
+              {!locked ? (
+                <PanelModal triggerLabel="Müşteri bilgilerini düzenle" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Müşteri bilgileri" description="İletişim, künye ve fatura bilgileri. Değişiklik imza bağlantısındaki metne de yansır." triggerClassName="panel-secondary kd-hap" boy="buyuk" basaridaKapan>
                     <form className="panel-form kayit-formu" action={updateContract}>
                       <input type="hidden" name="contract_id" value={data.id} />
                       <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
@@ -704,146 +702,204 @@ export default async function ContractDetailPage({ params }: Props) {
                         <button className="panel-primary">Değişiklikleri kaydet</button>
                       </div>
                     </form>
-                </PanelDrawer>
-                <PanelDrawer triggerLabel="Sözleşme maddelerini düzenle" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Sözleşme maddeleri" description="Başlık, kapsam, tutar ve tarihler. Değişiklik imza bağlantısındaki metne de yansır." triggerClassName="panel-secondary kd-hap">
-                    {/* DÜZEN (2026-10): talep girişi ve teklif formuyla aynı ortak
-                        form (components/kayit-formu.css), dört bölüm. Eskiden
-                        girilen metin kalın görünüyor, zorunlu alan belli
-                        değildi; müşteri adı boş kaydedilebiliyordu. */}
-                    <form className="panel-form kayit-formu" action={updateContract}>
-                      <input type="hidden" name="contract_id" value={data.id} />
-                      <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
-                      <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
-
-                      {gizliAlanlar("sozlesme")}
-                      <p className="wide kayit-formu-bolum">Sözleşme</p>
-                      <label className="wide"><span>Sözleşme başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
-                      <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
-                      <label><span>Sözleşme tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(data.amount)} required /></label>
-                      <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
-                      <label>Başlangıç tarihi<TarihSecici name="start_date" defaultValue={data.start_date ?? ""} /></label>
-                      <label>Teslim tarihi<TarihSecici name="due_date" defaultValue={data.due_date ?? ""} /></label>
-                      <p className="wide kayit-formu-not">Taksitler ve vade tarihleri “Ödeme planı” kutusundan değişir; tutar değişirse taksitler yeni toplama göre ölçeklenir.</p>
-
-                      {/* Yalnızca Arvo'nun kendi kurumunda: kiracının kendi
-                          müşterisiyle yaptığı sözleşme bizim aboneliğimizi açmaz. */}
-                      {arvoKurumu ? <AbonelikAlanlari niyet={data.subscription_intent} /> : null}
-
-                      <div className="wide panel-form-actions kayit-formu-eylem">
-                        <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
-                        <button className="panel-primary">Değişiklikleri kaydet</button>
-                      </div>
-                    </form>
-                </PanelDrawer>
-              </div>
-            ) : null}
+                </PanelModal>
+              ) : null}
+              <PanelModal triggerLabel="Sözleşme maddelerini düzenle" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Sözleşme maddeleri" description={locked ? "İmzalanan metin; değişiklik ancak ek protokolle." : "Maddeleri yalnızca bu sözleşme için değiştirin; kurum metni değişmez."} triggerClassName="panel-secondary kd-hap" boy="buyuk">
+                <SozlesmeMaddeleri contractId={data.id} duzenlenebilir={!locked && imzayaGonderir} />
+              </PanelModal>
+              <Link className="panel-secondary kd-hap" href={`/panel/documents/contract/${data.id}/preview`} target="_blank">Önizle</Link>
+            </div>
           </div>
           {signed ? (
             <p className="teklif-kilit">İmzalı sözleşme değiştirilemez. İş planı ve vade değişikliği “Ek protokol” ile müşterinin onayına sunulur.</p>
           ) : null}
 
           <div className="kd-kutular">
-            <section className="kd-kutu" aria-label="Ödeme planı">
-              <h3>Ödeme planı</h3>
-              {installments.length ? (
-                <div className="sozlesme-odeme-ozet">
-                  <span><b>{money(odenenTutar, data.currency)}</b> ödendi · {odenen.length}/{installments.length} taksit</span>
-                  {gecikenTaksit ? <span className="status-pill" data-tone="warning">{gecikenTaksit} taksidin vadesi geçti</span> : null}
-                  <i aria-hidden="true"><b style={{ width: `${taksitToplami ? Math.round((odenenTutar / taksitToplami) * 100) : 0}%` }} /></i>
-                </div>
-              ) : null}
-              {paymentRows.length ? (
-                <ul className="kd-kutu-liste">
-                  {paymentRows.map((row) => (
-                    <li key={row.sequence}>
-                      <span>{row.label}: <b>{money(row.amount, data.currency)}</b></span>
-                      <time>{row.when}</time>
-                      {row.status || row.missing ? <small>{row.status ?? ""}{row.missing ? "vade tarihi girin" : ""}</small> : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="talep-bos">{data.payment_plan || "Taksit girilmemiş."}</p>}
+            <PanelModal
+              triggerClassName="kd-kutu"
+              triggerLabel="Hizmet kapsamı ve ücret"
+              tetik={<>
+                <span className="kd-kutu-baslik">Hizmet kapsamı ve ücret</span>
+                <span className="kd-kutu-buyuk">{money(Number(data.amount), data.currency || "TRY")}</span>
+                <span className="kd-kutu-alt">{data.title}</span>
+                <span className="kd-kutu-ozet">{data.scope || "Kapsam yazılmamış."}</span>
+                <span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span>
+              </>}
+              title="Hizmet kapsamı ve ücret"
+              description="Sözleşme başlığı, verilecek hizmetler, tutar ve başlangıç tarihi."
+              kicker={`SÖZLEŞME · ${data.contract_no}`}
+              boy="buyuk"
+              basaridaKapan
+            >
               {!locked ? (
-                <PanelDrawer triggerLabel="Düzenle →" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Ödeme planı" description="Müşterinin talebiyle ödeme planını ve vade tarihlerini revize edin." triggerClassName="kd-kutu-duzenle">
-                    <ContractPaymentPlanForm
-                      contractId={data.id}
-                      amountCents={data.amount}
-                      currentPlanType={data.payment_plan_type}
-                      currentSchedule={data.payment_schedule ?? proposalJoin?.payment_schedule ?? []}
-                    />
-                </PanelDrawer>
-              ) : null}
-            </section>
+                        <form className="panel-form kayit-formu" action={updateContract}>
+                          <input type="hidden" name="contract_id" value={data.id} />
+                          <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
+                          <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
 
-            <section className="kd-kutu" aria-label="İş planı">
-              <h3>İş planı</h3>
+                          {gizliAlanlar("hizmet")}
+                          <p className="wide kayit-formu-bolum">Hizmet ve ücret</p>
+                          <label className="wide"><span>Sözleşme başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
+                          <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
+                          <label><span>Sözleşme tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(data.amount)} required /></label>
+                          <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
+                          <label>Başlangıç tarihi<TarihSecici name="start_date" defaultValue={data.start_date ?? ""} /></label>
+                          <p className="wide kayit-formu-not">Taksitler ve vade tarihleri “Ödeme planı” kartından değişir; teslim tarihi “İş termin tarihi” kartından; tutar değişirse taksitler yeni toplama göre ölçeklenir.</p>
+
+                          {/* Yalnızca Arvo'nun kendi kurumunda: kiracının kendi
+                              müşterisiyle yaptığı sözleşme bizim aboneliğimizi açmaz. */}
+                          {arvoKurumu ? <AbonelikAlanlari niyet={data.subscription_intent} /> : null}
+
+                          <div className="wide panel-form-actions kayit-formu-eylem">
+                            <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                            <button className="panel-primary">Değişiklikleri kaydet</button>
+                          </div>
+                        </form>
+              ) : (
+                <dl className="talep-liste">
+                  <div><dt>Başlık</dt><dd>{data.title}</dd></div>
+                  <div><dt>Tutar</dt><dd>{money(Number(data.amount), data.currency || "TRY")}</dd></div>
+                  <div><dt>Ödeme planı</dt><dd>{data.payment_plan || <em>Belirtilmedi</em>}</dd></div>
+                  <div><dt>Kapsam</dt><dd className="kd-salt">{data.scope || <em>Yazılmamış</em>}</dd></div>
+                </dl>
+              )}
+            </PanelModal>
+
+            <PanelModal
+              triggerClassName="kd-kutu"
+              triggerLabel="Ödeme planı"
+              tetik={<>
+                <span className="kd-kutu-baslik">Ödeme planı</span>
+                {installments.length ? (
+                  <span className="sozlesme-odeme-ozet">
+                    <span><b>{money(odenenTutar, data.currency)}</b> ödendi · {odenen.length}/{installments.length} taksit</span>
+                    {gecikenTaksit ? <span className="status-pill" data-tone="warning">{gecikenTaksit} taksidin vadesi geçti</span> : null}
+                    <i aria-hidden="true"><b style={{ width: `${taksitToplami ? Math.round((odenenTutar / taksitToplami) * 100) : 0}%` }} /></i>
+                  </span>
+                ) : null}
+                {paymentRows.length ? (
+                  <span className="kd-kutu-liste">
+                    {paymentRows.map((row) => (
+                      <span key={row.sequence}>
+                        <span>{row.label}: <b>{money(row.amount, data.currency)}</b></span>
+                        <time>{row.when}</time>
+                        {row.status || row.missing ? <small>{row.status ?? ""}{row.missing ? "vade tarihi girin" : ""}</small> : null}
+                      </span>
+                    ))}
+                  </span>
+                ) : <span className="kd-kutu-ozet">{data.payment_plan || "Taksit girilmemiş."}</span>}
+                <span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span>
+              </>}
+              title="Ödeme planı"
+              description={locked ? "İmzalanan ödeme planı; vade değişikliği ek protokolle." : "Müşterinin talebiyle ödeme planını ve vade tarihlerini revize edin."}
+              kicker={`SÖZLEŞME · ${data.contract_no}`}
+              boy="buyuk"
+              basaridaKapan
+            >
+              {!locked ? (
+                        <ContractPaymentPlanForm
+                          contractId={data.id}
+                          amountCents={data.amount}
+                          currentPlanType={data.payment_plan_type}
+                          currentSchedule={data.payment_schedule ?? proposalJoin?.payment_schedule ?? []}
+                        />
+              ) : (
+                <ol className="plan-timeline">
+                  {paymentRows.map((row) => <li key={row.sequence}><time>{row.when}</time><span>{row.label} · {money(row.amount, data.currency)}{row.status ? ` · ${row.status}` : ""}</span></li>)}
+                </ol>
+              )}
+            </PanelModal>
+
+            <PanelModal
+              triggerClassName="kd-kutu"
+              triggerLabel="İş planı"
+              tetik={<>
+                <span className="kd-kutu-baslik">İş planı</span>
+                {!planFeature ? (
+                  <span className="kd-kutu-ozet">İş planı için veritabanı güncellemesi bekleniyor.</span>
+                ) : currentPlan.length ? (
+                  <span className="kd-kutu-liste">
+                    {currentPlan.map((item) => <span key={item.sequence}><time dateTime={item.due_date}>{date(item.due_date)}</time><span>{item.title}</span></span>)}
+                  </span>
+                ) : (
+                  <span className="kd-kutu-ozet">{signed ? "Ara teslim takvimi yok; ek protokolle eklenir." : "Henüz ara teslim takvimi yok."}</span>
+                )}
+                {acceptedPlan ? <span className="kd-kutu-ozet">Ek Protokol {acceptedPlan.addendum_no} ile belirlendi.</span> : null}
+                <span className="kd-kutu-ac">{!locked ? "Düzenle" : signed ? "Ek protokol" : "Görüntüle"} →</span>
+              </>}
+              title={signed ? "Ek protokol" : "İş planı"}
+              description={signed ? "Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun." : "Ara teslim takvimini sözleşmeye yazın (madde 4)."}
+              kicker={`SÖZLEŞME · ${data.contract_no}`}
+              boy="buyuk"
+              basaridaKapan
+            >
               {!planFeature ? (
                 <p className="plan-form-hint">İş planı ve ek protokol için veritabanı güncellemesi (20260914090000_contract_work_plan_addenda) henüz uygulanmadı.</p>
-              ) : currentPlan.length ? (
-                <ul className="kd-kutu-liste">
-                  {currentPlan.map((item) => <li key={item.sequence}><time dateTime={item.due_date}>{date(item.due_date)}</time><span>{item.title}</span></li>)}
-                </ul>
+              ) : !locked ? (
+                        <ContractWorkPlanForm contractId={data.id} initial={contractWorkPlan} />
+              ) : signed ? (
+                <>
+                      {pendingAddendum ? (
+                        <p className="kayit-formu-not">Ek Protokol {pendingAddendum.addendum_no} müşterinin onayını bekliyor. Yenisini göndermek için önce onu “İş planı ve ödeme takvimi” bölümünden geri çekin.</p>
+                      ) : (
+                        <ContractAddendumForm contractId={data.id} installments={installments} initialPlan={currentPlan} />
+                      )}
+                </>
               ) : (
-                <p className="talep-bos">{signed ? "Ara teslim takvimi yok; “Ek protokol” ile onaya sunulur." : "Henüz ara teslim takvimi yok."}</p>
+                <ol className="plan-timeline">
+                  {currentPlan.map((item) => <li key={item.sequence}><time dateTime={item.due_date}>{date(item.due_date)}</time><span>{item.title}</span></li>)}
+                </ol>
               )}
-              {acceptedPlan ? <p className="plan-form-hint">Ek Protokol {acceptedPlan.addendum_no} ile belirlendi ({dateTime(acceptedPlan.responded_at)}).</p> : null}
-              {!locked && planFeature ? (
-                <PanelDrawer triggerLabel="Düzenle →" kicker={`SÖZLEŞME · ${data.contract_no}`} title="İş planı" description="Ara teslim takvimini sözleşmeye yazın (madde 4)." triggerClassName="kd-kutu-duzenle">
-                    <ContractWorkPlanForm contractId={data.id} initial={contractWorkPlan} />
-                </PanelDrawer>
-              ) : signed && planFeature ? (
-                <PanelDrawer triggerLabel="Ek protokol →" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Ek protokol" description="Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun." triggerClassName="kd-kutu-duzenle">
-                    {pendingAddendum ? (
-                      <p className="kayit-formu-not">Ek Protokol {pendingAddendum.addendum_no} müşterinin onayını bekliyor. Yenisini göndermek için önce onu “İş planı ve ödeme takvimi” bölümünden geri çekin.</p>
-                    ) : (
-                      <ContractAddendumForm contractId={data.id} installments={installments} initialPlan={currentPlan} />
-                    )}
-                </PanelDrawer>
-              ) : null}
-            </section>
+            </PanelModal>
 
-            <section className="kd-kutu" aria-label="İş termin tarihi">
-              <h3>İş termin tarihi</h3>
-              {data.due_date ? (
-                <p className="kd-kutu-buyuk">
-                  {date(data.due_date)}
-                  {terminKalan !== null ? <small data-tone={terminKalan < 0 ? "danger" : terminKalan <= 7 ? "warning" : undefined}>{terminKalan < 0 ? `${-terminKalan} gün geçti` : terminKalan === 0 ? "Bugün" : `${terminKalan} gün kaldı`}</small> : null}
-                </p>
-              ) : <p className="talep-bos">Teslim tarihi girilmemiş.</p>}
+            <PanelModal
+              triggerClassName="kd-kutu"
+              triggerLabel="İş termin tarihi"
+              tetik={<>
+                <span className="kd-kutu-baslik">İş termin tarihi</span>
+                {data.due_date ? (
+                  <span className="kd-kutu-buyuk">
+                    {date(data.due_date)}
+                    {terminKalan !== null ? <small data-tone={terminKalan < 0 ? "danger" : terminKalan <= 7 ? "warning" : undefined}>{terminKalan < 0 ? `${-terminKalan} gün geçti` : terminKalan === 0 ? "Bugün" : `${terminKalan} gün kaldı`}</small> : null}
+                  </span>
+                ) : <span className="kd-kutu-ozet">Teslim tarihi girilmemiş.</span>}
+                <span className="kd-kutu-alt">Başlangıç: {tarih(data.start_date) ?? "belirtilmedi"}</span>
+                <span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span>
+              </>}
+              title="İş termin tarihi"
+              description="Sözleşmede yazan teslim tarihi. Değişiklik imza bağlantısındaki metne de yansır."
+              kicker={`SÖZLEŞME · ${data.contract_no}`}
+              boy="dar"
+              basaridaKapan
+            >
               {!locked ? (
-                <PanelDrawer triggerLabel="Düzenle →" kicker={`SÖZLEŞME · ${data.contract_no}`} title="İş termin tarihi" description="Sözleşmede yazan teslim tarihi. Değişiklik imza bağlantısındaki metne de yansır." triggerClassName="kd-kutu-duzenle">
-                    {/* DÜZEN (2026-10): talep girişi ve teklif formuyla aynı ortak
-                        form (components/kayit-formu.css), dört bölüm. Eskiden
-                        girilen metin kalın görünüyor, zorunlu alan belli
-                        değildi; müşteri adı boş kaydedilebiliyordu. */}
-                    <form className="panel-form kayit-formu" action={updateContract}>
-                      <input type="hidden" name="contract_id" value={data.id} />
-                      <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
-                      <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
+                        <form className="panel-form kayit-formu" action={updateContract}>
+                          <input type="hidden" name="contract_id" value={data.id} />
+                          <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
+                          <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
 
-                      {gizliAlanlar("termin")}
-                      <label className="wide">Teslim tarihi<TarihSecici name="due_date" defaultValue={data.due_date ?? ""} /></label>
-                      <div className="wide panel-form-actions kayit-formu-eylem">
-                        <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
-                        <button className="panel-primary">Değişiklikleri kaydet</button>
-                      </div>
-                    </form>
-                </PanelDrawer>
-              ) : null}
-            </section>
+                          {gizliAlanlar("termin")}
+                          <label className="wide">Teslim tarihi<TarihSecici name="due_date" defaultValue={data.due_date ?? ""} /></label>
+                          <div className="wide panel-form-actions kayit-formu-eylem">
+                            <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                            <button className="panel-primary">Değişiklikleri kaydet</button>
+                          </div>
+                        </form>
+              ) : (
+                <dl className="talep-liste">
+                  <div><dt>Teslim</dt><dd>{tarih(data.due_date) ?? <em>Belirtilmedi</em>}</dd></div>
+                  <div><dt>Başlangıç</dt><dd>{tarih(data.start_date) ?? <em>Belirtilmedi</em>}</dd></div>
+                </dl>
+              )}
+            </PanelModal>
           </div>
 
           <dl className="kd-olaylar">
             <div><dt>Müşteriye imzaya gönderildiği tarih</dt><dd>{data.sent_at ? uzunTarih(data.sent_at) : <em>Gönderilmedi</em>}</dd></div>
             <div><dt>İmzalayan</dt><dd>{data.signed_name ? <>{data.signed_name}{data.signed_at ? <small>{uzunTarih(data.signed_at)}</small> : null}</> : <em>Bekleniyor</em>}</dd></div>
             <div><dt>Sözleşme görüntüleme</dt><dd>{data.view_count ? <>{data.view_count} kez görüntülendi{data.last_viewed_at ? <small>Son {uzunTarih(data.last_viewed_at)}</small> : null}</> : <em>Açılmadı</em>}</dd></div>
-            <div><dt>Başlangıç</dt><dd>{tarih(data.start_date) ?? <em>Belirtilmedi</em>}</dd></div>
           </dl>
 
-          <div className="talep-not">
-            <h3>Kapsam</h3>
-            {data.scope ? <p>{data.scope}</p> : <p className="talep-bos">Kapsam yazılmamış.</p>}
-          </div>
 
           {planFeature && addenda.length ? (
             <div className="talep-not">

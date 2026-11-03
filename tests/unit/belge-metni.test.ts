@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   birimleriYaz, etkinSira, kalinAyir, kurumMetniCoz, maddeEkle, maddeyiGeriEkle, maddeyiKaldir, maddeyiKaydet, maddeyiSifirla, maddeyiTasi,
-  metniCoz, metniDenetle, surumleriBirlestir, yerTutucuDoldur, type KurumMetni, type SiraKurali,
+  metniCoz, metniDenetle, sozlesmeMetniBirlestir, surumleriBirlestir, yerTutucuDoldur, type KurumMetni, type SiraKurali,
 } from "../../lib/belge-metni.ts";
 
 /*
@@ -105,4 +105,20 @@ test("tüketici ve tacir sürümleri tek metinde birleşiyor", () => {
 test("**kalın** parçalanıyor", () => {
   assert.deepEqual(kalinAyir("**Havale:** yalnızca"), [{ metin: "Havale:", kalin: true }, { metin: " yalnızca", kalin: false }]);
   assert.deepEqual(kalinAyir("düz"), [{ metin: "düz", kalin: false }]);
+});
+
+test("sözleşmeye özel maddeler (20261103144006)", async (t) => {
+  const kurum = { surum: 1, sira: ["a", "b"], maddeler: { a: { baslik: "A", metin: "kurum" } } };
+  await t.test("özel madde kurumunkini ezer, kurumun öteki maddeleri ve sırası kalır", () => {
+    assert.deepEqual(sozlesmeMetniBirlestir(kurum, { a: { baslik: "A", metin: "özel" }, b: { baslik: "B", metin: "b" } }), {
+      surum: 1, sira: ["a", "b"], maddeler: { a: { baslik: "A", metin: "özel" }, b: { baslik: "B", metin: "b" } },
+    });
+  });
+  await t.test("özel madde yoksa ya da boşsa kurum metni olduğu gibi", () => {
+    assert.equal(sozlesmeMetniBirlestir(kurum, null), kurum);
+    assert.equal(sozlesmeMetniBirlestir(kurum, {}), kurum);
+  });
+  await t.test("kurum metni yoksa yalnızca özel maddeler (veritabanındaki ikiziyle aynı)", () => {
+    assert.deepEqual(sozlesmeMetniBirlestir(null, { a: { baslik: "A", metin: "özel" } }), { surum: 1, maddeler: { a: { baslik: "A", metin: "özel" } } });
+  });
 });

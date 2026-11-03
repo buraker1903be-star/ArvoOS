@@ -943,29 +943,57 @@
 .kd-tutar-satir>.teklif-tutar{padding:0;border:0}
 .kd-tutar-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
 .os-root .kd-hap{min-height:36px;padding:0 var(--sp-4);border-radius:var(--r-pill);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
-.kd-kutular{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-3);margin-top:var(--sp-4)}
-.kd-kutu{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0;min-height:180px;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface-2)}
-.kd-kutu>h3{margin:0;padding-bottom:var(--sp-2);border-bottom:1px solid var(--line);color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
-.kd-kutu-liste{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
-.kd-kutu-liste li{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px var(--sp-2);color:var(--ink);font-size:var(--fs-sm)}
-.kd-kutu-liste li time{color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums;white-space:nowrap}
-.kd-kutu-liste li small{flex-basis:100%;color:var(--muted);font-size:var(--fs-micro)}
+/*
+  Dört kart (03.11.2026): hizmet kapsamı ve ücret, ödeme planı, iş planı,
+  iş termin tarihi. Kartın tamamı pencereyi açan düğme; "Düzenle →" yalnızca
+  ipucu, sağ altta sabit.
+*/
+.kd-kutular{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--sp-3);margin-top:var(--sp-4)}
+.kd-kutu{display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-2);min-width:0;min-height:200px;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface-2);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.kd-kutu:hover{border-color:var(--primary);background:var(--surface);box-shadow:var(--shadow-sm)}
+.kd-kutu:focus-visible{outline:none;box-shadow:0 0 0 2px var(--focus)}
+.kd-kutu-baslik{padding-bottom:var(--sp-2);border-bottom:1px solid var(--line);color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.kd-kutu-liste{display:flex;flex-direction:column;gap:6px}
+.kd-kutu-liste>span{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px var(--sp-2);color:var(--ink);font-size:var(--fs-sm)}
+.kd-kutu-liste>span:has(>time:first-child){justify-content:flex-start}
+.kd-kutu-liste time{color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums;white-space:nowrap}
+.kd-kutu-liste small{flex-basis:100%;color:var(--muted);font-size:var(--fs-micro)}
 .kd-kutu .sozlesme-odeme-ozet{margin:0}
-.kd-kutu-buyuk{display:flex;flex-direction:column;gap:4px;margin:0;color:var(--ink);font-size:var(--fs-2xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;line-height:1.1}
+.kd-kutu-buyuk{display:flex;flex-direction:column;gap:4px;color:var(--ink);font-size:var(--fs-2xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;line-height:1.1}
 .kd-kutu-buyuk small{color:var(--ink-soft);font-size:var(--fs-md);font-weight:var(--fw-medium)}
 .kd-kutu-buyuk small[data-tone="warning"]{color:var(--warning)}
 .kd-kutu-buyuk small[data-tone="danger"]{color:var(--danger)}
-/* "Düzenle →" kutunun sağ altında: içerik ne kadar kısa olursa olsun aynı yerde. */
-.kd-kutu-duzenle{align-self:flex-end;margin-top:auto;padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer}
-.kd-kutu-duzenle:hover{text-decoration:underline}
+.kd-kutu-alt{color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+/* Kapsam kartta üç satır; tamamı pencerede. */
+.kd-kutu-ozet{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;color:var(--muted);font-size:var(--fs-sm);line-height:1.45;white-space:pre-line}
+.kd-kutu-ac{align-self:flex-end;margin-top:auto;color:var(--primary);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.kd-kutu:hover .kd-kutu-ac{text-decoration:underline}
+.kd-ana-baslik{margin:0;font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--ink)}
+.kd-salt{margin:0;white-space:pre-line}
+@media (max-width:1500px){.kd-kutular{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.kd-kutular{grid-template-columns:minmax(0,1fr)}}
+
+/* Sözleşme maddeleri penceresi: madde başına açılır satır, içinde form. */
+.sm-maddeler{display:flex;flex-direction:column;gap:var(--sp-3)}
+.sm-not{margin:0;color:var(--ink-soft);font-size:var(--fs-sm);line-height:1.5}
+.sm-liste{display:flex;flex-direction:column;gap:var(--sp-2);margin:0;padding:0;list-style:none}
+.sm-madde{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.sm-madde[open]{border-color:var(--primary)}
+.sm-madde>summary{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);cursor:pointer;list-style:none}
+.sm-madde>summary::-webkit-details-marker{display:none}
+.sm-madde>summary b{flex:1;min-width:0;font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.sm-no{flex:none;min-width:64px;color:var(--muted);font-size:var(--fs-micro);font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+.sm-govde{display:flex;flex-direction:column;gap:var(--sp-2);padding:0 var(--sp-4) var(--sp-4)}
+.sm-metin{min-height:220px;font-family:inherit;line-height:1.55}
+.sm-sifirla{display:flex;justify-content:flex-end}
+.sm-salt{margin:0;padding:0 var(--sp-4) var(--sp-4);color:var(--ink-soft);font:inherit;font-size:var(--fs-sm);line-height:1.55;white-space:pre-wrap}
+
 .kd-olaylar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-4) var(--sp-5);margin:var(--sp-5) 0 0;padding:0 var(--sp-1)}
 .kd-olaylar>div{min-width:0}
 .kd-olaylar dt{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
 .kd-olaylar dd{display:flex;flex-direction:column;gap:2px;margin:4px 0 0;color:var(--ink-soft);font-size:var(--fs-md)}
 .kd-olaylar dd small{color:var(--muted);font-size:var(--fs-sm)}
-@media (max-width:1200px){.kd-kutular{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:760px){.kd-olaylar{grid-template-columns:minmax(0,1fr)}.kd-bas-asama{flex-basis:100%;order:3}}
-.kd-kutu-liste li:has(>time:first-child){justify-content:flex-start}
 /* Tek tarihli küçük pencere formu (sözleşmenin imza son tarihi). */
 .kd-tarih-form{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
 .kd-tarih-form>:first-child{flex:1;min-width:160px}

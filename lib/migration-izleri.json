@@ -354,5 +354,36 @@
         "sutun": "imza_son_tarihi"
       }
     ]
+  },
+  {
+    "migration": "20261103144006_sozlesmeye_ozel_maddeler",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.arvo_sozlesme_metni_birlestir"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.arvo_belge_metni_kopyala"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.arvo_ozel_madde_koruma"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.arvo_public_document_text"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "arvo_ozel_madde_koruma",
+        "tablo": "public.crm_contracts"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.crm_contracts",
+        "sutun": "ozel_maddeler"
+      }
+    ]
   }
 ]
