@@ -29,7 +29,8 @@ import { teklifGrubu, TEKLIF_GRUP_ADLARI } from "@/lib/teklif-grubu";
 import { workflowStatusNames } from "../../../operations/ops-shared";
 
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
-import { TalepAkis } from "../../kayit-detay/kayit-akis";
+import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
+import { postaKanali, whatsappKanali } from "../../kayit-detay/akis-kanallari";
 import "../../crm.css";
 import "../../request-page.css";
 import "../../kayit-detay/kayit-detay.css";
@@ -636,7 +637,18 @@ export default async function RequestDetailPage({
         {/* WhatsApp ve Postalar müşteri sayfasıyla aynı kuralla
             (../../musteri-yazismalari.tsx). Eskiden Postalar yalnızca bu
             talebe elle bağlanmış yazışmaları gösteriyordu; WhatsApp yoktu. */}
-        <TalepAkis sekmeler={["Yorumlar", whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp", ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []), "Geçmiş"]} tembel={postaGorur ? [1, 2, 3] : [1, 2]}>
+        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi): sütunda
+            özet, okuma sağdan açılan geniş çekmecede. Paneller ilk açılışta kurulur. */}
+        <AkisCekmecesi
+          baslik="Yazışmalar"
+          kicker="TALEP"
+          kanallar={[
+            { ad: "Yorumlar", bos: "Ekip içi yorumlar ve notlar." },
+            whatsappKanali(whatsappMesajlari),
+            ...(postaGorur ? [postaKanali(postalar)] : []),
+            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri." },
+          ]}
+        >
           <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} gorunum="akis" />
           <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
           {postaGorur ? (
@@ -651,7 +663,7 @@ export default async function RequestDetailPage({
             </div>
           ) : null}
           <RecordHistory opportunityId={item.id} />
-        </TalepAkis>
+        </AkisCekmecesi>
       </div>
     </main>
   );

@@ -38,7 +38,8 @@ import { ADDENDUM_STATUS_LABELS, normalizeAddenda, normalizeWorkPlan } from "@/l
 import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
-import { TalepAkis } from "../../kayit-detay/kayit-akis";
+import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
+import { mesajKanali, postaKanali, whatsappKanali } from "../../kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
 import "../../crm.css";
@@ -113,7 +114,6 @@ export default async function ContractDetailPage({ params }: Props) {
     supabase.from("crm_contracts").select("tracking_open_before_signature").eq("id", id).eq("organization_id", membership.organization_id).maybeSingle(),
   ]);
   const customerMessages = (messagesResult.data ?? []) as { id: string; sender_type: "customer" | "staff"; sender_name: string; body: string; created_at: string; read_at: string | null }[];
-  const unreadMessages = customerMessages.filter((message) => message.sender_type === "customer" && !message.read_at).length;
   const messagingOpen = !["rejected", "cancelled"].includes(data.status);
   // İmza öncesi takip sözleşme bazında açılır (varsayılan kapalı); imzalıda hep açık.
   // Ayar okunamazsa (migration yok) eski davranış: düğme gösterilmez.
@@ -629,15 +629,17 @@ export default async function ContractDetailPage({ params }: Props) {
         {/* Akış: müşteri mesajları (takip ekranı), iç yorumlar, WhatsApp,
             posta, kayıt geçmişi. WhatsApp ve Postalar eskiden yoktu;
             yazışmayı görmek için ayrı ekranlarda müşteri aranıyordu. */}
-        <TalepAkis
-          sekmeler={[
-            unreadMessages ? `Mesajlar · ${unreadMessages}` : "Mesajlar",
-            "Yorumlar",
-            whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp",
-            ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
-            "Geçmiş",
+        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi). */}
+        <AkisCekmecesi
+          baslik="Yazışmalar"
+          kicker={`SÖZLEŞME · ${data.contract_no}`}
+          kanallar={[
+            mesajKanali(customerMessages, musteri),
+            { ad: "Yorumlar", bos: "Ekip içi yorumlar ve notlar." },
+            whatsappKanali(whatsappMesajlari),
+            ...(postaGorur ? [postaKanali(postalar)] : []),
+            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri." },
           ]}
-          tembel={postaGorur ? [2, 3, 4] : [2, 3]}
         >
           <div className="sozlesme-mesaj" id="musteri-mesajlari">
             {customerMessages.length ? (
@@ -681,7 +683,7 @@ export default async function ContractDetailPage({ params }: Props) {
             </div>
           ) : null}
           <RecordHistory opportunityId={data.opportunity_id} />
-        </TalepAkis>
+        </AkisCekmecesi>
       </div>
     </main>
   );
