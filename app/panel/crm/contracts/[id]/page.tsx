@@ -580,8 +580,8 @@ export default async function ContractDetailPage({ params }: Props) {
           {data.tracking_code ? (
             <div className="talep-gecmis">
               <h3>Takip ekranı</h3>
-              <p className="sozlesme-takip-kod">{data.tracking_code}</p>
-              <p className="talep-gecmis-ozet">{trackingOpen ? "Müşteri takip ekranına girebilir." : "İmzadan sonra açılır."}</p>
+              {/* Kod ve durumu tek satırda: kart tek ekrana sığsın diye (03.11.2026). */}
+              <p className="talep-gecmis-ozet kd-takip-satir"><span className="sozlesme-takip-kod">{data.tracking_code}</span>{trackingOpen ? "Müşteri takip ekranına girebilir." : "İmzadan sonra açılır."}</p>
               <div className="talep-iletisim">
                 <KopyalaDugmesi metin={data.tracking_code} etiket="Kodu kopyala" />
                 <PanelDrawer triggerLabel="Takip kodunu gönder" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Takip kodu" description="Müşteri bu kodla takip ekranında kendi iş durumunu görür ve soru sorar." triggerClassName="panel-secondary">
