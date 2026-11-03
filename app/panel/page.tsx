@@ -1,3 +1,4 @@
+import { sureOlcer } from "@/lib/sure-olcumu";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { headers } from "next/headers";
@@ -80,7 +81,10 @@ export default async function PanelPage() {
   */
   if (isManagementHost(hostFromHeaders(await headers()))) return <KonsolAnaSayfa />;
 
-  const { supabase, organization, isPlatformOwner, membership, modules, hiddenModuleKeys, userId, izin } = await getPanelContext();
+  /* Okuma başına süre (lib/sure-olcumu): kurum panelinin ana sayfası
+     app.akademikmerkez.com'da p75 ~0,7 sn; eşiği aşan açılış günlüğe yazılıyor. */
+  const sure = sureOlcer("panel-ana");
+  const { supabase, organization, isPlatformOwner, membership, modules, hiddenModuleKeys, userId, izin } = await sure.olc("baglam", getPanelContext());
   const organizationId = organization.id;
   const today = todayInIstanbul();
 
@@ -96,7 +100,7 @@ export default async function PanelPage() {
     eskiden önce durum okunuyor (hesabın tamamı, imza dahil), ancak sonra
     diğer sorgular başlıyordu. Kutu bağlı değilse okunan satırlar atılır.
   */
-  const postaDurumSozu = postaYetkisi ? postaBaglantiDurumu(organizationId) : Promise.resolve(null);
+  const postaDurumSozu = sure.olc("posta_durumu", postaYetkisi ? postaBaglantiDurumu(organizationId) : Promise.resolve(null));
   /* Kutu bağlı değilse kart yine durur ve bunu söyler: dördüncü sütun boş
      kalmasın, bağlayabilen kişi nereden bağlanacağını görsün. */
   const postaBaglayabilir = izin("settings.kurum.yonet");
@@ -116,7 +120,7 @@ export default async function PanelPage() {
     { data: setupOrganization, error: setupOrganizationError },
     { count: memberCount, error: memberCountError },
     { count: talepToplami },
-  ] = await Promise.all([
+  ] = await sure.olc("ana_tur", Promise.all([
     // Trend: yalnızca son 28 günün oluşturulma tarihleri (sınırsız, sayım doğru).
     canSeeCrm ? supabase.from("crm_opportunities").select("created_at").eq("organization_id", organizationId).gte("created_at", seriBaslangici()) : none,
     /* Açık işler termine göre: en az günü kalan (gecikmiş olan) en üstte,
@@ -156,7 +160,7 @@ export default async function PanelPage() {
     canSetup ? supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("is_active", true) : none,
     // Kurulum adımı "ilk talebinizi girin" için: kurumda hiç talep var mı.
     canSetup && canSeeCrm ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", organizationId) : none,
-  ]);
+  ]));
   const canSeePosta = postaYetkisi && (await postaDurumSozu)?.durum === "bagli";
 
   /*
@@ -268,6 +272,7 @@ export default async function PanelPage() {
   const { greeting, date } = greetingLine();
   const firstName = formatPersonName(me?.full_name).split(" ")[0];
 
+  sure.bitir();
   return (
     <GenelBakis
       ust={<span className="dash-tarih">{date}</span>}

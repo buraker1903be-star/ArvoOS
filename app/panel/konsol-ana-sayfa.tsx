@@ -1,3 +1,4 @@
+import { sureOlcer } from "@/lib/sure-olcumu";
 import { kopruSagliklari } from "@/lib/kopru-sagliklari";
 import { askidakiKurumlar, type AskiSatiri } from "@/lib/askidakiler";
 import { GONDERIM_ADI, gonderimDurumu, gonderimSirasi } from "@/lib/proforma-gonderim";
@@ -163,6 +164,10 @@ export async function KonsolAnaSayfa() {
      Şimdi başlatılıyor, Sorunlar kuyruğunu kurarken bekleniyor: öteki
      okumalarla paralel koşsun. Denetim kurulmamışsa ya da okunamazsa burada
      satır çıkmıyor; sağlık ekranı onu ayrıca söylüyor. */
+  /* Okuma başına süre (lib/sure-olcumu): paralelleştirmeden sonra da p75
+     ~0,9 sn kaldı; süre tek bir okumada. Eşiği aşan açılış günlüğe
+     "[süre] konsol-ana …" satırı yazıyor, en yavaş okuma başta. */
+  const sure = sureOlcer("konsol-ana");
   const semaIstegi = admin
     ? Promise.resolve(admin.rpc("platform_sema_eksikleri", { p_izler: MIGRATION_IZLERI })).catch(() => null)
     : Promise.resolve(null);
@@ -249,6 +254,12 @@ export async function KonsolAnaSayfa() {
     arcKopyalari(),
     randevuKopyalari(),
   ]);
+  /* Ölçüm başlangıç anında bağlanıyor: süre okumanın kendisi, bekleme yeri değil. */
+  for (const [ad, is] of Object.entries({
+    sema: semaIstegi, sozlesme_kurulum_proforma: sozlesmeIstegi, odeme_kredi_etkinlik_aski: odemeIstegi,
+    yeni_kurum: yeniSayimIstegi, yeni_abone: yeniAboneIstegi, takip: takipIstegi, destek: destekIstegi,
+    grafik: grafikIstegi, kopru_kopya: kopruIstegi,
+  } as Record<string, PromiseLike<unknown>>)) void sure.olc(ad, is).catch(() => {});
 
   const [
     { data: kiraciSatirlari, error: kiraciHatasi },
@@ -260,7 +271,7 @@ export async function KonsolAnaSayfa() {
     { data: personel },
     // hata-tamam: depolamaKullanimi bir promise; düşerse Promise.all REDDEDİLİR ve sayfa hata ekranına gider, sessizce sıfır göstermez
     { data: depolamalar },
-  ] = await Promise.all([
+  ] = await sure.olc("kiraci_urun_depolama", Promise.all([
     /*
       KURUM, LİSANS VE AKTİF ÜYE SAYISI TEK GÖRÜNÜMDEN (12.10.2026).
 
@@ -319,7 +330,7 @@ export async function KonsolAnaSayfa() {
        ve olmamalı. Fonksiyon yalnızca kurum başına TOPLAM döndürüyor. */
     /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
     depolamaKullanimi().then((data) => ({ data })),
-  ]);
+  ]));
 
   /* Sözleşme kuyruğu ve kurulum günlüğü yalnızca sunucu anahtarıyla
      okunuyor (sozlesmeler sayfasındaki kuralın aynısı). Anahtar yoksa
@@ -494,13 +505,13 @@ export async function KonsolAnaSayfa() {
     etmek orada (payments/karar-formu). Okuma bekleyen kuyruk kadar
     küçük ve kurum kimlikleriyle sınırlı.
   */
-  const odemeDenetimleri = await havaleDenetimleri(supabase, odemeler.map((o) => ({
+  const odemeDenetimleri = await sure.olc("havale_denetimi", havaleDenetimleri(supabase, odemeler.map((o) => ({
     id: o.id, organization_id: o.organization_id, product: o.product, plan_code: o.plan_code,
     /* Tutarsız bildirim yoktur: sütun NOT NULL değil ama bildirim
        tutarsız gelirse denetim onu 0 ile karşılaştırıp fark yazar —
        yani sessizce "uyumlu" saymaz. */
     amount: Number(o.amount ?? 0),
-  })));
+  }))));
   /** Sunucu anahtarı yoksa null: okunamadı, boş değil. */
   const sozlesmeler = admin ? ((sozlesmeSatirlari ?? []) as BekleyenSozlesme[]) : null;
 
@@ -709,6 +720,7 @@ export async function KonsolAnaSayfa() {
     <header className="phr-bas"><small>{not}</small><Link className="pu-tumu" href={href}>{etiket}</Link></header>
   );
 
+  sure.bitir();
   return (
     <GenelBakis baslik={`${selam}${ad ? `, ${ad}` : ""}`} uyari={okunamayan.map(([ad2]) => ad2)} sinif="konsol-ana">
       {/* Köprüler sessizce kopuyor: hata yalnızca karşı taraftaki günlükte
