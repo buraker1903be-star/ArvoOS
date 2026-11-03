@@ -1166,3 +1166,26 @@
 /* Personel kartları sade (03.11.2026): alt satır (dip) yok, kartın tamamı tıklanır; satır sağındaki tarih tek satır. */
 .kd-kutular-personel .kd-kutu-satirlar small{flex:none;color:var(--muted);font-size:var(--fs-micro);white-space:nowrap}
 .kd-kutular-personel .kd-kutu-satirlar>span>b{min-width:0}
+
+/*
+  LİSTE İSTATİSTİK SÜTUNU (03.11.2026): dar sütun, dağılımlar kart.
+  Eski üç ayrı sütun kuralı (340px, 1.8fr/360px, 1600px altı 340px)
+  aynı dosyada birbirini eziyordu; geniş ekranda tek kural: liste esner,
+  istatistik 300px.
+*/
+@media (min-width:1201px){
+  .talep-izgara.ekip-izgara:has(.talep-istatistik){grid-template-columns:minmax(0,1fr) 300px}
+}
+.istat-kartlar{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3)}
+.os-root .istat-kart{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;margin:0;padding:var(--sp-3);border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease}
+.os-root .istat-kart:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--line));box-shadow:var(--shadow-sm)}
+.os-root .istat-kart:focus-visible{outline:none;box-shadow:0 0 0 2px var(--focus)}
+.istat-kart-ust{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.istat-kart-ust small{flex:none;color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.istat-kart-satir{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"ad deger" "cubuk cubuk";row-gap:3px;column-gap:var(--sp-2);font-size:var(--fs-micro)}
+.istat-kart-satir>span{grid-area:ad;overflow:hidden;color:var(--ink-soft);text-overflow:ellipsis;white-space:nowrap}
+.istat-kart-satir>strong{grid-area:deger;font-variant-numeric:tabular-nums;font-weight:var(--fw-semibold)}
+.istat-kart-satir>i{grid-area:cubuk;display:block;height:4px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.istat-kart-satir>i>b{display:block;height:100%;border-radius:inherit;background:var(--primary)}
+.istat-kart-daha{color:var(--muted);font-size:var(--fs-micro)}
+.istat-pencere{gap:var(--sp-3)}
