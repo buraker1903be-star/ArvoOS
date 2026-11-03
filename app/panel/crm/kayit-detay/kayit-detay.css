@@ -830,21 +830,97 @@
 .talep-birakma span{flex-basis:100%;color:var(--ink-soft)}
 .talep-birakma form{margin:0}
 
+
 /*
-  SOL SÜTUN (03.11.2026): talep, teklif ve sözleşme detayı iş detayıyla
-  aynı iki sütunlu düzende. Solda müşteri kartı ve yazışmalar (akis-cekmecesi),
-  ortada kaydın kendisi ekranın kalanını alıyor. Sol sütun yükseklik sınırı
-  almıyor: kart ve yazışmalar birlikte okunuyor, sütunun içinde ayrıca
-  kaydırmak istenmiyor.
+  DETAY KARTLARI (03.11.2026). İş detayında kuruldu, talep, teklif ve
+  sözleşme detayı da aynı kartları kullanıyor; kurallar bu yüzden ortak
+  dosyada (iki sayfa da bu dosyayı import ediyor). Ad öneki opd- kaldı:
+  iş detayından taşındı, yeniden adlandırmak iki sayfayı birden değiştirirdi.
 */
-@media(min-width:1201px){
-  .talep-izgara:has(>.kd-sol){grid-template-columns:minmax(300px,360px) minmax(0,1fr)}
+.opd-kart{display:flex;flex-direction:column;gap:var(--sp-3);margin:0;padding:var(--sp-4)}
+/* Kart ve grup başlıkları paneldeki alan etiketleriyle aynı (opd-ff-etiket: "DURUM", "TOP KİMDE").
+   .panel-card h2/h3 genel kuralı 19/16 px veriyordu; seçici o yüzden kartla birlikte. */
+.opd-kart :is(.opd-kart-baslik,.opd-kanal-grup){margin:0;color:var(--muted);font-family:inherit;font-size:var(--fs-micro);font-weight:700;letter-spacing:.02em;line-height:1.3;text-transform:uppercase}
+.opd-kart .opd-kart-baslik{color:var(--ink)}
+.opd-kart .opd-kanal-grup{margin-top:var(--sp-1)}
+/* Grup başlığının altındaki özet ("3 yorum · son 3 Kas 19:22", "Son mesaj 29 Eki 18:22"). */
+.opd-kanal-ozet{margin:-6px 0 0;color:var(--muted);font-size:var(--fs-micro);line-height:1.4}
+.opd-kanal-ozet time{color:var(--ink);font-weight:var(--fw-medium);white-space:nowrap}
+
+/* Müşteri kartı */
+.opd-iletisim-dugmeleri{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:var(--sp-2)}
+.os-root .opd-iletisim-dugmeleri>a{min-height:38px;justify-content:center;padding:0 var(--sp-2);border-radius:var(--r-pill);font-size:var(--fs-sm)}
+.opd-musteri-liste{margin:0}
+.opd-musteri-liste>div{padding-block:7px}
+.opd-musteri-liste>div.is-grup{border-top:1px solid var(--line)}
+.opd-musteri-liste .portal-ziyaret{text-align:right}
+.os-root .opd-ayrinti-dugme{width:100%;min-height:40px;justify-content:center;margin-top:auto;border-radius:var(--r-pill)}
+/* Kartın düğmeleri kanal düğmeleriyle aynı incelikte. */
+.os-root .opd-musteri :is(.opd-iletisim-dugmeleri>a,.opd-ayrinti-dugme){font-weight:var(--fw-medium)}
+
+/* İletişim kartı: kanal düğmeleri, üstünde bildirim rozeti */
+/* Zarif kanal düğmesi (03.11.2026): ince çerçeve, normal kalınlıkta yazı; önceki dolu ve kalın düğmeler kartta ağır duruyordu. */
+.opd-kanal{position:relative;display:flex;align-items:center;justify-content:center;width:100%;min-height:42px;padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);letter-spacing:.01em;cursor:pointer;transition:border-color .15s ease,background .15s ease,color .15s ease}
+.opd-kanal:hover{border-color:var(--primary);color:var(--primary)}
+.opd-kanal:focus-visible{outline:none;box-shadow:0 0 0 2px var(--focus)}
+.opd-kanal .panel-modal-trigger-text{text-align:center}
+.opd-kanal .panel-modal-trigger-rozet{position:absolute;top:-6px;right:12px;min-width:18px;height:18px;padding:0 5px;background:var(--danger);color:var(--n-0);font-size:var(--fs-micro);font-weight:var(--fw-semibold);box-shadow:0 0 0 2px var(--surface)}
+
+/* Durum ve evrak kartı */
+/* Durum kartı: Durum ve Top kimde alt alta. */
+.opd-durum-kart>.opd-ff{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+.opd-durum-kart .opd-ff-not{white-space:normal}
+.opd-evrak{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;min-height:64px;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);color:var(--ink);font:inherit;text-align:center;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease}
+.opd-evrak:hover{border-color:var(--primary);box-shadow:var(--shadow-sm)}
+.opd-evrak b{font-size:var(--fs-md)}
+.opd-evrak span{color:var(--muted);font-size:var(--fs-sm)}
+.opd-evrak.is-bekliyor{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));background:var(--danger-soft)}
+.opd-evrak.is-bekliyor span{color:var(--danger)}
+/* Nötr: sözleşmesiz iş, tarihi yaklaşmamış görev, bitmiş liste. */
+.opd-evrak.is-notr{background:var(--surface)}
+.opd-evrak.is-tamam{border-color:color-mix(in srgb,var(--success) 45%,var(--line))}
+
+/* Başlıktaki termin */
+/* Termin tek satırda: tarih, kalan gün, değiştir düğmesi (üç satır üst üste başlığı uzatıyordu). */
+.opd-bas-termin{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-2)}
+.opd-bas-termin p{margin:0;color:var(--ink);font-size:var(--fs-sm)}
+.os-root .opd-bas-termin-dugme{min-height:30px;padding:0 var(--sp-3);border-radius:var(--r-pill);font-size:var(--fs-micro)}
+
+/* Müşteri ayrıntıları penceresi: iki sütun bölüm kartı */
+.opd-ayrinti{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3)}
+.opd-ayrinti-bolum{display:flex;flex-direction:column;gap:var(--sp-2);margin:0;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
+.opd-ayrinti-bolum.is-genis{grid-column:1/-1}
+.opd-ayrinti-bolum>h3{margin:0;color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.06em;text-transform:uppercase}
+.opd-ayrinti-bolum .talep-liste,.opd-ayrinti-bolum .talep-iletisim{margin:0}
+.opd-ayrinti-bolum .talep-gecmis{margin:0;padding:0;border:0}
+.opd-ayrinti-bolum .talep-gecmis>h3,.opd-ayrinti-bolum>h3{margin:0 0 var(--sp-2);color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.06em;text-transform:uppercase}
+.opd-takip-kod{margin:0}
+.opd-takip-kod code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-xl);font-weight:var(--fw-semibold);letter-spacing:.18em}
+
+/*
+  TALEP, TEKLİF VE SÖZLEŞME DETAYI DÜZENİ (03.11.2026, iş detayıyla aynı).
+  Solda üstte müşteri ve iletişim kartları, altlarında sayfaya özgü iki
+  kart (eylem ve bağlantılar); sağda kaydın kendisi. Sağ kart sol
+  kartların boyunda biter ve kendi içinde kayar (contain:size, iş
+  detayının görev kartıyla aynı gerekçe).
+*/
+.kd-duzen-v4{display:grid;grid-template-columns:minmax(280px,1.9fr) minmax(196px,.85fr) minmax(0,4.6fr);grid-template-areas:"musteri iletisim ana" "altsol altsag ana";grid-template-rows:auto 1fr;gap:var(--sp-4);align-items:start}
+.kd-duzen-v4>.kd-musteri{grid-area:musteri;align-self:stretch}
+.kd-duzen-v4>.kd-iletisim{grid-area:iletisim;align-self:stretch}
+.kd-duzen-v4>.kd-alt-sol{grid-area:altsol;align-self:stretch}
+.kd-duzen-v4>.kd-alt-sag{grid-area:altsag;align-self:stretch}
+.os-root .kd-duzen-v4>.kd-ana{grid-area:ana;align-self:stretch;contain:size;min-height:calc(100dvh - 320px);max-height:none;margin:0;overflow:auto;scrollbar-width:thin}
+/* Alt kartlardaki liste (diğer kayıtlar, bağlantılar) kartın kenarına dayanmasın; talep-gecmis'in üst çizgisi kartta gereksiz. */
+.kd-duzen-v4>.opd-kart.talep-gecmis{margin:0;border-top:1px solid var(--line);padding-top:var(--sp-4)}
+.kd-duzen-v4>.opd-kart.talep-gecmis>h3{margin-bottom:0}
+@media (max-width:1200px){
+  .kd-duzen-v4{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"musteri iletisim" "altsol altsag" "ana ana";grid-template-rows:none}
+  .os-root .kd-duzen-v4>.kd-ana{contain:none;min-height:0;overflow:visible}
 }
-.kd-sol{display:flex;flex-direction:column;gap:var(--sp-3)}
-.os-root .talep-izgara:not(.ekip-izgara)>.talep-musteri.kd-sol{max-height:none;overflow:visible}
-.kd-sol>.panel-card{flex:none;margin:0}
-.kd-sol-kart .talep-musteri-kimlik>.kd-sol-baglanti{margin-left:auto;align-self:flex-start}
-.kd-sol-baglanti{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-semibold);cursor:pointer}
-.kd-sol-baglanti:hover{text-decoration:underline}
-.kd-sol .akis-ozet-metin{-webkit-line-clamp:1}
-.kd-ayrinti{display:flex;flex-direction:column;gap:var(--sp-3)}
+@media (max-width:760px){
+  .kd-duzen-v4{grid-template-columns:minmax(0,1fr);grid-template-areas:"musteri" "iletisim" "ana" "altsol" "altsag"}
+}
+/* Sözleşmenin eylem kartı: imza bağlantısı ve takip ekranı alt alta; başlıklar kart etiketi biçiminde, ilk bölümün üst çizgisi yok. */
+.kd-eylemler>.talep-gecmis{margin-top:0}
+.kd-eylemler>.talep-gecmis:first-of-type{padding-top:0;border-top:0}
+.opd-kart.kd-eylemler .talep-gecmis>h3{margin:0 0 var(--sp-2);color:var(--muted);font-family:inherit;font-size:var(--fs-micro);font-weight:700;letter-spacing:.02em;line-height:1.3;text-transform:uppercase}

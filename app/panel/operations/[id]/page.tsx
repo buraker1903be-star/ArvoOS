@@ -29,7 +29,7 @@ import { statusTone } from "@/lib/status-tone";
 import { contractStatusLabel, proposalStatusLabel } from "../../crm/status-labels";
 import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
-import { KanalDugmesi } from "./kanal-dugmesi";
+import { KanalDugmesi } from "../../crm/kayit-detay/kanal-dugmesi";
 import { ozetZamani } from "../../crm/kayit-detay/akis-kanallari";
 import { MusteriSohbeti } from "./musteri-sohbet";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
