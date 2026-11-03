@@ -421,11 +421,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
           ) : null}
           {hareketGorur ? (
             <>
-              <h3 className="opd-kanal-grup">Panel</h3>
-              <p className="opd-kanal-ozet">Giriş ve işlem kayıtları</p>
               {/* Aralık ve sayfa bağlantıları sayfayı yeniden yüklüyor; adreste ?hareket= varsa pencere açık gelir. */}
               <PanelModal
-                triggerLabel="Hareketler"
+                triggerLabel="Panel hareketleri"
                 triggerClassName="opd-kanal"
                 kicker="PANEL HAREKETLERİ"
                 title={employee.full_name}
@@ -442,17 +440,25 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
 
         {/* PRİM VE SATIŞ: bakiye büyük rakam, oranlar altında; hareketler Prim penceresinde. */}
         <section className="panel-card opd-kart kd-alt-sol" aria-label="Prim ve satış">
-          <h3 className="opd-kanal-grup">Prim ve satış</h3>
+          {/*
+            Sıkı yerleşim (03.11.2026): kart alt satırda kalan yüksekliğe
+            sığmalı, kaydırma yok. Eskiden oranlar ve talep ataması üç ayrı
+            satırdı ve kartın içinde kaydırma çubuğu çıkıyordu; atama durumu
+            artık başlığın yanında, iki oran yan yana.
+          */}
+          <div className="kd-kart-bas">
+            <h3 className="opd-kanal-grup">Prim ve satış</h3>
+            <span className="status-pill" data-tone={employee.can_receive_sales_requests ? "success" : "neutral"} title="Satış talebi ataması">{employee.can_receive_sales_requests ? "Talep atanabilir" : "Talep atanmaz"}</span>
+          </div>
           {primToplami ? (
             <p className="kd-buyuk-rakam" data-tone={primToplami.balance < 0 ? "warning" : undefined}>
               {money(primToplami.balance)}
               <small>prim bakiyesi</small>
             </p>
           ) : null}
-          <dl className="talep-liste opd-musteri-liste">
+          <dl className="kd-oranlar">
             <div><dt>Satış primi</dt><dd>%{percent(employee.commission_rate)}</dd></div>
             <div><dt>Operasyon primi</dt><dd>%{percent(employee.operation_commission_rate)}</dd></div>
-            <div><dt>Satış talepleri</dt><dd><span className="status-pill" data-tone={employee.can_receive_sales_requests ? "success" : "neutral"}>{employee.can_receive_sales_requests ? "Atanabilir" : "Atanmaz"}</span></dd></div>
           </dl>
           {prim && primToplami ? <Link className="panel-secondary opd-ayrinti-dugme" href={`${temelAdres}?pencere=prim`} scroll={false}>Prim hareketleri</Link> : null}
         </section>
