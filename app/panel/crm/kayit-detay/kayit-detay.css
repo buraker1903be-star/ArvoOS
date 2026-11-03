@@ -1013,3 +1013,17 @@
 /* Tek tarihli küçük pencere formu (sözleşmenin imza son tarihi). */
 .kd-tarih-form{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
 .kd-tarih-form>:first-child{flex:1;min-width:160px}
+
+/*
+  TEK EKRAN (03.11.2026, sözleşme ve teklif detayı; kurum sahibinin isteği:
+  "tek sayfa, kaydırma olmayacak"). Izgara görünür alanın boyunda: üst
+  çubuk, başlık ve alttaki gezinme çubuğu düşülünce kalan yükseklik
+  (196px ölçüldü, 1850×852). İki satır eşit paylaşılır; uzun kalan kart
+  kendi içinde kayar, sayfa kaymaz. Kısa ekranda (640px altı) ve 1200px
+  altında bu kural yok: orada içerik alt alta akar ve sayfa kayar.
+*/
+@media (min-width:1201px) and (min-height:640px){
+  .os-root .kd-duzen-v4.kd-tek-ekran{height:calc(100dvh - 196px);grid-template-rows:minmax(0,1fr) minmax(0,1fr);align-items:stretch}
+  .kd-tek-ekran>:is(.kd-musteri,.kd-iletisim,.kd-alt-sol,.kd-alt-sag){min-height:0;overflow:auto;scrollbar-width:thin}
+  .os-root .kd-duzen-v4.kd-tek-ekran>.kd-ana{min-height:0}
+}

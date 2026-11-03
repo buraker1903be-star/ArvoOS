@@ -44,6 +44,7 @@ import "../../../components/kayit-formu.css";
 import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
 import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
 import { liraYazisi } from "@/lib/turkish-amount";
+import { doluAlanlar, type Kunye } from "@/lib/musteri-kunyesi";
 import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
@@ -70,6 +71,8 @@ const tarih = (value: string | null) =>
   value ? istanbulDateTime(value, { day: "numeric", month: "long", year: "numeric" }) : null;
 /** Geçerliliğe kalan gün (bugün = 0, geçmişse negatif); Türkiye takvimiyle. */
 const kalanGun = (valid: string, bugun: string) => Math.round((Date.parse(valid) - Date.parse(bugun)) / 86_400_000);
+/* Olay tarihi uzun ve günlü ("27 Ekim 2026 Salı"); gönderim ve görüntüleme birer AN, dilim şart. */
+const uzunTarih = (value: string) => istanbulDateTime(value, { day: "numeric", month: "long", year: "numeric", weekday: "long" });
 const KDV_ADI: Record<string, string> = { excluded: "KDV hariç", included: "KDV dahil", exempt: "KDV istisna" };
 
 export default async function ProposalDetailPage({ params }: Props) {
@@ -227,14 +230,30 @@ export default async function ProposalDetailPage({ params }: Props) {
     </form>
   );
 
-  const bilgiler: [string, React.ReactNode][] = [
-    ["Ödeme planı", data.payment_plan || <em>Belirtilmedi</em>],
-    ["Revizyon", data.revision_no > 0 ? `R${data.revision_no}` : "İlk sürüm"],
-    ["Oluşturulma", tarih(data.created_at)],
-    ["Gönderim", tarih(data.sent_at) ?? <em>Gönderilmedi</em>],
-    ["Görüntülenme", data.view_count ? `${data.view_count} kez${data.last_viewed_at ? ` · son ${tarih(data.last_viewed_at)}` : ""}` : <em>Açılmadı</em>],
-    ["Temsilci", representative ? formatPersonName(representative) : <em>Atanmamış</em>],
+  const kunyeSatirlari = doluAlanlar((customer?.request_details ?? {}) as Kunye);
+  /*
+    Üç düzenleme penceresi (müşteri, hizmet ve ücret, geçerlilik) aynı
+    sunucu işlemini (updateProposal) çağırıyor ve işlem bütün alanları
+    okuyor: pencerede olmayan bölümün değerleri GİZLİ alanla taşınıyor
+    (sözleşme detayıyla aynı gerekçe — boş gelen alan kaydı silerdi).
+    Ödeme planı açıklaması formdan kalktı, değeri korunuyor.
+  */
+  const teklifDegerleri: [string, string][] = [
+    ["title", data.title ?? ""], ["scope", data.scope ?? ""], ["amount", liraYazisi(editableAmount)],
+    ...(taxStatus ? [["tax_status", taxStatus] as [string, string]] : []),
+    ["payment_plan", data.payment_plan ?? ""], ["valid_until", data.valid_until ?? ""],
   ];
+  const musteriDegerleri: [string, string][] = [
+    ["customer_name", customer?.customer_name ?? ""], ["contact_phone", customer?.contact_phone ?? ""], ["contact_email", customer?.contact_email ?? ""],
+    ["service_type", String(customer?.request_details?.service_type ?? "")], ["academic_level", String(customer?.request_details?.academic_level ?? "")],
+    ["university", String(customer?.request_details?.university ?? "")], ["department", String(customer?.request_details?.department ?? "")],
+  ];
+  const gizliAlanlar = (pencere: "hizmet" | "musteri" | "gecerlilik") => {
+    const satirlar = pencere === "musteri" ? teklifDegerleri
+      : pencere === "hizmet" ? [...musteriDegerleri, ...teklifDegerleri.filter(([ad]) => ad === "payment_plan" || ad === "valid_until")]
+      : [...musteriDegerleri, ...teklifDegerleri.filter(([ad]) => ad !== "valid_until")];
+    return <>{satirlar.map(([ad, deger]) => <input key={ad} type="hidden" name={ad} value={deger} />)}</>;
+  };
 
   return (
     <main className="crm-page-stack crm-request-detail-page talep">
@@ -243,7 +262,46 @@ export default async function ProposalDetailPage({ params }: Props) {
           <small className="panel-kicker">{data.proposal_no}{data.revision_no > 0 ? ` · R${data.revision_no}` : ""}</small>
           <h1>{data.title}</h1>
         </div>
+        {/* Aşama çizgisi başlıkta (03.11.2026, sözleşme detayıyla aynı); kapanan teklifte çizgi yerine sebep. */}
+        <div className="kd-bas-asama">
+          {kapanis ? (
+            <p className="talep-arsiv">
+              <span className="status-pill" data-tone={statusTone(data.status)}>{labels[data.status] ?? data.status}</span>
+              <span>{kapanis}</span>
+            </p>
+          ) : (
+            <ol className="talep-asama" aria-label={`Durum: ${labels[data.status] ?? data.status}`}>
+              {TEKLIF_ADIMLARI.map((ad, sira) => (
+                <li key={ad} className={adim === null ? undefined : sira < adim ? "is-done" : sira === adim ? "is-current" : undefined} aria-current={sira === adim ? "step" : undefined}>
+                  <i aria-hidden="true" />
+                  <span>{ad}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
         <div className="talep-bas-eylem">
+          {/* GEÇERLİLİK başlıkta (sözleşmenin imza son tarihiyle aynı yer ve biçim). */}
+          {!locked ? (
+            <div className="opd-bas-termin">
+              <p><b>Geçerlilik:</b> {tarih(data.valid_until) ?? "Belirtilmedi"}</p>
+              {gecerlilikRozeti ? <p><span className="status-pill" data-tone={gecerlilikRozeti.ton}>{gecerlilikRozeti.ad}</span></p> : null}
+              <PanelModal triggerClassName="panel-secondary opd-bas-termin-dugme" triggerLabel={data.valid_until ? "Yeni geçerlilik tarihi belirle" : "Geçerlilik belirle"} title="Geçerlilik tarihi" description="Müşteri teklifi bu güne kadar onaylayabilir." kicker={`TEKLİF · ${data.proposal_no}`} boy="dar" basaridaKapan>
+                  <form className="panel-form kayit-formu" action={updateProposal}>
+                    <input type="hidden" name="proposal_id" value={data.id} />
+                    <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
+                    <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
+
+                    {gizliAlanlar("gecerlilik")}
+                    <label className="wide">Geçerlilik tarihi<TarihSecici name="valid_until" defaultValue={data.valid_until ?? ""} min={bugun} /></label>
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                      <button className="panel-primary">Değişiklikleri kaydet</button>
+                    </div>
+                  </form>
+              </PanelModal>
+            </div>
+          ) : null}
           {sozlesme ? (
             <Link className="panel-primary" href={`/panel/crm/contracts/${sozlesme.id}`}>Sözleşmeye git</Link>
           ) : locked || data.superseded_by || !teklifYonetir ? null : shareUrl ? (
@@ -258,54 +316,6 @@ export default async function ProposalDetailPage({ params }: Props) {
               <PanelModal triggerClassName="os-menu-item" triggerLabel="Kayıt geçmişi" title="Kayıt geçmişi" description="Alan değişiklikleri ve durum geçişleri." kicker={`TEKLİF · ${data.proposal_no}`} boy="buyuk">
                 <RecordHistory opportunityId={data.opportunity_id} />
               </PanelModal>
-              {!locked ? (
-                <PanelDrawer triggerLabel="Düzenle" kicker={`TEKLİF · ${data.proposal_no}`} title="Teklifi düzenle" description="Kapsam, tutar, geçerlilik ve müşteri bilgileri. Değişiklik müşteriye giden teklif bağlantısına da yansır." triggerClassName="os-menu-item">
-                  {/* DÜZEN (2026-10): teklif oluşturma ve sözleşme düzenlemeyle
-                      aynı ortak form (components/kayit-formu.css). Eskiden
-                      girilen metin kalın görünüyor, zorunlu alan belli
-                      değildi; müşteri adı boş kaydedilebiliyordu. */}
-                  <form className="panel-form kayit-formu" action={updateProposal}>
-                    <input type="hidden" name="proposal_id" value={data.id} />
-                    <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
-                    <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
-
-                    <p className="wide kayit-formu-bolum">Teklif</p>
-                    <label className="wide"><span>Teklif başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
-                    <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
-
-                    <p className="wide kayit-formu-bolum">Tutar ve geçerlilik</p>
-                    <label><span>{/* İstisnada KDV yok; eskiden "KDV hariç" yazıyordu. */ taxStatus === "included" ? "Tutar, KDV dahil (₺)" : taxStatus === "excluded" ? "Tutar, KDV hariç (₺)" : "Tutar (₺)"}<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(editableAmount)} required /></label>
-                    {taxStatus ? (
-                      <label>KDV durumu
-                        <select name="tax_status" defaultValue={taxStatus}>
-                          <option value="excluded">KDV Hariç</option>
-                          <option value="included">KDV Dahil</option>
-                          <option value="exempt">KDV İstisna</option>
-                        </select>
-                      </label>
-                    ) : null}
-                    <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
-                    <label>Geçerlilik tarihi<TarihSecici name="valid_until" defaultValue={data.valid_until ?? ""} /></label>
-
-                    <p className="wide kayit-formu-bolum">Müşteri</p>
-                    <label className="wide"><span>Müşteri / kurum<b className="req" aria-hidden="true">*</b></span><input name="customer_name" defaultValue={customer?.customer_name ?? ""} required minLength={2} maxLength={180} /></label>
-                    <label>Telefon<input name="contact_phone" type="tel" inputMode="tel" defaultValue={customer?.contact_phone ?? ""} placeholder="05xx xxx xx xx" /></label>
-                    <label>E-posta<input name="contact_email" type="email" defaultValue={customer?.contact_email ?? ""} placeholder="ornek@eposta.com" /></label>
-
-                    <p className="wide kayit-formu-bolum">Hizmet ve akademik künye</p>
-                    <label>Hizmet türü<input name="service_type" list="hizmet-turu-onerileri" defaultValue={String(customer?.request_details?.service_type ?? "")} /><HizmetTuruOnerileri liste={hizmetTurleri.liste} /></label>
-                    <label>Akademik düzey<input name="academic_level" list="teklif-akademik-duzey" defaultValue={String(customer?.request_details?.academic_level ?? "")} placeholder="Seçin ya da yazın" /></label>
-                    <label>Üniversite<input name="university" defaultValue={String(customer?.request_details?.university ?? "")} placeholder="Örn. İstanbul Üniversitesi" /></label>
-                    <label>Bölüm / alan<input name="department" defaultValue={String(customer?.request_details?.department ?? "")} placeholder="Örn. İşletme" /></label>
-                    <datalist id="teklif-akademik-duzey"><option value="Lisans" /><option value="Yüksek Lisans" /><option value="Doktora" /><option value="Tıpta Uzmanlık" /><option value="Doçentlik" /></datalist>
-
-                    <div className="wide panel-form-actions kayit-formu-eylem">
-                      <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
-                      <button className="panel-primary">Değişiklikleri kaydet</button>
-                    </div>
-                  </form>
-                </PanelDrawer>
-              ) : null}
               {/* Gönderilmemiş teklifte asıl işlem "Müşteriye gönder";
                   müşteri sözlü onay verdiyse sözleşmeye buradan geçilir. */}
               {!locked && !shareUrl && !sozlesme && teklifYonetir ? sozlesmeyeDonustur("os-menu-item") : null}
@@ -358,22 +368,6 @@ export default async function ProposalDetailPage({ params }: Props) {
         </div>
       </header>
 
-      {/* Aşama çizgisi; kapanan teklifte çizgi yerine sebep. */}
-      {kapanis ? (
-        <p className="talep-arsiv">
-          <span className="status-pill" data-tone={statusTone(data.status)}>{labels[data.status] ?? data.status}</span>
-          <span>{kapanis}</span>
-        </p>
-      ) : (
-        <ol className="talep-asama" aria-label={`Durum: ${labels[data.status] ?? data.status}`}>
-          {TEKLIF_ADIMLARI.map((ad, sira) => (
-            <li key={ad} className={adim === null ? undefined : sira < adim ? "is-done" : sira === adim ? "is-current" : undefined} aria-current={sira === adim ? "step" : undefined}>
-              <i aria-hidden="true" />
-              <span>{ad}</span>
-            </li>
-          ))}
-        </ol>
-      )}
 
       {/*
         DETAY DÜZENİ (03.11.2026, iş detayıyla aynı): solda üstte müşteri ve
@@ -381,7 +375,7 @@ export default async function ProposalDetailPage({ params }: Props) {
         bağlantıları (sürümler dahil); sağda teklifin kendisi. Yazışmalar
         ortada açılan pencerede, kayıt geçmişi ⋯ menüsünde.
       */}
-      <div className="kd-duzen-v4">
+      <div className="kd-duzen-v4 kd-tek-ekran">
         <section className="panel-card opd-kart opd-musteri kd-musteri" aria-label="Müşteri">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
@@ -398,9 +392,29 @@ export default async function ProposalDetailPage({ params }: Props) {
             </div>
           ) : null}
           <dl className="talep-liste opd-musteri-liste">
+            <div><dt>Satış temsilcisi</dt><dd>{representative ? formatPersonName(representative) : <em>Atanmamış</em>}</dd></div>
             <div><dt>Telefon</dt><dd>{formatPhone(customer?.contact_phone) || <em>Yok</em>}</dd></div>
             <div><dt>E-posta</dt><dd>{customer?.contact_email || <em>Yok</em>}</dd></div>
           </dl>
+          <PanelModal triggerClassName="panel-secondary opd-ayrinti-dugme" triggerLabel="Müşteri ayrıntıları" title={musteri} description="İletişim ve künye." kicker={`TEKLİF · ${data.proposal_no}`} boy="buyuk">
+            <div className="opd-ayrinti">
+              <section className="opd-ayrinti-bolum">
+                <h3>İletişim</h3>
+                <dl className="talep-liste">
+                  <div><dt>Telefon</dt><dd>{formatPhone(customer?.contact_phone) || <em>Yok</em>}</dd></div>
+                  <div><dt>E-posta</dt><dd>{customer?.contact_email || <em>Yok</em>}</dd></div>
+                </dl>
+              </section>
+              <section className="opd-ayrinti-bolum">
+                <h3>Künye</h3>
+                {kunyeSatirlari.length ? (
+                  <dl className="talep-liste">
+                    {kunyeSatirlari.map((alan) => <div key={alan.anahtar}><dt>{alan.etiket}</dt><dd>{alan.deger}</dd></div>)}
+                  </dl>
+                ) : <p className="talep-bos">Künye girilmemiş. “Müşteri bilgilerini düzenle” ile eklenir.</p>}
+              </section>
+            </div>
+          </PanelModal>
         </section>
 
         <section className="panel-card opd-kart kd-iletisim" aria-label="İletişim">
@@ -553,21 +567,45 @@ export default async function ProposalDetailPage({ params }: Props) {
         </section>
 
         <section className="panel-card talep-bilgi kd-ana" aria-label="Teklif bilgileri">
-          <div className="teklif-tutar">
-            <div>
-              <h2>Teklif tutarı</h2>
-              <strong>{money(Number(data.amount), data.currency || "TRY")}</strong>
-              {taxStatus ? (
-                <small>
-                  {KDV_ADI[taxStatus]}
-                  {taxStatus === "excluded" && data.gross_amount ? ` · KDV dahil ${money(Number(data.gross_amount), data.currency || "TRY")}` : ""}
-                </small>
+          {/*
+            ANA BÖLÜM (03.11.2026, sözleşme detayıyla aynı kalite): üstte
+            düzenleme ve önizleme; dört kart (hizmet ve ücret, ödeme takvimi,
+            geçerlilik, müşteri yanıtı). Kartın her yeri pencere açar.
+            Eskiden tutar ve geçerlilik başlıkta, altında altı satırlık bilgi
+            listesi, kapsam ve ödeme takvimi alt alta duruyordu; düzenleme
+            ⋯ menüsünde tek uzun formdu.
+          */}
+          <div className="kd-tutar-satir">
+            <div><h2 className="kd-ana-baslik">Teklif</h2></div>
+            <div className="kd-tutar-eylem">
+              {!locked ? (
+                <PanelModal triggerLabel="Müşteri bilgilerini düzenle" kicker={`TEKLİF · ${data.proposal_no}`} title="Müşteri bilgileri" description="İletişim ve künye. Değişiklik müşteriye giden teklif bağlantısına da yansır." triggerClassName="panel-secondary kd-hap" boy="buyuk" basaridaKapan>
+                  <form className="panel-form kayit-formu" action={updateProposal}>
+                    <input type="hidden" name="proposal_id" value={data.id} />
+                    <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
+                    <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
+
+                    {gizliAlanlar("musteri")}
+                    <p className="wide kayit-formu-bolum">Müşteri</p>
+                    <label className="wide"><span>Müşteri / kurum<b className="req" aria-hidden="true">*</b></span><input name="customer_name" defaultValue={customer?.customer_name ?? ""} required minLength={2} maxLength={180} /></label>
+                    <label>Telefon<input name="contact_phone" type="tel" inputMode="tel" defaultValue={customer?.contact_phone ?? ""} placeholder="05xx xxx xx xx" /></label>
+                    <label>E-posta<input name="contact_email" type="email" defaultValue={customer?.contact_email ?? ""} placeholder="ornek@eposta.com" /></label>
+
+                    <p className="wide kayit-formu-bolum">Hizmet ve akademik künye</p>
+                    <label>Hizmet türü<input name="service_type" list="hizmet-turu-onerileri" defaultValue={String(customer?.request_details?.service_type ?? "")} /><HizmetTuruOnerileri liste={hizmetTurleri.liste} /></label>
+                    <label>Akademik düzey<input name="academic_level" list="teklif-akademik-duzey" defaultValue={String(customer?.request_details?.academic_level ?? "")} placeholder="Seçin ya da yazın" /></label>
+                    <label>Üniversite<input name="university" defaultValue={String(customer?.request_details?.university ?? "")} placeholder="Örn. İstanbul Üniversitesi" /></label>
+                    <label>Bölüm / alan<input name="department" defaultValue={String(customer?.request_details?.department ?? "")} placeholder="Örn. İşletme" /></label>
+                    <datalist id="teklif-akademik-duzey"><option value="Lisans" /><option value="Yüksek Lisans" /><option value="Doktora" /><option value="Tıpta Uzmanlık" /><option value="Doçentlik" /></datalist>
+
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                      <button className="panel-primary">Değişiklikleri kaydet</button>
+                    </div>
+                  </form>
+                </PanelModal>
               ) : null}
-            </div>
-            <div className="teklif-gecerlilik">
-              <h3>Geçerlilik</h3>
-              <span>{tarih(data.valid_until) ?? "Belirtilmedi"}</span>
-              {gecerlilikRozeti ? <span className="status-pill" data-tone={gecerlilikRozeti.ton}>{gecerlilikRozeti.ad}</span> : null}
+              {shareUrl ? <a className="panel-secondary kd-hap" target="_blank" rel="noreferrer" href={shareUrl}>Önizle</a> : null}
             </div>
           </div>
           {locked ? (
@@ -578,31 +616,164 @@ export default async function ProposalDetailPage({ params }: Props) {
                 : "Bu teklifin karar aşaması kapandı. Tutar ve içerik değiştirilemez."}
             </p>
           ) : null}
-          <dl className="talep-liste talep-liste--iki">
-            {bilgiler.map(([ad, deger]) => (
-              <div key={ad}><dt>{ad}</dt><dd>{deger}</dd></div>
-            ))}
-          </dl>
-          <div className="talep-not">
-            <h3>Kapsam</h3>
-            {data.scope ? <p>{data.scope}</p> : <p className="talep-bos">Kapsam yazılmamış.</p>}
-          </div>
 
-          {/* ÖDEME TAKVİMİ: sözleşme detayındaki gibi taksit, tutar ve vade/koşul. */}
-          <div className="talep-not">
-            <h3>Ödeme takvimi</h3>
-            {odemeTakvimi.length ? (
-              <ol className="plan-timeline">
-                {odemeTakvimi.map((taksit) => (
-                  <li key={taksit.sequence}>
-                    <time>{taksit.due_date ? tarih(taksit.due_date) : taksit.trigger || "Tarih yok"}</time>
-                    <span>{installmentLabel(taksit.label, taksit.sequence)} · {money(taksit.amount, data.currency || "TRY")}</span>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="talep-bos">Taksit girilmemiş{data.payment_plan ? `; ödeme planı: ${data.payment_plan}` : ""}.</p>
-            )}
+          <div className="kd-kutular">
+            <PanelModal
+              triggerClassName="kd-kutu"
+              triggerLabel="Hizmet ve ücret"
+              tetik={<>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Hizmet ve ücret</span>{taxStatus ? <span className="kd-kutu-cip">{KDV_ADI[taxStatus]}</span> : null}</span>
+                <span className="kd-kutu-deger">{money(Number(data.amount), data.currency || "TRY")}</span>
+                <span className="kd-kutu-aciklama">{data.title}</span>
+                <span className="kd-kutu-ozet">{data.scope || "Kapsam yazılmamış."}</span>
+                <span className="kd-kutu-dip"><span>{taxStatus === "excluded" && data.gross_amount ? `KDV dahil ${money(Number(data.gross_amount), data.currency || "TRY")}` : ""}</span><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
+              </>}
+              title="Hizmet ve ücret"
+              description="Teklif başlığı, verilecek hizmetler, tutar ve KDV."
+              kicker={`TEKLİF · ${data.proposal_no}`}
+              boy="buyuk"
+              basaridaKapan
+            >
+              {!locked ? (
+                      <form className="panel-form kayit-formu" action={updateProposal}>
+                        <input type="hidden" name="proposal_id" value={data.id} />
+                        <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
+                        <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
+
+                        {gizliAlanlar("hizmet")}
+                        <p className="wide kayit-formu-bolum">Teklif</p>
+                        <label className="wide"><span>Teklif başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
+                        <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
+
+                        <p className="wide kayit-formu-bolum">Tutar</p>
+                        <label><span>{/* İstisnada KDV yok; eskiden "KDV hariç" yazıyordu. */ taxStatus === "included" ? "Tutar, KDV dahil (₺)" : taxStatus === "excluded" ? "Tutar, KDV hariç (₺)" : "Tutar (₺)"}<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(editableAmount)} required /></label>
+                        {taxStatus ? (
+                          <label>KDV durumu
+                            <select name="tax_status" defaultValue={taxStatus}>
+                              <option value="excluded">KDV Hariç</option>
+                              <option value="included">KDV Dahil</option>
+                              <option value="exempt">KDV İstisna</option>
+                            </select>
+                          </label>
+                        ) : null}
+
+                        <div className="wide panel-form-actions kayit-formu-eylem">
+                          <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                          <button className="panel-primary">Değişiklikleri kaydet</button>
+                        </div>
+                      </form>
+              ) : (
+                <dl className="talep-liste">
+                  <div><dt>Başlık</dt><dd>{data.title}</dd></div>
+                  <div><dt>Tutar</dt><dd>{money(Number(data.amount), data.currency || "TRY")}{taxStatus ? ` · ${KDV_ADI[taxStatus]}` : ""}</dd></div>
+                  <div><dt>Kapsam</dt><dd className="kd-salt">{data.scope || <em>Yazılmamış</em>}</dd></div>
+                </dl>
+              )}
+            </PanelModal>
+
+            <PanelModal
+              triggerClassName="kd-kutu"
+              triggerLabel="Ödeme takvimi"
+              tetik={<>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Ödeme takvimi</span><span className="kd-kutu-cip">{odemeTakvimi.length ? `${odemeTakvimi.length} taksit` : "Takvim yok"}</span></span>
+                {odemeTakvimi.length ? (
+                  <span className="kd-kutu-deger">{money(odemeTakvimi.reduce((toplam, taksit) => toplam + taksit.amount, 0), data.currency || "TRY")}<small>planlanan</small></span>
+                ) : <span className="kd-kutu-deger is-sessiz">—<small>taksit girilmemiş</small></span>}
+                {odemeTakvimi.length ? (
+                  <span className="kd-kutu-satirlar">
+                    {odemeTakvimi.slice(0, 3).map((taksit) => (
+                      <span key={taksit.sequence}>
+                        <span><b>{installmentLabel(taksit.label, taksit.sequence)}</b><time>{taksit.due_date ? tarih(taksit.due_date) : taksit.trigger || "Tarih yok"}</time></span>
+                        <strong>{money(taksit.amount, data.currency || "TRY")}</strong>
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+                <span className="kd-kutu-dip"><span>{odemeTakvimi.length > 3 ? `+${odemeTakvimi.length - 3} taksit daha` : data.payment_plan || ""}</span><span className="kd-kutu-ac">Görüntüle →</span></span>
+              </>}
+              title="Ödeme takvimi"
+              description="Teklifte müşteriye sunulan taksitler. Değiştirmek için teklifin yeni bir sürümünü oluşturun."
+              kicker={`TEKLİF · ${data.proposal_no}`}
+              boy="buyuk"
+            >
+              {odemeTakvimi.length ? (
+                <ol className="plan-timeline">
+                  {odemeTakvimi.map((taksit) => (
+                    <li key={taksit.sequence}>
+                      <time>{taksit.due_date ? tarih(taksit.due_date) : taksit.trigger || "Tarih yok"}</time>
+                      <span>{installmentLabel(taksit.label, taksit.sequence)} · {money(taksit.amount, data.currency || "TRY")}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="talep-bos">Taksit girilmemiş{data.payment_plan ? `; ödeme planı: ${data.payment_plan}` : ""}.</p>
+              )}
+            </PanelModal>
+
+            <PanelModal
+              triggerClassName="kd-kutu"
+              triggerLabel="Geçerlilik"
+              tetik={<>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Geçerlilik</span>{gecerlilikRozeti ? <span className="kd-kutu-cip" data-tone={gecerlilikRozeti.ton === "neutral" ? undefined : gecerlilikRozeti.ton}>{gecerlilikRozeti.ad}</span> : <span className="kd-kutu-cip">{locked ? "Kapandı" : "Süresiz"}</span>}</span>
+                {data.valid_until ? <span className="kd-kutu-deger">{tarih(data.valid_until)}<small>son gün</small></span> : <span className="kd-kutu-deger is-sessiz">—<small>geçerlilik tarihi yok</small></span>}
+                <span className="kd-kutu-satirlar">
+                  <span><span><b>Oluşturulma</b></span><time>{tarih(data.created_at)}</time></span>
+                  <span><span><b>Sürüm</b></span><time>{data.revision_no > 0 ? `R${data.revision_no}` : "İlk sürüm"}</time></span>
+                </span>
+                <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">{locked ? "Görüntüle" : "Düzenle"} →</span></span>
+              </>}
+              title="Geçerlilik tarihi"
+              description="Müşteri teklifi bu güne kadar onaylayabilir."
+              kicker={`TEKLİF · ${data.proposal_no}`}
+              boy="dar"
+              basaridaKapan
+            >
+              {!locked ? (
+                      <form className="panel-form kayit-formu" action={updateProposal}>
+                        <input type="hidden" name="proposal_id" value={data.id} />
+                        <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
+                        <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
+
+                        {gizliAlanlar("gecerlilik")}
+                        <label className="wide">Geçerlilik tarihi<TarihSecici name="valid_until" defaultValue={data.valid_until ?? ""} min={bugun} /></label>
+                        <div className="wide panel-form-actions kayit-formu-eylem">
+                          <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                          <button className="panel-primary">Değişiklikleri kaydet</button>
+                        </div>
+                      </form>
+              ) : (
+                <dl className="talep-liste">
+                  <div><dt>Geçerlilik</dt><dd>{tarih(data.valid_until) ?? <em>Belirtilmedi</em>}</dd></div>
+                  <div><dt>Oluşturulma</dt><dd>{tarih(data.created_at)}</dd></div>
+                </dl>
+              )}
+            </PanelModal>
+
+            <PanelModal
+              triggerClassName="kd-kutu"
+              triggerLabel="Müşteri yanıtı"
+              tetik={<>
+                <span className="kd-kutu-ust"><span className="kd-kutu-etiket">Müşteri yanıtı</span><span className="kd-kutu-cip" data-tone={data.view_count ? undefined : "warning"}>{data.view_count ? `${data.view_count} görüntüleme` : data.sent_at ? "Açılmadı" : "Gönderilmedi"}</span></span>
+                <span className="kd-kutu-deger">{labels[data.status] ?? data.status}<small>{data.last_viewed_at ? `son açılış ${tarih(data.last_viewed_at)}` : ""}</small></span>
+                <span className="kd-kutu-satirlar">
+                  <span><span><b>Gönderim</b></span><time>{tarih(data.sent_at) ?? "gönderilmedi"}</time></span>
+                  <span><span><b>İlk görüntüleme</b></span><time>{tarih(data.first_viewed_at) ?? "—"}</time></span>
+                </span>
+                <span className="kd-kutu-dip"><span /><span className="kd-kutu-ac">Ayrıntılar →</span></span>
+              </>}
+              title="Müşteri yanıtı"
+              description="Teklifin müşteriye gönderimi ve müşterinin teklif sayfasındaki hareketi."
+              kicker={`TEKLİF · ${data.proposal_no}`}
+              boy="dar"
+            >
+              <dl className="talep-liste">
+                <div><dt>Durum</dt><dd>{labels[data.status] ?? data.status}</dd></div>
+                <div><dt>Gönderim</dt><dd>{data.sent_at ? uzunTarih(data.sent_at) : <em>Gönderilmedi</em>}</dd></div>
+                <div><dt>İlk görüntüleme</dt><dd>{data.first_viewed_at ? uzunTarih(data.first_viewed_at) : <em>Açılmadı</em>}</dd></div>
+                <div><dt>Son görüntüleme</dt><dd>{data.last_viewed_at ? uzunTarih(data.last_viewed_at) : <em>—</em>}</dd></div>
+                <div><dt>Görüntülenme</dt><dd>{data.view_count ? `${data.view_count} kez` : <em>0</em>}</dd></div>
+              </dl>
+            </PanelModal>
           </div>
         </section>
       </div>

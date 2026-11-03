@@ -392,7 +392,7 @@ export default async function ContractDetailPage({ params }: Props) {
         kaydın bağlantıları; sağda sözleşmenin kendisi. Yazışmalar ortada
         açılan pencerede, kayıt geçmişi ⋯ menüsünde.
       */}
-      <div className="kd-duzen-v4">
+      <div className="kd-duzen-v4 kd-tek-ekran">
         <section className="panel-card opd-kart opd-musteri kd-musteri" aria-label="Müşteri">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
