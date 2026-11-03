@@ -924,3 +924,8 @@
 .kd-eylemler>.talep-gecmis{margin-top:0}
 .kd-eylemler>.talep-gecmis:first-of-type{padding-top:0;border-top:0}
 .opd-kart.kd-eylemler .talep-gecmis>h3{margin:0 0 var(--sp-2);color:var(--muted);font-family:inherit;font-size:var(--fs-micro);font-weight:700;letter-spacing:.02em;line-height:1.3;text-transform:uppercase}
+/* Müşteri sayfasının cari kartı: açık bakiye büyük rakam, altında açıklama. */
+.kd-buyuk-rakam{display:flex;flex-direction:column;gap:2px;margin:0;color:var(--ink);font-size:var(--fs-2xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;line-height:1.1}
+.kd-buyuk-rakam[data-tone="warning"]{color:var(--warning)}
+.kd-buyuk-rakam small{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.kd-alt-sag .opd-musteri-liste dd{white-space:nowrap}
