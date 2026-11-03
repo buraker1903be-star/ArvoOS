@@ -30,7 +30,7 @@ import { workflowStatusNames } from "../../../operations/ops-shared";
 
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
 import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
-import { postaKanali, whatsappKanali } from "../../kayit-detay/akis-kanallari";
+import { postaKanali, whatsappKanali, yorumKanali } from "../../kayit-detay/akis-kanallari";
 import "../../crm.css";
 import "../../request-page.css";
 import "../../kayit-detay/kayit-detay.css";
@@ -226,7 +226,7 @@ export default async function RequestDetailPage({
     kuralı (RLS; satış personeli yalnızca görebildiğini görür). Okunamazsa
     sayfa düşmez, bölüm görünmez.
   */
-  const [gecmis, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, unlistedAssignee, birakanAdi] = await Promise.all([
+  const [gecmis, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, unlistedAssignee, birakanAdi, yorumOzeti] = await Promise.all([
     findCustomerHistory(context, { phone: item.contact_phone, name: item.customer_name, excludeOpportunityId: item.id }, { maxItems: 4 })
       .catch((hata): CustomerHistoryResult | null => {
         console.error("[talep] müşteri geçmişi okunamadı", hata);
@@ -237,6 +237,7 @@ export default async function RequestDetailPage({
     postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [item.id], eposta: item.contact_email }) : Promise.resolve([]),
     pasifTemsilciSozu,
     birakanAdiSozu,
+    yorumKanali(supabase, membership.organization_id, item.id),
   ]);
   /*
     "Listemden kaldır" yalnızca talebin KENDİSİNE atandığı satışçıya, açık
@@ -643,7 +644,7 @@ export default async function RequestDetailPage({
           baslik="Yazışmalar"
           kicker="TALEP"
           kanallar={[
-            { ad: "Yorumlar", bos: "Ekip içi yorumlar ve notlar." },
+            yorumOzeti,
             whatsappKanali(whatsappMesajlari),
             ...(postaGorur ? [postaKanali(postalar)] : []),
             { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri." },

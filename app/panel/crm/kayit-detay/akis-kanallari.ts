@@ -1,4 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { InboxMessage } from "@/lib/whatsapp-inbox";
+import { kisiAdlari } from "@/lib/kisi-adlari";
 import { formatPersonName } from "@/lib/format-name";
 import type { PostaKonusmasi } from "../musteri-yazismalari";
 import type { AkisKanali } from "./akis-cekmecesi";
@@ -67,5 +69,33 @@ export function postaKanali(postalar: PostaKonusmasi[]): AkisKanali {
         }
       : null,
     bos: "Posta yok.",
+  };
+}
+
+/*
+  Ekip içi yorumların son satırı (talep, teklif, sözleşme). Yorumları
+  InternalComments kendisi okuyor ama yalnızca çekmecede açılınca; özet
+  için yalnızca son yorumu burada tek satırla alıyoruz. Rozet yok: kırmızı
+  rozet "yeni" demek, yorumun okunup okunmadığı tutulmuyor. Okunamazsa
+  "yorum yok" YAZILMIYOR — boş görünen bir kanal personeli yanıltır.
+*/
+export async function yorumKanali(supabase: SupabaseClient, organizationId: string, opportunityId: string): Promise<AkisKanali> {
+  const { data, error } = await supabase
+    .from("crm_internal_comments")
+    .select("body,created_by,created_at")
+    .eq("organization_id", organizationId)
+    .eq("opportunity_id", opportunityId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) {
+    console.error("[akis] son yorum okunamadı", opportunityId, error.message);
+    return { ad: "Yorumlar", bos: "Son yorum okunamadı; çekmecede açın." };
+  }
+  const son = (data ?? [])[0] as { body: string; created_by: string | null; created_at: string } | undefined;
+  if (!son) return { ad: "Yorumlar", bos: "Ekip içi yorum yok." };
+  const adlar = await kisiAdlari(supabase, organizationId, [son.created_by]);
+  return {
+    ad: "Yorumlar",
+    onizleme: { kim: (son.created_by && adlar.get(son.created_by)) || "Ekip", metin: kisalt(son.body), zaman: ozetZamani(son.created_at) },
   };
 }
