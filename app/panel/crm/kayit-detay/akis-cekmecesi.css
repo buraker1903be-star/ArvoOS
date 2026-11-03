@@ -41,18 +41,8 @@
 /* Geniş çekmecede balonlar daha geniş açılabilir: uzun mesaj daha az satıra kırılır. */
 .akis-cekmece .opd-sohbet-satir{max-width:88%}
 
-/*
-  Özet sütunu dar (03.11.2026): okuma çekmecede, sütunun geniş olmasına
-  gerek yok. Kazanılan yer ortadaki ana içeriğe (görevler, kapsam,
-  tutarlar). Talep, teklif ve sözleşme detayı bu kuralla; iş detayının
-  ilk sütunu farklı olduğu için kendi kuralı var (operations/[id]/detail.css).
-*/
-@media(min-width:1201px){
-  .talep-izgara:has(>.akis-ozet){grid-template-columns:minmax(260px,1fr) minmax(0,2.5fr) minmax(220px,.75fr)}
-}
 /* Sütunlar ikiye inince (≤1200px) özet tam genişlikte bir satır: kartlar yan yana. */
 @media(max-width:1200px){
-  .talep-izgara>.akis-ozet{grid-column:1/-1}
   .akis-ozet ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
 }
 @media(max-width:760px){

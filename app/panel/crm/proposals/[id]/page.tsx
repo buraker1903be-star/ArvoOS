@@ -34,6 +34,7 @@ import { PanelDrawer } from "../../../components/panel-drawer";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
 import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
+import { PanelModal } from "../../../components/panel-modal";
 import { postaKanali, whatsappKanali, yorumKanali } from "../../kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
@@ -369,7 +370,14 @@ export default async function ProposalDetailPage({ params }: Props) {
 
       <div className="talep-izgara">
         {/* Müşteri ve müşteri bağlantısı */}
-        <section className="panel-card talep-musteri" aria-label="Müşteri">
+        {/*
+          SOL SÜTUN (03.11.2026, iş detayıyla aynı düzen): müşteri kartı ve
+          yazışmalar. Eskiden yazışmalar ayrı bir üçüncü sütundaydı; bağlantılar
+          sütunun içinde uzun bir liste olarak duruyordu, artık "Ayrıntılar"
+          penceresinde. Orta sütun ekranın kalanını alıyor.
+        */}
+        <div className="talep-musteri kd-sol">
+        <section className="panel-card kd-sol-kart" aria-label="Müşteri">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
             <div>
@@ -377,6 +385,49 @@ export default async function ProposalDetailPage({ params }: Props) {
               {/* Müşterinin bütün kayıtları tek sayfada (/panel/crm/musteri). */}
               <small><Link className="personel-tumu" href={`/panel/crm/musteri/${data.opportunity_id}`}>Müşteri sayfası</Link></small>
             </div>
+            <PanelModal
+              triggerClassName="kd-sol-baglanti"
+              triggerLabel="Ayrıntılar"
+              title={musteri}
+              description="Talep, sözleşme ve teklifin sürümleri."
+              kicker={`TEKLİF · ${data.proposal_no}`}
+              boy="genis"
+            >
+              <div className="kd-ayrinti">
+              {/* BAĞLANTILAR: sözleşme detayındaki gibi, kaydın zinciri tek yerde. */}
+              <div className="talep-gecmis">
+                <h3>Bağlantılar</h3>
+                <ul>
+                  <li>
+                    <Link href={`/panel/crm/requests/${data.opportunity_id}`}>
+                      <span className="talep-gecmis-metin"><b>Talep</b><small>{formatSubject(customer?.title) || "Talebe git"}</small></span>
+                    </Link>
+                  </li>
+                  {sozlesme ? (
+                    <li>
+                      <Link href={`/panel/crm/contracts/${sozlesme.id}`}>
+                        <span className="talep-gecmis-metin"><b>Sözleşme {sozlesme.contract_no}</b><small>{contractStatusLabel(sozlesme.status)}</small></span>
+                      </Link>
+                    </li>
+                  ) : null}
+                  {oncekiRevizyon ? (
+                    <li>
+                      <Link href={`/panel/crm/proposals/${oncekiRevizyon.id}`}>
+                        <span className="talep-gecmis-metin"><b>Önceki sürüm{oncekiRevizyon.revision_no ? ` · R${oncekiRevizyon.revision_no}` : ""}</b><small>{money(Number(oncekiRevizyon.amount), oncekiRevizyon.currency || "TRY")}</small></span>
+                      </Link>
+                    </li>
+                  ) : null}
+                  {sonrakiRevizyon ? (
+                    <li>
+                      <Link href={`/panel/crm/proposals/${sonrakiRevizyon.id}`}>
+                        <span className="talep-gecmis-metin"><b>Yeni sürüm · R{sonrakiRevizyon.revision_no}</b><small>Bu teklif yeni sürümle değiştirildi</small></span>
+                      </Link>
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+              </div>
+            </PanelModal>
           </div>
           <div className="talep-iletisim">
             {customer?.contact_phone ? <a className="panel-secondary" href={`tel:${customer.contact_phone}`}>Ara</a> : null}
@@ -430,39 +481,57 @@ export default async function ProposalDetailPage({ params }: Props) {
             )}
           </div>
 
-          {/* BAĞLANTILAR: sözleşme detayındaki gibi, kaydın zinciri tek yerde. */}
-          <div className="talep-gecmis">
-            <h3>Bağlantılar</h3>
-            <ul>
-              <li>
-                <Link href={`/panel/crm/requests/${data.opportunity_id}`}>
-                  <span className="talep-gecmis-metin"><b>Talep</b><small>{formatSubject(customer?.title) || "Talebe git"}</small></span>
-                </Link>
-              </li>
-              {sozlesme ? (
-                <li>
-                  <Link href={`/panel/crm/contracts/${sozlesme.id}`}>
-                    <span className="talep-gecmis-metin"><b>Sözleşme {sozlesme.contract_no}</b><small>{contractStatusLabel(sozlesme.status)}</small></span>
-                  </Link>
-                </li>
-              ) : null}
-              {oncekiRevizyon ? (
-                <li>
-                  <Link href={`/panel/crm/proposals/${oncekiRevizyon.id}`}>
-                    <span className="talep-gecmis-metin"><b>Önceki sürüm{oncekiRevizyon.revision_no ? ` · R${oncekiRevizyon.revision_no}` : ""}</b><small>{money(Number(oncekiRevizyon.amount), oncekiRevizyon.currency || "TRY")}</small></span>
-                  </Link>
-                </li>
-              ) : null}
-              {sonrakiRevizyon ? (
-                <li>
-                  <Link href={`/panel/crm/proposals/${sonrakiRevizyon.id}`}>
-                    <span className="talep-gecmis-metin"><b>Yeni sürüm · R{sonrakiRevizyon.revision_no}</b><small>Bu teklif yeni sürümle değiştirildi</small></span>
-                  </Link>
-                </li>
-              ) : null}
-            </ul>
-          </div>
         </section>
+
+        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi). */}
+        <AkisCekmecesi
+          baslik="Yazışmalar"
+          kicker={`TEKLİF · ${data.proposal_no}`}
+          kanallar={[
+            yorumOzeti,
+            ...(revizyonlar.length > 1 ? [{ ad: "Revizyonlar", bos: `${revizyonlar.length} sürüm` }] : []),
+            whatsappKanali(whatsappMesajlari),
+            ...(postaGorur ? [postaKanali(postalar)] : []),
+            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri.", ozetteGizli: true },
+          ]}
+        >
+          <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} gorunum="akis" />
+          {revizyonlar.length > 1 ? (
+            <ul className="ekip-liste teklif-revizyonlar">
+              {[...revizyonlar].reverse().map((r) => {
+                const grup = teklifGrubu(r);
+                const bu = r.id === data.id;
+                return (
+                  <li key={r.id}>
+                    <Link href={`/panel/crm/proposals/${r.id}`} className={bu ? "is-active" : undefined} aria-current={bu ? "page" : undefined}>
+                      <span className="ekip-dep-kod">{r.revision_no ? `R${r.revision_no}` : "İlk"}</span>
+                      <span className="cari-hareket-metin">
+                        <b>{r.proposal_no}{bu ? " · bu sürüm" : ""}</b>
+                        <small>{tarih(r.created_at)}</small>
+                      </span>
+                      <strong className="teklif-tutar-satir">{money(Number(r.amount), r.currency || "TRY")}</strong>
+                      <span className="status-pill">{TEKLIF_GRUP_ADLARI[grup]}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
+          {postaGorur ? (
+            <div>
+              <PostaAkisi
+                postalar={postalar}
+                epostaVar={Boolean(customer?.contact_email)}
+                eylem={izin("posta.yanitla") && customer?.contact_email ? (
+                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(customer.contact_email)}&firsat=${encodeURIComponent(data.opportunity_id)}&konu=${encodeURIComponent(`${data.proposal_no} · ${data.title}`)}`}>Posta gönder</Link>
+                ) : null}
+              />
+            </div>
+          ) : null}
+          <RecordHistory opportunityId={data.opportunity_id} />
+        </AkisCekmecesi>
+        </div>
 
         {/* Teklif */}
         <section className="panel-card talep-bilgi" aria-label="Teklif bilgileri">
@@ -521,54 +590,6 @@ export default async function ProposalDetailPage({ params }: Props) {
 
         {/* Akış: revizyon zinciri birden çok sürümse "Revizyonlar" sekmesi;
             WhatsApp ve Postalar müşteriyle yazışma (eskiden yoktu). */}
-        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi). */}
-        <AkisCekmecesi
-          baslik="Yazışmalar"
-          kicker={`TEKLİF · ${data.proposal_no}`}
-          kanallar={[
-            yorumOzeti,
-            ...(revizyonlar.length > 1 ? [{ ad: "Revizyonlar", bos: `${revizyonlar.length} sürüm` }] : []),
-            whatsappKanali(whatsappMesajlari),
-            ...(postaGorur ? [postaKanali(postalar)] : []),
-            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri." },
-          ]}
-        >
-          <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} gorunum="akis" />
-          {revizyonlar.length > 1 ? (
-            <ul className="ekip-liste teklif-revizyonlar">
-              {[...revizyonlar].reverse().map((r) => {
-                const grup = teklifGrubu(r);
-                const bu = r.id === data.id;
-                return (
-                  <li key={r.id}>
-                    <Link href={`/panel/crm/proposals/${r.id}`} className={bu ? "is-active" : undefined} aria-current={bu ? "page" : undefined}>
-                      <span className="ekip-dep-kod">{r.revision_no ? `R${r.revision_no}` : "İlk"}</span>
-                      <span className="cari-hareket-metin">
-                        <b>{r.proposal_no}{bu ? " · bu sürüm" : ""}</b>
-                        <small>{tarih(r.created_at)}</small>
-                      </span>
-                      <strong className="teklif-tutar-satir">{money(Number(r.amount), r.currency || "TRY")}</strong>
-                      <span className="status-pill">{TEKLIF_GRUP_ADLARI[grup]}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
-          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
-          {postaGorur ? (
-            <div>
-              <PostaAkisi
-                postalar={postalar}
-                epostaVar={Boolean(customer?.contact_email)}
-                eylem={izin("posta.yanitla") && customer?.contact_email ? (
-                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(customer.contact_email)}&firsat=${encodeURIComponent(data.opportunity_id)}&konu=${encodeURIComponent(`${data.proposal_no} · ${data.title}`)}`}>Posta gönder</Link>
-                ) : null}
-              />
-            </div>
-          ) : null}
-          <RecordHistory opportunityId={data.opportunity_id} />
-        </AkisCekmecesi>
       </div>
     </main>
   );
