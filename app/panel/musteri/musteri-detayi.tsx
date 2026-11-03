@@ -12,7 +12,9 @@ import { ILETISIM_ALANLARI, KUNYE_ALANLARI, KUNYE_EN_UZUN, doluAlanlar, type Kun
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp, type PostaKonusmasi } from "../crm/musteri-yazismalari";
 import { findCustomerHistory, LOOKUP_MAX_ITEMS, formatHistoryDate, type CustomerHistoryResult, type HistoryKind } from "../crm/customer-history-query";
 import { buildAccountBalances, hareketToplamlari } from "../finance/account-balances";
-import { TalepAkis } from "../crm/kayit-detay/kayit-akis";
+import { KanalDugmesi } from "../crm/kayit-detay/kanal-dugmesi";
+import { ozetZamani } from "../crm/kayit-detay/akis-kanallari";
+import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { PanelModal } from "../components/panel-modal";
 import { PanelDrawer } from "../components/panel-drawer";
 import { CariHesapIcerigi } from "../accounts/cari-hesap";
@@ -120,7 +122,6 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
   const seciliTur = TUR_SIRASI.includes(kayit as HistoryKind) ? (kayit as HistoryKind) : null;
   const gorunenKayitlar = seciliTur ? kayitlar.filter((k) => k.kind === seciliTur) : kayitlar;
   const turAdresi = (tur: HistoryKind | null) => (tur ? `${adres}?kayit=${tur}` : adres);
-  const sayilar = gecmis?.counts ?? { request: 0, proposal: 0, contract: 0, job: 0 };
   const kimlikIleri = (anahtar: string) => kayitlar.filter((k) => k.key.startsWith(`${anahtar}:`)).map((k) => k.key.slice(anahtar.length + 1));
   const sozlesmeIdleri = kimlikIleri("contract");
   const isIdleri = kimlikIleri("job");
@@ -172,7 +173,6 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
   ]);
   const mesajlar = [...new Map([...((sozlesmeMesajlari.data ?? []) as Mesaj[]), ...((isMesajlari.data ?? []) as Mesaj[])].map((m) => [m.id, m])).values()]
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const okunmamis = mesajlar.filter((m) => m.sender_type === "customer" && !m.read_at).length;
 
   /* ---- Kimlik: en güncel talepten, yoksa cariden ---- */
   const hamAd = gecmis?.kunye?.name ?? talep?.customer_name ?? cariKaydi?.name ?? "Müşteri";
@@ -186,7 +186,11 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
   const enSonTalep = gecmis?.musteriSayfasiTalepId ?? talep?.id ?? null;
 
   /* ---- Yazışmalar: kayıt sayfalarıyla aynı kural ---- */
-  const { numara: waNumara, mesajlar: whatsapp } = crmVar ? await musteriWhatsapp(org, telefon) : { numara: null, mesajlar: [] };
+  const [{ numara: waNumara, mesajlar: whatsapp }, whatsappEntegre] = await Promise.all([
+    crmVar ? musteriWhatsapp(org, telefon) : Promise.resolve({ numara: null, mesajlar: [] }),
+    /* WhatsApp düğmesi yalnızca kurumun kendi hesabı bağlıysa (detay sayfalarıyla aynı kural). */
+    crmVar ? getWhatsappStatus(org).then((durum) => durum.connected && durum.status !== "disabled") : Promise.resolve(false),
+  ]);
   /* Posta sekmesinin koşulu menüdekiyle aynı (app/panel/layout.tsx):
      ortak kutuyu görebilen (posta.gor) ve kutu bağlı. */
   const postaGorur = izin("posta.gor") && (await postaDurumu(org)).durum === "bagli";
@@ -202,42 +206,8 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
   const talepDuzenler = crmVar && Boolean(enSonTalep) && izin("crm.talep.yonet");
   const cariDuzenler = cariModulu && Boolean(cariKimligi) && izin("finance.cari.yonet");
 
-  const sekmeler: { anahtar: string; ad: string; icerik: React.ReactNode }[] = [
-    ...(crmVar ? [{
-      anahtar: "mesajlar",
-      ad: okunmamis ? `Mesajlar · ${okunmamis}` : "Mesajlar",
-      icerik: (
-        <div className="musteri-mesajlar">
-          {mesajlar.length ? (
-            <ul className="cari-hareketler">
-              {mesajlar.map((m) => {
-                const href = m.workflow_id ? `/panel/operations/${m.workflow_id}?pencere=mesajlar` : m.contract_id ? `/panel/crm/contracts/${m.contract_id}` : null;
-                const icerik = (
-                  <span className="cari-hareket-metin">
-                    <b>{m.sender_type === "customer" ? musteri : formatPersonName(m.sender_name)}{m.sender_type === "customer" && !m.read_at ? " · yeni" : ""}</b>
-                    <small className="musteri-mesaj-govde">{m.body}</small>
-                    <small>{formatHistoryDate(m.created_at)}</small>
-                  </span>
-                );
-                return <li key={m.id}>{href ? <Link href={href}>{icerik}</Link> : icerik}</li>;
-              })}
-            </ul>
-          ) : (
-            <p className="ic-akis-bos">Müşteri takip ekranından mesaj yazmamış.</p>
-          )}
-        </div>
-      ),
-    }, {
-      anahtar: "whatsapp",
-      ad: whatsapp.length && whatsapp[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp",
-      icerik: <WhatsappAkisi mesajlar={whatsapp} numara={waNumara} musteri={musteri} />,
-    }] : []),
-    ...(postaGorur ? [{
-      anahtar: "posta",
-      ad: postalar.some((p) => p.okunmamis) ? "Posta · yeni" : "Posta",
-      icerik: <PostaAkisi postalar={postalar} epostaVar={Boolean(eposta)} />,
-    }] : []),
-  ];
+  const sonMesajZamani = mesajlar.filter((m) => m.sender_type === "customer").map((m) => m.created_at).sort().at(-1) ?? null;
+  const sonPostaZamani = postalar.map((posta) => posta.son_mesaj_at ?? "").sort().at(-1) || null;
 
   return (
     <main className="talep musteri-sayfa">
@@ -247,28 +217,6 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
           <h1>{musteri}</h1>
         </div>
         <div className="talep-bas-eylem">
-          {cariKimligi ? (
-            <PanelModal
-              triggerLabel="Cari hesap"
-              triggerClassName="panel-primary"
-              kicker="CARİ HESAP"
-              title={musteri}
-                              description={bakiye !== null ? `Açık bakiye ${money(bakiye)}${cariler.length > 1 ? ` · ${cariler.length} cari` : ""}` : undefined}
-              boy="tam"
-              baslangicAcik={pencere === "cari"}
-              kapaninca={pencere === "cari" ? adres : undefined}
-            >
-              {cariler.length > 1 ? (
-                <p className="cari-coklu-not">Bu müşterinin {cariler.length} cari hesabı var; bakiye hepsinin toplamı. Aynı kişiye ait ise tek cariye taşınması önerilir.</p>
-              ) : null}
-              {cariler.map((c) => (
-                <section key={c.id} className="cari-pencere-bolum" aria-label={c.name}>
-                  {cariler.length > 1 ? <h3 className="cari-pencere-ad">{c.name}</h3> : null}
-                  <CariHesapIcerigi partyId={c.id} />
-                </section>
-              ))}
-            </PanelModal>
-          ) : null}
           {talepDuzenler || cariDuzenler ? (
             <PanelDrawer triggerLabel="Bilgileri düzenle" triggerClassName="panel-secondary" kicker={`MÜŞTERİ · ${musteri}`} title="Müşteri bilgilerini düzenle" description="İletişim bilgileri CRM ile Finans arasında ortak; tek yerden değişir.">
               {/* DÜZEN (2026-10): talep, teklif ve sözleşme formlarıyla aynı
@@ -338,21 +286,18 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
         </div>
       </header>
 
-      <nav className="kayit-serit" aria-label="Müşteri özeti">
-        <dl>
-          {crmVar && talep ? TUR_SIRASI.map((tur) => (
-            <div key={tur} className={seciliTur === tur ? "is-active" : undefined}>
-              <dt>{tur === "request" ? "Teklifsiz talep" : TUR_ADLARI[tur]}</dt>
-              <dd><Link href={turAdresi(seciliTur === tur ? null : tur)} scroll={false} aria-current={seciliTur === tur ? "true" : undefined}>{sayilar[tur] ?? 0}</Link></dd>
-            </div>
-          )) : null}
-          {gecmis?.contractedLabel ? <div><dt>Sözleşme değeri</dt><dd>{gecmis.contractedLabel}</dd></div> : null}
-          {bakiye !== null ? <div className="cari-bakiye" data-tone={bakiye > 0 ? "warning" : "success"}><dt>Açık bakiye</dt><dd>{money(bakiye)}</dd></div> : null}
-        </dl>
-      </nav>
-
-      <div className="talep-izgara">
-        <section className="panel-card talep-musteri" aria-label="Müşteri">
+      {/*
+        DETAY DÜZENİ (03.11.2026, iş, talep, teklif ve sözleşme detayıyla
+        aynı): solda üstte müşteri ve iletişim kartları, altlarında cari
+        hesap ve özet; sağda müşterinin kayıtları. Eskiden üstte bir sayı
+        şeridi, solda uzun bir bilgi listesi (vergi, adres, künye), sağda
+        sekmeli bir yazışma sütunu vardı. Şerit Kayıtlar kartının
+        süzgeçleriyle aynı işi görüyordu; künye ve fatura bilgileri artık
+        "Müşteri ayrıntıları" penceresinde, yazışmalar ortada açılan
+        pencerelerde (rozet okununca söner).
+      */}
+      <div className="kd-duzen-v4">
+        <section className="panel-card opd-kart opd-musteri kd-musteri" aria-label="Müşteri">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
             <div>
@@ -361,37 +306,167 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
             </div>
           </div>
           {telefon || eposta ? (
-            <div className="talep-iletisim">
+            <div className="opd-iletisim-dugmeleri">
               {telefon ? <a className="panel-secondary" href={`tel:${telefon}`}>Ara</a> : null}
               {telefon ? <a className="panel-secondary" href={waMeAdresi(telefon, `Merhaba ${musteri},`)} target="_blank" rel="noreferrer">WhatsApp</a> : null}
               {eposta ? <a className="panel-secondary" href={`mailto:${eposta}`}>E-posta</a> : null}
             </div>
           ) : null}
-          <dl className="talep-liste">
+          <dl className="talep-liste opd-musteri-liste">
             <div><dt>Telefon</dt><dd>{formatPhone(telefon) || <em>Yok</em>}</dd></div>
             <div><dt>E-posta</dt><dd>{eposta || <em>Yok</em>}</dd></div>
-            {crmVar ? <div><dt>Satış temsilcisi</dt><dd>{sonSatis ?? <em>—</em>}</dd></div> : null}
+            {crmVar ? <div className="is-grup"><dt>Satış temsilcisi</dt><dd>{sonSatis ?? <em>—</em>}</dd></div> : null}
             {sonOperasyon ? <div><dt>Operasyon</dt><dd>{sonOperasyon}</dd></div> : null}
-            {ilkKayit ? <div><dt>İlk kayıt</dt><dd>{ilkKayit}</dd></div> : null}
-            {talep?.source ? <div><dt>Kaynak</dt><dd>{talep.source}</dd></div> : null}
-            {cariKaydi?.tax_number ? <div><dt>Vergi no</dt><dd>{cariKaydi.tax_number}</dd></div> : null}
-            {cariKaydi?.tax_office ? <div><dt>Vergi dairesi</dt><dd>{cariKaydi.tax_office}</dd></div> : null}
-            {cariKaydi?.address ? <div><dt>Adres</dt><dd>{cariKaydi.address}</dd></div> : null}
           </dl>
-          {kunyeSatirlari.length ? (
-            <div className="talep-gecmis">
-              <h3>Künye</h3>
-              <dl className="talep-liste">
-                {kunyeSatirlari.map((alan) => <div key={alan.anahtar}><dt>{alan.etiket}</dt><dd>{alan.deger}</dd></div>)}
-              </dl>
-            </div>
-          ) : null}
           {gecmis?.matchedBy === "name" ? (
             <p className="talep-bos cari-not">Kayıtlar ad soyadla eşleşti; telefonu farklı kayıtlar başka bir kişiye ait olabilir.</p>
           ) : null}
+          <PanelModal
+            triggerClassName="panel-secondary opd-ayrinti-dugme"
+            triggerLabel="Müşteri ayrıntıları"
+            title={musteri}
+            description="Fatura bilgileri, künye ve ilk kayıt."
+            kicker="MÜŞTERİ"
+            boy="buyuk"
+          >
+            <div className="opd-ayrinti">
+              <section className="opd-ayrinti-bolum">
+                <h3>İletişim</h3>
+                <dl className="talep-liste">
+                  <div><dt>Telefon</dt><dd>{formatPhone(telefon) || <em>Yok</em>}</dd></div>
+                  <div><dt>E-posta</dt><dd>{eposta || <em>Yok</em>}</dd></div>
+                  {ilkKayit ? <div><dt>İlk kayıt</dt><dd>{ilkKayit}</dd></div> : null}
+                  {talep?.source ? <div><dt>Kaynak</dt><dd>{talep.source}</dd></div> : null}
+                </dl>
+              </section>
+              <section className="opd-ayrinti-bolum">
+                <h3>Fatura bilgileri</h3>
+                {cariKaydi?.tax_number || cariKaydi?.tax_office || cariKaydi?.address ? (
+                  <dl className="talep-liste">
+                  {cariKaydi?.tax_number ? <div><dt>Vergi no</dt><dd>{cariKaydi.tax_number}</dd></div> : null}
+                  {cariKaydi?.tax_office ? <div><dt>Vergi dairesi</dt><dd>{cariKaydi.tax_office}</dd></div> : null}
+                  {cariKaydi?.address ? <div><dt>Adres</dt><dd>{cariKaydi.address}</dd></div> : null}
+                  </dl>
+                ) : <p className="talep-bos">Fatura bilgisi girilmemiş.</p>}
+              </section>
+              <section className="opd-ayrinti-bolum is-genis">
+                <h3>Künye</h3>
+                {kunyeSatirlari.length ? (
+                  <dl className="talep-liste">
+                    {kunyeSatirlari.map((alan) => <div key={alan.anahtar}><dt>{alan.etiket}</dt><dd>{alan.deger}</dd></div>)}
+                  </dl>
+                ) : <p className="talep-bos">Künye girilmemiş. “Bilgileri düzenle” ile eklenir.</p>}
+              </section>
+            </div>
+          </PanelModal>
         </section>
 
-        <section className="panel-card talep-bilgi" aria-label="Müşterinin kayıtları">
+        <section className="panel-card opd-kart kd-iletisim" aria-label="İletişim">
+          <h2 className="opd-kart-baslik">İletişim</h2>
+          <h3 className="opd-kanal-grup">Müşteri</h3>
+          <p className="opd-kanal-ozet">
+            {sonMesajZamani ? <>Son mesaj <time dateTime={sonMesajZamani}>{ozetZamani(sonMesajZamani)}</time></> : sonPostaZamani ? <>Son posta <time dateTime={sonPostaZamani}>{ozetZamani(sonPostaZamani)}</time></> : "Henüz yazışma yok"}
+          </p>
+          {crmVar ? (
+            <KanalDugmesi
+              anahtar={`kanal:musteri:${talepId ?? cariId}:mesaj`}
+              etiket="Mesajlar"
+              olaylar={mesajlar.filter((m) => m.sender_type === "customer" && !m.read_at).map((m) => m.created_at)}
+              title={musteri}
+              description="Müşterinin takip ekranından yazdıkları; yanıt için ilgili iş ya da sözleşmeyi açın."
+              kicker="MÜŞTERİ MESAJLARI"
+            >
+            <div className="musteri-mesajlar">
+              {mesajlar.length ? (
+                <ul className="cari-hareketler">
+                  {mesajlar.map((m) => {
+                    const href = m.workflow_id ? `/panel/operations/${m.workflow_id}?pencere=mesajlar` : m.contract_id ? `/panel/crm/contracts/${m.contract_id}` : null;
+                    const icerik = (
+                      <span className="cari-hareket-metin">
+                        <b>{m.sender_type === "customer" ? musteri : formatPersonName(m.sender_name)}{m.sender_type === "customer" && !m.read_at ? " · yeni" : ""}</b>
+                        <small className="musteri-mesaj-govde">{m.body}</small>
+                        <small>{formatHistoryDate(m.created_at)}</small>
+                      </span>
+                    );
+                    return <li key={m.id}>{href ? <Link href={href}>{icerik}</Link> : icerik}</li>;
+                  })}
+                </ul>
+              ) : (
+                <p className="ic-akis-bos">Müşteri takip ekranından mesaj yazmamış.</p>
+              )}
+            </div>
+            </KanalDugmesi>
+          ) : null}
+          {crmVar && whatsappEntegre ? (
+            <KanalDugmesi
+              anahtar={`kanal:musteri:${talepId ?? cariId}:whatsapp`}
+              etiket="WhatsApp"
+              olaylar={whatsapp[0]?.direction === "inbound" ? [whatsapp[0].createdAt] : []}
+              title={musteri}
+              kicker="WHATSAPP"
+            >
+              <WhatsappAkisi mesajlar={whatsapp} numara={waNumara} musteri={musteri} />
+            </KanalDugmesi>
+          ) : null}
+          {postaGorur ? (
+            <KanalDugmesi
+              anahtar={`kanal:musteri:${talepId ?? cariId}:posta`}
+              etiket="Postalar"
+              olaylar={postalar.filter((posta) => posta.okunmamis).map((posta) => posta.son_mesaj_at ?? "").filter(Boolean)}
+              title={musteri}
+              kicker="POSTALAR"
+            >
+              <PostaAkisi postalar={postalar} epostaVar={Boolean(eposta)} />
+            </KanalDugmesi>
+          ) : null}
+          {!crmVar && !postaGorur ? <p className="talep-bos">Yazışmaları görmek için CRM modülü gerekiyor.</p> : null}
+        </section>
+
+        {/* CARİ HESAP: eskiden başlıktaki birincil düğmeydi; bakiye ve hesap aynı kartta. */}
+        <section className="panel-card opd-kart kd-alt-sol" aria-label="Cari hesap">
+          <h3 className="opd-kanal-grup">Cari hesap</h3>
+          {cariKimligi ? (
+            <>
+              <p className="kd-buyuk-rakam" data-tone={bakiye !== null && bakiye > 0 ? "warning" : "success"}>
+                {bakiye !== null ? money(bakiye) : "—"}
+                <small>{bakiye !== null && bakiye > 0 ? "açık bakiye" : "açık bakiye yok"}{cariler.length > 1 ? ` · ${cariler.length} cari` : ""}</small>
+              </p>
+            <PanelModal
+              triggerLabel="Cari hesabı aç"
+              triggerClassName="panel-secondary opd-ayrinti-dugme"
+              kicker="CARİ HESAP"
+              title={musteri}
+                              description={bakiye !== null ? `Açık bakiye ${money(bakiye)}${cariler.length > 1 ? ` · ${cariler.length} cari` : ""}` : undefined}
+              boy="tam"
+              baslangicAcik={pencere === "cari"}
+              kapaninca={pencere === "cari" ? adres : undefined}
+            >
+              {cariler.length > 1 ? (
+                <p className="cari-coklu-not">Bu müşterinin {cariler.length} cari hesabı var; bakiye hepsinin toplamı. Aynı kişiye ait ise tek cariye taşınması önerilir.</p>
+              ) : null}
+              {cariler.map((c) => (
+                <section key={c.id} className="cari-pencere-bolum" aria-label={c.name}>
+                  {cariler.length > 1 ? <h3 className="cari-pencere-ad">{c.name}</h3> : null}
+                  <CariHesapIcerigi partyId={c.id} />
+                </section>
+              ))}
+            </PanelModal>
+            </>
+          ) : <p className="talep-bos">{cariModulu ? "Bu müşterinin cari hesabı yok; ilk sözleşmeyle açılır." : "Cari hesap için Finans modülü gerekiyor."}</p>}
+        </section>
+
+        {/* ÖZET: eskiden sayfanın üstündeki şeritteydi (tür sayıları Kayıtlar kartının süzgeçlerinde). */}
+        <section className="panel-card opd-kart kd-alt-sag" aria-label="Özet">
+          <h3 className="opd-kanal-grup">Özet</h3>
+          <dl className="talep-liste opd-musteri-liste">
+            <div><dt>Kayıt</dt><dd>{gecmis?.total ?? 0}</dd></div>
+            {gecmis?.contractedLabel ? <div><dt>Sözleşme değeri</dt><dd>{gecmis.contractedLabel}</dd></div> : null}
+            {ilkKayit ? <div><dt>İlk kayıt</dt><dd>{ilkKayit}</dd></div> : null}
+            {gecmis?.lastContactLabel ? <div><dt>Son kayıt</dt><dd>{gecmis.lastContactLabel}</dd></div> : null}
+          </dl>
+        </section>
+
+        <section className="panel-card talep-bilgi kd-ana" aria-label="Müşterinin kayıtları">
           <div className="cari-baslik">
             <h2>Kayıtlar</h2>
             <small>{gecmis?.total ?? 0} kayıt{gecmis?.limited ? ` · son ${kayitlar.length}` : ""}</small>
@@ -456,12 +531,6 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
           )}
           {gecmis?.scopedToAssigned ? <p className="talep-bos cari-not">Yalnızca size atanmış kayıtlar listeleniyor.</p> : null}
         </section>
-
-        {sekmeler.length ? (
-          <TalepAkis sekmeler={sekmeler.map((sekme) => sekme.ad)} tembel={sekmeler.map((_, sira) => sira).filter((sira) => sira > 0)}>
-            {sekmeler.map((sekme) => <div key={sekme.anahtar}>{sekme.icerik}</div>)}
-          </TalepAkis>
-        ) : null}
       </div>
     </main>
   );
