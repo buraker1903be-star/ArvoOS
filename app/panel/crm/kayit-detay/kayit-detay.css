@@ -929,3 +929,40 @@
 .kd-buyuk-rakam[data-tone="warning"]{color:var(--warning)}
 .kd-buyuk-rakam small{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
 .kd-alt-sag .opd-musteri-liste dd{white-space:nowrap}
+
+/*
+  SÖZLEŞME DETAYI (03.11.2026, kurum sahibinin çizimi).
+  Başlıkta aşama çizgisi (eskiden başlığın altında ayrı bir şeritti),
+  ana bölümde tutar + iki düzenleme düğmesi, üç kutu (ödeme planı, iş
+  planı, iş termin tarihi) ve olay bilgileri (gönderim, imza, görüntüleme).
+*/
+.kd-bas-asama{flex:1 1 420px;min-width:0;display:flex;justify-content:center;align-self:center}
+.kd-bas-asama .talep-asama{width:100%;max-width:860px;padding:var(--sp-2) var(--sp-5);border-radius:var(--r-pill)}
+.kd-bas-asama .talep-arsiv{margin:0}
+.kd-tutar-satir{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap;padding-bottom:var(--sp-4);border-bottom:1px solid var(--line-soft)}
+.kd-tutar-satir>.teklif-tutar{padding:0;border:0}
+.kd-tutar-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.os-root .kd-hap{min-height:36px;padding:0 var(--sp-4);border-radius:var(--r-pill);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.kd-kutular{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-3);margin-top:var(--sp-4)}
+.kd-kutu{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0;min-height:180px;padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface-2)}
+.kd-kutu>h3{margin:0;padding-bottom:var(--sp-2);border-bottom:1px solid var(--line);color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.kd-kutu-liste{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.kd-kutu-liste li{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px var(--sp-2);color:var(--ink);font-size:var(--fs-sm)}
+.kd-kutu-liste li time{color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums;white-space:nowrap}
+.kd-kutu-liste li small{flex-basis:100%;color:var(--muted);font-size:var(--fs-micro)}
+.kd-kutu .sozlesme-odeme-ozet{margin:0}
+.kd-kutu-buyuk{display:flex;flex-direction:column;gap:4px;margin:0;color:var(--ink);font-size:var(--fs-2xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;line-height:1.1}
+.kd-kutu-buyuk small{color:var(--ink-soft);font-size:var(--fs-md);font-weight:var(--fw-medium)}
+.kd-kutu-buyuk small[data-tone="warning"]{color:var(--warning)}
+.kd-kutu-buyuk small[data-tone="danger"]{color:var(--danger)}
+/* "Düzenle →" kutunun sağ altında: içerik ne kadar kısa olursa olsun aynı yerde. */
+.kd-kutu-duzenle{align-self:flex-end;margin-top:auto;padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer}
+.kd-kutu-duzenle:hover{text-decoration:underline}
+.kd-olaylar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-4) var(--sp-5);margin:var(--sp-5) 0 0;padding:0 var(--sp-1)}
+.kd-olaylar>div{min-width:0}
+.kd-olaylar dt{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.kd-olaylar dd{display:flex;flex-direction:column;gap:2px;margin:4px 0 0;color:var(--ink-soft);font-size:var(--fs-md)}
+.kd-olaylar dd small{color:var(--muted);font-size:var(--fs-sm)}
+@media (max-width:1200px){.kd-kutular{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){.kd-olaylar{grid-template-columns:minmax(0,1fr)}.kd-bas-asama{flex-basis:100%;order:3}}
+.kd-kutu-liste li:has(>time:first-child){justify-content:flex-start}
