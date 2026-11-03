@@ -829,3 +829,22 @@
 .talep-birakma small{color:var(--muted)}
 .talep-birakma span{flex-basis:100%;color:var(--ink-soft)}
 .talep-birakma form{margin:0}
+
+/*
+  SOL SÜTUN (03.11.2026): talep, teklif ve sözleşme detayı iş detayıyla
+  aynı iki sütunlu düzende. Solda müşteri kartı ve yazışmalar (akis-cekmecesi),
+  ortada kaydın kendisi ekranın kalanını alıyor. Sol sütun yükseklik sınırı
+  almıyor: kart ve yazışmalar birlikte okunuyor, sütunun içinde ayrıca
+  kaydırmak istenmiyor.
+*/
+@media(min-width:1201px){
+  .talep-izgara:has(>.kd-sol){grid-template-columns:minmax(300px,360px) minmax(0,1fr)}
+}
+.kd-sol{display:flex;flex-direction:column;gap:var(--sp-3)}
+.os-root .talep-izgara:not(.ekip-izgara)>.talep-musteri.kd-sol{max-height:none;overflow:visible}
+.kd-sol>.panel-card{flex:none;margin:0}
+.kd-sol-kart .talep-musteri-kimlik>.kd-sol-baglanti{margin-left:auto;align-self:flex-start}
+.kd-sol-baglanti{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-semibold);cursor:pointer}
+.kd-sol-baglanti:hover{text-decoration:underline}
+.kd-sol .akis-ozet-metin{-webkit-line-clamp:1}
+.kd-ayrinti{display:flex;flex-direction:column;gap:var(--sp-3)}

@@ -30,6 +30,7 @@ import { workflowStatusNames } from "../../../operations/ops-shared";
 
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
 import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
+import { PanelModal } from "../../../components/panel-modal";
 import { postaKanali, whatsappKanali, yorumKanali } from "../../kayit-detay/akis-kanallari";
 import "../../crm.css";
 import "../../request-page.css";
@@ -515,7 +516,14 @@ export default async function RequestDetailPage({
 
       <div className="talep-izgara">
         {/* Müşteri */}
-        <section className="panel-card talep-musteri" aria-label="Müşteri">
+        {/*
+          SOL SÜTUN (03.11.2026, iş detayıyla aynı düzen): müşteri kartı ve
+          yazışmalar. Eskiden yazışmalar ayrı bir üçüncü sütundaydı; bağlantılar
+          sütunun içinde uzun bir liste olarak duruyordu, artık "Ayrıntılar"
+          penceresinde. Orta sütun ekranın kalanını alıyor.
+        */}
+        <div className="talep-musteri kd-sol">
+        <section className="panel-card kd-sol-kart" aria-label="Müşteri">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
             <div>
@@ -523,6 +531,92 @@ export default async function RequestDetailPage({
               {/* Müşterinin bütün kayıtları tek sayfada (/panel/crm/musteri). */}
               <small><Link className="personel-tumu" href={`/panel/crm/musteri/${item.id}`}>Müşteri sayfası</Link></small>
             </div>
+            <PanelModal
+              triggerClassName="kd-sol-baglanti"
+              triggerLabel="Ayrıntılar"
+              title={musteri}
+              description="Bu talebin teklifi, sözleşmesi, işi ve müşterinin diğer kayıtları."
+              kicker={"TALEP"}
+              boy="genis"
+            >
+              <div className="kd-ayrinti">
+              {/* BAĞLANTILAR: bu talebin teklifi, sözleşmesi ve işi. */}
+              {gecerliTeklif || gecerliSozlesme ? (
+                <div className="talep-gecmis">
+                  <h3>Bağlantılar</h3>
+                  <ul>
+                    {gecerliTeklif ? (
+                      <li>
+                        <Link href={`/panel/crm/proposals/${gecerliTeklif.id}`}>
+                          <span className="talep-gecmis-metin">
+                            <b>Teklif {gecerliTeklif.proposal_no}{gecerliTeklif.revision_no ? ` · R${gecerliTeklif.revision_no}` : ""}</b>
+                            <small>{money(Number(gecerliTeklif.amount), gecerliTeklif.currency || "TRY")}{teklifler.length > 1 ? ` · ${teklifler.length} teklif` : ""}</small>
+                          </span>
+                          <span className="status-pill">{TEKLIF_GRUP_ADLARI[teklifGrubu(gecerliTeklif)]}</span>
+                        </Link>
+                      </li>
+                    ) : null}
+                    {gecerliSozlesme ? (
+                      <li>
+                        <Link href={`/panel/crm/contracts/${gecerliSozlesme.id}`}>
+                          <span className="talep-gecmis-metin">
+                            <b>Sözleşme {gecerliSozlesme.contract_no}</b>
+                            <small>{money(Number(gecerliSozlesme.amount), gecerliSozlesme.currency || "TRY")}</small>
+                          </span>
+                          <span className="status-pill">{contractStatusLabel(gecerliSozlesme.status)}</span>
+                        </Link>
+                      </li>
+                    ) : null}
+                    {is ? (
+                      <li>
+                        <Link href={`/panel/operations/${is.id}`}>
+                          <span className="talep-gecmis-metin">
+                            <b>İş</b>
+                            <small>{isIlerleme !== null ? `%${isIlerleme} tamamlandı` : "Adım yok"}</small>
+                          </span>
+                          <span className="status-pill">{workflowStatusNames[is.status] ?? is.status}</span>
+                        </Link>
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
+              ) : null}
+
+              {/* Müşterinin diğer kayıtları: sol sütun kısa kalıyordu, bu bilgi
+                  yalnızca "Müşteri sorgula" penceresindeydi. */}
+              <div className="talep-gecmis">
+                <h3>Müşterinin diğer kayıtları</h3>
+                {gecmis && gecmis.total ? (
+                  <>
+                    <p className="talep-gecmis-ozet">
+                      {gecmisSayilari.map(([ad, n]) => `${n} ${ad}`).join(" · ")}
+                      {gecmis.contractedLabel ? <span> · sözleşme {gecmis.contractedLabel}</span> : null}
+                    </p>
+                    <ul>
+                      {gecmis.items.map((kayit) => {
+                        const icerik = (
+                          <>
+                            <span className="talep-gecmis-metin">
+                              <b>{kayit.title}</b>
+                              <small>{kayit.kindLabel}{kayit.amountLabel ? ` · ${kayit.amountLabel}` : ""} · {kayit.dateLabel}</small>
+                            </span>
+                            <span className="status-pill" data-tone={kayit.tone}>{kayit.statusLabel}</span>
+                          </>
+                        );
+                        return (
+                          <li key={kayit.key}>
+                            {kayit.canOpen ? <Link href={kayit.href}>{icerik}</Link> : <div>{icerik}</div>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="talep-bos">Bu müşterinin başka kaydı yok; ilk talebi.</p>
+                )}
+              </div>
+              </div>
+            </PanelModal>
           </div>
           <div className="talep-iletisim">
             {item.contact_phone ? <a className="panel-secondary" href={`tel:${item.contact_phone}`}>Ara</a> : null}
@@ -537,82 +631,36 @@ export default async function RequestDetailPage({
             <div><dt>Satış temsilcisi</dt><dd>{representative ? formatPersonName(representative) : <em>Atanmamış</em>}</dd></div>
             <div><dt>Kaynak</dt><dd>{item.source || <em>Belirtilmedi</em>}</dd></div>
           </dl>
-          {/* BAĞLANTILAR: bu talebin teklifi, sözleşmesi ve işi. */}
-          {gecerliTeklif || gecerliSozlesme ? (
-            <div className="talep-gecmis">
-              <h3>Bağlantılar</h3>
-              <ul>
-                {gecerliTeklif ? (
-                  <li>
-                    <Link href={`/panel/crm/proposals/${gecerliTeklif.id}`}>
-                      <span className="talep-gecmis-metin">
-                        <b>Teklif {gecerliTeklif.proposal_no}{gecerliTeklif.revision_no ? ` · R${gecerliTeklif.revision_no}` : ""}</b>
-                        <small>{money(Number(gecerliTeklif.amount), gecerliTeklif.currency || "TRY")}{teklifler.length > 1 ? ` · ${teklifler.length} teklif` : ""}</small>
-                      </span>
-                      <span className="status-pill">{TEKLIF_GRUP_ADLARI[teklifGrubu(gecerliTeklif)]}</span>
-                    </Link>
-                  </li>
+        </section>
+
+        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi): sütunda
+            özet, okuma sağdan açılan geniş çekmecede. Paneller ilk açılışta kurulur. */}
+        <AkisCekmecesi
+          baslik="Yazışmalar"
+          kicker="TALEP"
+          kanallar={[
+            yorumOzeti,
+            whatsappKanali(whatsappMesajlari),
+            ...(postaGorur ? [postaKanali(postalar)] : []),
+            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri.", ozetteGizli: true },
+          ]}
+        >
+          <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} gorunum="akis" />
+          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
+          {postaGorur ? (
+            <div>
+              <PostaAkisi
+                postalar={postalar}
+                epostaVar={Boolean(item.contact_email)}
+                eylem={izin("posta.yanitla") && item.contact_email ? (
+                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(item.contact_email)}&firsat=${encodeURIComponent(item.id)}${item.title ? `&konu=${encodeURIComponent(item.title)}` : ""}`}>Posta gönder</Link>
                 ) : null}
-                {gecerliSozlesme ? (
-                  <li>
-                    <Link href={`/panel/crm/contracts/${gecerliSozlesme.id}`}>
-                      <span className="talep-gecmis-metin">
-                        <b>Sözleşme {gecerliSozlesme.contract_no}</b>
-                        <small>{money(Number(gecerliSozlesme.amount), gecerliSozlesme.currency || "TRY")}</small>
-                      </span>
-                      <span className="status-pill">{contractStatusLabel(gecerliSozlesme.status)}</span>
-                    </Link>
-                  </li>
-                ) : null}
-                {is ? (
-                  <li>
-                    <Link href={`/panel/operations/${is.id}`}>
-                      <span className="talep-gecmis-metin">
-                        <b>İş</b>
-                        <small>{isIlerleme !== null ? `%${isIlerleme} tamamlandı` : "Adım yok"}</small>
-                      </span>
-                      <span className="status-pill">{workflowStatusNames[is.status] ?? is.status}</span>
-                    </Link>
-                  </li>
-                ) : null}
-              </ul>
+              />
             </div>
           ) : null}
-
-          {/* Müşterinin diğer kayıtları: sol sütun kısa kalıyordu, bu bilgi
-              yalnızca "Müşteri sorgula" penceresindeydi. */}
-          <div className="talep-gecmis">
-            <h3>Müşterinin diğer kayıtları</h3>
-            {gecmis && gecmis.total ? (
-              <>
-                <p className="talep-gecmis-ozet">
-                  {gecmisSayilari.map(([ad, n]) => `${n} ${ad}`).join(" · ")}
-                  {gecmis.contractedLabel ? <span> · sözleşme {gecmis.contractedLabel}</span> : null}
-                </p>
-                <ul>
-                  {gecmis.items.map((kayit) => {
-                    const icerik = (
-                      <>
-                        <span className="talep-gecmis-metin">
-                          <b>{kayit.title}</b>
-                          <small>{kayit.kindLabel}{kayit.amountLabel ? ` · ${kayit.amountLabel}` : ""} · {kayit.dateLabel}</small>
-                        </span>
-                        <span className="status-pill" data-tone={kayit.tone}>{kayit.statusLabel}</span>
-                      </>
-                    );
-                    return (
-                      <li key={kayit.key}>
-                        {kayit.canOpen ? <Link href={kayit.href}>{icerik}</Link> : <div>{icerik}</div>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            ) : (
-              <p className="talep-bos">Bu müşterinin başka kaydı yok; ilk talebi.</p>
-            )}
-          </div>
-        </section>
+          <RecordHistory opportunityId={item.id} />
+        </AkisCekmecesi>
+        </div>
 
         {/* Talep */}
         <section className="panel-card talep-bilgi" aria-label="Talep bilgileri">
@@ -638,33 +686,6 @@ export default async function RequestDetailPage({
         {/* WhatsApp ve Postalar müşteri sayfasıyla aynı kuralla
             (../../musteri-yazismalari.tsx). Eskiden Postalar yalnızca bu
             talebe elle bağlanmış yazışmaları gösteriyordu; WhatsApp yoktu. */}
-        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi): sütunda
-            özet, okuma sağdan açılan geniş çekmecede. Paneller ilk açılışta kurulur. */}
-        <AkisCekmecesi
-          baslik="Yazışmalar"
-          kicker="TALEP"
-          kanallar={[
-            yorumOzeti,
-            whatsappKanali(whatsappMesajlari),
-            ...(postaGorur ? [postaKanali(postalar)] : []),
-            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri." },
-          ]}
-        >
-          <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} gorunum="akis" />
-          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
-          {postaGorur ? (
-            <div>
-              <PostaAkisi
-                postalar={postalar}
-                epostaVar={Boolean(item.contact_email)}
-                eylem={izin("posta.yanitla") && item.contact_email ? (
-                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(item.contact_email)}&firsat=${encodeURIComponent(item.id)}${item.title ? `&konu=${encodeURIComponent(item.title)}` : ""}`}>Posta gönder</Link>
-                ) : null}
-              />
-            </div>
-          ) : null}
-          <RecordHistory opportunityId={item.id} />
-        </AkisCekmecesi>
       </div>
     </main>
   );

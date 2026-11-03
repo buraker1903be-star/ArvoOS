@@ -39,6 +39,7 @@ import { contractMessages, organizationBrandName } from "@/lib/customer-message-
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
 import { AkisCekmecesi } from "../../kayit-detay/akis-cekmecesi";
+import { PanelModal } from "../../../components/panel-modal";
 import { mesajKanali, postaKanali, whatsappKanali, yorumKanali } from "../../kayit-detay/akis-kanallari";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
@@ -376,7 +377,14 @@ export default async function ContractDetailPage({ params }: Props) {
 
       <div className="talep-izgara">
         {/* Müşteri, imza bağlantısı ve takip kodu */}
-        <section className="panel-card talep-musteri" aria-label="Müşteri">
+        {/*
+          SOL SÜTUN (03.11.2026, iş detayıyla aynı düzen): müşteri kartı ve
+          yazışmalar. Eskiden yazışmalar ayrı bir üçüncü sütundaydı; bağlantılar
+          sütunun içinde uzun bir liste olarak duruyordu, artık "Ayrıntılar"
+          penceresinde. Orta sütun ekranın kalanını alıyor.
+        */}
+        <div className="talep-musteri kd-sol">
+        <section className="panel-card kd-sol-kart" aria-label="Müşteri">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
             <div>
@@ -384,6 +392,48 @@ export default async function ContractDetailPage({ params }: Props) {
               {/* Müşterinin bütün kayıtları tek sayfada (/panel/crm/musteri). */}
               <small><Link className="personel-tumu" href={`/panel/crm/musteri/${data.opportunity_id}`}>Müşteri sayfası</Link></small>
             </div>
+            <PanelModal
+              triggerClassName="kd-sol-baglanti"
+              triggerLabel="Ayrıntılar"
+              title={musteri}
+              description="Talep, kaynak teklif ve iş."
+              kicker={`SÖZLEŞME · ${data.contract_no}`}
+              boy="genis"
+            >
+              <div className="kd-ayrinti">
+              {/* BAĞLANTILAR: talep, kaynak teklif ve iş; teklif detayındakiyle aynı blok. */}
+              <div className="talep-gecmis">
+                <h3>Bağlantılar</h3>
+                <ul>
+                  <li>
+                    <Link href={`/panel/crm/requests/${data.opportunity_id}`}>
+                      <span className="talep-gecmis-metin"><b>Talep</b><small>{formatSubject(customer?.title) || "Talebe git"}</small></span>
+                    </Link>
+                  </li>
+                  {kaynakTeklif?.id ? (
+                    <li>
+                      <Link href={`/panel/crm/proposals/${kaynakTeklif.id}`}>
+                        <span className="talep-gecmis-metin">
+                          <b>Teklif {kaynakTeklif.proposal_no}</b>
+                          <small>{kaynakTeklif.status ? TEKLIF_GRUP_ADLARI[teklifGrubu({ status: kaynakTeklif.status, archive_reason: kaynakTeklif.archive_reason ?? null, superseded_by: null })] ?? proposalStatusLabel(kaynakTeklif.status) : "Teklif"}</small>
+                        </span>
+                      </Link>
+                    </li>
+                  ) : null}
+                  {data.workflow_id ? (
+                    <li>
+                      <Link href={`/panel/operations/${data.workflow_id}`}>
+                        <span className="talep-gecmis-metin">
+                          <b>İş</b>
+                          <small>{is ? `${workflowStatusNames[is.status] ?? is.status}${isIlerleme !== null ? ` · %${isIlerleme}` : ""}` : "İşe git"}</small>
+                        </span>
+                      </Link>
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+              </div>
+            </PanelModal>
           </div>
           <div className="talep-iletisim">
             {customer?.contact_phone ? <a className="panel-secondary" href={`tel:${customer.contact_phone}`}>Ara</a> : null}
@@ -429,38 +479,6 @@ export default async function ContractDetailPage({ params }: Props) {
             ) : (
               <p className="talep-bos">Henüz oluşturulmadı. “İmzaya gönder” bağlantıyı oluşturur; sonra e-posta ya da WhatsApp ile gönderilir.</p>
             )}
-          </div>
-
-          {/* BAĞLANTILAR: talep, kaynak teklif ve iş; teklif detayındakiyle aynı blok. */}
-          <div className="talep-gecmis">
-            <h3>Bağlantılar</h3>
-            <ul>
-              <li>
-                <Link href={`/panel/crm/requests/${data.opportunity_id}`}>
-                  <span className="talep-gecmis-metin"><b>Talep</b><small>{formatSubject(customer?.title) || "Talebe git"}</small></span>
-                </Link>
-              </li>
-              {kaynakTeklif?.id ? (
-                <li>
-                  <Link href={`/panel/crm/proposals/${kaynakTeklif.id}`}>
-                    <span className="talep-gecmis-metin">
-                      <b>Teklif {kaynakTeklif.proposal_no}</b>
-                      <small>{kaynakTeklif.status ? TEKLIF_GRUP_ADLARI[teklifGrubu({ status: kaynakTeklif.status, archive_reason: kaynakTeklif.archive_reason ?? null, superseded_by: null })] ?? proposalStatusLabel(kaynakTeklif.status) : "Teklif"}</small>
-                    </span>
-                  </Link>
-                </li>
-              ) : null}
-              {data.workflow_id ? (
-                <li>
-                  <Link href={`/panel/operations/${data.workflow_id}`}>
-                    <span className="talep-gecmis-metin">
-                      <b>İş</b>
-                      <small>{is ? `${workflowStatusNames[is.status] ?? is.status}${isIlerleme !== null ? ` · %${isIlerleme}` : ""}` : "İşe git"}</small>
-                    </span>
-                  </Link>
-                </li>
-              ) : null}
-            </ul>
           </div>
 
           {/* TAKİP KODU. Müşteri bu kodla takip ekranında iş durumunu görür
@@ -520,6 +538,63 @@ export default async function ContractDetailPage({ params }: Props) {
             </div>
           ) : null}
         </section>
+
+        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi). */}
+        <AkisCekmecesi
+          baslik="Yazışmalar"
+          kicker={`SÖZLEŞME · ${data.contract_no}`}
+          kanallar={[
+            mesajKanali(customerMessages, musteri),
+            yorumOzeti,
+            whatsappKanali(whatsappMesajlari),
+            ...(postaGorur ? [postaKanali(postalar)] : []),
+            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri.", ozetteGizli: true },
+          ]}
+        >
+          <div className="sozlesme-mesaj" id="musteri-mesajlari">
+            {customerMessages.length ? (
+              <div className="contract-chat">
+                {customerMessages.map((message) => {
+                  const fromCustomer = message.sender_type === "customer";
+                  return (
+                    <article key={message.id} className={`contract-bubble ${fromCustomer ? "is-customer" : "is-staff"}`}>
+                      <header>
+                        <b>{fromCustomer ? musteri : formatPersonName(message.sender_name)}</b>
+                        <time>{dateTime(message.created_at)}</time>
+                        {fromCustomer && !message.read_at ? <em>Yeni</em> : null}
+                      </header>
+                      <p>{message.body}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="ic-akis-bos">Müşteri henüz mesaj yazmadı. Takip kodunu paylaştığınızda müşteri takip ekranından soru sorabilir.</p>
+            )}
+            {messagingOpen ? (
+              <form className="contract-reply" action={replyContractMessage}>
+                <input type="hidden" name="contract_id" value={data.id} />
+                <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
+                <div><small>Yanıt müşterinin takip ekranında görünür.{data.workflow_id ? " İş başladığı için mesajlar iş detayında da görünür." : ""}</small><button className="panel-primary" type="submit">Gönder</button></div>
+              </form>
+            ) : null}
+          </div>
+          <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} gorunum="akis" />
+          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
+          {postaGorur ? (
+            <div>
+              <PostaAkisi
+                postalar={postalar}
+                epostaVar={Boolean(customer?.contact_email)}
+                eylem={izin("posta.yanitla") && customer?.contact_email ? (
+                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(customer.contact_email)}&firsat=${encodeURIComponent(data.opportunity_id)}&konu=${encodeURIComponent(`${data.contract_no} · ${data.title}`)}`}>Posta gönder</Link>
+                ) : null}
+              />
+            </div>
+          ) : null}
+          <RecordHistory opportunityId={data.opportunity_id} />
+        </AkisCekmecesi>
+        </div>
 
         {/* Sözleşme */}
         <section className="panel-card talep-bilgi" aria-label="Sözleşme bilgileri">
@@ -630,61 +705,6 @@ export default async function ContractDetailPage({ params }: Props) {
         {/* Akış: müşteri mesajları (takip ekranı), iç yorumlar, WhatsApp,
             posta, kayıt geçmişi. WhatsApp ve Postalar eskiden yoktu;
             yazışmayı görmek için ayrı ekranlarda müşteri aranıyordu. */}
-        {/* Yazışmalar çekmecesi (03.11.2026, kayit-detay/akis-cekmecesi). */}
-        <AkisCekmecesi
-          baslik="Yazışmalar"
-          kicker={`SÖZLEŞME · ${data.contract_no}`}
-          kanallar={[
-            mesajKanali(customerMessages, musteri),
-            yorumOzeti,
-            whatsappKanali(whatsappMesajlari),
-            ...(postaGorur ? [postaKanali(postalar)] : []),
-            { ad: "Geçmiş", bos: "Kayıt geçmişi ve alan değişiklikleri." },
-          ]}
-        >
-          <div className="sozlesme-mesaj" id="musteri-mesajlari">
-            {customerMessages.length ? (
-              <div className="contract-chat">
-                {customerMessages.map((message) => {
-                  const fromCustomer = message.sender_type === "customer";
-                  return (
-                    <article key={message.id} className={`contract-bubble ${fromCustomer ? "is-customer" : "is-staff"}`}>
-                      <header>
-                        <b>{fromCustomer ? musteri : formatPersonName(message.sender_name)}</b>
-                        <time>{dateTime(message.created_at)}</time>
-                        {fromCustomer && !message.read_at ? <em>Yeni</em> : null}
-                      </header>
-                      <p>{message.body}</p>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="ic-akis-bos">Müşteri henüz mesaj yazmadı. Takip kodunu paylaştığınızda müşteri takip ekranından soru sorabilir.</p>
-            )}
-            {messagingOpen ? (
-              <form className="contract-reply" action={replyContractMessage}>
-                <input type="hidden" name="contract_id" value={data.id} />
-                <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
-                <div><small>Yanıt müşterinin takip ekranında görünür.{data.workflow_id ? " İş başladığı için mesajlar iş detayında da görünür." : ""}</small><button className="panel-primary" type="submit">Gönder</button></div>
-              </form>
-            ) : null}
-          </div>
-          <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} gorunum="akis" />
-          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
-          {postaGorur ? (
-            <div>
-              <PostaAkisi
-                postalar={postalar}
-                epostaVar={Boolean(customer?.contact_email)}
-                eylem={izin("posta.yanitla") && customer?.contact_email ? (
-                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(customer.contact_email)}&firsat=${encodeURIComponent(data.opportunity_id)}&konu=${encodeURIComponent(`${data.contract_no} · ${data.title}`)}`}>Posta gönder</Link>
-                ) : null}
-              />
-            </div>
-          ) : null}
-          <RecordHistory opportunityId={data.opportunity_id} />
-        </AkisCekmecesi>
       </div>
     </main>
   );
