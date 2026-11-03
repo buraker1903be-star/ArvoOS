@@ -20,6 +20,8 @@ import {
 import { rescaleSchedule, splitTax } from "@/lib/sales-amounts";
 import { niyetiFormdanOku } from "@/lib/abonelik-niyeti";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { BASLIK_SINIRI, METIN_SINIRI, etkinSira, kurumMetniCoz, metniDenetle, type MaddeMetni } from "@/lib/belge-metni";
+import { belgeVarsayilanlari } from "../settings/belge-metni-varsayilan";
 
 // Talep sayfasından "Direkt Sözleşme Oluştur" ile çağrılır: fiyat/ödeme
 // planı yine teklif kaydı olarak tutulur (iç kayıt, raporlama için), ama
@@ -696,6 +698,86 @@ async function setContractSignDeadline__impl(formData: FormData) {
   revalidatePath(`/panel/crm/contracts/${contractId}`);
 }
 
+/*
+  SÖZLEŞMEYE ÖZEL MADDE METNİ (03.11.2026, 20261103144006). Kurumun
+  metni (Ayarlar → Belge metinleri) bütün sözleşmeler için; bu yalnızca
+  bu sözleşmenin maddesini değiştirir. Sıra ve madde kümesi kurumun:
+  burada madde eklenmez, çıkarılmaz. Kaydedilen metin kurumun o maddedeki
+  metniyle aynıysa kayıt silinir — "değiştirildi" görünüp kurumun sonraki
+  güncellemesini bu sözleşmeye geçirmeyen bir kopya kalmasın.
+*/
+async function ozelMaddeBaglami(formData: FormData) {
+  const { supabase, membership, organization, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.sozlesme.yonet"))
+    throw new Error("Sözleşme maddelerini değiştirme yetkiniz yok. Ayarlar → Yetkilendirme'den \"Sözleşme yönetimi\" açılmalı.");
+  const contractId = text(formData, "contract_id", 80);
+  const anahtar = text(formData, "anahtar", 80);
+  const [{ data: sozlesme, error }, { data: kurumKaydi, error: kurumHatasi }] = await Promise.all([
+    supabase.from("crm_contracts").select("id,status,opportunity_id,ozel_maddeler").eq("id", contractId).eq("organization_id", membership.organization_id).maybeSingle(),
+    supabase.from("organization_document_texts").select("content").eq("organization_id", membership.organization_id).eq("document_type", "contract").maybeSingle(),
+  ]);
+  // Okunamayan kayıt "boş" sayılmaz: üzerine yazmak öteki özel maddeleri silerdi.
+  if (error) throw new Error("Sözleşme okunamadı: " + error.message);
+  if (kurumHatasi) throw new Error("Kurumun sözleşme metni okunamadı: " + kurumHatasi.message);
+  if (!sozlesme) throw new Error("Sözleşme bulunamadı.");
+  if (!["draft", "sent"].includes(String(sozlesme.status))) throw new Error("İmzalanmış ya da kapanmış sözleşmenin maddeleri değiştirilemez.");
+  const varsayilan = belgeVarsayilanlari("contract", organization.slug);
+  const kurum = kurumMetniCoz(kurumKaydi?.content);
+  const sira = etkinSira(varsayilan.sira, kurum, varsayilan.zorunlu, varsayilan.son);
+  if (!sira.includes(anahtar)) throw new Error("Madde bulunamadı.");
+  const kurumunMaddesi = kurum.maddeler?.[anahtar] ?? varsayilan.maddeler.find((m) => m.anahtar === anahtar) ?? null;
+  const ozel = { ...((sozlesme.ozel_maddeler ?? {}) as Record<string, MaddeMetni>) };
+  return { supabase, membership, userId, sozlesme, anahtar, varsayilan, sira, kurumunMaddesi, ozel };
+}
+
+async function ozelMaddeleriYaz(b: Awaited<ReturnType<typeof ozelMaddeBaglami>>, ozel: Record<string, MaddeMetni>, not: string) {
+  const { data, error } = await b.supabase
+    .from("crm_contracts")
+    .update({ ozel_maddeler: Object.keys(ozel).length ? ozel : null })
+    .eq("id", b.sozlesme.id)
+    .eq("organization_id", b.membership.organization_id)
+    .in("status", ["draft", "sent"])
+    .select("id");
+  if (error) throw new Error("Madde kaydedilemedi: " + error.message);
+  if (!data?.length) throw new Error("İmzalanmış ya da kapanmış sözleşmenin maddeleri değiştirilemez.");
+  await logActivity(b.supabase, {
+    organizationId: b.membership.organization_id,
+    actorUserId: b.userId,
+    action: "update",
+    entityType: "crm_contract",
+    entityId: b.sozlesme.id,
+    opportunityId: String(b.sozlesme.opportunity_id ?? ""),
+    note: not,
+  });
+  revalidatePath(`/panel/crm/contracts/${b.sozlesme.id}`);
+}
+
+async function sozlesmeMaddesiKaydet__impl(formData: FormData) {
+  const b = await ozelMaddeBaglami(formData);
+  const baslik = text(formData, "baslik", BASLIK_SINIRI + 1).trim();
+  const metin = String(formData.get("metin") ?? "").slice(0, METIN_SINIRI + 1);
+  const hatalar = metniDenetle(baslik, metin, { yerTutucular: b.varsayilan.yerTutucular, bloklar: b.varsayilan.bloklar, maddeler: b.sira });
+  if (hatalar.length) throw new Error(hatalar.join(" "));
+  const ozel = { ...b.ozel };
+  const kurumunki = b.kurumunMaddesi;
+  if (kurumunki && kurumunki.baslik === baslik && kurumunki.metin.replace(/\r\n/g, "\n") === metin.replace(/\r\n/g, "\n")) delete ozel[b.anahtar];
+  else ozel[b.anahtar] = { baslik, metin };
+  await ozelMaddeleriYaz(b, ozel, `Sözleşmeye özel madde: ${baslik}`);
+}
+
+async function sozlesmeMaddesiSifirla__impl(formData: FormData) {
+  const b = await ozelMaddeBaglami(formData);
+  const ozel = { ...b.ozel };
+  delete ozel[b.anahtar];
+  await ozelMaddeleriYaz(b, ozel, `Madde kurum metnine döndü: ${b.kurumunMaddesi?.baslik ?? b.anahtar}`);
+}
+
+export async function sozlesmeMaddesiKaydet(...args: Parameters<typeof sozlesmeMaddesiKaydet__impl>) {
+  return runPanelAction(() => sozlesmeMaddesiKaydet__impl(...args), "Madde bu sözleşme için kaydedildi");
+}
+export async function sozlesmeMaddesiSifirla(...args: Parameters<typeof sozlesmeMaddesiSifirla__impl>) {
+  return runPanelAction(() => sozlesmeMaddesiSifirla__impl(...args), "Madde kurum metnine döndü");
+}
 export async function setContractSignDeadline(...args: Parameters<typeof setContractSignDeadline__impl>) {
   return runPanelAction(() => setContractSignDeadline__impl(...args), "İmza son tarihi kaydedildi");
 }

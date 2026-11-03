@@ -22,7 +22,11 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261012083920_belge_metinleri.sql"];
+// 20261103144006 kopya ve herkese açık okuma işlevlerini yeniden yazıyor (sözleşmeye özel maddeler); SONDA olmalı, yoksa eski gövde yeniden kurulur.
+const MIGRATIONLAR = [
+  "20261012083920_belge_metinleri.sql",
+  "20261103144006_sozlesmeye_ozel_maddeler.sql",
+];
 
 const KURUM = "00000000-0000-4000-8000-00000000be01";
 const OTEKI = "00000000-0000-4000-8000-00000000be02";

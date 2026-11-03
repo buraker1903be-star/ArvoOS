@@ -46,6 +46,22 @@ export const BASLIK_SINIRI = 160;
 export const MADDE_SINIRI = 60;
 export const EK_ONEKI = "ek-";
 
+/*
+  SÖZLEŞMEYE ÖZEL MADDELER (03.11.2026, 20261103144006). Kurum metninin
+  üstüne bindirilir: aynı anahtardaki madde sözleşmeninki olur; sıra ve
+  madde kümesi kurumun. Veritabanındaki ikizi
+  private.arvo_sozlesme_metni_birlestir — müşteri sayfası ve imzadaki
+  kopya onu kullanıyor, panel önizlemesi bunu; ikisi aynı sonucu vermeli
+  (tests/unit/belge-metni.test.ts).
+*/
+export function sozlesmeMetniBirlestir(kurum: unknown, ozel: unknown): unknown {
+  const ozelMaddeler = ozel && typeof ozel === "object" && !Array.isArray(ozel) ? (ozel as Record<string, unknown>) : null;
+  if (!ozelMaddeler || !Object.keys(ozelMaddeler).length) return kurum;
+  const taban = kurum && typeof kurum === "object" && !Array.isArray(kurum) ? (kurum as Record<string, unknown>) : { surum: 1 };
+  const kurumMaddeleri = taban.maddeler && typeof taban.maddeler === "object" ? (taban.maddeler as Record<string, unknown>) : {};
+  return { ...taban, maddeler: { ...kurumMaddeleri, ...ozelMaddeler } };
+}
+
 /** Kayıttan gelen değeri güvenle okur; bozuk alanlar yok sayılır. */
 export function kurumMetniCoz(deger: unknown): KurumMetni {
   const kaynak = deger && typeof deger === "object" && !Array.isArray(deger) ? (deger as Record<string, unknown>) : {};

@@ -1,3 +1,4 @@
+import { sozlesmeMetniBirlestir } from "@/lib/belge-metni";
 import { cache } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { resolvePublicHost } from "@/lib/public-host";
@@ -41,7 +42,14 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
       supabase.from("organization_document_texts").select("content").eq("organization_id", organizationId).eq("document_type", tur).maybeSingle(),
     ]);
     const belgedeki = kopya.error ? null : (kopya.data as { document_text?: unknown } | null)?.document_text ?? null;
-    return belgedeki ?? (guncel.error ? null : (guncel.data as { content?: unknown } | null)?.content ?? null);
+    if (belgedeki) return belgedeki;
+    const kurumun = guncel.error ? null : (guncel.data as { content?: unknown } | null)?.content ?? null;
+    if (tur !== "contract") return kurumun;
+    /* Sözleşmeye özel maddeler (20261103144006) ayrı okunuyor: sütun henüz
+       yoksa document_text okuması da düşmesin, belge kurum metniyle açılsın. */
+    const ozel = await supabase.from("crm_contracts").select("ozel_maddeler").eq("id", id).eq("organization_id", organizationId).maybeSingle();
+    if (ozel.error) console.error("[belge] sözleşmeye özel maddeler okunamadı", id, ozel.error.message);
+    return sozlesmeMetniBirlestir(kurumun, ozel.error ? null : (ozel.data as { ozel_maddeler?: unknown } | null)?.ozel_maddeler ?? null);
   };
   const organizationFields = (organization: DocumentRow, legal: DocumentRow | null) => ({
     ...organizationLegalFields(legal),
