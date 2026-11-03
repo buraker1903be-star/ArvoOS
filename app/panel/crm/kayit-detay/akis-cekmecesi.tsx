@@ -32,6 +32,8 @@ export type AkisKanali = {
   /** Son mesajın özeti; yoksa `bos` yazar. */
   onizleme?: { kim: string; metin: string; zaman: string } | null;
   bos?: string;
+  /** Yalnızca çekmecede sekme; özet listesinde satırı yok (iş detayında Geçmiş — sütun ekrana sığsın). */
+  ozetteGizli?: boolean;
 };
 
 const abonelikYok = () => () => undefined;
@@ -42,6 +44,7 @@ export function AkisCekmecesi({
   kicker,
   acikBaslar = null,
   telefondaAcma = false,
+  ek,
   children,
 }: {
   kanallar: AkisKanali[];
@@ -56,6 +59,8 @@ export function AkisCekmecesi({
     kuralının tersi.
   */
   telefondaAcma?: boolean;
+  /** Özet kartının altına eklenecek içerik (iş detayında Dosyalar satırları). */
+  ek?: ReactNode;
   children: ReactNode;
 }) {
   const [acik, setAcik] = useState(() =>
@@ -151,7 +156,7 @@ export function AkisCekmecesi({
       <section className="panel-card akis-ozet" aria-label={baslik}>
         <h3 className="akis-ozet-baslik">{baslik}</h3>
         <ul>
-          {kanallar.map((kanal, sira) => (
+          {kanallar.map((kanal, sira) => kanal.ozetteGizli ? null : (
             <li key={kanal.ad}>
               <button
                 type="button"
@@ -162,17 +167,25 @@ export function AkisCekmecesi({
                 <span className="akis-ozet-ust">
                   <b>{kanal.ad}</b>
                   {kanal.rozet ? <span className="akis-rozet">{kanal.rozet}</span> : null}
-                  {kanal.onizleme ? <time>{kanal.onizleme.zaman}</time> : null}
+                  {kanal.onizleme ? <time>{kanal.onizleme.zaman}</time> : kanal.bos ? <span className="akis-ozet-bos">{kanal.bos}</span> : null}
                 </span>
+                {/* Boş kanal tek satır: "yazışma yok" için ikinci satır harcamak sütunu uzatıyordu. */}
                 {kanal.onizleme ? (
                   <span className="akis-ozet-metin"><em>{kanal.onizleme.kim}:</em> {kanal.onizleme.metin}</span>
-                ) : kanal.bos ? (
-                  <span className="akis-ozet-metin is-bos">{kanal.bos}</span>
                 ) : null}
               </button>
             </li>
           ))}
         </ul>
+        {/* Özette satırı olmayan kanallar küçük bir bağlantı olarak: yine tek tıkla açılsın. */}
+        {kanallar.some((kanal) => kanal.ozetteGizli) ? (
+          <p className="akis-ozet-alt">
+            {kanallar.map((kanal, sira) => kanal.ozetteGizli ? (
+              <button key={kanal.ad} type="button" onClick={() => ac(sira)}>{kanal.ad}</button>
+            ) : null)}
+          </p>
+        ) : null}
+        {ek}
       </section>
       {hedef ? createPortal(cekmece, hedef) : null}
     </>

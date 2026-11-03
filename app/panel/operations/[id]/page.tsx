@@ -402,7 +402,8 @@ export default async function OperationDetailPage({
       : []),
     ...(whatsappGorur ? [whatsappKanali(whatsappMesajlari)] : []),
     ...(postaGorur ? [postaKanali(postalar)] : []),
-    { ad: "Geçmiş", bos: `${activities.length} hareket · alan değişiklikleri` },
+    /* Özette satırı yok (sütun ekrana sığsın); çekmecenin son sekmesi, ?pencere=kayitlar onu açar. */
+    { ad: "Geçmiş", bos: `${activities.length} hareket · alan değişiklikleri`, ozetteGizli: true },
   ];
   const gecmisSirasi = kanallar.length - 1;
   const acikBaslar = acilacakPencere === "mesajlar" ? 0 : acilacakPencere === "kayitlar" ? gecmisSirasi : null;
@@ -590,187 +591,268 @@ export default async function OperationDetailPage({
         tık ötedeydi. Artık akış sütununda sürekli açık.
       */}
       <div className="talep-izgara opd-izgara">
-        <section className="panel-card talep-musteri" aria-label="Müşteri ve iş bilgileri">
-          <div className="talep-musteri-kimlik">
-            <span className="talep-avatar" aria-hidden="true">{initials(musteriAdi ?? workflow.title)}</span>
-            <div>
-              <h2>{musteriAdi ?? "Kurum içi iş"}</h2>
-              <small>{musteriAdi ? "Müşteri" : "Sözleşmeye bağlı değil"}</small>
+        {/*
+          SOL SÜTUN (03.11.2026): müşteri, yazışmalar, dosyalar. Eskiden üç
+          sütun vardı ve solda dokuz bölüm üst üste duruyordu (künye,
+          bağlantılar, takip kodu, termin formu…); sütun ekrandan uzundu,
+          en çok bakılan termin ve dosyalar aşağıda kalıyordu. Sağdaki
+          sütunda ise yalnızca yazışma özeti vardı. Şimdi iki sütun: solda
+          "bu işte bugün ne var" (sorumlu, termin, yeni mesaj, dosya
+          sayısı), geri kalan her şey "Ayrıntılar" penceresinde; görevler
+          ekranın kalanını alıyor.
+        */}
+        <div className="talep-musteri opd-sol">
+          <section className="panel-card opd-sol-kart" aria-label="Müşteri ve iş bilgileri">
+            <div className="talep-musteri-kimlik">
+              <span className="talep-avatar" aria-hidden="true">{initials(musteriAdi ?? workflow.title)}</span>
+              <div>
+                <h2>{musteriAdi ?? "Kurum içi iş"}</h2>
+                <small>{musteriAdi ? "Müşteri" : "Sözleşmeye bağlı değil"}</small>
+              </div>
+              {/* İletişim, takip kodu, bağlantılar ve künye: sık bakılmıyor, sütunda yer kaplıyordu. */}
+            <PanelModal
+              triggerClassName="opd-sol-degistir opd-sol-ayrinti"
+              triggerLabel="Ayrıntılar"
+              title={musteriAdi ?? "Kurum içi iş"}
+              description="Müşteri bilgileri ve işin bağlantıları."
+              kicker={`İŞ · ${formatSubject(workflow.title)}`}
+              boy="genis"
+            >
+              {/* .opd-v3 ve .talep-musteri: künyenin ve listelerin kuralları bu sınıflara bağlı; pencere sayfanın dışında (panel kökünde) çiziliyor. */}
+              <div className="opd-v3"><div className="talep-musteri opd-ayrinti">
+                <dl className="talep-liste">
+                  <div><dt>Telefon</dt><dd>{formatPhone(opportunity?.contact_phone) || <em>Yok</em>}</dd></div>
+                  <div><dt>E-posta</dt><dd>{opportunity?.contact_email || <em>Yok</em>}</dd></div>
+                  <div><dt>Başlangıç</dt><dd>{workflow.start_date ? formatDate(workflow.start_date) : <em>Belirtilmedi</em>}</dd></div>
+                  <div><dt>Takip kodu</dt><dd>{contract?.tracking_code ? <code>{contract.tracking_code}</code> : <em>Yok</em>}</dd></div>
+                </dl>
+              {/*
+                TAKİP KODU ÖLÜ METİN DEĞİL. Kod yukarıda yazıyordu ve
+                yapabileceğin hiçbir şey yoktu: müşteriye telefonda söylemek
+                için altı karakteri elle seçmek, müşterinin ne gördüğüne
+                bakmak için adresi kendin yazmak gerekiyordu. Oysa ekran
+                müşterinin portala girdiğini zaten söylüyor (üstteki satır).
+                Gönderim akışının tamamı sözleşme detayında duruyor (menüdeki
+                "Sözleşmeye git"); burada günlük iki iş var: aç ve kopyala.
+              */}
+                {contract?.tracking_code ? (
+                  <div className="talep-iletisim">
+                    {takipAdresi ? <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${takipAdresi}?code=${encodeURIComponent(contract.tracking_code)}`}>Takip ekranını aç</a> : null}
+                    <KopyalaDugmesi metin={contract.tracking_code} etiket="Kodu kopyala" />
+                  </div>
+                ) : null}
+              {/*
+                BAĞLANTILAR (teklif ve sözleşme detayıyla eşitleme): talep, teklif
+                ve sözleşme. Eskiden düz metindi ve sütunun en altındaydı.
+                Sözleşme ve teklif tutar taşıyor: bağlantı yalnızca atama yetkisi
+                olana (önceki kural); operasyon personeli numarayı ve durumu görür.
+                Görünüm (ops_proposals) arşiv sebebini taşımıyor; işi olan teklif
+                imzalı sözleşmeden geldiği için arşivdeyse "Kabul edildi" yazılır.
+              */}
+              <div className="talep-gecmis">
+                <h3>Bağlantılar</h3>
+                <ul>
+                  {contract?.opportunity_id ? (
+                    <li>
+                      {crmVar && canAssign ? (
+                        <Link href={`/panel/crm/requests/${contract.opportunity_id}`}>
+                          <span className="talep-gecmis-metin"><b>Talep</b><small>{opportunity?.stage ? (requestStageNames[opportunity.stage] ?? opportunity.stage) : formatSubject(opportunity?.title) || "Talep"}</small></span>
+                        </Link>
+                      ) : (
+                        <div><span className="talep-gecmis-metin"><b>Talep</b><small>{opportunity?.stage ? (requestStageNames[opportunity.stage] ?? opportunity.stage) : "—"}</small></span></div>
+                      )}
+                    </li>
+                  ) : null}
+                  {proposal ? (
+                    <li>
+                      {crmVar && canAssign ? (
+                        <Link href={`/panel/crm/proposals/${proposal.id}`}>
+                          <span className="talep-gecmis-metin"><b>Teklif {proposal.proposal_no}</b><small>{teklifDurumu}</small></span>
+                        </Link>
+                      ) : (
+                        <div><span className="talep-gecmis-metin"><b>Teklif {proposal.proposal_no}</b><small>{teklifDurumu}</small></span></div>
+                      )}
+                    </li>
+                  ) : null}
+                  {contract ? (
+                    <li>
+                      {crmVar && canAssign ? (
+                        <Link href={`/panel/crm/contracts/${contract.id}`}>
+                          <span className="talep-gecmis-metin"><b>Sözleşme {contract.contract_no}</b><small>{contractStatusLabel(contract.status)}</small></span>
+                        </Link>
+                      ) : (
+                        <div><span className="talep-gecmis-metin"><b>Sözleşme {contract.contract_no}</b><small>{contractStatusLabel(contract.status)}</small></span></div>
+                      )}
+                    </li>
+                  ) : (
+                    <li><div><span className="talep-gecmis-metin"><b>Sözleşme</b><small>Bağlı değil (kurum içi iş)</small></span></div></li>
+                  )}
+                </ul>
+              </div>
+              {/* Operasyon sözleşmeyi ve teklifi göremiyor; müşteri hakkında bildikleri bu künye. */}
+              <MusteriKunyesi
+                kunye={(opportunity?.kunye ?? null) as Kunye | null}
+                iletisim={opportunity ?? null}
+                /* İmzalı sözleşmede ad ve e-posta belgede de değişiyor. */
+                sozlesmeImzali={contract?.status === "signed"}
+                opportunityId={contract?.opportunity_id ?? null}
+                workflowId={workflow.id}
+                duzenlenebilir={canEditDue}
+                /* Ad, e-posta ve telefon kartın üstünde zaten yazıyor; künyede
+                   ikinci kez yazılması sütunu uzatıyordu. */
+                iletisimGoster={false}
+              />
+              <p className="opd-zaman">Oluşturuldu {formatDate(workflow.created_at, true)} · güncellendi {formatDate(workflow.updated_at, true)}</p>
+              </div></div>
+            </PanelModal>
             </div>
-          </div>
-          {opportunity?.contact_phone || opportunity?.contact_email ? (
-            <div className="talep-iletisim">
+            {opportunity?.contact_phone || opportunity?.contact_email || (contract?.tracking_code && takipAdresi) ? <div className="talep-iletisim">
               {opportunity?.contact_phone ? <a className="panel-secondary" href={`tel:${opportunity.contact_phone}`}>Ara</a> : null}
               {opportunity?.contact_email ? <a className="panel-secondary" href={`mailto:${opportunity.contact_email}`}>E-posta</a> : null}
-            </div>
-          ) : null}
-          <dl className="talep-liste">
-            <div><dt>Telefon</dt><dd>{formatPhone(opportunity?.contact_phone) || <em>Yok</em>}</dd></div>
-            <div><dt>E-posta</dt><dd>{opportunity?.contact_email || <em>Yok</em>}</dd></div>
-            <div><dt>Sorumlu</dt><dd>{assigneeRow ? formatPersonName(assigneeRow.full_name) : <em>Atanmamış</em>}</dd></div>
-            {ekSorumluIdleri.length ? (
-              <div><dt>Ek sorumlu</dt><dd>{ekSorumluIdleri.map((id) => formatPersonName(employeeNames.get(id) ?? "Pasif personel")).join(", ")}</dd></div>
-            ) : null}
-            <div><dt>Öncelik</dt><dd><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></dd></div>
-            <div><dt>Başlangıç</dt><dd>{workflow.start_date ? formatDate(workflow.start_date) : <em>Belirtilmedi</em>}</dd></div>
-            <div><dt>Takip kodu</dt><dd>{contract?.tracking_code ? <code>{contract.tracking_code}</code> : <em>Yok</em>}</dd></div>
-            {/* Müşteri takip portalına girdi mi, şu an ekranda mı (20261012131639). */}
-            {contract?.tracking_code ? <div><dt>Portal</dt><dd><PortalZiyareti contractId={contract.id} sade /></dd></div> : null}
-          </dl>
+              {contract?.tracking_code && takipAdresi ? (
+                <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${takipAdresi}?code=${encodeURIComponent(contract.tracking_code)}`}>Takip ekranı</a>
+              ) : null}
+            </div> : null}
+            <dl className="talep-liste">
+              <div><dt>Sorumlu</dt><dd>{assigneeRow ? formatPersonName(assigneeRow.full_name) : <em>Atanmamış</em>}</dd></div>
+              {ekSorumluIdleri.length ? (
+                <div><dt>Ek sorumlu</dt><dd>{ekSorumluIdleri.map((id) => formatPersonName(employeeNames.get(id) ?? "Pasif personel")).join(", ")}</dd></div>
+              ) : null}
+              {/* TERMİN: tarih ve durumu; değiştirme küçük pencerede (eskiden form sütunda hep açıktı). */}
+              <div id="termin">
+                <dt>Termin</dt>
+                <dd className="opd-sol-termin">
+                  <span>{workflow.due_date ? formatDate(workflow.due_date) : <em>Belirlenmedi</em>}</span>
+                  <span className="status-pill" data-tone={due.tone}>{due.label}</span>
+                  {canEditDue ? (
+                    <PanelModal
+                      triggerClassName="opd-sol-degistir"
+                      triggerLabel={workflow.due_date ? "Değiştir" : "Belirle"}
+                      title="Termin"
+                      description="İşin müşteriye teslim edileceği gün."
+                      kicker={`İŞ · ${formatSubject(workflow.title)}`}
+                      boy="dar"
+                      basaridaKapan
+                    >
+                        <form className="opd-due-form" action={setWorkflowDueDate}>
+                          <input type="hidden" name="workflow_id" value={workflow.id} />
+                          <TarihSecici className="tsc-kucuk" key={workflow.due_date ?? "yok"} name="due_date" defaultValue={workflow.due_date ?? ""} min={workflow.start_date ?? undefined} required aria-label="Termin tarihi" />
+                          <button className={workflow.due_date ? "panel-secondary" : "panel-primary"} type="submit">{workflow.due_date ? "Güncelle" : "Termin belirle"}</button>
+                        </form>
+                    </PanelModal>
+                  ) : null}
+                </dd>
+              </div>
+              <div><dt>Öncelik</dt><dd><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></dd></div>
+              {/* Müşteri takip portalına girdi mi, şu an ekranda mı (20261012131639). */}
+              {contract?.tracking_code ? <div><dt>Portal</dt><dd><PortalZiyareti contractId={contract.id} sade /></dd></div> : null}
+            </dl>
+          </section>
 
           {/*
-            TAKİP KODU ÖLÜ METİN DEĞİL. Kod yukarıda yazıyordu ve
-            yapabileceğin hiçbir şey yoktu: müşteriye telefonda söylemek
-            için altı karakteri elle seçmek, müşterinin ne gördüğüne
-            bakmak için adresi kendin yazmak gerekiyordu. Oysa ekran
-            müşterinin portala girdiğini zaten söylüyor (üstteki satır).
-            Gönderim akışının tamamı sözleşme detayında duruyor (menüdeki
-            "Sözleşmeye git"); burada günlük iki iş var: aç ve kopyala.
+            Mesajlar sekmesi TEMBEL: okundu işareti panel kurulunca gidiyor.
+            Gizli panel de kurulsaydı sayfayı açmak okumak sayılır, okunmamış
+            rozeti kimse görmeden sönerdi.
           */}
-          {contract?.tracking_code && takipAdresi ? (
-            <div className="talep-iletisim">
-              <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${takipAdresi}?code=${encodeURIComponent(contract.tracking_code)}`}>Takip ekranını aç</a>
-              <KopyalaDugmesi metin={contract.tracking_code} etiket="Kodu kopyala" />
-            </div>
-          ) : null}
-
-          {/* TERMİN: tarih, durumu ve (yetkisi olana) değiştirme alanı. */}
-          <div className="talep-gecmis" id="termin">
-            <h3>Termin</h3>
-            <p className="opd-termin">
-              <b>{workflow.due_date ? formatDate(workflow.due_date) : "Belirlenmedi"}</b>
-              <span className="status-pill" data-tone={due.tone}>{due.label}</span>
-            </p>
-            {canEditDue ? (
-              <form className="opd-due-form" action={setWorkflowDueDate}>
-                <input type="hidden" name="workflow_id" value={workflow.id} />
-                <TarihSecici className="tsc-kucuk" key={workflow.due_date ?? "yok"} name="due_date" defaultValue={workflow.due_date ?? ""} min={workflow.start_date ?? undefined} required aria-label="Termin tarihi" />
-                <button className={workflow.due_date ? "panel-secondary" : "panel-primary"} type="submit">{workflow.due_date ? "Güncelle" : "Termin belirle"}</button>
-              </form>
-            ) : !workflow.due_date ? <p className="talep-bos">Termini yönetici ya da işin sorumlusu belirleyebilir.</p> : null}
-          </div>
-
-          {/*
-            BAĞLANTILAR (teklif ve sözleşme detayıyla eşitleme): talep, teklif
-            ve sözleşme. Eskiden düz metindi ve sütunun en altındaydı.
-            Sözleşme ve teklif tutar taşıyor: bağlantı yalnızca atama yetkisi
-            olana (önceki kural); operasyon personeli numarayı ve durumu görür.
-            Görünüm (ops_proposals) arşiv sebebini taşımıyor; işi olan teklif
-            imzalı sözleşmeden geldiği için arşivdeyse "Kabul edildi" yazılır.
-          */}
-          <div className="talep-gecmis">
-            <h3>Bağlantılar</h3>
+          <AkisCekmecesi kanallar={kanallar} baslik="Yazışmalar" kicker={`İŞ · ${formatSubject(workflow.title)}`} acikBaslar={acikBaslar} telefondaAcma={acilacakPencere === "mesajlar"} ek={<>
+            {/* Dosyalar yazışmalarla aynı kartta: ayrı kart başlığıyla sütun ekrana sığmıyordu. */}
+            <h3 className="akis-ozet-baslik akis-ozet-ara">Dosyalar</h3>
             <ul>
-              {contract?.opportunity_id ? (
-                <li>
-                  {crmVar && canAssign ? (
-                    <Link href={`/panel/crm/requests/${contract.opportunity_id}`}>
-                      <span className="talep-gecmis-metin"><b>Talep</b><small>{opportunity?.stage ? (requestStageNames[opportunity.stage] ?? opportunity.stage) : formatSubject(opportunity?.title) || "Talep"}</small></span>
-                    </Link>
-                  ) : (
-                    <div><span className="talep-gecmis-metin"><b>Talep</b><small>{opportunity?.stage ? (requestStageNames[opportunity.stage] ?? opportunity.stage) : "—"}</small></span></div>
-                  )}
-                </li>
-              ) : null}
-              {proposal ? (
-                <li>
-                  {crmVar && canAssign ? (
-                    <Link href={`/panel/crm/proposals/${proposal.id}`}>
-                      <span className="talep-gecmis-metin"><b>Teklif {proposal.proposal_no}</b><small>{teklifDurumu}</small></span>
-                    </Link>
-                  ) : (
-                    <div><span className="talep-gecmis-metin"><b>Teklif {proposal.proposal_no}</b><small>{teklifDurumu}</small></span></div>
-                  )}
-                </li>
-              ) : null}
-              {contract ? (
-                <li>
-                  {crmVar && canAssign ? (
-                    <Link href={`/panel/crm/contracts/${contract.id}`}>
-                      <span className="talep-gecmis-metin"><b>Sözleşme {contract.contract_no}</b><small>{contractStatusLabel(contract.status)}</small></span>
-                    </Link>
-                  ) : (
-                    <div><span className="talep-gecmis-metin"><b>Sözleşme {contract.contract_no}</b><small>{contractStatusLabel(contract.status)}</small></span></div>
-                  )}
-                </li>
-              ) : (
-                <li><div><span className="talep-gecmis-metin"><b>Sözleşme</b><small>Bağlı değil (kurum içi iş)</small></span></div></li>
-              )}
+              <li>
+            {/*
+              MÜŞTERİ NİHAİ EVRAK TESLİMİ. Satırdaki "Ödeme bekleniyor"
+              rozeti ödeme durumunu söylüyor: ödeme kapanmamışsa ve "ödeme tamamlanınca
+              açılır" kuralındaki dosyalar müşteride kilitli görünecek.
+            */}
+              <PanelModal
+                triggerClassName="akis-ozet-satir"
+                triggerLabel="Nihai evrak"
+                tetik={<>
+                  <span className="akis-ozet-ust">
+                    <b>Nihai evrak</b>
+                    {portalPayment.hasContract && !portalPayment.settled ? <span className="akis-rozet">Ödeme bekleniyor</span> : null}
+                    <time>{portalFiles.length} dosya</time>
+                  </span>
+                  <span className="akis-ozet-metin is-bos">{!portalPayment.hasContract ? "Sözleşmesiz iş" : portalPayment.settled ? "Ödeme tamamlandı; müşteri dosyaları indirebilir." : "Ödeme kapanmadan kilitli dosyalar müşteride açılmaz."}</span>
+                </>}
+                title="Müşteri nihai evrak teslimi"
+                description="Müşterinin takip ekranındaki “Dosyalarınız” bölümüne giden dosyalar."
+                kicker="OPERASYON"
+                boy="genis"
+                baslangicAcik={acilacakPencere === "evrak"}
+              >
+                {portalSetupMissing ? (
+                  <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
+                ) : (
+                  <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
+                )}
+              </PanelModal>
+              </li>
+              <li>
+            {/*
+              SAHADAN FOTOĞRAF VE DOSYA (13.10.2026). Telefonda kameradan çekip
+              işe (ekip içi) ya da müşteriye eklemek; saha-dosyalari.tsx.
+            */}
+              <PanelModal
+                triggerClassName="akis-ozet-satir"
+                triggerLabel="Fotoğraf ve dosya"
+                tetik={<>
+                  <span className="akis-ozet-ust"><b>Fotoğraf ve dosya</b><time>{ekipKurulumEksik ? "" : `${ekipDosyalari.length} dosya`}</time></span>
+                  <span className="akis-ozet-metin is-bos">{ekipKurulumEksik ? "Kurulum bekleniyor." : "Ekip içi; sahadan ekleyin ya da müşteriye gönderin."}</span>
+                </>}
+                title="Fotoğraflar ve dosyalar"
+                description="Sahadan çekilen fotoğrafı ya da belgeyi işe (yalnızca ekip) ya da müşteriye ekleyin."
+                kicker="OPERASYON"
+                boy="genis"
+                baslangicAcik={istenenPencere === "dosya"}
+              >
+                {ekipKurulumEksik ? (
+                  <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20261013065421_is_ekip_dosyalari) henüz çalıştırılmadı. Çalıştırıldığında fotoğraf ve dosya ekleme burada açılır.</span></p>
+                ) : (
+                  <SahaDosyalari workflowId={workflow.id} organizationId={organizationId} portalAcik={portalPayment.hasContract && !portalSetupMissing} dosyalar={ekipDosyalari} />
+                )}
+              </PanelModal>
+              </li>
             </ul>
-          </div>
+          </>}>
+            {/* div, Fragment değil: sunucudan gelen Fragment düzleşiyor ve iki ayrı sekme paneli oluyordu. */}
+            <div className="opd-mesaj">
+              <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
+              <MusteriSohbeti
+                workflowId={workflow.id}
+                messages={customerMessages}
+                customerName={customerName}
+                canReply={Boolean(contract)}
+                bugun={bugunIstanbul}
+              />
+            </div>
+            {contract?.opportunity_id ? (
+              <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} gorunum="akis" />
+            ) : null}
+            {whatsappGorur ? (
+              <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteriAdi ?? customerName} /></div>
+            ) : null}
+            {postaGorur ? (
+              <div><PostaAkisi postalar={postalar} epostaVar={Boolean(opportunity?.contact_email)} /></div>
+            ) : null}
+            <div className="opd-kayit">
+              <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
+              <ul className="opd-activity">
+                {activities.map((activity) => (
+                  <li key={activity.id} data-kind={activity.kind}>
+                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
+                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
+                  </li>
+                ))}
+              </ul>
+              <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
+              <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
+                <RecordHistory workflowId={workflow.id} baslik={false} />
+              </Suspense>
+            </div>
+          </AkisCekmecesi>
 
-          {/*
-            MÜŞTERİ NİHAİ EVRAK TESLİMİ. Düğmenin rengi ödeme durumunu
-            söylüyor: kırmızıysa ödeme kapanmamış ve "ödeme tamamlanınca
-            açılır" kuralındaki dosyalar müşteride kilitli görünecek.
-          */}
-          <div className="talep-gecmis">
-            <h3>Nihai evrak teslimi</h3>
-            <PanelModal
-              triggerClassName="opd-ray-btn"
-              triggerTone={!portalPayment.hasContract ? "neutral" : portalPayment.settled ? "success" : "danger"}
-              triggerLabel="Evrakı aç"
-              triggerNote={
-                !portalPayment.hasContract
-                  ? "Sözleşmesiz iş"
-                  : portalPayment.settled
-                    ? `Ödeme tamamlandı · ${portalFiles.length} dosya`
-                    : `Ödeme bekleniyor · ${portalFiles.length} dosya`
-              }
-              title="Müşteri nihai evrak teslimi"
-              description="Müşterinin takip ekranındaki “Dosyalarınız” bölümüne giden dosyalar."
-              kicker="OPERASYON"
-              boy="genis"
-              baslangicAcik={acilacakPencere === "evrak"}
-            >
-              {portalSetupMissing ? (
-                <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
-              ) : (
-                <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
-              )}
-            </PanelModal>
-          </div>
-
-          {/*
-            SAHADAN FOTOĞRAF VE DOSYA (13.10.2026). Telefonda kameradan çekip
-            işe (ekip içi) ya da müşteriye eklemek; saha-dosyalari.tsx.
-          */}
-          <div className="talep-gecmis">
-            <h3>Fotoğraflar ve dosyalar</h3>
-            <PanelModal
-              triggerClassName="opd-ray-btn"
-              triggerTone="neutral"
-              triggerLabel="Fotoğraf / dosya ekle"
-              triggerNote={ekipKurulumEksik ? "Kurulum bekleniyor" : `Ekip içi · ${ekipDosyalari.length} dosya`}
-              title="Fotoğraflar ve dosyalar"
-              description="Sahadan çekilen fotoğrafı ya da belgeyi işe (yalnızca ekip) ya da müşteriye ekleyin."
-              kicker="OPERASYON"
-              boy="genis"
-              baslangicAcik={istenenPencere === "dosya"}
-            >
-              {ekipKurulumEksik ? (
-                <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20261013065421_is_ekip_dosyalari) henüz çalıştırılmadı. Çalıştırıldığında fotoğraf ve dosya ekleme burada açılır.</span></p>
-              ) : (
-                <SahaDosyalari workflowId={workflow.id} organizationId={organizationId} portalAcik={portalPayment.hasContract && !portalSetupMissing} dosyalar={ekipDosyalari} />
-              )}
-            </PanelModal>
-          </div>
-
-          {/* Operasyon sözleşmeyi ve teklifi göremiyor; müşteri hakkında bildikleri bu künye. */}
-          <MusteriKunyesi
-            kunye={(opportunity?.kunye ?? null) as Kunye | null}
-            iletisim={opportunity ?? null}
-            /* İmzalı sözleşmede ad ve e-posta belgede de değişiyor. */
-            sozlesmeImzali={contract?.status === "signed"}
-            opportunityId={contract?.opportunity_id ?? null}
-            workflowId={workflow.id}
-            duzenlenebilir={canEditDue}
-            /* Ad, e-posta ve telefon kartın üstünde zaten yazıyor; künyede
-               ikinci kez yazılması sütunu uzatıyordu. */
-            iletisimGoster={false}
-          />
-          <p className="opd-zaman">Oluşturuldu {formatDate(workflow.created_at, true)} · güncellendi {formatDate(workflow.updated_at, true)}</p>
-        </section>
+        </div>
 
         <section className="panel-card talep-bilgi opd-gorevler" aria-label="Görevler">
           <header className="opd-gorev-bas">
@@ -951,48 +1033,6 @@ export default async function OperationDetailPage({
           </form>
         </section>
 
-        {/*
-          Mesajlar sekmesi TEMBEL: okundu işareti panel kurulunca gidiyor.
-          Gizli panel de kurulsaydı sayfayı açmak okumak sayılır, okunmamış
-          rozeti kimse görmeden sönerdi.
-        */}
-        <AkisCekmecesi kanallar={kanallar} baslik="Yazışmalar" kicker={`İŞ · ${formatSubject(workflow.title)}`} acikBaslar={acikBaslar} telefondaAcma={acilacakPencere === "mesajlar"}>
-          {/* div, Fragment değil: sunucudan gelen Fragment düzleşiyor ve iki ayrı sekme paneli oluyordu. */}
-          <div className="opd-mesaj">
-            <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
-            <MusteriSohbeti
-              workflowId={workflow.id}
-              messages={customerMessages}
-              customerName={customerName}
-              canReply={Boolean(contract)}
-              bugun={bugunIstanbul}
-            />
-          </div>
-          {contract?.opportunity_id ? (
-            <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} gorunum="akis" />
-          ) : null}
-          {whatsappGorur ? (
-            <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteriAdi ?? customerName} /></div>
-          ) : null}
-          {postaGorur ? (
-            <div><PostaAkisi postalar={postalar} epostaVar={Boolean(opportunity?.contact_email)} /></div>
-          ) : null}
-          <div className="opd-kayit">
-            <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
-            <ul className="opd-activity">
-              {activities.map((activity) => (
-                <li key={activity.id} data-kind={activity.kind}>
-                  <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
-                  <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
-                </li>
-              ))}
-            </ul>
-            <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
-            <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
-              <RecordHistory workflowId={workflow.id} baslik={false} />
-            </Suspense>
-          </div>
-        </AkisCekmecesi>
       </div>
     </main>
   );
