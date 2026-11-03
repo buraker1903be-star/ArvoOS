@@ -53,6 +53,8 @@ type MusteriSatiri = Hesap & {
   temsilci: string | null;
   tahsilOrani: number | null;
   gecikmis: number;
+  /** Vadesi gelmemiş en yakın açık taksit (gecikmiş olan "gecikmis"te). */
+  siradaki: { gun: string; kalan: number } | null;
   sonHareket: string | null;
 };
 type Contract = {
@@ -187,10 +189,20 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
       <table className="crm-data-table" data-cols="musteriler">
         <thead>
           <tr>
+            {/*
+              SÜTUNLAR (03.11.2026, "daha verimli"): eskiden müşteri, tahsil
+              çubuğu, açık bakiye ve son hareket vardı; tablonun ortası boş
+              kalıyor, "ne kadar borçlu, ne kadarını ödedi, sıradaki ödeme
+              ne zaman" için müşteriyi açmak gerekiyordu. Borç, tahsil
+              edilen tutar, temsilci ve sıradaki vade eklendi.
+            */}
             <th>Müşteri</th>
-            <th>Tahsil</th>
+            <th className="crm-col-rep">Temsilci</th>
+            <th className="crm-col-amount">Borç</th>
+            <th>Tahsil edilen</th>
             <th className="crm-col-amount">Açık bakiye</th>
-            <th className="crm-col-date">Son hareket</th>
+            <th className="crm-col-date">Sıradaki vade</th>
+            <th className="crm-col-date musteri-son">Son hareket</th>
             <th></th>
           </tr>
         </thead>
@@ -203,11 +215,13 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                   <span className="crm-table-sub">{formatPhone(a.phone) || a.email || a.tax_number || "İletişim bilgisi yok"}</span>
                 </Link>
               </td>
-              <td data-label="Tahsil">
+              <td className="crm-col-rep" data-label="Temsilci">{a.temsilci ?? <span className="cari-sifir">—</span>}</td>
+              <td className="crm-col-amount" data-label="Borç">{money(a.debt)}<small className="crm-waiting">{a.sozlesmeAdedi ? `${a.sozlesmeAdedi} sözleşme` : "ek hizmet"}</small></td>
+              <td data-label="Tahsil edilen">
                 {a.tahsilOrani === null ? <span className="cari-sifir">—</span> : (
-                  <span className="musteri-tahsil" title={`${money(a.collections)} tahsil edildi`}>
+                  <span className="musteri-tahsil-iki">
+                    <span className="musteri-tahsil-ust"><b>{money(a.collections)}</b><small>%{a.tahsilOrani}</small></span>
                     <span className="cari-oran-cubuk" aria-hidden="true"><i style={{ "--p": `${a.tahsilOrani}%` } as React.CSSProperties} /></span>
-                    <small>%{a.tahsilOrani}</small>
                   </span>
                 )}
               </td>
@@ -217,7 +231,10 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                   {a.gecikmis > 0 ? `${money(a.gecikmis)} vadesi geçti` : a.balance > 0 ? "vadesi gelmedi" : "kapandı"}
                 </small>
               </td>
-              <td className="crm-col-date" data-label="Son hareket">{a.sonHareket ? kisaTarih(a.sonHareket) : "—"}</td>
+              <td className="crm-col-date" data-label="Sıradaki vade">
+                {a.siradaki ? <>{kisaTarih(a.siradaki.gun)}<small className="crm-waiting">{money(a.siradaki.kalan)}</small></> : <span className="cari-sifir">—</span>}
+              </td>
+              <td className="crm-col-date musteri-son" data-label="Son hareket">{a.sonHareket ? kisaTarih(a.sonHareket) : "—"}</td>
               <td className="crm-table-actions cari-satir-eylem">
                 {a.balance > 0 && paytrHazir ? (
                   <PanelDrawer
@@ -468,7 +485,6 @@ export default async function FinancePage({
   const tahsilatDegisim = tahsilatOnceki ? Math.round(((tahsilat30 - tahsilatOnceki) / tahsilatOnceki) * 100) : null;
   const tahsilOrani = oran(totals.collections, totals.debt + totals.refunds);
   const aylikTahsilat = aylikDilimler(tahsilatOzeti.aylik ?? [], 6, an);
-  const enYuksek = [...accounts].filter((a) => a.balance > 0).sort((x, y) => y.balance - x.balance).slice(0, 5);
   /*
     Vadesi geçen taksit: taksitin kendi status sütunu cari tahsilatıyla
     güncellenmiyor; kısmen ya da tamamen tahsil edilmiş taksit "ödenmedi"
@@ -492,12 +508,18 @@ export default async function FinancePage({
   }
   const gecenTaksit: { kalan: number }[] = [];
   const gecikmeler = new Map<string, number>();
+  const siradakiler = new Map<string, { gun: string; kalan: number }>();
   for (const a of accounts) {
     const liste = cariTaksitleri.get(a.id);
     if (!liste) continue;
     // Plan sözleşmeden büyük olabiliyor: vadesi geçen açık bakiyeyi aşmasın.
     for (const t of bakiyeyeSigdir(taksitleriDagit(liste, netTahsilatToplamdan(a), today), a.balance)) {
-      if (t.durum !== "gecikti") continue;
+      if (t.durum !== "gecikti") {
+        /* Sıradaki vade: tablodaki "ne zaman ne kadar gelecek" sütunu (03.11.2026). */
+        const onceki = siradakiler.get(a.id);
+        if (t.kalan > 0 && t.durum !== "odendi" && t.durum !== "iptal" && t.due_date && (!onceki || t.due_date < onceki.gun)) siradakiler.set(a.id, { gun: t.due_date, kalan: t.kalan });
+        continue;
+      }
       gecenTaksit.push({ kalan: t.kalan });
       gecikmeler.set(a.id, (gecikmeler.get(a.id) ?? 0) + t.kalan);
     }
@@ -522,6 +544,7 @@ export default async function FinancePage({
       temsilci: temsilciAdi ? formatPersonName(temsilciAdi) || temsilciAdi : null,
       tahsilOrani: oran(a.collections, a.debt + a.refunds),
       gecikmis: gecikmeler.get(a.id) ?? 0,
+      siradaki: siradakiler.get(a.id) ?? null,
       sonHareket: a.son_hareket_at,
     };
   };
@@ -643,7 +666,7 @@ export default async function FinancePage({
               ]}
               gruplar={[
                 { baslik: "Son 6 ay · tahsilat", satirlar: aylikTahsilat.map((ay) => ({ ad: ay.ad, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
-                { baslik: "En yüksek açık bakiye", satirlar: enYuksek.map((a) => ({ ad: a.name, adet: a.balance, etiket: kisaPara(a.balance) })) },
+                /* "En yüksek açık bakiye" 03.11.2026'da kalktı: tablo zaten açık bakiyeye göre sıralanabiliyor. */
               ]}
             />
           </div>
