@@ -15,6 +15,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunFarki } from "@/lib/is-adimlari";
 import { turkiyeGunu } from "@/lib/otomatik-yenileme";
 import { TalepAkis } from "../crm/kayit-detay/kayit-akis";
+import { abonelikDonemi, enYakinBitis, ODEME_UZAMA_KURALI } from "@/lib/abonelik-donemi";
 import "../crm/kayit-detay/kayit-detay.css";
 import "../hr/hr.css";
 
@@ -50,8 +51,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   ] = await Promise.all([
     supabase.from("platform_bank_accounts").select("id,bank_name,account_holder,iban,currency").eq("is_active", true).order("sort_order"),
     supabase.from("organization_payment_requests").select("id,plan_code,product,amount,currency,status,reference_no,review_note,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
-    supabase.from("organization_licenses").select("plan_code,license_status,current_period_end,monthly_fee,user_limit,extra_user_fee,extra_user_cap").eq("organization_id", organization.id).maybeSingle(),
-    supabase.from("organization_product_licenses").select("product,status,monthly_fee,current_period_end").eq("organization_id", organization.id),
+    supabase.from("organization_licenses").select("plan_code,license_status,current_period_end,trial_ends_at,monthly_fee,user_limit,extra_user_fee,extra_user_cap").eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("organization_product_licenses").select("product,status,monthly_fee,current_period_end,trial_ends_at").eq("organization_id", organization.id),
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true })
       .eq("organization_id", organization.id).eq("is_active", true),
   ]);
@@ -85,7 +86,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const platformPaytr = platformId && platformId !== organization.id ? await getPaytrStatus(platformId) : null;
   const storeReady = Boolean(platformPaytr?.available && platformPaytr.connected && platformPaytr.enabled);
 
-  const productRows = new Map(((productLicenses ?? []) as { product: string; status: string; monthly_fee: number | null; current_period_end: string | null }[]).map((row) => [row.product, row]));
+  const productRows = new Map(((productLicenses ?? []) as { product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }[]).map((row) => [row.product, row]));
   const subscriptions = PRODUCTS.map((product) => {
     const row = product.code === "arvoos" ? null : productRows.get(product.code);
     /* ArvoOS'un tutarına ek koltuklar DAHİL: düğmede yazan rakam ile
@@ -93,11 +94,21 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
        bağlantıyı açarken yeniden yapıyor). */
     const fee = Number((product.code === "arvoos" ? license?.monthly_fee : row?.monthly_fee) ?? 0)
       + (product.code === "arvoos" ? ekUcret : 0);
+    /*
+      Durum ve bitiş lib/abonelik-donemi'nden (OS-05): denemede bitiş
+      trial_ends_at, diğerlerinde current_period_end (platform yenileme
+      takviminin kuralı). Eskiden yalnızca current_period_end okunuyor,
+      deneme sürecindeki kurumda "—" çıkıyordu; ArvoOS lisans satırı hiç
+      yoksa da durum "Deneme" varsayılıyordu. Satır yoksa durum null:
+      "bilinmiyor" diye yazılır, uydurulmaz.
+    */
+    const durum: string | null = product.code === "arvoos" ? (license?.license_status ?? null) : (row?.status ?? "inactive");
+    const kaynak = product.code === "arvoos" ? license : row;
     return {
       ...product,
       fee,
-      status: product.code === "arvoos" ? (license?.license_status ?? "trialing") : (row?.status ?? "inactive"),
-      periodEnd: product.code === "arvoos" ? (license?.current_period_end ?? null) : (row?.current_period_end ?? null),
+      status: durum,
+      donem: abonelikDonemi({ durum, donemSonu: kaynak?.current_period_end ?? null, denemeSonu: kaynak?.trial_ends_at ?? null }),
       // Ücreti girilmemiş ek ürün kuruma hiç gösterilmez: satın almadığı ürün için kart çıkmasın.
       visible: product.code === "arvoos" || fee > 0 || Boolean(row),
     };
@@ -164,12 +175,16 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const aktifYenilemeler = yenilemeAcik ? yenilemeler.filter((y) => y.aktif) : [];
   const disari = platformId === organization.id;
   const kalanGun = (bitis: string | null) => (bitis ? gunFarki(bugun, turkiyeGunu(bitis)) : null);
+  const durumAdi = (durum: string | null) => (durum === null ? "Bilinmiyor" : productLicenseLabels[durum] ?? durum);
   const kalanYazisi = (gun: number | null) => gun === null ? null : gun < 0 ? `${-gun} gün gecikti` : gun === 0 ? "bugün bitiyor" : `${gun} gün kaldı`;
   const kalanTonu = (gun: number | null) => gun === null ? "neutral" : gun < 0 ? "danger" : gun <= 7 ? "warning" : "success";
-  const acikAbonelikler = subscriptions.filter((p) => ["active", "trialing", "past_due"].includes(p.status));
+  const acikAbonelikler = subscriptions.filter((p) => p.status !== null && ["active", "trialing", "past_due"].includes(p.status));
   // Tutar ve tarihler bellekteki ürün listesinden (en çok dört ürün); sınırlı bir sorgudan değil.
   const aylikToplam = acikAbonelikler.reduce((t, p) => t + p.fee, 0);
-  const enYakin = subscriptions.filter((p) => p.periodEnd).sort((x, y) => String(x.periodEnd).localeCompare(String(y.periodEnd)))[0] ?? null;
+  /* Özet, kartlarla aynı türetilmiş tarihlerden ve yalnızca açık aboneliklerden (OS-05):
+     eskiden iptal/kapalı bir ürünün eski dönem sonu "en yakın" diye çıkabiliyordu. */
+  const enYakin = enYakinBitis(subscriptions.map((p) => ({ ...p, durum: p.status })));
+  const enYakinGun = kalanGun(enYakin?.donem.tarih ?? null);
   const bekleyenProforma = belgeler ? belgeler.proformalar.filter((pr) => proformaGorunumu(pr.durum, pr.gecerlilikTarihi, bugun) === "bekliyor").length : 0;
   const kartSekmesi = kartAcik && Boolean(canSubmit);
   const sekmeler = [
@@ -188,7 +203,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <p className="ek-alt">{organization.display_name || organization.name} · {acikAbonelikler.length} abonelik{aylikToplam ? ` · aylık ${formatTry(aylikToplam)}` : ""}</p>
       </div>
       <div className="talep-bas-eylem">
-        <span className="status-pill" data-tone={["active", "trialing"].includes(license?.license_status ?? "trialing") ? "success" : "warning"}>{productLicenseLabels[license?.license_status ?? "trialing"] ?? license?.license_status}</span>
+        {license ? (
+          <span className="status-pill" data-tone={["active", "trialing"].includes(license.license_status) ? "success" : "warning"}>{durumAdi(license.license_status)}</span>
+        ) : <span className="status-pill" data-tone="neutral" title="Lisans kaydı bulunamadı">Lisans durumu bilinmiyor</span>}
       </div>
     </header>
 
@@ -199,7 +216,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <nav className="kayit-serit talep-serit" aria-label="Abonelik özeti">
       <dl>
         <div><dt>Aylık toplam</dt><dd>{aylikToplam ? formatTry(aylikToplam) : "—"}</dd></div>
-        <div><dt>En yakın dönem sonu</dt><dd className={kalanTonu(kalanGun(enYakin?.periodEnd ?? null)) === "danger" ? "cari-eksi" : kalanTonu(kalanGun(enYakin?.periodEnd ?? null)) === "warning" ? "talep-uyari" : undefined}>{enYakin?.periodEnd ? istanbulDateTime(enYakin.periodEnd, { dateStyle: "medium" }) : "—"}</dd></div>
+        <div><dt>En yakın bitiş</dt><dd className={kalanTonu(enYakinGun) === "danger" ? "cari-eksi" : kalanTonu(enYakinGun) === "warning" ? "talep-uyari" : undefined}>{enYakin?.donem.tarih
+          ? <>{istanbulDateTime(enYakin.donem.tarih, { dateStyle: "medium" })}<small className="abk-ozet-not">{enYakin.name} · {enYakin.donem.etiket.toLocaleLowerCase("tr")}</small></>
+          : <small className="abk-ozet-not">{acikAbonelikler.length ? "Açık aboneliklerde bitiş tarihi kayıtlı değil" : "Açık abonelik yok"}</small>}</dd></div>
         <div><dt>Kullanıcı</dt><dd>{dahilLimit ? `${sayi(uyeSayisi)} / ${sayi(dahilLimit)}` : sayi(uyeSayisi)}</dd></div>
         {kartSekmesi && yenilemeAcik ? <div><dt>Otomatik yenileme</dt><dd className={aktifYenilemeler.length ? "cari-arti" : undefined}>{aktifYenilemeler.length ? `${aktifYenilemeler.length} açık` : "Kapalı"}</dd></div> : null}
         {belgeler ? <div><dt>Bekleyen proforma</dt><dd className={bekleyenProforma ? "talep-uyari" : undefined}>{bekleyenProforma}</dd></div> : null}
@@ -216,23 +235,25 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           {subscriptions.map((product) => {
             const yenileme = aktifYenilemeler.find((y) => y.product === product.code);
             const yenilemeKarti = yenileme ? kartlar.find((k) => k.id === yenileme.kart_id) : null;
-            const acik = ["active", "trialing"].includes(product.status);
-            const gun = kalanGun(product.periodEnd);
+            const acik = product.status !== null && ["active", "trialing"].includes(product.status);
+            const gun = kalanGun(product.donem.tarih);
             return <li key={product.code} className="abk-urun" data-urun={product.code}>
               <div className="abk-urun-bas">
                 <span className="abk-rozet" aria-hidden="true">{product.badge}</span>
                 <div><b>{product.name}</b><small>{product.code === "arvoos" ? `${paketAdi(license?.plan_code ?? organization.plan_code)} paketi` : product.description}</small></div>
-                <span className="status-pill" data-tone={acik ? "success" : product.status === "past_due" ? "warning" : "neutral"}>{productLicenseLabels[product.status] ?? product.status}</span>
+                <span className="status-pill" data-tone={acik ? "success" : product.status === "past_due" ? "warning" : "neutral"}>{durumAdi(product.status)}</span>
               </div>
               <div className="abk-fiyat">
                 <span><b>{product.fee > 0 ? formatTry(product.fee) : "—"}</b><small>{product.fee > 0 ? "aylık" : "ücret belirlenmedi"}</small></span>
-                {product.periodEnd ? (
+                {product.donem.tarih ? (
                   <span className="abk-donem">
-                    <small>Dönem sonu {istanbulDateTime(product.periodEnd, { dateStyle: "medium" })}</small>
+                    <small>{product.donem.etiket} {istanbulDateTime(product.donem.tarih, { dateStyle: "medium" })}</small>
                     <em data-tone={kalanTonu(gun)}>{kalanYazisi(gun)}</em>
                   </span>
                 ) : null}
               </div>
+              {/* Tarih yoksa yalnızca "—" değil, bilinen neden (OS-05). */}
+              {product.donem.aciklama ? <p className="abk-satir-not" data-tone={product.donem.bilinmiyor ? "warning" : undefined}>{product.donem.aciklama}</p> : null}
               {product.code === "arvoos" ? (
                 <p className="abk-satir-not">
                   {dahilLimit ? `${sayi(uyeSayisi)} / ${sayi(dahilLimit)} kullanıcı dahil` : `${sayi(uyeSayisi)} kullanıcı`}
@@ -256,7 +277,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   <form action={payLicenseWithCard} className="abk-eylem">
                     <input type="hidden" name="product" value={product.code} />
                     <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>
-                    <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz; ödeme onaylanınca lisans 1 ay uzar.</small>
+                    <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz. {ODEME_UZAMA_KURALI}</small>
                   </form>
                 ) : <p className="abk-satir-not">{product.fee > 0 ? "Kartla ödeme şu an kullanılamıyor; Havale / EFT sekmesinden ödeyebilirsiniz." : "Aylık ücret henüz belirlenmedi. ArvoOS ile iletişime geçin."}</p>
               ) : null}

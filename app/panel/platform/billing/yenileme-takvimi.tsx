@@ -1,4 +1,5 @@
 import { konsolAlaniniAc } from "../konsol-alani";
+import { bitisDamgasi } from "@/lib/abonelik-donemi";
 import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -153,8 +154,9 @@ export async function YenilemeTakvimi({ filtre }: { filtre?: string }) {
   const uyeSayisi = new Map<string, number>();
   for (const u of uyeler as { organization_id: string }[]) uyeSayisi.set(u.organization_id, (uyeSayisi.get(u.organization_id) ?? 0) + 1);
 
+  /* Kural ortak (lib/abonelik-donemi · bitisDamgasi): kurumun Abonelik ekranı da aynı kaynaktan okuyor (OS-05). */
   const bitisi = (durum: string, donem: string | null, deneme: string | null) => {
-    const damga = durum === "trialing" ? deneme : donem;
+    const damga = bitisDamgasi(durum, donem, deneme);
     return damga ? turkiyeGunu(damga) : null;
   };
   const abonelikler: TakvimAboneligi[] = [
