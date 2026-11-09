@@ -32,6 +32,7 @@ import { beklemeSuresi, gecikmisMi, kuyrukSirala, ONCELIK_ADI, YANIT_BEKLEYEN_DU
 import Link from "next/link";
 import { KONSOL_ALANLARI, uygulamalariSuz, type KonsolKapsami } from "@/lib/konsol-alanlari";
 import { konsolUygulamalari } from "./os/konsol-apps";
+import { donemDegisimi } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { TalepAkis } from "./crm/kayit-detay/kayit-akis";
 import { StgIcon } from "./settings/settings-ui";
@@ -750,7 +751,7 @@ export async function KonsolAnaSayfa() {
     { ad: "Beklenen aylık", deger: para(aylikGelir), alt: "Ödeyen müşteri lisansları", href: "/panel/platform/billing" },
     { ad: "Müşteri kurum", deger: `${kullanimda} / ${musteriler.length}`, alt: "Kullanımda / toplam", href: "/panel/platform/musteriler?tur=kurumsal" },
     ...(grupMarkalari.length ? [{ ad: "Grup markası", deger: String(grupMarkalari.length), alt: "Müşteri sayılmaz", href: "/panel/platform/musteriler" }] : []),
-    { ad: "Son 14 gün tahsilat", deger: para(tahsilatSerisi.total), alt: tahsilatSerisi.delta === null ? undefined : `${tahsilatSerisi.delta >= 0 ? "+" : ""}${tahsilatSerisi.delta}% önceki döneme göre`, href: "/panel/platform/tahsilat" },
+    { ad: "Son 14 gün tahsilat", deger: para(tahsilatSerisi.total), alt: donemDegisimi(tahsilatSerisi, { adet: "tahsilat" }).metin, href: "/panel/platform/tahsilat" },
     { ad: "Bu ay yeni müşteri", deger: yeniOkunamadi ? "—" : String((yeniSayimi.count ?? 0) + (yeniAboneSayimi.count ?? 0)), alt: yeniOkunamadi ? "okunamadı" : `${yeniSayimi.count ?? 0} kurum · ${yeniAboneSayimi.count ?? 0} bireysel`, href: `/panel/platform/rapor?ay=${todayInIstanbul().slice(0, 7)}-01` },
     { ad: "Bekleyen iş", deger: String(bekleyenIs), alt: bekleyenIs ? "Aşağıdaki kuyrukta" : "Kuyruk boş", href: "#bugunun-isleri", ton: bekleyenIs ? "gold" : undefined },
   ];

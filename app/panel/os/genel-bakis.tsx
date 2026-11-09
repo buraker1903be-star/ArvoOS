@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import type { GunlukSeri } from "@/lib/gunluk-seri";
+import { donemDegisimi, type GunlukSeri } from "@/lib/gunluk-seri";
 import "../dashboard.css";
 
 /*
@@ -63,7 +63,7 @@ export function GenelBakis({ baslik, gizliBaslik, ust, uyari, sinif, children }:
 /** Grafik başlığındaki küçük özet (Finans genel bakış: bu ay tahsilat, tahsil oranı…). */
 export type SeriOzeti = { ad: string; deger: string; ton?: string; href?: string };
 
-export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, href, ozet, bos }: {
+export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, href, ozet, bos, hata = false }: {
   baslik: string;
   alt: string;
   seri: GunlukSeri;
@@ -90,14 +90,22 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
     davranış sürüyor.
   */
   bos?: string;
+  /*
+    Seri okunamadı (OS-02, 09.11.2026): eskiden boş diziden çizilip
+    "0 · son 14 günde talep yok" diyordu — okunamayan veri gerçek sıfırla
+    aynı görünüyordu. Hata varken toplam "—", çubuklar yerine açıklama.
+  */
+  hata?: boolean;
 }) {
-  const bosSeri = Boolean(bos) && seri.total === 0 && seri.days.every((gun) => !gun.count);
+  const bosSeri = !hata && Boolean(bos) && seri.total === 0 && seri.days.every((gun) => !gun.count);
+  const degisim = donemDegisimi(seri, { adet, gun: seri.days.length, hata });
   const icerik = (
     <>
       <header className="dash-card-head">
         <div>
           <h2>{baslik}</h2>
-          <p>{alt}</p>
+          {/* Etiketteki aralık hesaplanan günlerin kendisi (OS-02). */}
+          <p>{alt} · {seri.aralik}</p>
         </div>
         {ozet?.length ? (
           <dl className="dash-ozet">
@@ -110,13 +118,11 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
           </dl>
         ) : null}
         <div className="dash-stat">
-          <strong>{birim(seri.total)}</strong>
-          {seri.delta !== null ? (
-            <span data-tone={seri.delta >= 0 ? "success" : "danger"}>{seri.delta >= 0 ? "+" : ""}{seri.delta}% önceki döneme göre</span>
-          ) : seri.total ? <span data-tone="neutral">önceki dönemde kayıt yok</span> : null}
+          <strong>{hata ? "—" : birim(seri.total)}</strong>
+          <span data-tone={degisim.ton} title={hata ? undefined : `Önceki dönem: ${seri.oncekiAralik} · ${birim(seri.previous)} ${adet}`}>{degisim.metin}</span>
         </div>
       </header>
-      {bosSeri ? <p className="dash-seri-bos">{bos}</p> : (
+      {hata ? <p className="dash-seri-bos">{baslik} yüklenemedi. Sayfayı yenileyin; sorun sürerse destek kaydı açın.</p> : bosSeri ? <p className="dash-seri-bos">{bos}</p> : (
       <div className="dash-bars" role="img" aria-label={`${alt}: toplam ${birim(seri.total)} ${adet}`}>
         {seri.days.map((gun) => (
           <div className={`dash-bar${gun.isToday ? " is-today" : ""}${gun.count ? "" : " is-empty"}`} key={gun.key} title={`${gun.title}: ${birim(gun.count)} ${adet}`}>

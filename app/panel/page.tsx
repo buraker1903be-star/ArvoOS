@@ -288,7 +288,7 @@ export default async function PanelPage() {
         yeniKurum={hicKayitYok} />
       {kurulumOnce ? null : kurulumKarti}
 
-      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" bos={hicKayitYok ? "İlk talebinizi girdiğinizde günlük dağılım burada çizilir." : "Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir."} /> : null}
+      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" hata={Boolean(talepError)} bos={hicKayitYok ? "İlk talebinizi girdiğinizde günlük dağılım burada çizilir." : "Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir."} /> : null}
 
       <ListeIzgarasi>
         {canSeeOperations ? (
