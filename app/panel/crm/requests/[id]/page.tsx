@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ProposalBuilderForm } from "../../proposal-builder-form";
+import { teklifKapsamiVarsayilani } from "@/lib/teklif-kapsami";
 import { InternalComments } from "../../internal-comments";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../../posta/posta.css";
@@ -208,12 +209,17 @@ export default async function RequestDetailPage({
     : adim === 3 ? (gecerliSozlesme ? { href: `/panel/crm/contracts/${gecerliSozlesme.id}`, label: "Sözleşmeye git" } : { href: "/panel/crm/contracts", label: "Sözleşmelere git" })
     : adim === 4 ? (is ? { href: `/panel/operations/${is.id}`, label: "İşe git" } : gecerliSozlesme ? { href: `/panel/crm/contracts/${gecerliSozlesme.id}`, label: "Sözleşmeye git" } : { href: "/panel/operations/isler", label: "İşlere git" })
     : null;
+  /*
+    Kapsam varsayılanı yalnızca talepteki müşteri kapsamı (OS-01,
+    lib/teklif-kapsami.ts). Eskiden `scope || notes || title` idi ve
+    kapsamı boş talepte iç not müşteriye gidecek kutuda hazır geliyordu.
+  */
   const teklifCekmecesi = (etiket: string, sinif: string) => (
     <PanelDrawer triggerLabel={etiket} kicker="YENİ TEKLİF" title={`${musteri} için teklif`} description="Tutarı, ödeme planını ve tahmini teslim tarihini belirleyin." triggerClassName={sinif}>
       <ProposalBuilderForm
         opportunityId={item.id}
         title={item.title}
-        scope={d.scope || item.notes || item.title}
+        scope={teklifKapsamiVarsayilani(item.request_details)}
         representatives={temsilciler}
         needsRepresentative={!item.assigned_employee_id}
       />
@@ -301,6 +307,7 @@ export default async function RequestDetailPage({
 
       <p className="wide kayit-formu-bolum">Kapsam ve plan</p>
       <label className="wide">Beklenen kapsam ve teslimler<textarea name="scope" defaultValue={d.scope || ""} placeholder="Hangi bölümler, hangi teslimler, özel istekler…" /></label>
+      <p className="wide kayit-formu-not">Müşteriye gider: teklif oluştururken “Hizmet kapsamı”na bu metin aktarılır.</p>
       <label>Planlanan teslim tarihi<TarihSecici name="expected_close_date" defaultValue={item.expected_close_date ?? ""} /></label>
       <label>Talep kaynağı<input name="source" list="talep-duzenle-kaynak" defaultValue={item.source ?? ""} placeholder="Seçin ya da yazın" /></label>
       <datalist id="talep-duzenle-kaynak"><option value="WhatsApp" /><option value="Telefon" /><option value="Instagram" /><option value="Web sitesi" /><option value="E-posta" /><option value="Referans" /></datalist>
@@ -315,7 +322,8 @@ export default async function RequestDetailPage({
           </select>
         </label>
       ) : null}
-      <label className="wide">Ek not<textarea name="notes" defaultValue={item.notes ?? ""} placeholder="Görüşmeden notlar, hatırlatmalar" /></label>
+      <label className="wide">İç not<textarea name="notes" defaultValue={item.notes ?? ""} placeholder="Görüşmeden notlar, hatırlatmalar" /></label>
+      <p className="wide kayit-formu-not">Yalnızca ekip görür; teklife, sözleşmeye ve müşteri sayfasına aktarılmaz.</p>
 
       <div className="wide panel-form-actions kayit-formu-eylem">
         <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
@@ -413,7 +421,7 @@ export default async function RequestDetailPage({
                   <ProposalBuilderForm
                     opportunityId={item.id}
                     title={item.title}
-                    scope={d.scope || item.notes || item.title}
+                    scope={teklifKapsamiVarsayilani(item.request_details)}
                     representatives={temsilciler}
                     needsRepresentative={!item.assigned_employee_id}
                     mode="contract"
@@ -699,7 +707,7 @@ export default async function RequestDetailPage({
           </div>
           {not ? (
             <div className="talep-not">
-              <h3>Notlar</h3>
+              <h3>İç not</h3>
               <p>{not}</p>
             </div>
           ) : null}

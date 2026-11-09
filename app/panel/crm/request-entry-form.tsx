@@ -147,7 +147,8 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
     {canAssign
       ? <label className="wide">Satış temsilcisi<select name="assigned_employee_id" defaultValue=""><option value="">Atanmamış</option>{salesRepresentatives.map((employee)=><option value={employee.id} key={employee.id}>{employee.full_name}{employee.job_title?` · ${employee.job_title}`:""}</option>)}</select></label>
       : <p className="wide kayit-formu-not">Bu talep otomatik olarak size atanacak.</p>}
-    <label className="wide">Ek not<textarea name="notes" placeholder="Görüşmeden notlar, hatırlatmalar" /></label>
+    <label className="wide">İç not<textarea name="notes" placeholder="Görüşmeden notlar, hatırlatmalar" /></label>
+    <p className="wide kayit-formu-not">Yalnızca ekip görür; teklife, sözleşmeye ve müşteri sayfasına aktarılmaz.</p>
 
     <div className="wide panel-form-actions kayit-formu-eylem">
       <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>

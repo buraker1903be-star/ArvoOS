@@ -1,6 +1,7 @@
 // Teklif işlemleri. Ortak yardımcılar: sales-shared.ts
 "use server";
 
+import { kapsamHatasi } from "@/lib/teklif-kapsami";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
@@ -44,10 +45,14 @@ export async function createProposal(
     return { error: "Ödeme planı okunamadı. Ödeme planını yeniden oluşturun." };
   }
 
+  /* Kapsam formdan olduğu gibi alınır; boşsa talebin iç notundan ya da
+     konusundan doldurulmaz (OS-01, lib/teklif-kapsami.ts). Ayrı mesaj:
+     genel "eksik" uyarısı kullanıcıya neyi yazacağını söylemiyordu. */
+  const kapsamUyarisi = kapsamHatasi(scope, "Teklif");
+  if (kapsamUyarisi) return { error: kapsamUyarisi };
   if (
     !opportunityId ||
     title.length < 2 ||
-    scope.length < 2 ||
     !Number.isFinite(proposalAmount) ||
     proposalAmount < 0
   ) {
