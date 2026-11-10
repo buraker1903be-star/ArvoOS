@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type PointerEvent } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MarkaLogosu, type DigerUygulama } from "../panel-navigation";
 import { etkinUygulama, kenarGruplari, mobilAltCubuk, NAV_CEREZI, type OsUygulama } from "./os-apps";
@@ -35,6 +35,23 @@ import "./os-navigasyon.css";
 
 const altBolumler = (u: OsUygulama) => (u.bolumler ?? []).filter((b) => b.key !== "genel-bakis");
 
+/*
+  DAR MENÜDE İPUCU KONUMU (10.11.2026, kısa ekran düzeltmesi).
+
+  İlk sürümde dar menü taşmayı GÖSTERİYORDU (overflow:visible) ki menünün
+  sağına taşan ipucu kesilmesin; bedeli, kısa ekranda (768×600) listenin
+  altındaki modüllere ve daraltma düğmesine hiç ulaşılamamasıydı — kaydırma
+  yoktu. Bir kutu hem kendi içinde kayıp hem dışına taşan çocuk gösteremez.
+  Çözüm: liste kayıyor, ipucu position:fixed ile kaydırma alanının DIŞINDA
+  çiziliyor; dikey konumu öğenin ekrandaki yerinden, CSS değişkeniyle.
+*/
+function ipucunuKonumla(oge: Element | null) {
+  const link = oge?.closest<HTMLElement>(".os-nav-link");
+  if (!link) return;
+  const r = link.getBoundingClientRect();
+  link.style.setProperty("--ipucu-y", `${Math.round(r.top + r.height / 2)}px`);
+}
+
 export function OsNavigasyon({ uygulamalar, digerUygulamalar, dar: ilkDar }: {
   uygulamalar: OsUygulama[];
   digerUygulamalar: DigerUygulama[];
@@ -45,6 +62,7 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, dar: ilkDar }: {
   const sorgu = useSearchParams();
   const [dar, setDar] = useState(ilkDar);
   const pencere = useRef<HTMLDialogElement>(null);
+  const kaydirma = useRef<HTMLDivElement>(null);
 
   const etkin = etkinUygulama(uygulamalar, yol);
   const etkinBolumu = etkin ? etkinBolum(altBolumler(etkin), yol, sorgu.toString()) : null;
@@ -52,6 +70,18 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, dar: ilkDar }: {
   const { birincil, digerleri } = mobilAltCubuk(uygulamalar);
   const dahaEtkin = Boolean(etkin && digerleri.some((u) => u.key === etkin.key));
   const dahaRozeti = digerleri.reduce((t, u) => t + (u.rozet ?? 0), 0);
+
+  /* Açık modül (ya da bölümü) kısa ekranda listenin altında kaldıysa görünür alana gelsin. */
+  const etkinAnahtar = `${etkin?.key ?? ""}/${etkinBolumu?.key ?? ""}`;
+  useEffect(() => {
+    kaydirma.current?.querySelector<HTMLElement>("[aria-current]")?.scrollIntoView({ block: "nearest" });
+  }, [etkinAnahtar]);
+
+  const ipucuOlayi = (olay: PointerEvent<HTMLElement> | FocusEvent<HTMLElement>) => ipucunuKonumla(olay.target as Element);
+  /* Kaydırınca fareyle üstünde durulan / odaktaki öğenin ipucu onunla gitsin. */
+  const kaydirildi = () => {
+    kaydirma.current?.querySelectorAll(".os-nav-link:hover, .os-nav-link:focus-visible").forEach((oge) => ipucunuKonumla(oge));
+  };
 
   const degistir = () => {
     const yeni = !dar;
@@ -96,14 +126,17 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, dar: ilkDar }: {
 
   return (
     <>
-      <nav className="os-nav" aria-label="Ana menü">
-        <ul className="os-nav-list">{ana.map(menuOgesi)}</ul>
-        {ek.length ? (
-          <>
-            <p className="os-nav-grup" aria-hidden={dar || undefined}>Diğer</p>
-            <ul className="os-nav-list">{ek.map(menuOgesi)}</ul>
-          </>
-        ) : null}
+      <nav className="os-nav" aria-label="Ana menü" onPointerOver={ipucuOlayi} onFocus={ipucuOlayi}>
+        {/* Modüller kendi içinde kayar; Ayarlar, ürünler ve daraltma düğmesi altta sabit kalır. */}
+        <div className="os-nav-kaydir" ref={kaydirma} onScroll={kaydirildi}>
+          <ul className="os-nav-list">{ana.map(menuOgesi)}</ul>
+          {ek.length ? (
+            <>
+              <p className="os-nav-grup" aria-hidden={dar || undefined}>Diğer</p>
+              <ul className="os-nav-list">{ek.map(menuOgesi)}</ul>
+            </>
+          ) : null}
+        </div>
         <div className="os-nav-alt">
           <ul className="os-nav-list">
             {ayarlar ? menuOgesi(ayarlar) : null}

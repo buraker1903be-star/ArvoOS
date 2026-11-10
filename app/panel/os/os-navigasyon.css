@@ -23,16 +23,25 @@
   width:var(--os-nav-w);box-sizing:border-box;
   display:flex;flex-direction:column;gap:var(--sp-1);
   padding:var(--sp-3) var(--sp-2) var(--sp-3);
-  overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
+  /* Kısa ekran (10.11.2026): modül listesi .os-nav-kaydir içinde kayar, alt
+     kontroller sabit. Ekran o kadar kısaysa ki alt kontroller de sığmıyor,
+     menünün tamamı kayar — hiçbir kontrol erişilemez kalmaz. */
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;overscroll-behavior:contain;
   border-right:1px solid var(--line);background:var(--surface);
   transition:width var(--dur) var(--ease);
+}
+.os-nav-kaydir{
+  flex:1 1 auto;min-height:calc(var(--ctl-h) * 3);
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;overscroll-behavior:contain;
+  /* Odak çerçevesi (outline-offset:-2px) kenarda kesilmesin. */
+  margin:0 calc(var(--sp-1) * -1);padding:0 var(--sp-1);
 }
 /* İçerik menünün altında kalmasın: çalışma alanı menünün genişliği kadar içeride. */
 .os-root .os-frame:has(> .os-nav) .os-workspace{margin-left:var(--os-nav-w);transition:margin-left var(--dur) var(--ease)}
 
 .os-nav-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
 .os-nav-grup{margin:var(--sp-3) var(--sp-3) var(--sp-1);font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--muted);letter-spacing:.02em}
-.os-nav-alt{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:var(--sp-2);border-top:1px solid var(--line-soft)}
+.os-nav-alt{flex:none;margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:var(--sp-2);border-top:1px solid var(--line-soft)}
 
 .os-nav-link{
   position:relative;display:flex;align-items:center;gap:var(--sp-3);
@@ -71,7 +80,8 @@
    odağıyla ipucu olarak çıkar (yalnızca hover'a bağlı değil). */
 .os-root[data-nav="dar"] .os-nav-link{justify-content:center;padding:0}
 .os-root[data-nav="dar"] .os-nav-ad{
-  position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);flex:none;
+  /* fixed: kaydırma alanının dışına çizilir, kesilmez (konum os-navigasyon.tsx · ipucunuKonumla). */
+  position:fixed;left:calc(var(--os-nav-w) + 8px);top:var(--ipucu-y,-100px);transform:translateY(-50%);flex:none;
   padding:4px 8px;border-radius:var(--r-xs);background:var(--ink);color:var(--surface);
   font-size:var(--fs-micro);font-weight:var(--fw-medium);pointer-events:none;opacity:0;z-index:2;
   transition:opacity var(--dur-fast) var(--ease);
@@ -80,13 +90,11 @@
 .os-root[data-nav="dar"] .os-nav-rozet{position:absolute;top:2px;right:6px}
 .os-root[data-nav="dar"] .os-nav-grup{height:1px;margin:var(--sp-2) var(--sp-2);overflow:hidden;color:transparent;background:var(--line-soft)}
 .os-root[data-nav="dar"] .os-nav-bolumler{display:none}
-/* İpucu menünün dışına taşıyor: dar menü kendi içinde kaydırmaz (kısa liste). */
-.os-root[data-nav="dar"] .os-nav{overflow:visible}
 
 @media (min-width:761px) and (max-width:1099px){
   .os-root .os-nav-link{justify-content:center;padding:0}
   .os-root .os-nav-ad{
-    position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);flex:none;
+    position:fixed;left:calc(var(--os-nav-w) + 8px);top:var(--ipucu-y,-100px);transform:translateY(-50%);flex:none;
     padding:4px 8px;border-radius:var(--r-xs);background:var(--ink);color:var(--surface);
     font-size:var(--fs-micro);font-weight:var(--fw-medium);pointer-events:none;opacity:0;z-index:2;
     transition:opacity var(--dur-fast) var(--ease);
@@ -95,7 +103,6 @@
   .os-root .os-nav-rozet{position:absolute;top:2px;right:6px}
   .os-root .os-nav-grup{height:1px;margin:var(--sp-2) var(--sp-2);overflow:hidden;color:transparent;background:var(--line-soft)}
   .os-root .os-nav-bolumler{display:none}
-  .os-root .os-nav{overflow:visible}
   /* Bu genişlikte menü hep dar; daraltma düğmesi bir şey değiştirmez. */
   .os-root .os-nav-daralt{display:none}
 }
