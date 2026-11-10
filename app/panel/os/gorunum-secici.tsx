@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { gecerliSecim } from "./gorunum-secimi";
 
 /*
   GENEL BAKIŞ: SAYFA KAYMAZ, KART KAYAR (10.11.2026, ürün kuralı).
@@ -40,16 +41,15 @@ export type GorunumPaneli = {
 };
 
 export function GorunumSecici({ paneller, etiket }: { paneller: GorunumPaneli[]; etiket: string }) {
-  const [secili, setSecili] = useState(paneller[0]?.anahtar ?? "");
+  const [secimDurumu, setSecili] = useState(paneller[0]?.anahtar ?? "");
+  /* Düşmüş seçim render sırasında da düzeltilir ki boş bir kare bile
+     çizilmesin (kural ve gerekçe: gorunum-secimi.ts). Genişlik bilgisi
+     yalnızca etkide var; render'da yalnızca "listede mi" sorulur. */
+  const secili = gecerliSecim(paneller, secimDurumu, false);
 
-  /* Telefona özel panel seçiliyken ekran genişlerse (döndürme, tablet)
-     görünmeyen bir paneli seçili bırakmayalım. */
   useEffect(() => {
     const sorgu = window.matchMedia("(min-width:761px)");
-    const denetle = () => {
-      if (!sorgu.matches) return;
-      setSecili((onceki) => (paneller.find((p) => p.anahtar === onceki)?.sadeceTelefon ? (paneller.find((p) => !p.sadeceTelefon)?.anahtar ?? onceki) : onceki));
-    };
+    const denetle = () => setSecili((onceki) => gecerliSecim(paneller, onceki, sorgu.matches));
     denetle();
     sorgu.addEventListener("change", denetle);
     return () => sorgu.removeEventListener("change", denetle);
