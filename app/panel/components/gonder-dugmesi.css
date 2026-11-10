@@ -1,0 +1,11 @@
+/* Ortak gönderim düğmesinin bekleme etiketi (gonder-dugmesi.tsx).
+   İki metin aynı ızgara hücresinde; uzun olan 8 sn sonra görünür.
+   React state'i kullanılmıyor: işlem sürerken güncelleme useFormStatus'u
+   bozuyordu (bileşendeki not). Süre 0s: hareket yok, yalnızca gecikmeli
+   görünürlük değişimi — hareketi azaltma tercihinde de aynı. */
+.gonder-bekleme{display:inline-grid}
+.gonder-bekleme>span{grid-area:1/1}
+.gonder-bekleme-uzun{visibility:hidden;animation:gonder-uzun-goster 0s linear 8s forwards}
+.gonder-bekleme-kisa{animation:gonder-kisa-gizle 0s linear 8s forwards}
+@keyframes gonder-uzun-goster{to{visibility:visible}}
+@keyframes gonder-kisa-gizle{to{visibility:hidden}}

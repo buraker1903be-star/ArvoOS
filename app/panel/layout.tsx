@@ -19,11 +19,11 @@ import { headers } from "next/headers";
 import { hostFromHeaders, isManagementHost, MANAGEMENT_HOST } from "@/lib/site/host-rules";
 import { formatPersonName } from "@/lib/format-name";
 import { osUygulamalari } from "./os/os-apps";
-import { OsDock } from "./os/os-dock";
+import { OsNavigasyon } from "./os/os-navigasyon";
 import { konsolUygulamalari } from "./os/konsol-apps";
 import { YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import { OsGeri } from "./os/os-geri";
-import { OsBolumSeridi } from "./os/os-bolum-seridi";
+import { OsBolumMenusu } from "./os/os-bolum-menusu";
 import { OsUygulamaKabugu } from "./os/os-uygulama-kabugu";
 import { basHarf, depodakiSimgeMi } from "@/lib/kurum-simgesi";
 import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
@@ -71,19 +71,18 @@ import { SozlesmeOnayi } from "./sozlesme-onayi";
   "giriş yapılmadı" ekranını metadata'dan tetiklemek olurdu.
 */
 /*
-  PANELDE YAKINLAŞTIRMA KAPALI (13.10.2026, kurum sahibinin isteği).
-  Telefonda panel uygulama gibi kullanılıyor: iki parmakla ya da çift
-  dokunuşla sayfa büyüyünce düzen kayıyor, alt çubuk ekran dışına
-  çıkıyordu. Android Chrome bu satırı uyguluyor; iOS Safari erişilebilirlik
-  gereği "user-scalable=no"yu YOK SAYIYOR — orada hareketi
-  os-uygulama-kabugu.tsx engelliyor. Yalnızca panel: müşteriye giden
-  teklif/sözleşme belgesi ve pazarlama sitesi yakınlaştırılabilir kalır.
+  PANELDE YAKINLAŞTIRMA AÇIK (10.11.2026, ürün kararı).
+  13.10.2026'dan beri kapalıydı (maximumScale:1, userScalable:false +
+  os-uygulama-kabugu.tsx'te iOS hareket engeli): telefonda büyüyen sayfada
+  düzen kayıyor, alt çubuk ekran dışına çıkıyordu. Yeni ürün kuralı
+  büyütülmüş yazıda/yakınlaştırmada hiçbir bilgi ve işlemin erişilemez
+  olmamasını istiyor; taşmayı yakınlaştırmayı kapatarak önlemek o kuralın
+  tersi. Taşmaya karşı çözüm yerleşimde: sayfa sabit, içerik alanı kendi
+  içinde dikey kayar (dashboard.css · .dash-sabit, os-navigasyon.css).
 */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
@@ -474,13 +473,13 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
           <OsKullaniciMenusu ad={benimAdim} rol={roleName} kurum={brandName} paket={organization.plan_code} workspaces={workspaces} aktifKurumId={organization.id} abonelik={izin("finance.lisans.yonet")} cikis={logout} />
         </div>
       </header>
-      {/* Telefonda açık uygulamanın bölümleri (masaüstünde gizli; orada dock'un ikinci katı). */}
-      <OsBolumSeridi uygulamalar={uygulamalar} />
       <section className="os-workspace">
+        {/* Açık modülün bölümleri içeriğin üstünde (os/os-bolum-menusu.tsx). */}
+        <OsBolumMenusu uygulamalar={uygulamalar} />
         <div className="panel-content">{agreementBanner}{children}</div>
       </section>
-      {/* Onay penceresi açıkken dock ve komut paleti (Ctrl+K) çizilmez: pencerenin üstüne açılıp odağı çalmasınlar. */}
-      {sozlesmeGerekli ? null : <OsDock uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} />}
+      {/* Onay penceresi açıkken menü ve komut paleti (Ctrl+K) çizilmez: pencerenin üstüne açılıp odağı çalmasınlar. */}
+      {sozlesmeGerekli ? null : <OsNavigasyon uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} />}
       {/* Uygulama kabuğu: çevrimdışı ekranı, yeni sürüm uyarısı, ana ekrana ekleme önerisi. */}
       <OsUygulamaKabugu />
       {sozlesmeGerekli ? null : <OsKomutPaleti uygulamalar={uygulamalar} cikis={logout} />}
@@ -572,11 +571,12 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       </div>
     </header>
     <section className="os-workspace">
+      <OsBolumMenusu uygulamalar={konsolUygulamalariListesi} />
       <div className="panel-content">{agreementBanner}{children}</div>
     </section>
-    {/* "Diğer uygulamalar": konsoldan kiracı paneline dönüş. Eskiden sol
-        menünün dibinde bir bağlantıydı. */}
-    {sozlesmeGerekli ? null : <OsDock
+    {/* "Diğer uygulamalar": konsoldan kiracı paneline dönüş (dock'taki
+        Uygulamalar panelinde). */}
+    {sozlesmeGerekli ? null : <OsNavigasyon
       uygulamalar={konsolUygulamalariListesi}
       digerUygulamalar={[{ kod: "panel", ad: "Kiracı Paneli", href: `https://${DEFAULT_APP_HOST}/panel`, ayniSekme: false, marka: "arvoos" as const }]}
     />}

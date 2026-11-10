@@ -11,13 +11,11 @@
    ve aynı ağırlıktaki kuralları ezerdi.
    ============================================================ */
 
-/* Çift dokunuşla büyütme kapalı (dokunmatik ekranların hepsinde, tablet
-   dahil — bu yüzden genişlik sorgusunun dışında). İki parmakla büyütme:
-   panel/layout.tsx viewport + os-uygulama-kabugu.tsx. Yan etkisi iyi:
-   tarayıcı çift dokunuşu beklemediği için dokunuşlar 300 ms gecikmesiz. */
-@media (pointer:coarse){
-  html:has(.os-root),html:has(.os-root) body{touch-action:manipulation}
-}
+/* Sayfa düzeyinde çift dokunuşla büyütme 10.11.2026'dan beri AÇIK
+   (eskiden html'e touch-action:manipulation yazılıydı). Kullanıcı
+   yakınlaştırması serbest: gerekçe app/panel/layout.tsx · viewport.
+   Düğme ve bağlantılarda manipulation kalıyor (aşağıda): orada çift
+   dokunuşu beklemeden tepki versin; sayfa yine iki parmakla büyür. */
 
 @media (max-width:760px){
 
@@ -158,58 +156,15 @@
 }
 
 /* ---------- ALT SEKME ÇUBUĞU ----------
-   Eskiden telefonda masaüstü dock'u küçültülmüş hâliyle duruyordu:
-   yüzen, yazısız ikonlar, sığmayanlar yana kayıyordu (dokuz uygulamanın
-   üçü ekran dışındaydı). Telefon uygulamalarındaki gibi ekranın altına
-   yapışık, beş sekme, ikonun altında adı: Ana ekran, ilk üç uygulama ve
-   "Uygulamalar" (gerisi orada). Güvenli alan (ana ekran çubuğu)
-   boşluğu çubuğun içinde. Bölüm menüsü (ikinci dock) çubuğun hemen
-   üstünde açılır; konumu os-dock.tsx çubuğun üst kenarından hesaplıyor. */
-@media (max-width:760px){
-  .os-root{--os-tab-h:58px;--os-dock-space:calc(var(--os-tab-h) + 20px)}
-  .os-root .os-dock{
-    left:0;right:0;bottom:0;transform:none;max-width:none;
-    display:flex;justify-content:space-around;align-items:stretch;gap:0;
-    padding:4px 4px env(safe-area-inset-bottom);overflow:hidden;
-    border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;
-    background:color-mix(in srgb,var(--surface) 94%,transparent);
-  }
-  .os-root .os-dock-sep{display:none}
-  /* Ana ekran + ilk üç uygulama + Uygulamalar düğmesi (son çocuk). */
-  .os-root .os-dock>.os-dock-item:nth-child(n+6):not(:last-child){display:none}
-  .os-root .os-dock-item{
-    flex:1 1 0;min-width:0;width:auto;height:var(--os-tab-h);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    border-radius:var(--r-md);background:none;color:var(--muted);transform:none;
-  }
-  .os-root .os-dock-item:hover{transform:none;background:none}
-  .os-root .os-dock-item:active{background:var(--surface-2)}
-  .os-root .os-dock-item.is-active{background:none;color:var(--primary)}
-  .os-root .os-dock-item.is-active::after{display:none}
-  .os-root .os-dock-item.is-sub-open{background:var(--surface-2)}
-  .os-root .os-dock-label{
-    position:static;transform:none;opacity:1;padding:0;border-radius:0;background:none;color:inherit;
-    max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:var(--fw-medium);pointer-events:none;
-  }
-  .os-root .os-dock-item.is-sub-open .os-dock-label{display:block}
-  .os-root .os-dock-badge{top:4px;right:calc(50% - 22px)}
-
-  /* Uygulamalar penceresi alttan açılan sayfa. */
-  .os-root .os-launcher{
-    width:100%;max-width:none;max-height:85dvh;margin:auto 0 0;
-    border-radius:var(--r-xl) var(--r-xl) 0 0;padding-bottom:env(safe-area-inset-bottom);
-  }
-  .os-root .os-launcher-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--sp-4) var(--sp-2);padding:var(--sp-3) var(--sp-4) var(--sp-5)}
-  .os-root .os-launcher-app{font-size:12px}
-  .os-root .os-launcher-head{padding:var(--sp-5) var(--sp-4) var(--sp-1)}
-}
+   os-navigasyon.css'te (.os-dock'un telefon hâli): Ana ekran + en fazla üç
+   modül + etiketli "Daha fazla". Alt pay (--os-dock-space) de orada. */
 
 /* ---------- UYGULAMA DAVRANIŞI ----------
    Dokununca çıkan gri vurgu yok, çift dokunma yakınlaştırmıyor (düğmeye
    art arda basmak sayfayı büyütüyordu), çubuklarda metin seçilmiyor. */
 @media (max-width:760px){
   .os-root :is(a,button,summary,label,select,[role="button"]){-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-  .os-root :is(.os-dock,.os-bar,.os-subdock){-webkit-user-select:none;user-select:none}
+  .os-root :is(.os-dock,.os-bar){-webkit-user-select:none;user-select:none}
   .os-root .os-bar{padding-left:max(var(--sp-3),env(safe-area-inset-left));padding-right:max(var(--sp-3),env(safe-area-inset-right))}
 
   /* PANO: süzgeçler iki sütun (üç seçim alt alta ekranın yarısını
@@ -242,35 +197,11 @@
   .os-root .os-bar:has(>.os-geri) .os-brand{display:none}
 }
 
-/* ---------- BÖLÜM ŞERİDİ (os-bolum-seridi.tsx) ----------
-   Açık uygulamanın bölümleri üst çubuğun altında, yana kayan sekmeler;
-   sayfa kayarken üstte kalır. Masaüstünde gizli. */
-.os-bolum-serit{display:none}
-@media (max-width:760px){
-  .os-root .os-bolum-serit{
-    position:sticky;top:var(--os-bar-h);z-index:50;
-    display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;
-    padding:6px var(--sp-3);border-bottom:1px solid var(--line);
-    background:color-mix(in srgb,var(--surface) 94%,transparent);
-    -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
-  }
-  .os-root .os-bolum-serit::-webkit-scrollbar{display:none}
-  .os-root .os-bolum-serit a{
-    flex:none;display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;
-    color:var(--muted);font-size:14px;font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap;
-  }
-  .os-root .os-bolum-serit a:active{background:var(--surface-2)}
-  .os-root .os-bolum-serit a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
-  /* Ara menü telefonda hiç açılmaz; açık kalmışsa (ekran döndürme) görünmesin. */
-  .os-root .os-subdock{display:none}
-  /* Basılan sekmenin "açık" görünümü telefonda yok (yazı kayıyordu). */
-  .os-root .os-dock-item.is-sub-open{background:none}
-}
-@media (max-width:760px){
-  /* Masaüstünün "üstüne gelince ipucu" kuralı yazıyı translateX(-50%) ile
-     sola kaydırıyordu: basılan sekmenin adı ikonun soluna kayıyordu. */
-  .os-root .os-dock .os-dock-item:is(:hover,:focus,:active,.is-sub-open) .os-dock-label{transform:none;opacity:1}
-}
+/* ---------- BÖLÜMLER ----------
+   Eskiden burada telefonda yatay kayan bir bölüm şeridi vardı
+   (os-bolum-seridi.tsx); sağdaki bölümler ekran dışında kalıyordu.
+   10.11.2026'dan beri bölümler os-bolum-menusu.tsx'te: telefonda açılır
+   liste, kaydırma yok (os-navigasyon.css). */
 
 /* ---------- LİSTE ÜSTÜ: özet ve süzgeç daha az yer ----------
    Talepler'de ilk kayıt ekranın ortasından (485px) başlıyordu: özet

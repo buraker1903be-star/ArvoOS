@@ -1,6 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  adimZatenHedefte,
   ASAMA_EN_UZUN,
   SET_EN_COK,
   setAdiSorunu,
@@ -214,5 +215,22 @@ describe("çalışma türü", () => {
   test("tür sayısı sınırlı: sekmeler kaydırmalı şeride dönmesin", () => {
     assert.ok(SET_EN_COK >= 4, "tez, makale, ödev ve analiz en azından sığmalı");
     assert.ok(SET_EN_COK <= 20);
+  });
+});
+
+/* Çift gönderim (10.11.2026): koşullu güncelleme sıfır satır etkilediğinde
+   "zaten hedefte" mi yoksa yetki mi — sunucu bu kurala göre ayırıyor. */
+describe("adım zaten hedef durumda mı", () => {
+  test("tamamla: yalnızca done zaten hedefte", () => {
+    assert.equal(adimZatenHedefte("done", true), true);
+    for (const d of ["planned", "in_progress", "review"]) assert.equal(adimZatenHedefte(d, true), false, d);
+  });
+  test("geri al: done olmayan her durum zaten hedefte", () => {
+    assert.equal(adimZatenHedefte("done", false), false);
+    assert.equal(adimZatenHedefte("planned", false), true);
+  });
+  test("satır okunamadıysa (RLS) hedefte sayılmaz — sessiz başarı değil hata", () => {
+    assert.equal(adimZatenHedefte(null, true), false);
+    assert.equal(adimZatenHedefte(undefined, false), false);
   });
 });

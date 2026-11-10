@@ -286,3 +286,19 @@ export function calismaTuruBul(
   if (!ara) return null;
   return turler.find((tur) => (tur.hizmet_turleri ?? []).some((ad) => ad.trim().toLocaleLowerCase("tr") === ara))?.code ?? null;
 }
+
+/*
+  "TAMAMLA" ZATEN UYGULANMIŞ MI (10.11.2026, çift gönderim).
+
+  Ana ekrandaki ve iş detayındaki "Tamamla" yavaş bağlantıda iki kez
+  gönderilebiliyordu: adım yine "done" kalıyordu (güncelleme tekrara
+  dayanıklı) ama kayıt geçmişine iki "Aşama tamamlandı" satırı düşüyordu.
+  Sunucu artık güncellemeyi koşullu yapıyor; koşul sıfır satır etkilerse
+  adımın şimdiki durumuna bakıp bunun "zaten hedefte" mi yoksa yetki mi
+  olduğunu buradaki kuralla ayırıyor. Arayüz kilidi (ortak gönderim
+  düğmesi) yardımcıdır, veri bütünlüğünün garantisi değildir.
+*/
+export function adimZatenHedefte(simdikiDurum: string | null | undefined, tamamla: boolean): boolean {
+  if (!simdikiDurum) return false;
+  return tamamla ? simdikiDurum === "done" : simdikiDurum !== "done";
+}

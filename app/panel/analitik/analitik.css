@@ -132,7 +132,7 @@
 @media (min-width:901px){
   .an-ekran{
     display:flex;flex-direction:column;gap:var(--sp-3);
-    height:calc(100dvh - var(--os-bar-h) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
+    height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
     /* Çok kısa pencerede okunmaz hâle gelmesin; orada sayfa kayar. */
     min-height:600px;
   }

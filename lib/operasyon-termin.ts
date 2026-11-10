@@ -28,3 +28,27 @@ export function dueBadge(due: string | null | undefined, today: string, status?:
   if (days <= 3) return { tone: "warning", label: `${days} gün kaldı`, late: false };
   return { tone: "info", label: `${days} gün kaldı`, late: false };
 }
+
+/*
+  ANA EKRANDA GECİKMİŞ / YAKLAŞAN AYRIMI (10.11.2026).
+
+  Ana ekranın Operasyon ve aşama kartları satırları termine göre sıralıyor
+  (gecikmiş en üstte) ama aynı listede, yalnızca rozet rengiyle
+  ayrışıyordu: "12 gün gecikti" ile "2 gün kaldı" art arda duruyor, sınır
+  bir bakışta görünmüyordu. Gruplama burada ve dueBadge'in `late` kararını
+  kullanıyor — "gecikmiş" ikinci bir kuralla yeniden tanımlanmıyor; bugün
+  teslim olan yaklaşanlarda. Sıra korunur: sorgunun sıralaması değişmez,
+  iş tarihlerine dokunulmaz.
+*/
+export function terminGruplari<T>(satirlar: readonly T[], termin: (satir: T) => string | null | undefined, today: string, status?: (satir: T) => string | undefined): {
+  gecikmis: T[]; yaklasan: T[]; tarihsiz: T[];
+} {
+  const gruplar = { gecikmis: [] as T[], yaklasan: [] as T[], tarihsiz: [] as T[] };
+  for (const satir of satirlar) {
+    const due = termin(satir);
+    if (!due) gruplar.tarihsiz.push(satir);
+    else if (dueBadge(due, today, status?.(satir)).late) gruplar.gecikmis.push(satir);
+    else gruplar.yaklasan.push(satir);
+  }
+  return gruplar;
+}

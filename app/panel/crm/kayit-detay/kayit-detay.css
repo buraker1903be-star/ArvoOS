@@ -1053,7 +1053,7 @@
 */
 @media (min-width:1201px){
   .os-root main.kd-tek-sayfa{
-    height:calc(100dvh - var(--os-bar-h) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
+    height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
     min-height:0;overflow:hidden;
     /*
       Taşan içerik kesilsin diye overflow:hidden; ama üzerine gelinen

@@ -6,8 +6,12 @@
    kurallarıyla çakışmasın diye. Kurucu konsolu eski kabukta kalıyor.
    ============================================================ */
 
-/* --os-dock-space: dock (54px) + alt boşluk (16px) + içerikle arası. 04.11.2026'da ArvoLab'la birlikte dock inceldi (simge 48 → 40px): 104 → 92. */
-.os-root{--os-bar-h:60px;--os-dock-space:92px}
+/* --os-dock-space: içeriğin altındaki boşluk. Adı tarihî: 10.11.2026'ya kadar
+   ekranın altında yüzen dock'un payıydı (92px). Masaüstünde dock yok, sol menü
+   var; boşluk sayfa kenar boşluğuna indi. Telefonda alt çubuğun payı
+   (mobil-uygulama.css). Liste sayfalarının yükseklik hesabı bu değişkeni
+   kullanıyor, adını değiştirmek o hesapları kırardı. */
+.os-root{--os-bar-h:60px;--os-dock-space:var(--sp-6)}
 .os-root .os-frame{display:block;min-height:100dvh}
 
 /* ---------- Durum çubuğu ---------- */
@@ -100,77 +104,25 @@
   padding:var(--sp-6) var(--sp-6) calc(var(--os-dock-space) + env(safe-area-inset-bottom));
 }
 
-/* ---------- Dock ---------- */
-.os-dock{
-  position:fixed;left:50%;bottom:max(var(--sp-4),env(safe-area-inset-bottom));transform:translateX(-50%);z-index:55;
-  display:flex;align-items:center;gap:var(--sp-1);
-  max-width:calc(100vw - var(--sp-6));padding:6px;box-sizing:border-box;overflow-x:auto;scrollbar-width:none;
-  border:1px solid var(--line);border-radius:var(--r-xl);
-  background:color-mix(in srgb,var(--surface) 88%,transparent);
-  -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
-  box-shadow:var(--shadow-lg);
-}
-.os-dock::-webkit-scrollbar{display:none}
-.os-dock-sep{flex:none;width:1px;height:22px;margin:0 var(--sp-1);background:var(--line)}
-.os-dock-item{
-  position:relative;flex:none;display:grid;place-items:center;width:40px;height:40px;
-  border:0;border-radius:var(--r-md);background:transparent;color:var(--ink-soft);cursor:pointer;text-decoration:none;
-  transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease),color var(--dur) var(--ease);
-}
-.os-dock-item:hover{background:var(--surface-2);color:var(--ink);transform:translateY(-3px)}
-.os-dock-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
-.os-dock-item.is-active{background:var(--primary-soft);color:var(--primary)}
-.os-dock-item.is-active::after{content:"";position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--primary)}
-/* Ad, fareyle üstüne gelince ipucu olarak; ekran okuyucu aria-label'ı okur. */
-.os-dock-label{
-  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(4px);
-  padding:4px 8px;border-radius:var(--r-xs);background:var(--ink);color:var(--surface);
-  font-size:var(--fs-micro);font-weight:var(--fw-medium);white-space:nowrap;pointer-events:none;opacity:0;
-  transition:opacity var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease);
-}
-@media(hover:hover){.os-dock-item:hover .os-dock-label{opacity:1;transform:translateX(-50%)}}
-.os-dock-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:var(--r-pill);background:var(--danger);color:var(--n-0);font-size:11px;font-weight:var(--fw-semibold);line-height:16px;text-align:center}
 
-/* ---------- Başlatıcı ve Ctrl+K: ortak pencere ---------- */
-.os-launcher,.os-palette{
+/* ---------- Ctrl+K penceresi ----------
+   (Başlatıcı penceresi 10.11.2026'da kalktı: modüller sol menüde, ürünler
+   menünün "Arvo ürünleri" penceresinde — os-navigasyon.css.) */
+.os-palette{
   /* margin:auto açıkça: genel bir sıfırlama tarayıcının modal pencereyi
-     ortalayan margin:auto değerini 0 yapıyordu; Uygulamalar ve Ctrl+K sol
+     ortalayan margin:auto değerini 0 yapıyordu; Ctrl+K sol
      üst köşede açılıyordu. */
   margin:auto;border:1px solid var(--line);border-radius:var(--r-xl);padding:0;
   background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-lg);
 }
-.os-launcher::backdrop,.os-palette::backdrop{background:color-mix(in srgb,var(--n-900) 35%,transparent);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-.os-launcher[open],.os-palette[open]{animation:os-ac .22s var(--ease)}
+.os-palette::backdrop{background:color-mix(in srgb,var(--n-900) 35%,transparent);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.os-palette[open]{animation:os-ac .22s var(--ease)}
 @keyframes os-ac{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
 
-.os-launcher{width:min(760px,calc(100vw - 32px));max-height:calc(100dvh - 64px);overflow:auto}
-.os-launcher-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);padding:var(--sp-6) var(--sp-6) var(--sp-2)}
-.os-launcher-head h2{margin:0;font-size:var(--fs-lg);font-weight:var(--fw-semibold)}
-.os-launcher-head p{margin:var(--sp-1) 0 0;color:var(--muted);font-size:var(--fs-sm)}
-.os-launcher-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:var(--sp-6) var(--sp-3);padding:var(--sp-4) var(--sp-6) var(--sp-6)}
-.os-launcher-app{display:flex;flex-direction:column;align-items:center;gap:var(--sp-2);color:var(--ink);text-decoration:none;font-size:var(--fs-sm);font-weight:var(--fw-medium);text-align:center}
-.os-launcher-app>span:last-child{display:inline-flex;align-items:center;gap:4px}
-.os-app-tile{
-  display:grid;place-items:center;width:64px;height:64px;border-radius:18px;
-  border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);box-shadow:var(--shadow-xs);
-  transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
-}
-.os-launcher-app:hover .os-app-tile{transform:translateY(-3px);box-shadow:var(--shadow-md)}
-.os-launcher-app:focus-visible{outline:none}
-.os-launcher-app:focus-visible .os-app-tile{box-shadow:var(--shadow-glow)}
-.os-app-tile.is-active{background:var(--primary);border-color:var(--primary);color:var(--primary-on)}
-.os-app-tile--product{padding:10px;box-sizing:border-box}
-.os-app-tile--product img{width:100%;height:auto}
-.os-app-tile--product>i{font-style:normal;font-weight:var(--fw-bold);font-size:var(--fs-lg)}
-.os-launcher-products{border-top:1px solid var(--line-soft)}
-.os-launcher-products h3{margin:0;padding:var(--sp-5) var(--sp-6) 0;font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--muted)}
-.os-launcher .marka-koyu{display:none}
-html[data-theme="dark"] .os-launcher .marka-acik{display:none}
-html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
 .os-icon-btn{display:grid;place-items:center;flex:none;width:40px;height:40px;border:0;border-radius:var(--r-md);background:transparent;color:var(--muted);cursor:pointer}
 .os-icon-btn:hover{background:var(--surface-2);color:var(--ink)}
-/* Telefonda 44: tek kullanıldığı yer uygulama çekmecesinin kapatma
-   düğmesi ve orası alttan açılan bir yaprak — parmakla kapatılıyor. */
+/* Telefonda 44: "Daha fazla" penceresinin kapatma düğmesi alttan açılan
+   bir yaprakta — parmakla kapatılıyor. */
 @media (max-width:760px){.os-icon-btn{width:44px;height:44px}}
 
 /* Ctrl+K */
@@ -190,39 +142,21 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
 
 /* ---------- Dar ekran ---------- */
 @media (max-width:900px){
-  .os-root{--os-bar-h:56px;--os-dock-space:92px}
+  .os-root{--os-bar-h:56px}
   .os-bar{padding:0 var(--sp-3);gap:var(--sp-2)}
   .os-brand-app,.os-clock,.os-online,.os-search-text,.os-search kbd{display:none}
   .os-search{flex:0 0 40px;width:40px;margin:0 0 0 auto;padding:0;justify-content:center;border-color:transparent;background:transparent}
   .os-bar-right{margin-left:0}
   .os-live-pill{padding:0 8px}
   .os-root .panel-content{padding:var(--sp-4) var(--sp-3) calc(var(--os-dock-space) + env(safe-area-inset-bottom))}
-  .os-dock{left:var(--sp-3);right:var(--sp-3);transform:none;max-width:none;justify-content:flex-start;border-radius:var(--r-lg)}
-  .os-dock-item{width:46px;height:46px}
 }
 @media (max-width:520px){
   .os-brand>span{display:none}
   .os-live-pill{font-size:0;gap:0;width:28px;padding:0;justify-content:center}
   .os-bar .panel-theme-toggle{display:none}
 }
-/*
-  YAZARKEN DOCK GERİ ÇEKİLİR (04.11.2026, ArvoLab'la aynı kural):
-  masaüstünde zengin metin alanına (posta yanıtı, not editörü) odaklanınca
-  dock aşağı kayar, altta 6px'lik şerit kalır; fare şeride gelince ya da
-  klavyeyle dock'a geçilince geri çıkar. Form kutuları tetiklemez: kısa
-  bir alanı doldururken menünün kaybolması kafa karıştırırdı.
-*/
-@media (min-width:901px){
-  .os-dock{transition:transform .35s var(--ease),opacity .2s ease}
-  html:has([contenteditable="true"]:focus) .os-dock:not(:hover):not(:focus-within){
-    transform:translateX(-50%) translateY(calc(100% + max(var(--sp-4),env(safe-area-inset-bottom)) - 6px));
-    opacity:.55;
-  }
-  html:has([contenteditable="true"]:focus) .os-subdock{display:none}
-}
 @media (prefers-reduced-motion:reduce){
-  .os-dock{transition:none}
-  .os-dock-item,.os-app-tile,.os-launcher[open],.os-palette[open]{transition:none;animation:none}
+  .os-palette[open]{animation:none}
   .os-live-pill.is-canli>i{animation:none}
 }
 
@@ -264,48 +198,6 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
    için onu eziyordu; telefonda saat ve tarih yine gizli (yer yok). */
 @media (max-width:900px){.os-clock{display:none}}
 
-/* ---------- İkinci dock (uygulamanın bölümleri) ----------
-   Fareyle dock'taki bir uygulamanın üstüne gelince hemen üstünde açılır.
-   Ana dock'la aynı cam dil; açık bölüm kurum renginde. Yatay konum
-   ikonun ortası, ekran kenarına taşmaz (os-dock.tsx). */
-.os-subdock{
-  position:fixed;z-index:56;transform:translateX(-50%);
-  display:flex;align-items:center;gap:2px;max-width:calc(100vw - var(--sp-6));
-  padding:var(--sp-1);box-sizing:border-box;overflow-x:auto;scrollbar-width:none;
-  border:1px solid var(--line);border-radius:var(--r-lg);
-  background:color-mix(in srgb,var(--surface) 92%,transparent);
-  -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
-  box-shadow:var(--shadow-lg);
-  animation:os-alt-ac .16s var(--ease);
-}
-.os-subdock::-webkit-scrollbar{display:none}
-/* İkon ile şerit arasındaki boşlukta imleç düşmesin diye görünmez köprü */
-.os-subdock::after{content:"";position:absolute;left:0;right:0;top:100%;height:12px}
-@keyframes os-alt-ac{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%)}}
-.os-subdock-title{flex:none;padding:0 var(--sp-3) 0 var(--sp-2);font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--muted);border-right:1px solid var(--line);margin-right:var(--sp-1);white-space:nowrap}
-.os-subdock a{
-  flex:none;display:flex;align-items:center;min-height:36px;padding:0 var(--sp-3);
-  border-radius:var(--r-md);color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap;
-  transition:background-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
-}
-.os-subdock a:hover{background:var(--surface-2);color:var(--ink)}
-.os-subdock a:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
-.os-subdock a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
-/* İkinci dock açıkken o ikonun ad ipucu gizli (üst üste binmesin) */
-.os-dock-item.is-sub-open .os-dock-label{display:none}
-.os-dock-item.is-sub-open{background:var(--surface-2);color:var(--ink)}
-.os-dock-item.is-sub-open.is-active{background:var(--primary-soft);color:var(--primary)}
-@media (prefers-reduced-motion:reduce){.os-subdock{animation:none}}
-/* Telefonda ikinci dock ekran genişliğinde, bölümler sığmazsa alt satıra
-   iner: altı bölümlü CRM şeridi 375px'te ekrandan taşıyordu. Yatay konum
-   satır içi stilde (ikonun ortası); burada ezilir. */
-@media (max-width:900px){
-  .os-subdock{left:var(--sp-3) !important;right:var(--sp-3);transform:none;max-width:none;flex-wrap:wrap;justify-content:flex-start;overflow:visible;animation:os-alt-ac-dar .16s var(--ease)}
-  .os-subdock-title{flex-basis:100%;border-right:0;margin:0;padding:var(--sp-1) var(--sp-2)}
-  .os-subdock a{min-height:40px}
-}
-@keyframes os-alt-ac-dar{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-
 /* ---------- Liste sayfaları: sayfa sabit, satırlar tablonun içinde kayar ----------
 
    Talepler, teklifler, sözleşmeler, işler, ekip ve finans listelerinde alttaki
@@ -330,7 +222,7 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
    kalıyor, yalnızca satırlar kayıyor. */
 .os-root main.liste-sayfa{
   display:flex;flex-direction:column;
-  height:calc(100dvh - var(--os-bar-h) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
+  height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
   /* Çok kısa pencerede liste okunamayacak kadar incelmesin; orada sayfa kayar. */
   min-height:420px;
 }

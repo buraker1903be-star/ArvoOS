@@ -7,6 +7,7 @@ import { activeStatuses } from "../operations/ops-shared";
 import { toggleWorkflowStep } from "../operations/actions";
 import { AnlikBildirimAyari } from "../notifications/anlik-bildirim-ayari";
 import { pushGenelAnahtar, pushYapilandi } from "@/lib/anlik-bildirim-gonder";
+import { GonderDugmesi } from "../components/gonder-dugmesi";
 import "./bugun-paneli.css";
 
 /*
@@ -271,10 +272,11 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
                       <form action={toggleWorkflowStep}>
                         <input type="hidden" name="step_id" value={a.id} />
                         <input type="hidden" name="is_completed" value="true" />
-                        <button type="submit" className="bugun-tamamla" aria-label={`${a.title}: tamamla`}>
+                        {/* Ortak gönderim düğmesi: işlem sonuçlanana kadar ikinci basış yok (components/gonder-dugmesi). */}
+                        <GonderDugmesi className="bugun-tamamla" ariaLabel={`${a.title}: tamamla`} bekleyenEtiket="Kaydediliyor…" uzunEtiket="Hâlâ kaydediliyor…">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
                           Tamamla
-                        </button>
+                        </GonderDugmesi>
                       </form>
                     </li>
                   );

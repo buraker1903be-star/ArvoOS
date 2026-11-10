@@ -252,7 +252,7 @@
     kaymıyor (iki ayrı kaydırma kullanıcının hangisini çevirdiğini
     bilememesi demek) ve panelin son satırı dock'un üstünde bitiyor.
   */
-  max-height:calc(100dvh - var(--os-bar-h) - var(--os-dock-space) - 96px);
+  max-height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--os-dock-space) - 96px);
   /* Alçak pencerede panel yok olmasın; biraz taşsa da okunur kalsın. */
   min-height:180px;
   overflow:auto;overscroll-behavior:contain;
