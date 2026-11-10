@@ -127,7 +127,9 @@ export function gunlukSeriDilimler(
   yazıyordu: %0 yeşil "+0%" çıkıyor (değişim yokken büyüme rengi), iki
   dönem de sıfırken hiçbir şey yazmıyor, okunamayan veri gerçek sıfırla
   aynı çiziliyordu. Kural tek yerde ve saf:
-    - önceki > 0      → yüzde (bu dönem 0 ise −%100), artış yeşil, düşüş kırmızı, eşit nötr
+    - önceki > 0      → yüzde (bu dönem 0 ise −%100), artış yeşil, düşüş kırmızı;
+                        yalnızca toplamlar eşitse nötr "değişim yok"; |fark| < %1 ise
+                        yönü korunarak "%1'den az artış/azalış"
     - önceki = 0 < bu → yüzde YOK, "önceki 14 günde talep yok", nötr
     - ikisi de 0      → "değişim yok", nötr
     - okunamadı       → "yüklenemedi", uyarı; sıfır gibi gösterilmez
@@ -147,11 +149,22 @@ export function donemDegisimi(
   const donem = `önceki ${gun} güne göre`;
   if (hata) return { tur: "yuklenemedi", yuzde: null, metin: "Veri yüklenemedi; değişim hesaplanamadı", ton: "warning" };
   if (previous > 0) {
-    const yuzde = Math.round(((total - previous) / previous) * 100);
-    if (yuzde === 0) return { tur: "esit", yuzde: 0, metin: `${donem} değişim yok`, ton: "neutral" };
-    return yuzde > 0
-      ? { tur: "artis", yuzde, metin: `+%${yuzde} ${donem}`, ton: "success" }
-      : { tur: "azalis", yuzde, metin: `−%${Math.abs(yuzde)} ${donem}`, ton: "danger" };
+    /*
+      "Değişim yok" yalnızca toplamlar GERÇEKTEN eşitse (10.11.2026).
+      Eskiden yüzde yuvarlandıktan sonra sıfırsa eşit sayılıyordu:
+      1000 → 1001 (+%0,1) ya da tahsilatta ₺10.000 → ₺10.040 "değişim yok"
+      diye, nötr renkte gösteriliyordu. Mutlak fark %1'den küçükse yön
+      korunur ve "%1'den az artış/azalış" yazılır; +%0 / −%0 yazılmaz.
+      `yuzde` ham orandır (yuvarlanmamış); metin ekrandaki biçimi taşır.
+    */
+    if (total === previous) return { tur: "esit", yuzde: 0, metin: `${donem} değişim yok`, ton: "neutral" };
+    const ham = ((total - previous) / previous) * 100;
+    const artis = ham > 0;
+    const tur = artis ? "artis" : "azalis";
+    const ton = artis ? "success" : "danger";
+    if (Math.abs(ham) < 1) return { tur, yuzde: ham, metin: `${donem} %1'den az ${artis ? "artış" : "azalış"}`, ton };
+    const yuvarlak = Math.round(Math.abs(ham));
+    return { tur, yuzde: ham, metin: `${artis ? "+" : "−"}%${yuvarlak} ${donem}`, ton };
   }
   if (total > 0) return { tur: "onceki-yok", yuzde: null, metin: `Önceki ${gun} günde ${adet} yok; yüzde hesaplanmadı`, ton: "neutral" };
   return { tur: "ikisi-sifir", yuzde: null, metin: `Değişim yok; önceki ${gun} günde de ${adet} yok`, ton: "neutral" };
