@@ -4,6 +4,42 @@ Bu belge yalnızca plandır. Migration'ı uygulamak, PR'ı birleştirmek ve depl
 Hiçbir adım geçmiş kayıtları otomatik değiştirmez ya da yeniden işlemez: migration yalnızca işlev tanımlarını
 değiştirir, veriye dokunmaz; yeniden işleme kurucunun tek tek bastığı bir düğmedir.
 
+## Doğrulama durumu (prova: 10.11.2026, commit 761f175)
+
+Prova ortamı: yerel, geçici bir PostgreSQL 16 kümesi. `listen_addresses=''` (TCP dinlemiyor, yalnızca unix
+soket), yeni `initdb`, sentetik veri; üretime hiçbir bağlantı ya da kimlik bilgisi yok. Şema
+`canli-sema.sql` + bekleyen migration'lar (bu migration HARİÇ) ile "üretimdeki hâl" kuruldu, migration
+ardından §0.2'deki gibi tek işlemde uygulandı. PayTR çağrısı taklit edildi; gerçek ödeme yok.
+
+| Kontrol | Durum | Kanıt |
+|---|---|---|
+| §1 ön kontrol sorguları çalışıyor | Doğrulandı (sentetik veri) | prova, 6 sorgu hatasız |
+| §1 sonuçları üretimde | **Denenmedi** | üretime erişilmedi |
+| §1.5 yeni işlevler önce yok | Doğrulandı | prova |
+| §1.6 canlı gövde = anlık görüntü | **Denenmedi** (üretim gerekiyor) | gövde farkı anlık görüntüye karşı mekanik doğrulandı |
+| §0.2 migration tek işlemde uygulanıyor | Doğrulandı | prova |
+| §3.1 işlevler security definer, search_path boş | Doğrulandı | prova |
+| §3.2 yetkiler | Doğrulandı | prova: anon hiçbiri; authenticated yalnızca yeniden işleme; service_role yeniden işleme + kayıt; iç işlev kimseye açık değil |
+| §3.3 migration veriye dokunmuyor | Doğrulandı | prova |
+| Sistem sağlığı → Veritabanı ekranı | **Denenmedi** | uygulama yığını kurulamadı (aşağıda) |
+| Eksik lisans + tahsilat → `no_license`, bağlantı `paid`, onaylı ödeme/aktivasyon/fatura yok | Doğrulandı | prova + tests/db |
+| Kapatma hatası → 503, günlükte iz; tekrar bildirim `duplicate`, kapatma yeniden denenir, yan işlem çoğalmaz | Doğrulandı | prova (rota modülü + gerçek DB) + tests/db/paytr-link-bildirimi |
+| Müşteri ekranının okuduğu "ödeme alındı, uygulama bekliyor" verisi | Doğrulandı (sorgu düzeyi) | prova; müşteri tabloyu doğrudan okuyamıyor (RLS) |
+| Müşteri ekranında metnin görünmesi | **Denenmedi** | sayfa çizilmedi |
+| Kurucu listesinde olay + yeniden işlenebilir sonuç | Doğrulandı (sorgu düzeyi) | prova |
+| Kurucu ekranında "Yeniden işle" düğmesi ve sunucu işlemi | **Denenmedi** | sayfa çizilmedi; işlemin çağırdığı RPC kurucu oturumuyla doğrulandı |
+| Lisans (kurucu RLS'iyle) oluşturulup yeniden işleme → tek aktivasyon, olay kimliği/zamanı/payload korunur, işlem kaydı | Doğrulandı | prova + tests/db |
+| Aynı olay ikinci kez yeniden işlenemez; sonraki PayTR tekrarı uzatmaz | Doğrulandı | prova + tests/db |
+| Eşzamanlı yeniden işleme, bildirim yarışı, lisans silme yarışı | Doğrulandı | scripts/odeme-eszamanlilik.sh (iki bağlantı) |
+| §5 geri alma SQL'i + migration'ın yeniden uygulanması | Doğrulandı | scripts/odeme-eszamanlilik.sh, 7. senaryo |
+| §4 imzalı HTTP callback, gerçek PayTR bağlantı silme, Vercel günlükleri, Vercel geri dönüşü | **Denenmedi** | dış servis / üretim gerekiyor |
+| PayTR'nin "zaten silinmiş bağlantı" hata metni | **Bilinmiyor** | §2'deki sınırlama |
+
+**Uygulama yığını neden kurulmadı:** Docker hizmeti bu ortamda çalışmıyor (yerel Supabase yok); PostgREST'in
+dışarıdan indirilip çalıştırılmasına izin verilmedi. Sayfaların çizimi ve sunucu işlemleri bu yüzden
+uçtan uca denenmedi; veritabanı tarafı uygulamanın kullandığı rollerle ve sorgularla sınandı. Kapatmak
+için: Docker'lı bir makinede `supabase start` ya da üretimden ayrı bir Supabase dalı (branch), sonra §4.
+
 ## 0. Sıra
 
 1. Aşağıdaki salt okunur kontroller (SQL Editor).
