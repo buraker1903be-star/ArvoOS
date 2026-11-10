@@ -1,31 +1,43 @@
 /*
   MOBİL VE KISA EKRAN KABULÜ — GERÇEK UYGULAMA (10.11.2026, PR #314).
 
-  CI'DA DEĞİL. Çalışan bir ArvoOS'a (Preview ya da yerel `next start`) GERÇEK
-  bir oturum çereziyle bağlanır; ana ekranı ve CRM genel bakışı dört boyutta,
-  açık ve koyu temada gezer. Bileşen düzeneğinden (genel-bakis-yerlesim-
-  tarayici.mjs) farkı budur: veri, kabuk ve CSS sunucunun gerçekten verdiğidir.
+  CI'DA DEĞİL. Çalıştırma rehberi: docs/mobil-kabul-rehberi.md.
 
-  SALT OKUNUR. GET dışındaki her istek (server action'lar POST) tarayıcıda
-  KESİLİR ve listelenir: betik kayıt, mesaj, görev tamamlama, davet ya da
-  ödeme üretemez. Yalnızca görünüm seçici, dock / Daha fazla / Uygulamalar,
-  bölüm menüsü, "Adımları göster" ve "Tamamını göster" düğmelerine basar.
-  Veri (uzun ad fikstürü) OLUŞTURMAZ: kısaltılmış bir ad yoksa o test
-  UNVERIFIED yazılır.
+  Çalışan bir ArvoOS'a (Preview ya da yerel `next start`) GERÇEK bir oturumla
+  bağlanır; ana ekranı ve CRM genel bakışı dört boyutta, açık ve koyu temada
+  gezer. Bileşen düzeneğinden (genel-bakis-yerlesim-tarayici.mjs) farkı budur:
+  veri, kabuk ve CSS sunucunun gerçekten verdiğidir.
+
+  OTURUM: çerez kopyalanmaz. Görünür bir tarayıcı açılır, kullanıcı Vercel ve
+  ArvoOS girişini KENDİSİ yapar; betik giriş bitene kadar bekler ve testi AYNI
+  tarayıcı bağlamında sürdürür. Parola, belirteç ya da çerez hiçbir yere
+  yazılmaz (terminal, rapor, git). Tarayıcı profili depo DIŞINDA bir dizinde
+  tutulur ve varsayılan olarak koşu sonunda SİLİNİR; `--oturumu-sakla` ile
+  saklanırsa bir sonraki koşu girişsiz başlar (temizlik rehberde).
+
+  SALT OKUNUR. Giriş bittikten sonra GET/HEAD dışındaki her istek (server
+  action'lar POST) tarayıcıda KESİLİR: betik kayıt, mesaj, görev, ayar,
+  davet ya da ödeme üretemez. Yalnızca görünüm seçici, dock / Daha fazla /
+  Uygulamalar, bölüm menüsü, "Adımları göster" ve "Tamamını göster"
+  düğmelerine basar. Veri (uzun ad fikstürü) OLUŞTURMAZ: kısaltılmış ad yoksa
+  o senaryo UNVERIFIED.
+
+  KESİLEN İSTEK ÜRÜN HATASI DEĞİLDİR. Bir adım sırasında yazma isteği
+  kesildiyse ve adım başarısız olduysa, başarısızlığın sebebi testin kendi
+  kısıtı olabilir: o adım FAIL değil UNVERIFIED yazılır (kesilen isteklerin
+  türüyle: oturum yenileme / server action / diğer). Kesilmesine rağmen adım
+  geçtiyse arayüz o isteğe ihtiyaç duymadan çalışmıştır, PASS kalır. Oturum
+  koşu ortasında düşerse (girişe yönlenme) kalan senaryolar UNVERIFIED.
+  Çözüm yazmaya izin vermek DEĞİLDİR.
 
   Yakınlaştırma GERÇEK tarayıcı yakınlaştırmasıdır: küçük bir eklenti
   chrome.tabs.setZoom(2) çağırır (Ctrl+Artı ile aynı yol; innerWidth yarıya
   iner). CSS transform ya da deviceScaleFactor değildir. Dokunmatik ve sanal
-  klavye SINANMAZ (emülasyon gerçek cihaz değildir) — çıktıda UNVERIFIED.
+  klavye SINANMAZ (emülasyon gerçek cihaz değildir) — betik hiçbir koşulda
+  "tam kabul" yazmaz; en iyi sonuç "betik kapsamında PASS"tır.
 
-  Kullanım:
-    ARVO_URL=https://<preview-ya-da-yerel> \
-    node scripts/mobil-kabul.mjs --cerez-dosyasi ~/arvo-test-cerez.txt
-  Çerez: tarayıcıdaki `Cookie` başlığı ("ad=değer; ad2=değer2") — TEST
-  hesabının. Dosya depo DIŞINDA tutulur; betik onu hiçbir yere yazmaz.
-  Çıktı (JSON + ekran görüntüleri) varsayılan olarak geçici dizine,
-  KABUL_CIKTI ile başka bir yere; depo içine yazmaz.
-  Çıkış kodu: 0 hepsi PASS/UNVERIFIED, 1 FAIL var, 2 oturum/erişim yok.
+  Çıkış kodu: 0 bütün senaryolar PASS · 1 FAIL var · 2 oturum/erişim yok ·
+  3 FAIL yok ama UNVERIFIED var.
 */
 import fs from "node:fs";
 import os from "node:os";
@@ -33,45 +45,77 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 const { chromium } = createRequire(import.meta.url)("playwright");
-const arg = (ad) => { const i = process.argv.indexOf(ad); return i > 0 ? process.argv[i + 1] : undefined; };
+const bayrak = (ad) => process.argv.includes(ad);
 const KOK = path.resolve(import.meta.dirname, "..");
+const icinde = (d) => d === KOK || d.startsWith(KOK + path.sep);
 
 const BASE = (process.env.ARVO_URL || "").replace(/\/$/, "");
 if (!/^https?:\/\//.test(BASE)) { console.error("ARVO_URL gerekli (http/https)."); process.exit(2); }
-const cerezDosyasi = arg("--cerez-dosyasi");
-const hamCerez = (cerezDosyasi ? fs.readFileSync(cerezDosyasi, "utf8") : process.env.ARVO_COOKIE || "").trim().replace(/^cookie:\s*/i, "");
-if (!hamCerez.includes("=")) { console.error("Oturum çerezi yok (--cerez-dosyasi ya da ARVO_COOKIE)."); process.exit(2); }
+if (bayrak("--cerez-dosyasi") || process.env.ARVO_COOKIE) { console.error("Çerezle oturum kaldırıldı: tarayıcıda kendiniz giriş yapın (rehber: docs/mobil-kabul-rehberi.md)."); process.exit(2); }
 
 const CIKTI = path.resolve(process.env.KABUL_CIKTI || fs.mkdtempSync(path.join(os.tmpdir(), "arvo-mobil-kabul-")));
-if (CIKTI.startsWith(KOK + path.sep)) { console.error("KABUL_CIKTI depo içinde olamaz (ekran görüntüleri kişisel veri taşıyabilir)."); process.exit(2); }
+if (icinde(CIKTI)) { console.error("KABUL_CIKTI depo içinde olamaz (ekran görüntüleri kişisel veri taşıyabilir)."); process.exit(2); }
 fs.mkdirSync(CIKTI, { recursive: true });
+const PROFIL = path.resolve(process.env.KABUL_PROFIL || path.join(os.homedir(), ".arvo-mobil-kabul", "profil"));
+if (icinde(PROFIL)) { console.error("KABUL_PROFIL depo içinde olamaz (oturum çerezleri taşır)."); process.exit(2); }
+const SAKLA = bayrak("--oturumu-sakla");
+const GORUNMEZ = bayrak("--gorunmez"); // yalnızca saklanmış oturumla anlamlı
+const GIRIS_SURESI = Number(process.env.GIRIS_DAKIKA || 10) * 60_000;
 
 const BOYUTLAR = (process.env.BOYUTLAR ?? "390x844,768x600,1440x900,1440x600").split(",").map((b) => b.split("x").map(Number));
 const TEMALAR = (process.env.TEMALAR ?? "light,dark").split(",");
 const SAYFALAR = { ana: "/panel", crm: "/panel/crm/genel-bakis" };
+const ZOOM = !bayrak("--zoom-yok");
 
 /* Gerçek yakınlaştırma eklentisi: geçici dizine yazılır. */
 const ekDizin = fs.mkdtempSync(path.join(os.tmpdir(), "arvo-zoom-"));
 fs.writeFileSync(path.join(ekDizin, "manifest.json"), JSON.stringify({ manifest_version: 3, name: "kabul-zoom", version: "1", permissions: ["tabs"], background: { service_worker: "sw.js" } }));
 fs.writeFileSync(path.join(ekDizin, "sw.js"), "self.zoomla=(z)=>chrome.tabs.query({}).then(t=>Promise.all(t.map(x=>chrome.tabs.setZoom(x.id,z))));");
 
-const ctx = await chromium.launchPersistentContext("", {
-  headless: true, channel: "chromium", deviceScaleFactor: 2, viewport: { width: 1440, height: 900 },
+fs.mkdirSync(PROFIL, { recursive: true });
+const ctx = await chromium.launchPersistentContext(PROFIL, {
+  headless: GORUNMEZ, ...(GORUNMEZ ? { channel: "chromium" } : {}), deviceScaleFactor: 2, viewport: { width: 1440, height: 900 },
   args: [`--disable-extensions-except=${ekDizin}`, `--load-extension=${ekDizin}`],
 });
+const temizle = async () => {
+  await ctx.close().catch(() => {});
+  fs.rmSync(ekDizin, { recursive: true, force: true });
+  if (!SAKLA) fs.rmSync(PROFIL, { recursive: true, force: true });
+};
 const alan = new URL(BASE);
-await ctx.addCookies(hamCerez.split(/;\s*/).filter((c) => c.includes("=")).map((c) => {
-  const i = c.indexOf("=");
-  return { name: c.slice(0, i).trim(), value: c.slice(i + 1).trim(), domain: alan.hostname, path: "/", secure: alan.protocol === "https:", sameSite: "Lax" };
-}));
+const panelde = (u) => { try { const x = new URL(u); return x.host === alan.host && x.pathname.startsWith("/panel"); } catch { return false; } };
+
+/* ---- giriş: kullanıcı görünür tarayıcıda kendisi yapar ---- */
+// Giriş sırasında hiçbir istek KESİLMEZ (Vercel ve ArvoOS girişi POST'tur);
+// koruma ancak panel açıldıktan sonra kurulur.
+const giris = ctx.pages()[0] ?? await ctx.newPage();
+await giris.goto(BASE + SAYFALAR.ana, { waitUntil: "domcontentloaded" }).catch(() => {});
+if (!panelde(giris.url()) || !(await giris.locator(".os-dock").count())) {
+  if (GORUNMEZ) { console.error("Saklanmış oturum geçersiz: --gorunmez olmadan yeniden çalıştırıp giriş yapın."); await temizle(); process.exit(2); }
+  console.log(`Açılan tarayıcıda Vercel ve ArvoOS girişini TEST hesabıyla siz yapın.\nPanel (${SAYFALAR.ana}) açılınca test kendiliğinden başlar. Süre: ${GIRIS_SURESI / 60000} dk.`);
+  try {
+    await giris.waitForFunction(() => location.pathname.startsWith("/panel") && Boolean(document.querySelector(".os-dock")), null, { timeout: GIRIS_SURESI, polling: 1000 });
+    if (!panelde(giris.url())) throw new Error("panel başka bir adreste açıldı");
+  } catch (e) { console.error(`Giriş tamamlanmadı (${e.message.split("\n")[0]}).`); await temizle(); process.exit(2); }
+}
+console.log("Oturum açık. Bundan sonra yazma istekleri kesiliyor; tarayıcıya dokunmayın.");
+// Giriş sekmesi açık kalır: görünür tarayıcıda son sekme kapanınca tarayıcı da kapanıyor.
+await giris.goto("about:blank");
+
+/* ---- salt okunur koruma ---- */
+// Kesilen istek yalnızca yöntem + adres yolu olarak kaydedilir (sorgu dizesi
+// belirteç taşıyabilir). Tür, sonucu yorumlamak için.
 const kesilen = [];
+const tur = (r) => /\/auth\/v1\/(token|user|logout)/.test(r.url()) ? "oturum yenileme" : r.headers()["next-action"] ? "server action" : "diğer";
 await ctx.route("**/*", (r) => {
-  if (r.request().method() === "GET" || r.request().method() === "HEAD") return r.continue();
-  kesilen.push(`${r.request().method()} ${r.request().url()}`);
+  const q = r.request();
+  if (q.method() === "GET" || q.method() === "HEAD") return r.continue();
+  let yol = q.url(); try { const u = new URL(yol); yol = u.origin + u.pathname; } catch { /* olduğu gibi */ }
+  kesilen.push({ an: Date.now(), yontem: q.method(), yol, tur: tur(q) });
   return r.abort();
 });
 let [sw] = ctx.serviceWorkers();
-if (!sw) sw = await ctx.waitForEvent("serviceworker", { timeout: 15000 });
+if (!sw && ZOOM) sw = await ctx.waitForEvent("serviceworker", { timeout: 15000 }).catch(() => null);
 
 /* ---- tarayıcı içi ölçümler (sayfada çalışır) ---- */
 const sayfaOlc = () => {
@@ -151,13 +195,17 @@ async function sonKayitDene(sayfa, panelSec) {
   }, panelSec);
 }
 
-/* ---- oturum ön denetimi ---- */
-const on = await ctx.newPage();
-const cevap = await on.goto(BASE + SAYFALAR.ana, { waitUntil: "domcontentloaded" });
-if (/\/login/.test(on.url()) || !cevap || cevap.status() >= 400) {
-  console.error(`Oturum yok ya da erişim reddedildi: ${cevap?.status()} → ${on.url()}`); await ctx.close(); process.exit(2);
+/* Bir adımın sonucunu, o adım sırasında kesilen istekler ışığında yorumla:
+   başarısız + kesilen istek var → testin kendi kısıtı olabilir → UNVERIFIED. */
+function yorumla(r, oncekiSayi) {
+  const bunlar = kesilen.slice(oncekiSayi);
+  if (!bunlar.length) return r;
+  const turler = [...new Set(bunlar.map((k) => k.tur))].join(", ");
+  const kesilenOzet = { sayi: bunlar.length, turler };
+  if (r.durum !== "FAIL") return { ...r, kesilenIstek: kesilenOzet };
+  return { ...r, durum: "UNVERIFIED", testKisiti: `Adım sırasında ${bunlar.length} yazma isteği kesildi (${turler}); başarısızlık ürün hatası olarak sayılmadı`, kesilenIstek: kesilenOzet };
 }
-await on.close();
+let oturumDustu = false;
 
 for (const [w, h] of BOYUTLAR) for (const tema of TEMALAR) for (const [ad, yol] of Object.entries(SAYFALAR)) {
   const etiket = `${w}x${h} ${tema} ${ad}`;
@@ -167,7 +215,18 @@ for (const [w, h] of BOYUTLAR) for (const tema of TEMALAR) for (const [ad, yol] 
   await sayfa.evaluate((t) => { localStorage.setItem("arvoos.theme", t); localStorage.setItem("arvo:ana-ekran-onerisi-kapatildi", "1"); }, tema);
   await sayfa.reload({ waitUntil: "networkidle" });
   const kayit = { senaryo: etiket, adimlar: [] };
-  const adim = async (adi, fn) => { try { const r = await fn(); kayit.adimlar.push({ adim: adi, ...r }); } catch (e) { kayit.adimlar.push({ adim: adi, durum: "FAIL", hatalar: [`hata: ${e.message.split("\n")[0]}`] }); } };
+  if (oturumDustu || !panelde(sayfa.url())) {
+    oturumDustu = true;
+    kayit.durum = "UNVERIFIED"; kayit.adimlar.push({ adim: "oturum", durum: "UNVERIFIED", hatalar: [], testKisiti: "Oturum koşu sırasında düştü (girişe yönlendi); senaryo koşulmadı" });
+    sonuc.push(kayit); await sayfa.close(); continue;
+  }
+  const adim = async (adi, fn) => {
+    const once = kesilen.length;
+    let r;
+    try { r = await fn(); } catch (e) { r = { durum: "FAIL", hatalar: [`hata: ${e.message.split("\n")[0]}`] }; }
+    if (!panelde(sayfa.url())) { oturumDustu = true; r = { ...r, durum: "UNVERIFIED", testKisiti: `Adım sırasında sayfa panelden ayrıldı (${new URL(sayfa.url()).pathname})` }; }
+    kayit.adimlar.push({ adim: adi, ...yorumla(r, once) });
+  };
 
   await adim("ilk görünüm", async () => {
     const o = await sayfa.evaluate(sayfaOlc); const k = await kaydirmaDene(sayfa);
@@ -262,7 +321,15 @@ for (const [w, h] of BOYUTLAR) for (const tema of TEMALAR) for (const [ad, yol] 
 
   // Uzun ad: yalnızca gerçekten kısaltılmış bir ad varsa (düğme o zaman çıkar).
   await adim("uzun ad: Tamamını göster", async () => {
-    const d = sayfa.locator(".dash-tam-metin button:visible").first();
+    let d = sayfa.locator(".dash-tam-metin button:visible").first();
+    // Görünüm seçicide kısaltılmış ad başka bir görünümde olabilir: sırayla bak.
+    if (!(await d.count()) && (await secici.isVisible())) {
+      for (const g of await secici.locator("button:visible").all()) {
+        await g.click(); await sayfa.waitForTimeout(150);
+        d = sayfa.locator(".dash-tam-metin button:visible").first();
+        if (await d.count()) break;
+      }
+    }
     if (!(await d.count())) return { durum: "UNVERIFIED", hatalar: [], not: "Bu görünümde kısaltılmış ad yok; fikstür oluşturulmadı" };
     const hatalar = []; const once = sayfa.url();
     await d.click(); await sayfa.waitForTimeout(300);
@@ -273,13 +340,14 @@ for (const [w, h] of BOYUTLAR) for (const tema of TEMALAR) for (const [ad, yol] 
     return { durum: durum(hatalar), hatalar, ...r, ekran };
   });
 
-  kayit.durum = kayit.adimlar.some((a) => a.durum === "FAIL") ? "FAIL" : kayit.adimlar.some((a) => a.durum === "UNVERIFIED") ? "PASS (bazı adımlar UNVERIFIED)" : "PASS";
+  kayit.durum = kayit.adimlar.some((a) => a.durum === "FAIL") ? "FAIL" : kayit.adimlar.some((a) => a.durum === "UNVERIFIED") ? "UNVERIFIED" : "PASS";
   sonuc.push(kayit);
   await sayfa.close();
 }
 
 /* Gerçek tarayıcı yakınlaştırması %200 (1440x900 → CSS 720x450). */
-for (const tema of TEMALAR) for (const [ad, yol] of Object.entries(SAYFALAR)) {
+for (const tema of ZOOM ? TEMALAR : []) for (const [ad, yol] of Object.entries(SAYFALAR)) {
+  if (oturumDustu || !sw) { sonuc.push({ senaryo: `1440x900 %200 ${tema} ${ad}`, durum: "UNVERIFIED", adimlar: [{ adim: "gerçek yakınlaştırma", durum: "UNVERIFIED", hatalar: [], testKisiti: oturumDustu ? "Oturum düştü" : "Yakınlaştırma eklentisi yüklenemedi" }] }); continue; }
   const sayfa = await ctx.newPage();
   await sayfa.setViewportSize({ width: 1440, height: 900 });
   await sayfa.goto(BASE + yol, { waitUntil: "networkidle" });
@@ -287,17 +355,25 @@ for (const tema of TEMALAR) for (const [ad, yol] of Object.entries(SAYFALAR)) {
   await sayfa.reload({ waitUntil: "networkidle" });
   await sw.evaluate(() => self.zoomla(2)); await sayfa.waitForTimeout(500);
   const o = await sayfa.evaluate(sayfaOlc); const k = await kaydirmaDene(sayfa);
-  const hatalar = kuralHatalari(o, k);
+  const once = kesilen.length; const hatalar = kuralHatalari(o, k);
   if (!o.viewport.startsWith("720x")) hatalar.push(`yakınlaştırma uygulanmadı (${o.viewport}, dpr ${o.dpr})`);
-  sonuc.push({ senaryo: `1440x900 %200 ${tema} ${ad}`, durum: hatalar.length ? "FAIL" : "PASS", adimlar: [{ adim: "gerçek yakınlaştırma", durum: hatalar.length ? "FAIL" : "PASS", hatalar, olcum: o, kaydirmaSonrasi: k, ekran: await kaydet(sayfa, `zoom200 ${tema} ${ad}`) }] });
+  const r = yorumla({ adim: "gerçek yakınlaştırma", durum: hatalar.length ? "FAIL" : "PASS", hatalar, olcum: o, kaydirmaSonrasi: k, ekran: await kaydet(sayfa, `zoom200 ${tema} ${ad}`) }, once);
+  sonuc.push({ senaryo: `1440x900 %200 ${tema} ${ad}`, durum: r.durum, adimlar: [r] });
   await sw.evaluate(() => self.zoomla(1));
   await sayfa.close();
 }
 
-await ctx.close();
-fs.rmSync(ekDizin, { recursive: true, force: true });
-const rapor = { taban: BASE, tarih: new Date().toISOString(), not: "Gerçek uygulama; salt okunur. Dokunmatik ve sanal klavye sınanmadı (UNVERIFIED).", kesilenIstekler: kesilen, sonuc };
+await temizle();
+const say = (d) => sonuc.filter((x) => x.durum === d).length;
+const ozet = { PASS: say("PASS"), FAIL: say("FAIL"), UNVERIFIED: say("UNVERIFIED") };
+const hukum = ozet.FAIL ? "FAIL: ürün hatası bulundu"
+  : ozet.UNVERIFIED ? "TAM KABUL DEĞİL: UNVERIFIED senaryolar var"
+  : "Betik kapsamında bütün senaryolar PASS — dokunmatik ve sanal klavye sınanmadığı için yine de TAM KABUL DEĞİL";
+const rapor = { taban: BASE, tarih: new Date().toISOString(), hukum, ozet, sinanmayan: ["gerçek cihazda dokunmatik", "sanal klavye"], not: "Gerçek uygulama; salt okunur (GET/HEAD dışı istekler kesildi).", kesilenIstekler: kesilen.map((k) => ({ yontem: k.yontem, yol: k.yol, tur: k.tur })), sonuc };
 fs.writeFileSync(path.join(CIKTI, "sonuc.json"), JSON.stringify(rapor, null, 1));
-for (const s of sonuc) console.log(`${s.durum.padEnd(32)} ${s.senaryo}${s.adimlar.filter((a) => a.durum === "FAIL").map((a) => `\n    ✗ ${a.adim}: ${a.hatalar.join("; ")}`).join("")}`);
-console.log(`\nKesilen yazma isteği: ${kesilen.length}. Çıktı: ${CIKTI}`);
-process.exit(sonuc.some((s) => s.durum === "FAIL") ? 1 : 0);
+const satir = (a) => a.durum === "FAIL" ? `\n    ✗ ${a.adim}: ${a.hatalar.join("; ")}` : a.durum === "UNVERIFIED" ? `\n    ? ${a.adim}: ${a.testKisiti || a.not || "sınanamadı"}` : "";
+for (const x of sonuc) console.log(`${x.durum.padEnd(11)} ${x.senaryo}${x.adimlar.map(satir).join("")}`);
+console.log(`\nPASS ${ozet.PASS} · FAIL ${ozet.FAIL} · UNVERIFIED ${ozet.UNVERIFIED} · kesilen yazma isteği ${kesilen.length}`);
+console.log(`Hüküm: ${hukum}`);
+console.log(`Çıktı: ${CIKTI}${SAKLA ? `\nOturum profili SAKLANDI: ${PROFIL} (işiniz bitince silin)` : "\nOturum profili silindi."}`);
+process.exit(ozet.FAIL ? 1 : ozet.UNVERIFIED ? 3 : 0);
