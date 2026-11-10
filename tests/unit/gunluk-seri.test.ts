@@ -129,3 +129,42 @@ test("dönem değişimi: okunamayan veri sıfırdan ayrı", () => {
 test("dönem uzunluğu metne yansıyor (7 günlük seri)", () => {
   assert.equal(donemDegisimi({ total: 2, previous: 1 }, { adet: "talep", gun: 7 }).metin, "+%100 önceki 7 güne göre");
 });
+
+/*
+  KÜÇÜK FARKLAR (10.11.2026): yüzde yuvarlanınca sıfır olan fark "değişim
+  yok" sayılıyordu. "Değişim yok" yalnızca toplamlar eşitse.
+*/
+test("1000 → 1001: yön korunur, '%1'den az artış', +%0 yok", () => {
+  const d = donemDegisimi({ total: 1001, previous: 1000 }, { adet: "talep" });
+  assert.equal(d.tur, "artis");
+  assert.equal(d.ton, "success");
+  assert.equal(d.metin, "önceki 14 güne göre %1'den az artış");
+  assert.ok(d.yuzde !== null && d.yuzde > 0 && d.yuzde < 1);
+  assert.ok(!/[+−-]%0\b/.test(d.metin));
+});
+
+test("1000 → 999: yön korunur, '%1'den az azalış', −%0 yok", () => {
+  const d = donemDegisimi({ total: 999, previous: 1000 }, { adet: "talep" });
+  assert.equal(d.tur, "azalis");
+  assert.equal(d.ton, "danger");
+  assert.equal(d.metin, "önceki 14 güne göre %1'den az azalış");
+  assert.ok(d.yuzde !== null && d.yuzde < 0 && d.yuzde > -1);
+});
+
+test("yalnızca eşit toplam 'değişim yok'; sıfıra düşüş −%100; sıfır tabanlı artışta yüzde yok", () => {
+  assert.deepEqual(donemDegisimi({ total: 1000, previous: 1000 }, { adet: "talep" }), { tur: "esit", yuzde: 0, metin: "önceki 14 güne göre değişim yok", ton: "neutral" });
+  const dusus = donemDegisimi({ total: 0, previous: 1000 }, { adet: "talep" });
+  assert.equal(dusus.metin, "−%100 önceki 14 güne göre");
+  assert.equal(dusus.tur, "azalis");
+  const sifirTaban = donemDegisimi({ total: 5, previous: 0 }, { adet: "talep" });
+  assert.equal(sifirTaban.tur, "onceki-yok");
+  assert.equal(sifirTaban.yuzde, null);
+  assert.ok(!/%/.test(sifirTaban.metin));
+});
+
+test("tahsilat tutarları (kuruş): ₺10.000 → ₺10.040 artış, %1 sınırı ve yuvarlama", () => {
+  assert.equal(donemDegisimi({ total: 1_004_000, previous: 1_000_000 }, { adet: "tahsilat" }).metin, "önceki 14 güne göre %1'den az artış");
+  assert.equal(donemDegisimi({ total: 1_010_000, previous: 1_000_000 }, { adet: "tahsilat" }).metin, "+%1 önceki 14 güne göre");
+  assert.equal(donemDegisimi({ total: 1_014_900, previous: 1_000_000 }, { adet: "tahsilat" }).metin, "+%1 önceki 14 güne göre");
+  assert.equal(donemDegisimi({ total: 990_000, previous: 1_000_000 }, { adet: "tahsilat" }).metin, "−%1 önceki 14 güne göre");
+});
