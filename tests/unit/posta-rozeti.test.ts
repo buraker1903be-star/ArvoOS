@@ -8,9 +8,12 @@
       taşınırsa. Eski menüde öyle başlamıştı; rozet pencerenin içindeyken
       görmek için pencereyi açmak gerekiyordu, yani hiçbir işe yaramıyordu.
    2. Rozeti gizleyen bir kural. Eski kenar menüsünde daraltılınca
-      kayboluyordu; 2026-10'dan beri posta dock'un kendi uygulaması ve
-      dock daraltılmıyor (app/panel/os). Rozeti gizleyen bir CSS kuralı
-      eklenirse bu test yakalar.
+      kayboluyordu; 2026-10'da posta dock'un kendi uygulaması oldu.
+      10.11.2026'dan beri dock yerine sol menü + mobil alt çubuk var
+      (os/os-navigasyon.tsx): menü DARALTILABİLİYOR, yani eski hata
+      yeniden mümkün. Daraltılmış menüde rozet ikonun köşesinde kalır;
+      telefonda posta "Daha fazla"daysa rozet o düğmede toplanır. Rozeti
+      gizleyen bir CSS kuralı eklenirse bu test yakalar.
 
   Sayım da burada sabitleniyor: rozetin gösterdiği sayı, rozete basınca
   açılan listeyle aynı olmalı (/panel/posta süzgeçsiz açılıyor).
@@ -23,12 +26,12 @@ import { osUygulamalari } from "@/app/panel/os/os-apps";
 
 const oku = (p: string) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 const LAYOUT = oku("app/panel/layout.tsx");
-const DOCK = oku("app/panel/os/os-dock.tsx");
-const SHELL_CSS = oku("app/panel/os-shell.css");
+const NAV = oku("app/panel/os/os-navigasyon.tsx");
+const SHELL_CSS = oku("app/panel/os-shell.css") + oku("app/panel/os/os-navigasyon.css") + oku("app/panel/mobil-uygulama.css");
 const ACTIONS = oku("app/panel/posta/actions.ts");
 
 describe("posta okunmamış rozeti", () => {
-  test("Posta dock'un kendi uygulaması, rozetiyle; diğer ürünler listesinde değil", () => {
+  test("Posta menünün kendi uygulaması, rozetiyle; diğer ürünler listesinde değil", () => {
     const apps = osUygulamalari({ modules: [], posta: { okunmamis: 7 } });
     assert.equal(apps.find((u) => u.key === "posta")?.rozet, 7);
     assert.match(LAYOUT, /posta:\s*postaGorunur\s*\?\s*\{\s*okunmamis:\s*postaOkunmamis\s*\}/, "kabuk posta sayısını dock'a vermiyor");
@@ -39,15 +42,17 @@ describe("posta okunmamış rozeti", () => {
     );
   });
 
-  test("dock rozeti gizlenmiyor", () => {
+  test("menü rozeti gizlenmiyor (daraltılmış menü ve telefon dahil)", () => {
     const kurallar = [...SHELL_CSS.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)];
-    const gizleyen = kurallar.find(([, secici, govde]) => /os-dock-badge/.test(secici) && /display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0\b/.test(govde));
+    const gizleyen = kurallar.find(([, secici, govde]) => /os-nav-rozet/.test(secici) && /display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0\b/.test(govde));
     assert.equal(gizleyen, undefined, `rozeti gizleyen kural: ${gizleyen?.[1]?.trim()}`);
-    assert.match(DOCK, /className="os-dock-badge"/, "dock rozeti çizmiyor");
+    assert.match(NAV, /className="os-nav-rozet"/, "menü rozeti çizmiyor");
+    // Telefonda "Daha fazla"daki uygulamaların rozeti düğmenin kendisinde toplanıyor.
+    assert.match(NAV, /dahaRozeti\s*=\s*digerleri\.reduce/, "Daha fazla düğmesi gizli uygulamaların rozetini toplamıyor");
   });
 
-  test("sayı 99+ ile sınırlanıyor (dock ikonuna sığmayan rakam yok)", () => {
-    assert.match(DOCK, /rozet\s*>\s*99\s*\?\s*"99\+"/, "dock: 99+ sınırı yok");
+  test("sayı 99+ ile sınırlanıyor (ikona sığmayan rakam yok)", () => {
+    assert.match(NAV, /rozet\s*>\s*99\s*\?\s*"99\+"/, "menü: 99+ sınırı yok");
   });
 
   test("sayım, rozete basınca açılan listeyle aynı kümeyi sayıyor", () => {

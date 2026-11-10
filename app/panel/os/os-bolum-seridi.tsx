@@ -16,9 +16,9 @@ import { etkinBolum } from "./os-bolumler";
   bağlantıya ikinci kez dokunmak gerekiyordu. Menü fareyle "üstüne
   gelme" için yazılmıştı; dokunmatikte basılan sekmenin yazısı kayıyor,
   bağlantılar çoğu zaman dokunuşu kaçırıyordu (kullanıcı bildirimi).
-  Artık alttaki sekme uygulamayı doğrudan açıyor (os-dock.tsx), bölümler
-  burada. Masaüstünde gizli (mobil-uygulama.css); orada fareyle açılan
-  ikinci dock aynen duruyor.
+  Artık alttaki sekme uygulamayı doğrudan açıyor (os-navigasyon.tsx),
+  bölümler burada. Masaüstünde gizli (mobil-uygulama.css); orada bölümler
+  sol menüde, açık modülün altında.
 */
 export function OsBolumSeridi({ uygulamalar }: { uygulamalar: OsUygulama[] }) {
   const yol = usePathname();

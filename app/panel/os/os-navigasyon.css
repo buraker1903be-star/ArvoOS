@@ -1,0 +1,165 @@
+/* ============================================================
+   SOL MENÜ + MOBİL ALT ÇUBUK (os-navigasyon.tsx, 10.11.2026)
+
+   ≥1100px  sol menü; adlar görünür, kullanıcı daraltabilir (data-nav).
+   761–1099 sol menü her zaman dar (ikon + ipucu): 768px'te 248px'lik
+            menü içeriğe 520px bırakıyordu.
+   ≤760px   alta yapışık çubuk + "Daha fazla" yaprağı; sol menü yok.
+
+   Yalnızca panel-tokens.css değerleri; kurum rengi --primary. Ağır bulanıklık
+   ve dekoratif animasyon yok: menü düz yüzey, geçişler kısa ve
+   prefers-reduced-motion'da kapalı.
+   ============================================================ */
+
+.os-root{--os-nav-w-genis:248px;--os-nav-w-dar:68px;--os-nav-w:var(--os-nav-w-genis)}
+.os-root[data-nav="dar"]{--os-nav-w:var(--os-nav-w-dar)}
+@media (max-width:1099px){.os-root{--os-nav-w:var(--os-nav-w-dar)}}
+
+.os-root .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ---------- Sol menü ---------- */
+.os-nav{
+  position:fixed;z-index:50;top:var(--os-bar-h);bottom:0;left:0;
+  width:var(--os-nav-w);box-sizing:border-box;
+  display:flex;flex-direction:column;gap:var(--sp-1);
+  padding:var(--sp-3) var(--sp-2) var(--sp-3);
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
+  border-right:1px solid var(--line);background:var(--surface);
+  transition:width var(--dur) var(--ease);
+}
+/* İçerik menünün altında kalmasın: çalışma alanı menünün genişliği kadar içeride. */
+.os-root .os-frame:has(> .os-nav) .os-workspace{margin-left:var(--os-nav-w);transition:margin-left var(--dur) var(--ease)}
+
+.os-nav-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.os-nav-grup{margin:var(--sp-3) var(--sp-3) var(--sp-1);font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--muted);letter-spacing:.02em}
+.os-nav-alt{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:var(--sp-2);border-top:1px solid var(--line-soft)}
+
+.os-nav-link{
+  position:relative;display:flex;align-items:center;gap:var(--sp-3);
+  width:100%;min-height:var(--ctl-h);padding:0 var(--sp-3);box-sizing:border-box;
+  border:0;border-radius:var(--r-md);background:transparent;
+  color:var(--ink-soft);font:inherit;font-size:var(--fs-base);font-weight:var(--fw-medium);text-align:left;text-decoration:none;cursor:pointer;
+  transition:background-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
+}
+.os-nav-link>svg{flex:none}
+.os-nav-ad{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-nav-link:hover{background:var(--surface-2);color:var(--ink)}
+.os-nav-link:focus-visible,.os-nav-bolumler a:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+/* Seçili: kurum renginde zemin + solda çizgi (renk tek başına durumu taşımasın). */
+.os-nav-link.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
+.os-nav-link.is-active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--primary)}
+.os-nav-link:disabled,.os-nav-link[aria-disabled="true"]{opacity:.5;cursor:not-allowed;background:transparent}
+.os-nav-rozet{
+  flex:none;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:var(--r-pill);
+  background:var(--danger);color:var(--n-0);font-size:11px;font-weight:var(--fw-semibold);line-height:18px;text-align:center;
+}
+
+/* Açık modülün bölümleri, modülün altında girintili. */
+.os-nav-bolumler{list-style:none;margin:2px 0 var(--sp-1);padding:0 0 0 calc(var(--sp-3) + 18px + var(--sp-3) - var(--sp-2));display:flex;flex-direction:column;gap:1px}
+.os-nav-bolumler a{
+  display:flex;align-items:center;min-height:var(--ctl-h-sm);padding:0 var(--sp-2);border-radius:var(--r-sm);
+  color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;
+  transition:background-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
+}
+.os-nav-bolumler a:hover{background:var(--surface-2);color:var(--ink)}
+.os-nav-bolumler a.is-active{color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent);font-weight:var(--fw-semibold)}
+
+.os-nav-daralt{color:var(--muted)}
+
+/* ---------- Dar (ikon) hâli: kullanıcı seçimi ≥1100, zorunlu 761–1099 ----------
+   Ad görünmez kalır ama DOM'da: ekran okuyucu okur, fareyle ve klavye
+   odağıyla ipucu olarak çıkar (yalnızca hover'a bağlı değil). */
+.os-root[data-nav="dar"] .os-nav-link{justify-content:center;padding:0}
+.os-root[data-nav="dar"] .os-nav-ad{
+  position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);flex:none;
+  padding:4px 8px;border-radius:var(--r-xs);background:var(--ink);color:var(--surface);
+  font-size:var(--fs-micro);font-weight:var(--fw-medium);pointer-events:none;opacity:0;z-index:2;
+  transition:opacity var(--dur-fast) var(--ease);
+}
+.os-root[data-nav="dar"] .os-nav-link:is(:hover,:focus-visible) .os-nav-ad{opacity:1}
+.os-root[data-nav="dar"] .os-nav-rozet{position:absolute;top:2px;right:6px}
+.os-root[data-nav="dar"] .os-nav-grup{height:1px;margin:var(--sp-2) var(--sp-2);overflow:hidden;color:transparent;background:var(--line-soft)}
+.os-root[data-nav="dar"] .os-nav-bolumler{display:none}
+/* İpucu menünün dışına taşıyor: dar menü kendi içinde kaydırmaz (kısa liste). */
+.os-root[data-nav="dar"] .os-nav{overflow:visible}
+
+@media (min-width:761px) and (max-width:1099px){
+  .os-root .os-nav-link{justify-content:center;padding:0}
+  .os-root .os-nav-ad{
+    position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);flex:none;
+    padding:4px 8px;border-radius:var(--r-xs);background:var(--ink);color:var(--surface);
+    font-size:var(--fs-micro);font-weight:var(--fw-medium);pointer-events:none;opacity:0;z-index:2;
+    transition:opacity var(--dur-fast) var(--ease);
+  }
+  .os-root .os-nav-link:is(:hover,:focus-visible) .os-nav-ad{opacity:1}
+  .os-root .os-nav-rozet{position:absolute;top:2px;right:6px}
+  .os-root .os-nav-grup{height:1px;margin:var(--sp-2) var(--sp-2);overflow:hidden;color:transparent;background:var(--line-soft)}
+  .os-root .os-nav-bolumler{display:none}
+  .os-root .os-nav{overflow:visible}
+  /* Bu genişlikte menü hep dar; daraltma düğmesi bir şey değiştirmez. */
+  .os-root .os-nav-daralt{display:none}
+}
+
+/* ---------- Mobil alt çubuk ---------- */
+.os-tabbar{display:none}
+@media (max-width:760px){
+  .os-nav{display:none}
+  .os-root .os-frame:has(> .os-nav) .os-workspace{margin-left:0}
+  .os-tabbar{
+    position:fixed;z-index:55;left:0;right:0;bottom:0;
+    display:flex;align-items:stretch;
+    padding:4px max(4px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px,env(safe-area-inset-left));
+    border-top:1px solid var(--line);background:var(--surface);
+  }
+  .os-tab{
+    position:relative;flex:1 1 0;min-width:0;height:var(--os-tab-h,58px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    border:0;border-radius:var(--r-md);background:none;color:var(--muted);font:inherit;text-decoration:none;cursor:pointer;
+  }
+  .os-tab>span{max-width:100%;padding:0 2px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:var(--fw-medium)}
+  .os-tab:active{background:var(--surface-2)}
+  .os-tab:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+  .os-tab.is-active{color:var(--primary)}
+  .os-tab.is-active>span{font-weight:var(--fw-semibold)}
+  .os-tab .os-nav-rozet{position:absolute;top:4px;right:calc(50% - 24px)}
+}
+
+/* ---------- "Daha fazla" / "Arvo ürünleri" penceresi ---------- */
+.os-daha{
+  width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 64px);margin:auto;padding:0;overflow:auto;
+  border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-lg);
+}
+.os-daha::backdrop{background:color-mix(in srgb,var(--n-900) 35%,transparent)}
+.os-daha[open]{animation:os-daha-ac var(--dur) var(--ease)}
+@keyframes os-daha-ac{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.os-daha-bas{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-4) var(--sp-4) var(--sp-2) var(--sp-5)}
+.os-daha-bas h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+.os-daha-liste{list-style:none;margin:0;padding:0 var(--sp-2) var(--sp-3);display:flex;flex-direction:column;gap:2px}
+.os-daha-oge{
+  display:flex;align-items:center;gap:var(--sp-3);min-height:var(--ctl-h-touch);padding:0 var(--sp-3);
+  border-radius:var(--r-md);color:var(--ink);font-size:var(--fs-base);font-weight:var(--fw-medium);text-decoration:none;
+}
+.os-daha-oge>span:nth-child(2){flex:1;min-width:0}
+.os-daha-oge:hover{background:var(--surface-2)}
+.os-daha-oge:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.os-daha-oge.is-active{background:var(--primary-soft);color:var(--primary)}
+.os-daha-simge{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);color:var(--ink-soft)}
+.os-daha-oge.is-active .os-daha-simge{border-color:transparent;background:var(--primary);color:var(--primary-on)}
+.os-daha-simge--urun{padding:5px;box-sizing:border-box}
+.os-daha-simge--urun img{width:100%;height:auto}
+.os-daha-simge--urun>i{font-style:normal;font-weight:var(--fw-bold)}
+.os-daha .marka-koyu{display:none}
+html[data-theme="dark"] .os-daha .marka-acik{display:none}
+html[data-theme="dark"] .os-daha .marka-koyu{display:block}
+.os-daha-urunler{border-top:1px solid var(--line-soft)}
+.os-daha-urunler h3{margin:0;padding:var(--sp-4) var(--sp-5) var(--sp-2);font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--muted)}
+/* Masaüstünde modüllerin hepsi sol menüde: pencere yalnızca ürünleri gösterir. */
+@media (min-width:761px){.os-daha-moduller{display:none}}
+@media (max-width:760px){
+  .os-daha{width:100%;max-width:none;max-height:85dvh;margin:auto 0 0;border-width:1px 0 0;border-radius:var(--r-xl) var(--r-xl) 0 0;padding-bottom:env(safe-area-inset-bottom)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .os-nav,.os-root .os-frame:has(> .os-nav) .os-workspace,.os-nav-link,.os-nav-bolumler a,.os-nav-ad{transition:none}
+  .os-daha[open]{animation:none}
+}

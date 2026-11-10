@@ -112,6 +112,59 @@ export function osUygulamalari({
   return uygulamalar;
 }
 
+/*
+  SOL MENÜ VE MOBİL ALT ÇUBUK AYNI LİSTEDEN (10.11.2026).
+
+  Eskiden masaüstünde yüzen dock, telefonda dock'un "alt sekme çubuğu"
+  hâli vardı; ikisi de bu listeyi kullanıyordu ama hangi uygulamanın
+  telefonda öne çıkacağı CSS'teki bir sıra seçicisine (nth-child) gömülüydü
+  ve sırayı modül listesinin sırası belirliyordu. Seçim artık burada,
+  saf ve testli (tests/unit/os-apps.test.ts).
+
+  Yetki burada YENİDEN hesaplanmıyor: liste osUygulamalari'nin çıktısı,
+  yani kurumun açık modülleri + rolün gizlenen grupları + kişiye özel
+  gizlenenler zaten süzülmüş durumda. İki menü de yalnızca bu listeyi
+  dağıtıyor; birinde görünen yetkisiz bir modül ötekinde de görünürdü.
+*/
+
+/** Sol menünün daraltılmış/geniş seçimi; sunucu (layout.tsx) ilk çizimde okur, bileşen yazar. Burada çünkü "use client" dosyasından sunucuya sabit aktarılamaz. */
+export const NAV_CEREZI = "os_nav";
+
+/**
+ * Telefonda öne çıkan uygulamaların sırası. Gerekçe mevcut kullanım
+ * akışı: telefondaki "Bugün" panelinin kısayolları Yeni talep, İşlerim,
+ * Pano ve Talepler (CRM ve Operasyon); sahadaki personel adımını
+ * telefondan tamamlıyor. Finans günlük tahsilat kutusuyla üçüncü sırada.
+ * Mesajlar ve bildirimler üst çubukta kendi düğmelerinde.
+ */
+export const MOBIL_ONCELIK: readonly string[] = ["crm", "operations", "finance", "hr", "documents", "analitik"];
+
+/** Ana ekran dahil en fazla dört giriş; geri kalanı "Daha fazla"da. */
+export function mobilAltCubuk(uygulamalar: OsUygulama[], sinir = 4): { birincil: OsUygulama[]; digerleri: OsUygulama[] } {
+  const home = uygulamalar.find((u) => u.key === "home");
+  const sira = (u: OsUygulama) => {
+    const i = MOBIL_ONCELIK.indexOf(u.key);
+    return i === -1 ? MOBIL_ONCELIK.length : i;
+  };
+  const adaylar = uygulamalar
+    .map((u, i) => ({ u, i }))
+    .filter(({ u }) => u.key !== "home" && u.key !== "settings" && !u.yalnizBaslatici)
+    .sort((a, b) => sira(a.u) - sira(b.u) || a.i - b.i)
+    .map(({ u }) => u);
+  const birincil = [...(home ? [home] : []), ...adaylar].slice(0, sinir);
+  const secilen = new Set(birincil.map((u) => u.key));
+  return { birincil, digerleri: uygulamalar.filter((u) => !secilen.has(u.key)) };
+}
+
+/** Sol menünün grupları: modüller, yalnızca başlatıcıdakiler ("Diğer"), Ayarlar en altta. */
+export function kenarGruplari(uygulamalar: OsUygulama[]): { ana: OsUygulama[]; ek: OsUygulama[]; ayarlar: OsUygulama | null } {
+  return {
+    ana: uygulamalar.filter((u) => u.key !== "settings" && !u.yalnizBaslatici),
+    ek: uygulamalar.filter((u) => u.yalnizBaslatici),
+    ayarlar: uygulamalar.find((u) => u.key === "settings") ?? null,
+  };
+}
+
 /**
  * Açık sayfanın uygulaması. En uzun eşleşen yol kazanır; "/panel/crm"
  * "/panel/crmx" ile eşleşmez. Ana ekran yalnızca tam "/panel".

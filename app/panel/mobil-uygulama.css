@@ -158,50 +158,12 @@
 }
 
 /* ---------- ALT SEKME ÇUBUĞU ----------
-   Eskiden telefonda masaüstü dock'u küçültülmüş hâliyle duruyordu:
-   yüzen, yazısız ikonlar, sığmayanlar yana kayıyordu (dokuz uygulamanın
-   üçü ekran dışındaydı). Telefon uygulamalarındaki gibi ekranın altına
-   yapışık, beş sekme, ikonun altında adı: Ana ekran, ilk üç uygulama ve
-   "Uygulamalar" (gerisi orada). Güvenli alan (ana ekran çubuğu)
-   boşluğu çubuğun içinde. Bölüm menüsü (ikinci dock) çubuğun hemen
-   üstünde açılır; konumu os-dock.tsx çubuğun üst kenarından hesaplıyor. */
+   10.11.2026'dan beri os-navigasyon.css'te (.os-tabbar): Ana ekran + en
+   fazla üç modül + etiketli "Daha fazla". Eskiden dock'un telefon hâliydi
+   ve hangi modülün öne çıkacağı burada bir nth-child seçicisine gömülüydü.
+   --os-dock-space (içeriğin alt payı) telefonda çubuğun yüksekliği. */
 @media (max-width:760px){
   .os-root{--os-tab-h:58px;--os-dock-space:calc(var(--os-tab-h) + 20px)}
-  .os-root .os-dock{
-    left:0;right:0;bottom:0;transform:none;max-width:none;
-    display:flex;justify-content:space-around;align-items:stretch;gap:0;
-    padding:4px 4px env(safe-area-inset-bottom);overflow:hidden;
-    border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;
-    background:color-mix(in srgb,var(--surface) 94%,transparent);
-  }
-  .os-root .os-dock-sep{display:none}
-  /* Ana ekran + ilk üç uygulama + Uygulamalar düğmesi (son çocuk). */
-  .os-root .os-dock>.os-dock-item:nth-child(n+6):not(:last-child){display:none}
-  .os-root .os-dock-item{
-    flex:1 1 0;min-width:0;width:auto;height:var(--os-tab-h);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    border-radius:var(--r-md);background:none;color:var(--muted);transform:none;
-  }
-  .os-root .os-dock-item:hover{transform:none;background:none}
-  .os-root .os-dock-item:active{background:var(--surface-2)}
-  .os-root .os-dock-item.is-active{background:none;color:var(--primary)}
-  .os-root .os-dock-item.is-active::after{display:none}
-  .os-root .os-dock-item.is-sub-open{background:var(--surface-2)}
-  .os-root .os-dock-label{
-    position:static;transform:none;opacity:1;padding:0;border-radius:0;background:none;color:inherit;
-    max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:var(--fw-medium);pointer-events:none;
-  }
-  .os-root .os-dock-item.is-sub-open .os-dock-label{display:block}
-  .os-root .os-dock-badge{top:4px;right:calc(50% - 22px)}
-
-  /* Uygulamalar penceresi alttan açılan sayfa. */
-  .os-root .os-launcher{
-    width:100%;max-width:none;max-height:85dvh;margin:auto 0 0;
-    border-radius:var(--r-xl) var(--r-xl) 0 0;padding-bottom:env(safe-area-inset-bottom);
-  }
-  .os-root .os-launcher-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--sp-4) var(--sp-2);padding:var(--sp-3) var(--sp-4) var(--sp-5)}
-  .os-root .os-launcher-app{font-size:12px}
-  .os-root .os-launcher-head{padding:var(--sp-5) var(--sp-4) var(--sp-1)}
 }
 
 /* ---------- UYGULAMA DAVRANIŞI ----------
@@ -209,7 +171,7 @@
    art arda basmak sayfayı büyütüyordu), çubuklarda metin seçilmiyor. */
 @media (max-width:760px){
   .os-root :is(a,button,summary,label,select,[role="button"]){-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-  .os-root :is(.os-dock,.os-bar,.os-subdock){-webkit-user-select:none;user-select:none}
+  .os-root :is(.os-tabbar,.os-bar){-webkit-user-select:none;user-select:none}
   .os-root .os-bar{padding-left:max(var(--sp-3),env(safe-area-inset-left));padding-right:max(var(--sp-3),env(safe-area-inset-right))}
 
   /* PANO: süzgeçler iki sütun (üç seçim alt alta ekranın yarısını
@@ -261,15 +223,6 @@
   }
   .os-root .os-bolum-serit a:active{background:var(--surface-2)}
   .os-root .os-bolum-serit a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
-  /* Ara menü telefonda hiç açılmaz; açık kalmışsa (ekran döndürme) görünmesin. */
-  .os-root .os-subdock{display:none}
-  /* Basılan sekmenin "açık" görünümü telefonda yok (yazı kayıyordu). */
-  .os-root .os-dock-item.is-sub-open{background:none}
-}
-@media (max-width:760px){
-  /* Masaüstünün "üstüne gelince ipucu" kuralı yazıyı translateX(-50%) ile
-     sola kaydırıyordu: basılan sekmenin adı ikonun soluna kayıyordu. */
-  .os-root .os-dock .os-dock-item:is(:hover,:focus,:active,.is-sub-open) .os-dock-label{transform:none;opacity:1}
 }
 
 /* ---------- LİSTE ÜSTÜ: özet ve süzgeç daha az yer ----------

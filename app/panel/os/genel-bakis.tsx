@@ -63,7 +63,7 @@ export function GenelBakis({ baslik, gizliBaslik, ust, uyari, sinif, children }:
 /** Grafik başlığındaki küçük özet (Finans genel bakış: bu ay tahsilat, tahsil oranı…). */
 export type SeriOzeti = { ad: string; deger: string; ton?: string; href?: string };
 
-export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, href, ozet, bos, hata = false }: {
+export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, href, ozet, bos, hata = false, eylem }: {
   baslik: string;
   alt: string;
   seri: GunlukSeri;
@@ -96,6 +96,12 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
     aynı görünüyordu. Hata varken toplam "—", çubuklar yerine açıklama.
   */
   hata?: boolean;
+  /*
+    Boş durumda tek eylem (10.11.2026, ana ekran): çağıran yalnızca kişinin
+    YAPABİLDİĞİ mevcut bir işleme götüren bağlantıyı verir; burada yetki
+    hesaplanmaz. Hata durumunda gösterilmez — veri okunamadı, "boş" değil.
+  */
+  eylem?: { href: string; etiket: string };
 }) {
   const bosSeri = !hata && Boolean(bos) && seri.total === 0 && seri.days.every((gun) => !gun.count);
   const degisim = donemDegisimi(seri, { adet, gun: seri.days.length, hata });
@@ -122,7 +128,12 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
           <span data-tone={degisim.ton} title={hata ? undefined : `Önceki dönem: ${seri.oncekiAralik} · ${birim(seri.previous)} ${adet}`}>{degisim.metin}</span>
         </div>
       </header>
-      {hata ? <p className="dash-seri-bos">{baslik} yüklenemedi. Sayfayı yenileyin; sorun sürerse destek kaydı açın.</p> : bosSeri ? <p className="dash-seri-bos">{bos}</p> : (
+      {hata ? <p className="dash-seri-bos">{baslik} yüklenemedi. Sayfayı yenileyin; sorun sürerse destek kaydı açın.</p> : bosSeri ? (
+        <div className="dash-seri-bos">
+          <p>{bos}</p>
+          {eylem ? <Link className="dash-bos-eylem" href={eylem.href}>{eylem.etiket}</Link> : null}
+        </div>
+      ) : (
       <div className="dash-bars" role="img" aria-label={`${alt}: toplam ${birim(seri.total)} ${adet}`}>
         {seri.days.map((gun) => (
           <div className={`dash-bar${gun.isToday ? " is-today" : ""}${gun.count ? "" : " is-empty"}`} key={gun.key} title={`${gun.title}: ${birim(gun.count)} ${adet}`}>
@@ -143,28 +154,66 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
   );
 }
 
-/** Dört sütunun ortak kartı: başlık, alt başlık, liste ya da boş durum, alt bağlantı. */
-export function ListeKarti({ baslik, alt, bos, href, hrefEtiket, sayi, children }: {
+/** Liste kartı: başlık, alt başlık, liste (ya da gruplar) ya da boş/hata durumu, alt bağlantı. */
+export type ListeGrubu = { anahtar: string; baslik: string; ton?: "danger" | "neutral"; satirlar: ReactNode[] };
+
+export function ListeKarti({ baslik, alt, bos, href, hrefEtiket, sayi, hata = false, gruplar, not, children }: {
   baslik: string;
   alt: string;
   bos: string;
   href?: string;
   hrefEtiket?: string;
   sayi: number;
+  /*
+    Okuma hatası (10.11.2026): eskiden sorgu düşünce kart boş cümlesini
+    ("Açık operasyon yok.") yazıyordu; sayfanın üstündeki uyarı satırı
+    olsa da kartın kendisi "yok" diyordu — okunamayan veri gerçek
+    boşlukla aynı görünüyordu. Hata varken boş cümlesi değil hata yazılır.
+  */
+  hata?: boolean;
+  /*
+    Satırlar başlıklı gruplara bölünebilir (ana ekran: Gecikmiş / Yaklaşan).
+    Boş grup çizilmez. Verilirse children kullanılmaz.
+  */
+  gruplar?: ListeGrubu[];
+  /** Listenin altında kısa açıklama (ör. yalnızca ilk N satırın gösterildiği). */
+  not?: string;
   children?: ReactNode;
 }) {
+  const doluGruplar = gruplar?.filter((g) => g.satirlar.length) ?? [];
   return (
     <article className="dash-card dash-col">
       <header className="dash-card-head"><div><h2>{baslik}</h2><p>{alt}</p></div></header>
-      {sayi ? <ul className="dash-col-list">{children}</ul> : <p className="dash-empty">{bos}</p>}
+      {hata ? (
+        <p className="dash-empty dash-empty--hata" role="status">{baslik} yüklenemedi. Sayfayı yenileyin; sorun sürerse destek kaydı açın.</p>
+      ) : !sayi ? (
+        <p className="dash-empty">{bos}</p>
+      ) : doluGruplar.length ? (
+        doluGruplar.map((g) => (
+          <section key={g.anahtar} className="dash-col-grup" aria-label={`${baslik}: ${g.baslik}`}>
+            <h3 data-tone={g.ton}>{g.baslik} <span>{g.satirlar.length}</span></h3>
+            <ul className="dash-col-list">{g.satirlar}</ul>
+          </section>
+        ))
+      ) : (
+        <ul className="dash-col-list">{children}</ul>
+      )}
+      {not && sayi && !hata ? <p className="dash-col-not">{not}</p> : null}
       {href ? <Link className="dash-card-link" href={href}>{hrefEtiket} <Chevron /></Link> : null}
     </article>
   );
 }
 
-/** Dört sütunluk ızgara. Kart sayısı azsa kalanlar genişler. */
-export function ListeIzgarasi({ children, etiket = "Güncel işler" }: { children: ReactNode; etiket?: string }) {
-  return <section className="dash-cols" aria-label={etiket}>{children}</section>;
+/*
+  Liste ızgarası. Varsayılan: dört sütun, kartlar eşit boy (modül genel
+  bakışları, "tek ekrana sığar" kuralı). `esnek` (10.11.2026, ana ekran):
+  sütun sayısı genişliğe göre (kart en az ~340px), kartlar içerikleri
+  kadar uzun, başlıklar iki satıra kadar. Dört eşit dar sütunda rozetli
+  satırda ada 150px kalıyor ve iş/müşteri adı kesiliyordu; boş kart da
+  en uzun kardeşinin boyuna çekilip ortasında tek cümle yüzüyordu.
+*/
+export function ListeIzgarasi({ children, etiket = "Güncel işler", esnek = false }: { children: ReactNode; etiket?: string; esnek?: boolean }) {
+  return <section className={esnek ? "dash-cols dash-cols--esnek" : "dash-cols"} aria-label={etiket}>{children}</section>;
 }
 
 /*

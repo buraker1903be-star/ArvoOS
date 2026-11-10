@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { aramaAnahtari, basHarfler, canliTablolar, etkinUygulama, osSayfalari, osUygulamalari } from "@/app/panel/os/os-apps";
+import { aramaAnahtari, basHarfler, canliTablolar, etkinUygulama, kenarGruplari, mobilAltCubuk, osSayfalari, osUygulamalari } from "@/app/panel/os/os-apps";
 
 /*
   Şirket işletim sistemi kabuğu: dock ve Ctrl+K aynı uygulama listesini
@@ -95,4 +95,38 @@ test("WhatsApp yalnızca başlatıcıda: CRM açıksa uygulama, dock'ta değil, 
   assert.equal(etkinUygulama(apps, "/panel/crm/whatsapp")?.key, "whatsapp");
   // CRM kapalıysa yok
   assert.ok(!osUygulamalari({ modules: [{ code: "operations", name: "Operasyon" }], role: "admin" }).some((u) => u.key === "whatsapp"));
+});
+
+/* Sol menü ve mobil alt çubuk (10.11.2026): ikisi de AYNI süzülmüş listeyi dağıtır. */
+test("mobil alt çubuk: ana ekran + öncelik sırasıyla en fazla üç uygulama; kalanı Daha fazla'da", () => {
+  const liste = osUygulamalari({ modules, role: "admin", posta: { okunmamis: 2 } });
+  const { birincil, digerleri } = mobilAltCubuk(liste);
+  assert.deepEqual(birincil.map((u) => u.key), ["home", "crm", "operations", "finance"]);
+  assert.deepEqual(digerleri.map((u) => u.key), ["hr", "whatsapp", "posta", "settings"]);
+  assert.equal(birincil.length + digerleri.length, liste.length, "hiçbir uygulama kaybolmuyor");
+});
+
+test("mobil alt çubuk modül sırasına değil önceliğe bakar; yalnızca başlatıcıdakiler öne çıkmaz", () => {
+  const ters = [{ code: "hr", name: "İK" }, { code: "finance", name: "Finans" }, { code: "operations", name: "Operasyon" }];
+  const { birincil } = mobilAltCubuk(osUygulamalari({ modules: ters, role: "admin" }));
+  assert.deepEqual(birincil.map((u) => u.key), ["home", "operations", "finance", "hr"]);
+});
+
+test("rolün göremediği modül ne sol menüde ne mobil çubukta ne Daha fazla'da", () => {
+  const liste = osUygulamalari({ modules, role: "member" });
+  const gorunen = (u: { key: string }) => u.key;
+  const { ana, ek, ayarlar } = kenarGruplari(liste);
+  const kenar = [...ana, ...ek, ...(ayarlar ? [ayarlar] : [])].map(gorunen).sort();
+  const { birincil, digerleri } = mobilAltCubuk(liste);
+  const mobil = [...birincil, ...digerleri].map(gorunen).sort();
+  assert.deepEqual(kenar, liste.map(gorunen).sort());
+  assert.deepEqual(mobil, kenar, "iki menü aynı kümeyi gösteriyor");
+});
+
+test("sol menü grupları: ayarlar en altta, yalnızca başlatıcıdakiler ayrı", () => {
+  const { ana, ek, ayarlar } = kenarGruplari(osUygulamalari({ modules, role: "admin", mesajlar: { okunmamis: 0 } }));
+  assert.equal(ana[0]?.key, "home");
+  assert.ok(!ana.some((u) => u.key === "settings" || u.yalnizBaslatici));
+  assert.deepEqual(ek.map((u) => u.key), ["whatsapp", "messages"]);
+  assert.equal(ayarlar?.key, "settings");
 });

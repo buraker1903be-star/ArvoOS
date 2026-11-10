@@ -8,7 +8,7 @@ import { KonsolAnaSayfa } from "./konsol-ana-sayfa";
 import { formatPersonName } from "@/lib/format-name";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { formatSubject } from "@/lib/table-format";
-import { dueBadge } from "@/lib/operasyon-termin";
+import { dueBadge, terminGruplari } from "@/lib/operasyon-termin";
 import { postaBaglantiDurumu } from "@/lib/posta-hesabi";
 import { activeStatuses, workflowStatusNames } from "./operations/ops-shared";
 import { relativeTime } from "./crm/last-contact";
@@ -299,6 +299,56 @@ export default async function PanelPage() {
     </section>
   ) : null;
 
+  /*
+    GECİKMİŞ / YAKLAŞAN (10.11.2026). Sorgu sırası değişmedi (termin
+    artan, gecikmiş en üstte); satırlar yalnızca başlıklı iki gruba
+    bölünüyor, "gecikmiş" kararı dueBadge'in (lib/operasyon-termin ·
+    terminGruplari). Liste en fazla LISTE satır: hepsi gecikmişse
+    yaklaşanlar görünmez — bunu kartın altında söylüyoruz, sessizce
+    "yaklaşan yok" demiyoruz.
+  */
+  const isSatiri = (is: IsSatiri) => {
+    const rozet = dueBadge(is.due_date, today, is.status);
+    return (
+      <ListeSatiri
+        key={is.id}
+        href={`/panel/operations/${is.id}`}
+        baslik={formatSubject(is.title)}
+        baslikIpucu={is.title}
+        alt={<><span className="dash-col-musteri">{is.customer_name || "Kurum içi iş"}</span> · {workflowStatusNames[is.status] ?? is.status}</>}
+        sag={is.due_date ? <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span> : null}
+        yeni={yeniMi(is.updated_at)}
+      />
+    );
+  };
+  const asamaSatiri = (asama: AsamaSatiri) => {
+    const rozet = dueBadge(asama.due_date, today);
+    return (
+      <ListeSatiri
+        key={asama.id}
+        href={`/panel/operations/${asama.workflow_id}`}
+        baslik={formatSubject(asama.title)}
+        baslikIpucu={asama.title}
+        /* Aşama adı tek başına hangi işin maddesi olduğunu söylemiyor: müşteri ve iş adı alt satırda. */
+        alt={<><span className="dash-col-musteri">{asama.operation_workflows?.customer_name || "Kurum içi iş"}</span> · {formatSubject(asama.operation_workflows?.title)}</>}
+        sag={<span className="status-pill" data-tone={rozet.tone} title={kisaTarih(asama.due_date)}>{rozet.label}</span>}
+      />
+    );
+  };
+  const isG = terminGruplari(isler, (is) => is.due_date, today, (is) => is.status);
+  const isGruplari = [
+    { anahtar: "gecikmis", baslik: "Gecikmiş", ton: "danger" as const, satirlar: isG.gecikmis.map(isSatiri) },
+    { anahtar: "yaklasan", baslik: "Yaklaşan", satirlar: isG.yaklasan.map(isSatiri) },
+    { anahtar: "tarihsiz", baslik: "Termin girilmemiş", satirlar: isG.tarihsiz.map(isSatiri) },
+  ];
+  const isNotu = isler.length >= LISTE && isG.gecikmis.length === isler.length ? `İlk ${LISTE} iş gecikmiş; yaklaşan işler Tüm işler'de.` : undefined;
+  const asamaG = terminGruplari(asamalar, (a) => a.due_date, today);
+  const asamaGruplari = [
+    { anahtar: "gecikmis", baslik: "Gecikmiş", ton: "danger" as const, satirlar: asamaG.gecikmis.map(asamaSatiri) },
+    { anahtar: "yaklasan", baslik: "Yaklaşan", satirlar: asamaG.yaklasan.map(asamaSatiri) },
+  ];
+  const asamaNotu = asamalar.length >= LISTE && asamaG.gecikmis.length === asamalar.length ? `İlk ${LISTE} aşama gecikmiş; yaklaşanlar takvimde.` : undefined;
+
   const { greeting, date } = greetingLine();
   const firstName = formatPersonName(me?.full_name).split(" ")[0];
 
@@ -318,50 +368,26 @@ export default async function PanelPage() {
         yeniKurum={hicKayitYok} />
       {kurulumOnce ? null : kurulumKarti}
 
-      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" hata={Boolean(talepError)} bos={hicKayitYok ? "İlk talebinizi girdiğinizde günlük dağılım burada çizilir." : "Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir."} /> : null}
+      {/* Boş durumdaki "Yeni talep", telefondaki Bugün panelinin kısayoluyla aynı kural: CRM'i gören ve modülü açık olan. */}
+      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" hata={Boolean(talepError)}
+        bos={hicKayitYok ? "İlk talebinizi girdiğinizde günlük dağılım burada çizilir." : "Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir."}
+        eylem={modulAcik("crm") ? { href: "/panel/crm?yeni=talep", etiket: "+ Yeni talep" } : undefined} /> : null}
 
-      <ListeIzgarasi>
+      <ListeIzgarasi esnek>
         {canSeeOperations ? (
-          <ListeKarti baslik="Operasyon" alt={`Termini en yakın ${LISTE} iş`} bos={hicKayitYok ? "Sözleşme imzalanınca iş burada açılır; termini en yakın olan en üstte durur." : "Açık operasyon yok."} href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}>
-            {isler.map((is) => {
-              const rozet = dueBadge(is.due_date, today, is.status);
-              return (
-                <ListeSatiri
-                  key={is.id}
-                  href={`/panel/operations/${is.id}`}
-                  baslik={formatSubject(is.title)}
-                  baslikIpucu={is.title}
-                  alt={`${is.customer_name || "Kurum içi iş"} · ${workflowStatusNames[is.status] ?? is.status}`}
-                  sag={is.due_date ? <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span> : null}
-                  yeni={yeniMi(is.updated_at)}
-                />
-              );
-            })}
+          <ListeKarti baslik="Operasyon" alt={`Termini en yakın ${LISTE} iş`} bos={hicKayitYok ? "Sözleşme imzalanınca iş burada açılır; termini en yakın olan en üstte durur." : "Açık operasyon yok."} href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}
+            hata={Boolean(isError)} gruplar={isGruplari} not={isNotu}>
           </ListeKarti>
         ) : null}
 
         {canSeeOperations ? (
-          <ListeKarti baslik="Yaklaşan aşama tarihleri" alt={`Yaklaşan ${LISTE} aşama`} bos={hicKayitYok ? "İşin adımlarına tarih girdikçe yaklaşanlar burada sıralanır." : "Tarihi girilmiş açık aşama yok."} href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamalar.length}>
-            {asamalar.map((asama) => {
-              // Gecikme yalnızca rozetle (kırmızı) gösterilir; satır zemini diğer kartlarla aynı.
-              const rozet = dueBadge(asama.due_date, today);
-              return (
-                <ListeSatiri
-                  key={asama.id}
-                  href={`/panel/operations/${asama.workflow_id}`}
-                  baslik={formatSubject(asama.title)}
-                  baslikIpucu={asama.title}
-                  /* Aşama adı tek başına hangi işin maddesi olduğunu söylemiyor. */
-                  alt={`${asama.operation_workflows?.customer_name || "Kurum içi iş"} · ${formatSubject(asama.operation_workflows?.title)}`}
-                  sag={<span className="status-pill" data-tone={rozet.tone} title={kisaTarih(asama.due_date)}>{rozet.label}</span>}
-                />
-              );
-            })}
+          <ListeKarti baslik="Aşama tarihleri" alt={`Tarihi en yakın ${LISTE} aşama`} bos={hicKayitYok ? "İşin adımlarına tarih girdikçe yaklaşanlar burada sıralanır." : "Tarihi girilmiş açık aşama yok."} href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamalar.length}
+            hata={Boolean(asamaError)} gruplar={asamaGruplari} not={asamaNotu}>
           </ListeKarti>
         ) : null}
 
         {canSeeOperations ? (
-          <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos={hicKayitYok ? "Müşteriniz iş portalından yazdığında mesajı burada görürsünüz." : "Müşterilerden mesaj yok."} href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length}>
+          <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos={hicKayitYok ? "Müşteriniz iş portalından yazdığında mesajı burada görürsünüz." : "Müşterilerden mesaj yok."} href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length} hata={Boolean(mesajError)}>
             {mesajlar.map((mesaj) => (
               /* Operasyon genel bakışıyla aynı: iş detayı mesaj penceresi açık gelir. */
               <ListeSatiri
@@ -379,7 +405,7 @@ export default async function PanelPage() {
         ) : null}
 
         {canSeePosta ? (
-          <ListeKarti baslik="Gelen postalar" alt={`Gelen müşteri e-postaları, son ${LISTE}`} bos="Kutuda konuşma yok." href="/panel/posta" hrefEtiket="Postaya git" sayi={postalar.length}>
+          <ListeKarti baslik="Gelen postalar" alt={`Gelen müşteri e-postaları, son ${LISTE}`} bos="Kutuda konuşma yok." href="/panel/posta" hrefEtiket="Postaya git" sayi={postalar.length} hata={Boolean(postaError)}>
             {postalar.map((posta) => (
               <ListeSatiri
                 key={posta.thread_id}

@@ -15,11 +15,11 @@ import { PresenceHeartbeat } from "./presence-heartbeat";
 import { MessagesDrawer } from "./messages-drawer";
 import { NotificationsDrawer } from "./notifications-drawer";
 import { loadMessagesInit, mesajlarBaslangici } from "./messages/load-messages";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { hostFromHeaders, isManagementHost, MANAGEMENT_HOST } from "@/lib/site/host-rules";
 import { formatPersonName } from "@/lib/format-name";
-import { osUygulamalari } from "./os/os-apps";
-import { OsDock } from "./os/os-dock";
+import { NAV_CEREZI, osUygulamalari } from "./os/os-apps";
+import { OsNavigasyon } from "./os/os-navigasyon";
 import { konsolUygulamalari } from "./os/konsol-apps";
 import { YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
 import { OsGeri } from "./os/os-geri";
@@ -154,6 +154,9 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     kurumun paneli değil, platformun kendisi.
   */
   const konsolHostu = isManagementHost(hostFromHeaders(await headers()));
+  /* Sol menünün daraltılmış/geniş durumu (os/os-navigasyon.tsx): ilk çizimde
+     çerezden, ki sayfa açılırken menü genişleyip daralmasın (yerleşim sıçraması). */
+  const navDar = (await cookies()).get(NAV_CEREZI)?.value === "dar";
 
   /*
     Dock rozetleri ŞİMDİ başlıyor (02.11.2026, hızlandırma): eskiden kabuğun
@@ -435,7 +438,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     const benimAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
     sure.bitir();
-    return <div className="panel-root os-root" style={tenantStyle}>{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
+    return <div className="panel-root os-root" data-nav={navDar ? "dar" : "genis"} style={tenantStyle}>{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
       <PresenceHeartbeat />
       <NavProgress />
       <GlobalActionFeedback />
@@ -479,8 +482,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       <section className="os-workspace">
         <div className="panel-content">{agreementBanner}{children}</div>
       </section>
-      {/* Onay penceresi açıkken dock ve komut paleti (Ctrl+K) çizilmez: pencerenin üstüne açılıp odağı çalmasınlar. */}
-      {sozlesmeGerekli ? null : <OsDock uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} />}
+      {/* Onay penceresi açıkken menü ve komut paleti (Ctrl+K) çizilmez: pencerenin üstüne açılıp odağı çalmasınlar. */}
+      {sozlesmeGerekli ? null : <OsNavigasyon uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} dar={navDar} />}
       {/* Uygulama kabuğu: çevrimdışı ekranı, yeni sürüm uyarısı, ana ekrana ekleme önerisi. */}
       <OsUygulamaKabugu />
       {sozlesmeGerekli ? null : <OsKomutPaleti uygulamalar={uygulamalar} cikis={logout} />}
@@ -546,7 +549,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
   sure.bitir();
-  return <div className="panel-root os-root os-konsol">{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
+  return <div className="panel-root os-root os-konsol" data-nav={navDar ? "dar" : "genis"}>{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
@@ -574,11 +577,12 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <section className="os-workspace">
       <div className="panel-content">{agreementBanner}{children}</div>
     </section>
-    {/* "Diğer uygulamalar": konsoldan kiracı paneline dönüş. Eskiden sol
-        menünün dibinde bir bağlantıydı. */}
-    {sozlesmeGerekli ? null : <OsDock
+    {/* "Diğer uygulamalar": konsoldan kiracı paneline dönüş (menünün
+        "Arvo ürünleri" penceresinde). */}
+    {sozlesmeGerekli ? null : <OsNavigasyon
       uygulamalar={konsolUygulamalariListesi}
       digerUygulamalar={[{ kod: "panel", ad: "Kiracı Paneli", href: `https://${DEFAULT_APP_HOST}/panel`, ayniSekme: false, marka: "arvoos" as const }]}
+      dar={navDar}
     />}
     <OsUygulamaKabugu />
     {/* Ctrl+K kiracı adıyla da arıyor: konsolda en çok tekrarlanan

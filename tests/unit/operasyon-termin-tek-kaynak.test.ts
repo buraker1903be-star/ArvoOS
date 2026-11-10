@@ -17,7 +17,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { dueBadge } from "@/lib/operasyon-termin";
+import { dueBadge, terminGruplari } from "@/lib/operasyon-termin";
 
 const BUGUN = "2026-10-01";
 const kok = (...p: string[]) => path.resolve(import.meta.dirname, "../../", ...p);
@@ -73,4 +73,25 @@ describe("operasyon termini tek kaynakta", () => {
       "Termin metni ops-shared/dueBadge dışında yazılmamalı",
     );
   });
+});
+
+/* Ana ekran grupları (10.11.2026): "gecikmiş" dueBadge'in kararı; sıra korunur. */
+
+test("ana ekran: gecikmiş, yaklaşan ve tarihsiz ayrılır; bugün teslim yaklaşandır; sıra korunur", () => {
+  const satirlar = [
+    { ad: "a", due: "2026-11-01" },
+    { ad: "b", due: "2026-11-09" },
+    { ad: "c", due: "2026-11-10" },
+    { ad: "d", due: "2026-11-20" },
+    { ad: "e", due: null },
+  ];
+  const g = terminGruplari(satirlar, (s) => s.due, "2026-11-10");
+  assert.deepEqual(g.gecikmis.map((s) => s.ad), ["a", "b"]);
+  assert.deepEqual(g.yaklasan.map((s) => s.ad), ["c", "d"]);
+  assert.deepEqual(g.tarihsiz.map((s) => s.ad), ["e"]);
+});
+
+test("ana ekran: tamamlanmış iş gecikmiş sayılmaz (dueBadge ile aynı)", () => {
+  const g = terminGruplari([{ due: "2026-01-01", status: "completed" }], (s) => s.due, "2026-11-10", (s) => s.status);
+  assert.equal(g.gecikmis.length, 0);
 });
