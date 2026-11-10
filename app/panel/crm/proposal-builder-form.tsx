@@ -185,7 +185,9 @@ export function ProposalBuilderForm({
 
         <p className="wide kayit-formu-bolum">{belge}</p>
         <label className="wide"><span>{belge} başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" required defaultValue={title} /></label>
-        <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" required defaultValue={scope} placeholder="Verilecek hizmetler ve teslimler" /></label>
+        <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" required minLength={2} defaultValue={scope} placeholder="Verilecek hizmetler ve teslimler" /></label>
+        {/* OS-01: kutu yalnızca talepteki müşteri kapsamıyla dolar; iç not aktarılmaz. */}
+        <p className="wide kayit-formu-not">Müşteriye gösterilir: {belge.toLocaleLowerCase("tr")} belgesinde, PDF&apos;te ve müşteri sayfasında yer alır. Talepteki iç notlar buraya aktarılmaz.</p>
 
         <p className="wide kayit-formu-bolum">Tutar ve ödeme</p>
         <label><span>{belge} tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" required placeholder="0,00" onChange={(event) => setAmount(parseTurkishAmount(event.target.value) || 0)} /></label>
