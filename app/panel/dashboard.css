@@ -403,6 +403,20 @@ a.dash-setup-step:active{transform:scale(.985)}
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
 }
 .dash-cols--sabit .dash-col .dash-card-link{flex:none}
+/* EŞİT YÜKSEKLİK (.dash-esit, 10.11.2026; şimdilik Operasyon genel bakışı).
+   Ürün kuralı: aynı satırdaki kartların üst VE alt kenarları hizalı; yan
+   yana kartlar kalan yüksekliği paylaşır, başlık üstte, alt bağlantı ortak
+   alt hizada, yalnızca gövde kayar. Ana ekran ve CRM'deki "kart içeriği
+   kadar" kuralının (yukarıda, FX-03) yerine geçer, ama yalnızca bu sınıfı
+   taşıyan sayfada — onlar ayrıca yeniden tasarlanmadı.
+   Dört liste masaüstünde TEK satırda: auto-fit dar masaüstünde 3+1'e
+   bölünüp her satıra yarım yükseklik bırakıyordu (bir kayıt bile
+   sığmayabiliyordu); 900px altında zaten görünüm seçici var. */
+.dash-esit .dash-cols.dash-cols--sabit{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);align-items:stretch}
+.dash-esit .dash-cols--sabit>.dash-gorunum-panel{max-height:none}
+.dash-esit .dash-cols--sabit .dash-col{flex:1 1 auto}
+/* Boş kart: açıklama gövdenin ortasında, bağlantı alt hizada; alan sahte içerikle doldurulmaz. */
+.dash-esit .dash-col-govde>.dash-empty:only-child{margin-block:auto;text-align:center}
 /* Grafik destekleyici: yüksekliği ekrana göre sınırlı, toplam ve tarih başlıkta okunur kalır. */
 .dash-sabit .dash-bars{height:clamp(36px,7dvh,80px)}
 
