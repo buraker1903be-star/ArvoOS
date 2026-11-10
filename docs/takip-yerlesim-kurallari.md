@@ -38,6 +38,8 @@ hiçbir satır "doğrulandı" sayılmaz.
      (`app/panel/operations/actions.ts`, `lib/is-adimlari.ts · adimZatenHedefte`).
    - Talep oluşturma (`app/panel/crm/actions.ts`, `crm_opportunities` insert): tekillik/idempotency anahtarı
      **yok**; çift gönderim iki talep açabilir. Öneri: formda tek kullanımlık istek anahtarı + benzersiz kısıt.
+     10.11.2026: Yeni talep formunun düğmesi gerçek bekleme durumuyla kilitli (`docs/form-kontrol-standardi.md`);
+     bu ARAYÜZ kilidi, sunucu/veritabanı tekilliği hâlâ yok — madde açık.
    - PayTR bildirimi (`merchant_oid` tekil) ve havale onayı (`status = pending` koşulu) zaten tekrara dayanıklı.
 7. **Sayfa genel geri bildirimi** (`global-action-feedback.tsx`): "Yükleniyor…" göstergesi en geç 6 sn'de
    kapanıyor; işlem sürüyor olabilir. Kilit vermiyor (PR #314'te bu yüzden kilit kaldırıldı); gösterge

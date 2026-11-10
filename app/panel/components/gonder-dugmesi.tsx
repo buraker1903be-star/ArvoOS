@@ -30,14 +30,23 @@ import "./gonder-dugmesi.css";
 
   Tarayıcı düzeyi sınaması: scripts/gonder-dugmesi-tarayici.mjs.
 */
-export function GonderDugmesi({ children, className = "panel-primary", bekleyenEtiket = "İşleniyor…", uzunEtiket = "Hâlâ işleniyor — sonucu bekleyin", ariaLabel }: {
+export function GonderDugmesi({ children, className = "panel-primary", bekleyenEtiket = "İşleniyor…", uzunEtiket = "Hâlâ işleniyor — sonucu bekleyin", ariaLabel, bekliyor }: {
   children: ReactNode;
   className?: string;
   bekleyenEtiket?: ReactNode;
   uzunEtiket?: ReactNode;
   ariaLabel?: string;
+  /*
+    Formun işlemi `action` özniteliğiyle değil elle (useActionState +
+    startTransition) başlatılıyorsa useFormStatus hiçbir şey görmez; o
+    formlar gerçek bekleme durumunu buradan verir (ör. Yeni talep formu:
+    sunucu hatasında React'in formu sıfırlamasını önlemek için elle
+    gönderiyor). Verilmezse eskisi gibi useFormStatus.
+  */
+  bekliyor?: boolean;
 }) {
-  const { pending } = useFormStatus();
+  const durum = useFormStatus();
+  const pending = bekliyor ?? durum.pending;
   return (
     <button type="submit" className={className} disabled={pending} aria-busy={pending || undefined} aria-label={pending ? undefined : ariaLabel}>
       {pending ? <BeklemeEtiketi kisa={bekleyenEtiket} uzun={uzunEtiket} /> : children}
@@ -60,8 +69,11 @@ export function GonderDugmesi({ children, className = "panel-primary", bekleyenE
 function BeklemeEtiketi({ kisa, uzun }: { kisa: ReactNode; uzun: ReactNode }) {
   return (
     <span className="gonder-bekleme" role="status">
-      <span className="gonder-bekleme-kisa">{kisa}</span>
-      <span className="gonder-bekleme-uzun">{uzun}</span>
+      <span className="gonder-donen" aria-hidden="true" />
+      <span className="gonder-bekleme-metin">
+        <span className="gonder-bekleme-kisa">{kisa}</span>
+        <span className="gonder-bekleme-uzun">{uzun}</span>
+      </span>
     </span>
   );
 }
