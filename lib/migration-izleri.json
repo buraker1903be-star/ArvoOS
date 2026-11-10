@@ -385,5 +385,22 @@
         "sutun": "ozel_maddeler"
       }
     ]
+  },
+  {
+    "migration": "20261110063102_lisans_kaydi_yokken_odeme",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.arvo_activate_license_period"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.arvo_record_paytr_payment"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.arvo_reprocess_paytr_event"
+      }
+    ]
   }
 ]
