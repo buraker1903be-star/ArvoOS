@@ -4,7 +4,8 @@ import { formatPersonName } from "@/lib/format-name";
 import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
 import { formatSubject } from "@/lib/table-format";
 import { gunlukSeriDilimler } from "@/lib/gunluk-seri";
-import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi, yeniMi } from "../os/genel-bakis";
+import { GENEL_BAKIS_SATIR, GenelBakis, ListeKarti, ListeSatiri, SeriKarti, simdi, yeniMi } from "../os/genel-bakis";
+import { GorunumSecici } from "../os/gorunum-secici";
 import { relativeTime } from "../crm/last-contact";
 import { activeStatuses, addDaysKey, adimIlerlemesi, dueBadge, surenStatuses, todayIstanbul, workflowStatusNames } from "./ops-shared";
 import "../crm/crm.css";
@@ -228,19 +229,36 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const onizlemeKesildi = messages.length >= MESAJ_ONIZLEME;
   const isSayisiMetni = `${onizlemeKesildi ? "en az " : ""}${threads.size} işte okunmamış`;
 
+  /*
+    SAYFA KAYMAZ, KARTLAR AYNI HİZADA (10.11.2026).
+
+    Eskiden bu sayfa ana ekran ve CRM'in PR #314'te geçtiği sabit düzene
+    geçmemişti: grafik + dört liste kartı sayfa boyunca yığılıyor, dış
+    kaydırma çıkıyordu (os/genel-bakis.tsx varsayılan akışı). Artık aynı
+    sabit kabuk (dashboard.css · .dash-sabit) ve görünüm seçici; ek olarak
+    bu sayfaya özgü EŞİT YÜKSEKLİK kuralı (.dash-esit): aynı satırdaki
+    kartların üst ve alt kenarları hizalı, başlık üstte, alt bağlantı ortak
+    alt hizada, yalnızca gövde kayar.
+
+    Seçicide (dar/kısa ekran) ilk görünüm "Aşamalar": günlük işin önceliği
+    listeler; grafik destekleyici olduğu için seçicide sonda. Masaüstünde
+    grafik yine listelerin üstünde ve DOM'da da önce gelir.
+  */
   return (
     <GenelBakis
       gizliBaslik="Operasyon genel bakış"
+      sinif="dash-sabit dash-esit"
       uyari={uyarilar}
     >
-      <SeriKarti baslik="Tamamlanan aşamalar" alt="Son 14 gün" seri={seri} adet="aşama" />
-
-      <ListeIzgarasi etiket="Operasyon işleri">
-        {/*
+      <GorunumSecici
+        etiket="Operasyon görünümü"
+        paneller={[
+          { anahtar: "asamalar", etiket: "Aşamalar", yer: "liste", icerik: (
+        /*
           YAKLAŞAN AŞAMALAR: "hangi maddenin tarihi yaklaşıyor". İşin termini
           daha uzakken gecikmiş ara teslim asıl kaçırılan şey; gecikmeler en
           üstte (tarih sırası).
-        */}
+        */
         <ListeKarti baslik="Yaklaşan aşamalar" alt={gecikenAsama ? `${gecikenAsama} aşamanın teslimi gecikti` : "Önümüzdeki 7 gün içinde teslim edilecek"} bos="Yaklaşan aşama yok. Aşama tarihleri iş detayında “Tarihleri dağıt” ile doldurulabilir." href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamaToplami}>
           {yaklasanAsamalar.slice(0, GENEL_BAKIS_SATIR).map((asama) => {
             const rozet = dueBadge(asama.tarih, today);
@@ -256,7 +274,8 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
             );
           })}
         </ListeKarti>
-
+          ) },
+          { anahtar: "yeni", etiket: "Yeni işler", yer: "liste", icerik: (
         <ListeKarti baslik="Yeni gelen işler" alt={unassignedPlanned ? `${unassignedPlanned} iş sorumlu bekliyor` : "Planlanan, henüz başlamamış işler"} bos="Yeni iş yok. Sözleşmesi onaylanan işler burada belirir." href={`${ISLER}?durum=planned`} hrefEtiket="Tümünü gör" sayi={sayi(ozet.planlanan)}>
           {plannedList.slice(0, GENEL_BAKIS_SATIR).map((workflow) => {
             const sorumlu = assigneeOf(workflow);
@@ -273,8 +292,9 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
             );
           })}
         </ListeKarti>
-
-        {/* Termin bilgisi (eski "Teslim tarihi yaklaşan" kartı) burada rozet olarak. */}
+          ) },
+          { anahtar: "devam", etiket: "Devam eden", yer: "liste", icerik: (
+        /* Termin bilgisi (eski "Teslim tarihi yaklaşan" kartı) burada rozet olarak. */
         <ListeKarti baslik="Devam eden işler" alt={blockedCount ? `${blockedCount} iş beklemede` : overdueCount || dueSoonCount ? `${overdueCount ? `${overdueCount} geciken, ` : ""}bu hafta ${dueSoonCount} teslim` : "Üzerinde çalışılan işler"} bos="Şu an devam eden iş yok." href={`${ISLER}?durum=devam`} hrefEtiket="Tümünü gör" sayi={sayi(ozet.suren)}>
           {ongoingList.slice(0, GENEL_BAKIS_SATIR).map((workflow) => {
             const ilerleme = adimIlerlemesi(Number(workflow.adim_tamam), Number(workflow.adim_toplam));
@@ -292,7 +312,8 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
             );
           })}
         </ListeKarti>
-
+          ) },
+          { anahtar: "mesajlar", etiket: "Mesajlar", yer: "liste", icerik: (
         <ListeKarti baslik="Müşteri mesajları" alt={unreadTotal ? isSayisiMetni : "Takip ekranından yazılanlar"} bos="Okunmamış müşteri mesajı yok." href={`${ISLER}?mesaj=yeni`} hrefEtiket="Tümünü gör" sayi={threadList.length}>
           {threadList.slice(0, GENEL_BAKIS_SATIR).map(({ latest, count }) => (
             <ListeSatiri
@@ -308,7 +329,10 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
             />
           ))}
         </ListeKarti>
-      </ListeIzgarasi>
+          ) },
+          { anahtar: "tamamlanan", etiket: "Tamamlanan", yer: "ust", icerik: <SeriKarti baslik="Tamamlanan aşamalar" alt="Son 14 gün" seri={seri} adet="aşama" /> },
+        ]}
+      />
     </GenelBakis>
   );
 }

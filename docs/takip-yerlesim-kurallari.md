@@ -23,8 +23,10 @@ hiçbir satır "doğrulandı" sayılmaz.
 
 ## Kalan ihlaller (yapılmadı)
 
-1. **Operasyon, Finans, İK genel bakışları**: eski 4 sütunlu, sayfa boyunca kayan düzen. Çözüm hazır parçalarla:
+1. **Finans ve İK genel bakışları**: eski 4 sütunlu, sayfa boyunca kayan düzen. Çözüm hazır parçalarla:
    `GenelBakis sinif="dash-sabit"` + `GorunumSecici` (ana ekran / CRM genel bakışta olduğu gibi).
+   **Operasyon genel bakışı** 10.11.2026'da geçti (`dash-sabit dash-esit`: aynı satırdaki kartlar eşit
+   yükseklikte, alt bağlantılar ortak hizada). Bileşen düzeyinde ölçüldü; gerçek uygulamada **UNVERIFIED**.
 2. **Liste sayfaları (talepler, teklifler, sözleşmeler, işler, cari, finans)**: dar ekranda tablo satırları; ürün
    kuralı öncelikli sütun ya da kayıt kartı istiyor. Tablolarda yatay taşma olup olmadığı ölçülmedi.
 3. **Uzun formlar (çekmece ve pencere)**: başlık ve gönder alanı sabit, gövde kayar kuralı her formda
