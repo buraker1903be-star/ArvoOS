@@ -395,6 +395,10 @@
       },
       {
         "tur": "islev",
+        "ad": "private.arvo_apply_paytr_event"
+      },
+      {
+        "tur": "islev",
         "ad": "public.arvo_record_paytr_payment"
       },
       {

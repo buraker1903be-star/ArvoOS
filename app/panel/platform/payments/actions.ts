@@ -79,10 +79,12 @@ function odemeHatasi(baslik: string, mesaj: string): string {
 
 /*
   İşlenemeyen PayTR bildirimini yeniden işleme. Yalnızca 'no_license'
-  sonuçlu olay için: kurucu lisansı oluşturduktan sonra aynı bildirimi
-  kayıt işlevinden yeniden geçirir. Tekrar uygulanmasını veritabanı
-  engelliyor (işlev yalnızca 'no_license' olayı kabul ediyor, merchant_oid
-  tekil) — burada ikinci bir koruma yazmıyoruz.
+  sonuçlu olay için: kurucu lisansı oluşturduktan sonra AYNI olay satırı
+  ortak iş mantığından (private.arvo_apply_paytr_event) yeniden geçer —
+  olay silinmez, kimliği/zamanı/payload'ı korunur. Tekrar uygulanmasını,
+  eşzamanlı ikinci denemeyi ve PayTR tekrarını veritabanı engelliyor
+  (kilit sırası bağlantı → olay → lisans); burada ikinci bir koruma
+  yazmıyoruz. Her deneme veritabanında activity_logs'a yazılıyor.
 */
 async function reprocessPaytrEvent__impl(formData: FormData) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
@@ -94,8 +96,9 @@ async function reprocessPaytrEvent__impl(formData: FormData) {
 
   const { data, error } = await supabase.rpc("arvo_reprocess_paytr_event", { p_event_id: eventId });
   if (error) {
-    if (error.message.includes("event_not_reprocessable")) throw new Error("Bu bildirim yeniden işlenemez; zaten işlenmiş ya da başka bir sebeple düşmüş.");
+    if (error.message.includes("event_not_reprocessable")) throw new Error("Bu bildirim artık yeniden işlenemez: başka bir kurucu az önce işlemiş ya da başka bir sebeple düşmüş olabilir. Sayfayı yenileyin.");
     if (error.message.includes("event_not_found")) throw new Error("Bildirim bulunamadı; sayfayı yenileyin.");
+    if (error.message.includes("event_without_link")) throw new Error("Bildirimin ödeme bağlantısı silinmiş; otomatik uygulanamaz, elle işlenmeli.");
     throw new Error(`Bildirim yeniden işlenemedi: ${error.message}`);
   }
 
@@ -105,7 +108,7 @@ async function reprocessPaytrEvent__impl(formData: FormData) {
   revalidatePath("/panel/platform/musteriler", "layout");
   revalidatePath("/panel/platform/billing");
 
-  if (data === "no_license") throw new Error("Kurumun ArvoOS lisans kaydı hâlâ yok; önce Platform → Lisanslar'dan lisansı oluşturun. Bildirim listede kaldı.");
+  if (data === "no_license") throw new Error("Kurumun ArvoOS lisans kaydı hâlâ yok; önce Platform → Lisanslar'dan lisansı oluşturun. Tahsilat kaydı yerinde, bildirim listede kaldı ve deneme işlem kaydına yazıldı.");
   if (data !== "recorded") throw new Error(`Bildirim yeniden işlendi ama kaydedilemedi (sonuç: ${String(data)}). Listede yeni sebebiyle görünüyor.`);
 }
 

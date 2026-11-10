@@ -114,7 +114,24 @@ export async function POST(request: Request) {
     return text(500, "record failed"); // OK dönmüyoruz: PayTR yeniden dener
   }
 
-  // Ödenen bağlantıyı PayTR'de de kapat (tek kullanımlık; en iyi çaba).
+  /*
+    Ödenen bağlantıyı PayTR'de de kapat (tek kullanımlık; en iyi çaba).
+    'no_license' da tahsil edilmiş bir ödeme (20261110063102): para
+    alındı, yalnızca lisansa uygulanamadı. Eskiden bağlantı yalnızca
+    'recorded'da kapatılıyordu; lisansı olmayan kurumda PayTR adresi açık
+    kalıyor ve müşteri aynı dönemi ikinci kez ödeyebiliyordu.
+  */
+  if (result === "recorded" || result === "no_license") {
+    try {
+      await deletePaytrLink(credentials, link.provider_link_id);
+    } catch (closeError) {
+      console.warn("[paytr] ödenen bağlantı kapatılamadı", closeError instanceof Error ? closeError.message : closeError);
+    }
+  }
+  if (result === "no_license") {
+    console.error("[paytr] tahsil edildi, lisans kaydı yok; Platform → Ödemeler'den yeniden işlenmeli", link.payer_organization_id, fields.merchant_oid);
+  }
+
   if (result === "recorded") {
     /*
       AI kredisi ArvoLab'ın veritabanında; ArvoOS'un SQL'i oraya
@@ -160,11 +177,6 @@ export async function POST(request: Request) {
       }
     }
 
-    try {
-      await deletePaytrLink(credentials, link.provider_link_id);
-    } catch (closeError) {
-      console.warn("[paytr] ödenen bağlantı kapatılamadı", closeError instanceof Error ? closeError.message : closeError);
-    }
     // ArvoLab ayrı veritabanında: uzayan lisansı oraya yansıt. Başarısız olsa
     // bile PayTR'ye OK dönüyoruz; ödeme kaydedildi, tekrar bildirim yeni bir
     // şey yazmaz. Kurucu Platform → Lisans'tan kaydederek elle tetikleyebilir.

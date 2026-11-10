@@ -22,7 +22,7 @@ export const incidentLabels: Record<string, string> = {
   no_party: "Cari bulunamadı",
   not_found: "Bağlantı bulunamadı",
   invalid: "Geçersiz bildirim",
-  no_license: "Lisans kaydı yok",
+  no_license: "Tahsil edildi · lisansa uygulanmadı",
 };
 
 export const incidentNotes: Record<string, string> = {
@@ -34,7 +34,7 @@ export const incidentNotes: Record<string, string> = {
   // 10.11.2026 (20261110063102): eskiden lisans satırı yokken ödeme "onaylı"
   // yazılıp bağlantı "ödendi" oluyor, lisans ise hiç açılmıyordu — olay da
   // 'recorded' göründüğü için hiçbir listeye düşmüyordu.
-  no_license: "Kurumun ArvoOS lisans kaydı yok; ödeme lisansa uygulanmadı, onaylı ödeme yazılmadı. Platform → Lisanslar'dan lisansı (paket, ücret, kullanıcı limiti) oluşturup \"Yeniden işle\" ile uygulayın.",
+  no_license: "PayTR tahsilatı başarılı bildirdi; para alındı. Kurumun ArvoOS lisans kaydı olmadığı için ödeme lisansa uygulanmadı (onaylı ödeme ve dönem yazılmadı). Müşteriden yeniden ödeme istemeyin: Platform → Lisanslar'dan lisansı (paket, ücret, kullanıcı limiti) oluşturup \"Yeniden işle\" ile uygulayın.",
 };
 
 /** Kurucunun lisansı oluşturduktan sonra yeniden işleyebileceği sonuçlar (arvo_reprocess_paytr_event ile aynı küme). */

@@ -11,8 +11,14 @@
 //     tekrarı ikinci kez uzatmaz;
 //   - lisans satırı yoksa ödeme "onaylandı" görünürken lisans sessizce
 //     açılmaz: havale onayı geri alınır ve bekliyor kalır; PayTR olayı
-//     'no_license' olarak kurucunun listesine düşer;
-//   - lisans oluşturulunca yeniden işlenir, bir kez uygulanır.
+//     'no_license' olarak kurucunun listesine düşer, tahsilat (bağlantı
+//     'paid') yazılır ama onaylı ödeme isteği yazılmaz;
+//   - lisans oluşturulunca AYNI olay satırı yeniden işlenir (kimlik,
+//     received_at, payload korunur), bir kez uygulanır; her deneme
+//     activity_logs'a kurucunun adıyla yazılır.
+//
+// Bu dosya SIRALI akışı sınar; eşzamanlılık kanıtı DEĞİLDİR. İki
+// bağlantılı sınama gerçek PostgreSQL ister: scripts/odeme-eszamanlilik.sh.
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
@@ -23,6 +29,7 @@ const ARVO = "00000000-0000-4000-8000-0000000000a0";
 const SALON = "00000000-0000-4000-8000-0000000000a1";
 const HESAP = "00000000-0000-4000-8000-0000000000e1";
 const BAGLANTI = "00000000-0000-4000-8000-0000000000f1";
+const YOK = "00000000-0000-4000-8000-00000000dead";
 
 let db;
 before(async () => {
@@ -30,6 +37,7 @@ before(async () => {
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
+const sayi = async (sql, p = []) => Number((await tek(sql, p)).n);
 
 async function tohum() {
   await rol(db, "postgres");
@@ -53,6 +61,7 @@ const lisans = () => tek(
 );
 const birAySonra = async (sn) => Number((await tek(`select extract(epoch from to_timestamp($1) + interval '1 month') as s`, [sn])).s);
 const ayniAn = (a, b) => assert.equal(Math.round(Number(a)), Math.round(Number(b)));
+const ayniZaman = (a, b, mesaj) => assert.equal(new Date(a).getTime(), new Date(b).getTime(), mesaj);
 
 async function lisansiSil() {
   await rol(db, "postgres");
@@ -100,15 +109,28 @@ async function baglanti() {
 async function bildirim(oid = "OID-1") {
   await rol(db, "service_role");
   const r = await tek(
-    `select public.arvo_record_paytr_payment($1, $2, 150000, 150000, 'TL', false, '{"payment_type":"card"}'::jsonb) as sonuc`,
+    `select public.arvo_record_paytr_payment($1, $2, 150000, 150000, 'TL', false, '{"payment_type":"card","taksit":"1"}'::jsonb) as sonuc`,
     [BAGLANTI, oid],
   );
   await rol(db, "postgres");
   return r.sonuc;
 }
 
-const onayliOdemeSayisi = async () =>
-  Number((await tek(`select count(*) as n from public.organization_payment_requests where organization_id = $1 and status = 'approved' and product = 'arvoos'`, [SALON])).n);
+async function yenidenIsle(id) {
+  await rol(db, "authenticated", KURUCU);
+  const r = await tek(`select public.arvo_reprocess_paytr_event($1) as s`, [id]);
+  await rol(db, "postgres");
+  return r.s;
+}
+
+const OLAY = `select id, received_at, payload, result, total_amount, payment_amount, currency from public.payment_provider_events where merchant_oid = 'OID-1'`;
+const onayliOdemeSayisi = () =>
+  sayi(`select count(*) as n from public.organization_payment_requests where organization_id = $1 and status = 'approved' and product = 'arvoos'`, [SALON]);
+const aktivasyonSayisi = () => sayi(`select count(*) as n from public.billing_subscriptions where organization_id = $1`, [SALON]);
+const denetimKayitlari = async () => (await db.query(
+  `select actor_user_id, action, entity_type, entity_id, organization_id, metadata
+     from public.activity_logs where entity_type = 'payment_event' order by id`,
+)).rows;
 
 describe("ilk lisans ve normal ödeme", () => {
   test("kurum açılınca deneme lisansı tetikleyiciyle oluşur", () =>
@@ -128,6 +150,11 @@ describe("ilk lisans ve normal ödeme", () => {
       assert.equal(ilk.license_status, "active");
       assert.equal(ilk.trial_ends_at, null);
       ayniAn(ilk.son, await birAySonra(Number(ilk.simdi)));
+      const olay = await tek(OLAY);
+      assert.equal(olay.result, "recorded");
+      const link = await tek(`select status, paid_at from public.payment_links where id = $1`, [BAGLANTI]);
+      assert.equal(link.status, "paid");
+      ayniZaman(link.paid_at, olay.received_at, "ilk bildirimde paid_at eskisi gibi işlem anı");
 
       assert.equal(await bildirim(), "duplicate");
       const tekrar = await lisans();
@@ -169,65 +196,132 @@ describe("lisans kaydı yokken", () => {
       ayniAn(l.son, await birAySonra(Number(l.simdi)));
     }));
 
-  test("PayTR bildirimi 'no_license': onaylı ödeme ve 'ödendi' yazılmaz, olay kurucunun listesine düşer", () =>
+  test("PayTR bildirimi 'no_license': tahsilat yazılır, onaylı ödeme ve lisans dönemi yazılmaz, olay listeye düşer", () =>
     islem(db, async () => {
       await tohum();
       await baglanti();
       await lisansiSil();
       assert.equal(await bildirim(), "no_license");
-      assert.equal(await onayliOdemeSayisi(), 0);
-      const link = await tek(`select status from public.payment_links where id = $1`, [BAGLANTI]);
-      assert.equal(link.status, "active");
-      const olay = await tek(`select result from public.payment_provider_events where merchant_oid = 'OID-1'`);
+      assert.equal(await onayliOdemeSayisi(), 0, "lisansa uygulanmadan 'onaylı ödeme' yok");
+      assert.equal(await aktivasyonSayisi(), 0, "lisans dönemi/aktivasyon kaydı yok");
+      // Para PayTR'de tahsil edildi: bağlantı yeniden ödenecek açık borç gibi kalmaz.
+      const link = await tek(`select status, paid_at from public.payment_links where id = $1`, [BAGLANTI]);
+      assert.equal(link.status, "paid");
+      const olay = await tek(OLAY);
       assert.equal(olay.result, "no_license");
+      ayniZaman(link.paid_at, olay.received_at, "tahsilat anı = bildirimin geldiği an");
       // PayTR yeniden bildirse de aynı olay; ikinci kez işlenmez.
       assert.equal(await bildirim(), "duplicate");
+      assert.equal(await sayi(`select count(*) as n from public.payment_provider_events where merchant_oid = 'OID-1'`), 1);
     }));
 
-  test("kurucu lisansı oluşturup olayı yeniden işler: bir kez uygulanır, tekrar işlenemez", () =>
+  test("yeniden işleme olayı silmez: kimlik, zaman, payload korunur; başarısız deneme kanıtı kaybetmez; her deneme denetime düşer", () =>
     islem(db, async () => {
       await tohum();
       await baglanti();
       await lisansiSil();
       await bildirim();
-      const { id } = await tek(`select id from public.payment_provider_events where merchant_oid = 'OID-1'`);
+      const ilk = await tek(OLAY);
 
-      // Lisans hâlâ yokken yeniden işleme: yine 'no_license', olay kaybolmaz.
-      await rol(db, "authenticated", KURUCU);
-      assert.equal((await tek(`select public.arvo_reprocess_paytr_event($1) as s`, [id])).s, "no_license");
-      await rol(db, "postgres");
-      const yeniOlay = await tek(`select id, result from public.payment_provider_events where merchant_oid = 'OID-1'`);
-      assert.equal(yeniOlay.result, "no_license");
+      // Lisans hâlâ yokken: yine 'no_license', AYNI satır yerinde.
+      assert.equal(await yenidenIsle(ilk.id), "no_license");
+      const ara = await tek(OLAY);
+      assert.equal(ara.id, ilk.id, "olay silinip yeniden yaratılmadı");
+      ayniZaman(ara.received_at, ilk.received_at);
+      assert.deepEqual(ara.payload, ilk.payload);
+      assert.equal(ara.result, "no_license");
+      assert.equal(await onayliOdemeSayisi(), 0);
 
       await lisansiOlustur();
-      await rol(db, "authenticated", KURUCU);
-      assert.equal((await tek(`select public.arvo_reprocess_paytr_event($1) as s`, [yeniOlay.id])).s, "recorded");
-      await rol(db, "postgres");
+      assert.equal(await yenidenIsle(ilk.id), "recorded");
+      const son = await tek(OLAY);
+      assert.equal(son.id, ilk.id);
+      ayniZaman(son.received_at, ilk.received_at);
+      assert.deepEqual(son.payload, ilk.payload);
+      assert.equal(son.result, "recorded");
+      assert.equal(String(son.payment_amount), String(ilk.payment_amount));
+      assert.equal(String(son.total_amount), String(ilk.total_amount));
+      assert.equal(son.currency, ilk.currency);
+      const link = await tek(`select paid_at from public.payment_links where id = $1`, [BAGLANTI]);
+      ayniZaman(link.paid_at, ilk.received_at, "tahsilat anı yeniden işleme anıyla ezilmedi");
+
+      const kayitlar = await denetimKayitlari();
+      assert.equal(kayitlar.length, 2, "başarısız ve başarılı deneme ayrı ayrı kayıtlı");
+      for (const k of kayitlar) {
+        assert.equal(k.actor_user_id, KURUCU);
+        assert.equal(k.action, "reprocess");
+        assert.equal(k.entity_id, ilk.id);
+        assert.equal(k.organization_id, SALON, "kayıt ödeyen kurumun altında (müşteri kartı Hareketler)");
+        assert.equal(k.metadata.by, "founder_console");
+        assert.equal(k.metadata.merchant_oid, "OID-1");
+        assert.equal(k.metadata.onceki_sonuc, "no_license");
+      }
+      assert.deepEqual(kayitlar.map((k) => k.metadata.sonuc), ["no_license", "recorded"]);
+    }));
+
+  test("başarılı yeniden işleme: tek ödeme, tek aktivasyon, tek uzama; tekrar ve PayTR tekrarı engellenir", () =>
+    islem(db, async () => {
+      await tohum();
+      await baglanti();
+      await lisansiSil();
+      await bildirim();
+      const { id } = await tek(OLAY);
+      await lisansiOlustur();
+
+      assert.equal(await yenidenIsle(id), "recorded");
       const l = await lisans();
       assert.equal(l.license_status, "active");
       ayniAn(l.son, await birAySonra(Number(l.simdi)));
       assert.equal(await onayliOdemeSayisi(), 1);
-      const son = await tek(`select id, result from public.payment_provider_events where merchant_oid = 'OID-1'`);
-      assert.equal(son.result, "recorded");
+      assert.equal(await aktivasyonSayisi(), 1, "tek aktivasyon kaydı");
 
       await rol(db, "authenticated", KURUCU);
-      await reddedilir(db, `select public.arvo_reprocess_paytr_event($1)`, [son.id], /event_not_reprocessable/);
+      await reddedilir(db, `select public.arvo_reprocess_paytr_event($1)`, [id], /event_not_reprocessable/);
       await rol(db, "postgres");
       assert.equal(await bildirim(), "duplicate", "PayTR tekrarı ikinci kez uzatmaz");
       ayniAn((await lisans()).son, l.son);
+      assert.equal(await onayliOdemeSayisi(), 1);
+      assert.equal(await aktivasyonSayisi(), 1);
+      // Reddedilen deneme işlemiyle birlikte geri alındı; yalnızca başarılı deneme kayıtlı.
+      assert.equal((await denetimKayitlari()).length, 1);
     }));
 
-  test("yeniden işleme yalnızca kurucuya açık; anon hiç çağıramaz", () =>
+  test("işlenmiş ya da bulunmayan olay yeniden işlenemez", () =>
+    islem(db, async () => {
+      await tohum();
+      await baglanti();
+      assert.equal(await bildirim(), "recorded");
+      const { id } = await tek(OLAY);
+      await rol(db, "authenticated", KURUCU);
+      await reddedilir(db, `select public.arvo_reprocess_paytr_event($1)`, [id], /event_not_reprocessable/);
+      await reddedilir(db, `select public.arvo_reprocess_paytr_event($1)`, [YOK], /event_not_found/);
+    }));
+
+  test("yeniden işleme yalnızca kurucuya açık; yetkisiz deneme olaya dokunmaz", () =>
     islem(db, async () => {
       await tohum();
       await baglanti();
       await lisansiSil();
       await bildirim();
-      const { id } = await tek(`select id from public.payment_provider_events where merchant_oid = 'OID-1'`);
+      await lisansiOlustur();
+      const { id } = await tek(OLAY);
       await rol(db, "authenticated", SAHIP);
       await reddedilir(db, `select public.arvo_reprocess_paytr_event($1)`, [id], /Founder authorization required/);
       await rol(db, "anon");
       await reddedilir(db, `select public.arvo_reprocess_paytr_event($1)`, [id], /permission denied/);
+      await rol(db, "postgres");
+      assert.equal((await tek(OLAY)).result, "no_license", "yetkisiz deneme olayı değiştirmedi");
+      assert.equal(await onayliOdemeSayisi(), 0);
+      assert.equal((await denetimKayitlari()).length, 0);
+    }));
+
+  test("ortak iç işlev hiçbir istemci rolüne açık değil", () =>
+    islem(db, async () => {
+      await tohum();
+      for (const r of ["anon", "authenticated", "service_role"]) {
+        await rol(db, r, r === "authenticated" ? KURUCU : null);
+        await reddedilir(db, `select private.arvo_apply_paytr_event($1)`, [YOK], /permission denied/);
+      }
     }));
 
   test("ek ürün ödemesi ArvoOS lisansı olmasa da kendi satırını açar (değişmedi)", () =>

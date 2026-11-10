@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // Supabase'in hazır getirdikleri: roller, auth şeması, pgcrypto (extensions).
-const SUPABASE_KABUGU = `
+export const SUPABASE_KABUGU = `
 create role anon nologin;
 create role authenticated nologin;
 create role service_role nologin bypassrls;
@@ -40,7 +40,7 @@ grant execute on all functions in schema auth, extensions to anon, authenticated
 
 // Supabase public şemasındaki tablolara bu üç role varsayılan olarak her hakkı
 // verir; asıl kapıyı RLS tutar. Döküm tablo yetkilerini içermeyebilir.
-const SUPABASE_VARSAYILAN_YETKI = `
+export const SUPABASE_VARSAYILAN_YETKI = `
 grant all on all tables in schema public to anon, authenticated, service_role;
 grant all on all sequences in schema public to anon, authenticated, service_role;
 `;
@@ -104,7 +104,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   (scripts/check-schema-usage.mjs yorumları ayıklıyor).
 */
 const yorumsuz = (sql) => sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
-const yetkiSatirlari = (sql) => yorumsuz(sql).match(/^\s*(?:grant|revoke)\s[^;]*;/gim) ?? [];
+export const yetkiSatirlari = (sql) => yorumsuz(sql).match(/^\s*(?:grant|revoke)\s[^;]*;/gim) ?? [];
 
 /**
  * Bir migration'ın YALNIZCA yetki satırlarını uygular.
