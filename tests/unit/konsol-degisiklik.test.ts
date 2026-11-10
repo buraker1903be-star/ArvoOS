@@ -56,3 +56,19 @@ test("kayıt cümlesi: üyelik, değişiklik ve bilinmeyen tür", () => {
   assert.equal(lisans.ton, "warning");
   assert.equal(konsolKaydiCumlesi({ action: "xyz", entity_type: "baska", metadata: null }).olay, "xyz");
 });
+
+/* arvo_reprocess_paytr_event'in yazdığı kayıt (20261110063102): başarısız
+   deneme uyarı, başarılı deneme bilgi tonunda; cümle veritabanının
+   metadata'sından. */
+test("ödeme bildirimi yeniden işleme kaydı: başarısız deneme uyarı, başarılı bilgi", () => {
+  const kayit = (sonra: string, baslik: string) => konsolKaydiCumlesi({
+    action: "reprocess", entity_type: "payment_event",
+    metadata: { by: "founder_console", baslik, degisiklikler: [{ alan: "result", ad: "Bildirim", once: "Tahsil edildi, lisans kaydı yok", sonra }] },
+  });
+  const basarisiz = kayit("Tahsil edildi, lisans kaydı yok", "PayTR ödemesi yeniden işlendi, lisansa uygulanamadı");
+  assert.equal(basarisiz.olay, "PayTR ödemesi yeniden işlendi, lisansa uygulanamadı");
+  assert.equal(basarisiz.ton, "warning");
+  const basarili = kayit("Lisansa uygulandı", "PayTR ödemesi lisansa uygulandı");
+  assert.equal(basarili.ayrinti, "Bildirim: Tahsil edildi, lisans kaydı yok → Lisansa uygulandı");
+  assert.equal(basarili.ton, "info");
+});

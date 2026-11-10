@@ -132,6 +132,25 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const belgeler = admin ? await kurumBelgeleri(admin, organization.id) : null;
 
   /*
+    TAHSİL EDİLDİ AMA LİSANSA UYGULANMADI (10.11.2026, 20261110063102).
+    PayTR parayı aldığı hâlde kurumun ArvoOS lisans kaydı yoksa bildirim
+    'no_license' kalıyor: tahsilat yazılı, onaylı ödeme ve dönem yazılı
+    değil. Müşteri bu ekranda "ödeme yapılmadı" izlenimi alıp aynı tutarı
+    yeniden ödememeli; iki durum ayrı cümleyle yazılıyor. Tablo istemciye
+    kapalı (yalnızca service_role), okuma kurumun kendi kimliğiyle.
+  */
+  type UygulanmayanOdeme = { merchant_oid: string; payment_amount: number | null; received_at: string };
+  let uygulanmayanlar: UygulanmayanOdeme[] = [];
+  if (admin) {
+    const { data, error } = await admin.from("payment_provider_events")
+      .select("merchant_oid,payment_amount,received_at,payment_links!inner(payer_organization_id)")
+      .eq("result", "no_license").eq("payment_links.payer_organization_id", organization.id)
+      .order("received_at", { ascending: false });
+    if (error) throw new Error("Lisansa uygulanmayı bekleyen ödemeler okunamadı: " + error.message);
+    uygulanmayanlar = (data ?? []) as unknown as UygulanmayanOdeme[];
+  }
+
+  /*
     KAYITLI KART VE OTOMATİK YENİLEME (28.10.2026). Özellik bayrağı açık
     değilse hiç okunmuyor (lib/paytr-kart-akisi). Son kartla ödeme
     denemesi de okunuyor: müşteri PayTR'den döndüğünde sonucu ve
@@ -142,20 +161,20 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   type Yenileme = { product: string; aktif: boolean; kart_id: string; son_hata: string | null; onay_at: string };
   let kartlar: KayitliKart[] = [];
   let yenilemeler: Yenileme[] = [];
-  let sonDeneme: { durum: string; hata_mesaji: string | null } | null = null;
+  let sonDeneme: { merchant_oid: string; durum: string; hata_mesaji: string | null } | null = null;
   if (kartAcik && admin) {
     const [k, y, d] = await Promise.all([
       admin.from("paytr_kayitli_kartlar").select("id,son4,banka,sema,son_kullanma_ay,son_kullanma_yil").eq("organization_id", organization.id).order("created_at", { ascending: false }),
       admin.from("paytr_otomatik_yenileme").select("product,aktif,kart_id,son_hata,onay_at").eq("organization_id", organization.id),
       params.kart
-        ? admin.from("paytr_kart_islemleri").select("durum,hata_mesaji,payment_links!inner(payer_organization_id)").eq("payment_links.payer_organization_id", organization.id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+        ? admin.from("paytr_kart_islemleri").select("merchant_oid,durum,hata_mesaji,payment_links!inner(payer_organization_id)").eq("payment_links.payer_organization_id", organization.id).order("created_at", { ascending: false }).limit(1).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
     const kartHatasi = k.error ?? y.error ?? d.error;
     if (kartHatasi) throw new Error("Kayıtlı kart bilgileri okunamadı: " + kartHatasi.message);
     kartlar = (k.data ?? []) as KayitliKart[];
     yenilemeler = (y.data ?? []) as Yenileme[];
-    sonDeneme = d.data as { durum: string; hata_mesaji: string | null } | null;
+    sonDeneme = d.data as { merchant_oid: string; durum: string; hata_mesaji: string | null } | null;
   }
   const bugun = todayInIstanbul();
 
@@ -209,7 +228,19 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       </div>
     </header>
 
-    {params.kart === "tamam" ? <div className="team-notice">{sonDeneme?.durum === "basarili" ? "Ödemeniz alındı; lisansınız uzatıldı." : "Ödemeniz işleniyor. Banka onayı geldiğinde lisansınız otomatik olarak uzar; bu sayfayı birkaç saniye sonra yenileyebilirsiniz."}</div> : null}
+    {/* Kart işlemi "başarılı" yalnızca tahsilatı söyler; lisansa uygulanmadıysa
+        eskiden yine "lisansınız uzatıldı" yazıyordu. */}
+    {params.kart === "tamam" ? <div className="team-notice">{sonDeneme?.durum === "basarili"
+      ? uygulanmayanlar.some((o) => o.merchant_oid === sonDeneme?.merchant_oid)
+        ? "Ödemeniz alındı; kartınızdan tahsil edildi. Lisansınıza uygulanması bekliyor — yeniden ödeme yapmayın."
+        : "Ödemeniz alındı; lisansınız uzatıldı."
+      : "Ödemeniz işleniyor. Banka onayı geldiğinde lisansınız otomatik olarak uzar; bu sayfayı birkaç saniye sonra yenileyebilirsiniz."}</div> : null}
+    {uygulanmayanlar.map((o) => (
+      <div key={o.merchant_oid} className="team-notice" data-tone="warning">
+        {o.payment_amount !== null ? <b>{formatTry(Number(o.payment_amount))}</b> : "Kart"} ödemeniz {istanbulDateTime(o.received_at, { dateStyle: "medium", timeStyle: "short" })} tarihinde alındı (tahsilat başarılı).
+        Lisansınıza uygulanması bekliyor: ArvoOS ekibi lisans kaydınızı tamamlayıp ödemeyi uygulayacak. Aynı dönem için yeniden ödeme yapmanız gerekmez.
+      </div>
+    ))}
     {params.kart === "hata" ? <div className="team-notice" data-tone="danger">Ödeme tamamlanamadı{sonDeneme?.hata_mesaji ? `: ${sonDeneme.hata_mesaji}` : ". Kart bilgilerinizi kontrol edip yeniden deneyin ya da havale/EFT ile ödeyin."}</div> : null}
     {params.submitted === "1" ? <div className="team-notice">Dekontunuz alındı. Kurucu onayından sonra lisansınız otomatik etkinleştirilecek.</div> : null}
 
