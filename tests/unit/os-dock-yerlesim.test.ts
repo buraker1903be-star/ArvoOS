@@ -44,3 +44,26 @@ test("yükleme iskeleti ana ekranla aynı ızgara kuralını kullanır", () => {
   assert.ok(ana);
   assert.equal(izgara(oku("app/panel/panel-page-system.css"), ".skel-izgara"), ana);
 });
+
+/*
+  FX-01/02/03 (10.11.2026, gerçek oturum kabulü 1363×936). Geometrinin kanıtı
+  scripts/genel-bakis-yerlesim-tarayici.mjs'teki tarayıcı ölçümüdür; bunlar
+  yalnızca kararın koddan sessizce geri dönmesini yakalar.
+*/
+test("FX-01: kurulum adımları ana ekranda değil pencerede; ilerleme hesabı aynı kaynaktan", () => {
+  const sayfa = oku("app/panel/page.tsx");
+  assert.match(sayfa, /<KurulumOzeti[\s\S]*?devamHref=/);
+  assert.doesNotMatch(sayfa, /className="dash-card dash-setup"/, "adım listesi yeniden ana ekran kartına dönmüş");
+  assert.match(sayfa, /kurulumIlerlemesi|ilerleme\.zorunlu/);
+  const ozet = oku("app/panel/os/kurulum-ozeti.tsx");
+  assert.match(ozet, /<dialog[\s\S]*?onClose=\{\(\) => dugme\.current\?\.focus\(\)\}/, "pencere kapanınca odak düğmeye dönmeli");
+});
+
+test("FX-02/03: liste kartları satırı EŞİT doldurmaz; kısa ekranda görünüm seçici yüksekliğe de bakar", () => {
+  const css = oku("app/panel/dashboard.css");
+  assert.match(kural(css, ".dash-cols--sabit"), /align-items:\s*start/, "kartlar satır yüksekliğine gerilirse boş kart 533 px'e döner");
+  assert.match(css, /@media \(max-width:900px\), \(max-height:640px\)/, "görünüm seçici yalnızca genişliğe bakıyor");
+  assert.match(kural(css, ".dash-sabit .dash-bars"), /height:\s*clamp\(/, "grafik yüksekliği sınırsız");
+  const iskelet = oku("app/panel/panel-page-system.css");
+  assert.match(iskelet, /@media \(max-width:900px\), \(max-height:640px\)/, "iskelet ana ekranla aynı kırılımda değil");
+});

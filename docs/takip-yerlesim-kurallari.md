@@ -17,6 +17,9 @@ hiçbir satır "doğrulandı" sayılmaz.
 | Ortak gönderim düğmesi (çift gönderim) | Uygulandı: ana ekran "Tamamla" | Bileşen düzeyinde gerçek Chromium: `scripts/gonder-dugmesi-tarayici.mjs` 11/11. Uygulamada **UNVERIFIED** |
 | Yakınlaştırma serbest | Uygulandı (viewport, iOS hareket engeli, sayfa `touch-action` kaldırıldı) | **UNVERIFIED**: büyütülmüş yazı ve iki parmak yakınlaştırmada taşma ölçülmedi |
 | Sanal klavyede odaklanan alan | Kod değişikliği yok | **UNVERIFIED** |
+| FX-01 kurulum: tek satır özet + adımlar pencerede | Uygulandı | Bileşen düzeyinde gerçek Chromium: `scripts/genel-bakis-yerlesim-tarayici.mjs` (pencere açılır, odak içeride, Esc ile kapanır, odak düğmeye döner). Uygulamada **UNVERIFIED** |
+| FX-02 liste gövdeleri (1363×936'da ≥3 tam kayıt), grafik sınırı, iletişim tek sütun, kısa ekranda görünüm seçici | Uygulandı | Aynı betik: önce gövde 65 px / 0 tam kayıt, sonra 326 px / 5 tam kayıt. Uygulamada **UNVERIFIED** |
+| FX-03 boş CRM kartı içeriği kadar | Uygulandı | Aynı betik: önce 571 px (1440×900'de 535), sonra 149 px. Uygulamada **UNVERIFIED** |
 
 ## Kalan ihlaller (yapılmadı)
 

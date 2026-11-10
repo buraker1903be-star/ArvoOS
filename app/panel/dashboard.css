@@ -364,6 +364,14 @@ a.dash-setup-step:active{transform:scale(.985)}
    dock için) → .dash-gorunum → liste ızgarası (kalan) → kart → gövde.
    Her halkada min-height:0: flex/grid çocuğu içeriği kadar uzamasın.
    Kaydırma alanı kart başına TEK (.dash-col-govde); iç içe yok.
+
+   KARTLAR İÇERİĞİ KADAR (FX-02/FX-03, gerçek oturum ölçümü 1363×936).
+   İlk sürüm kalan yüksekliği bütün kartlara eşit dağıtıyordu
+   (grid-auto-rows:1fr + stretch): CRM'de BOŞ bir kart 533 px'e uzuyor,
+   boş cümle üstte, bağlantısı en altta kalıyordu. Artık kart içeriği
+   kadar büyür, kullanılabilir yüksekliği aşınca gövdesi kayar
+   (align-self:start + max-height:100%). Kartların eşit boyda olması
+   gerekmiyor.
    ============================================================ */
 .os-root .panel-content:has(> .dash-sabit){
   height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
@@ -374,14 +382,19 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-sabit .dash-gorunum{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:inherit}
 .dash-sabit .dash-gorunum-panel{min-width:0}
 .dash-gorunum-sec{display:none}
-/* Liste kartları kalan yüksekliği paylaşır; dört kart tek sırada (≥~1060px). */
+/* Liste ızgarası kalan yüksekliği alır; kartlar bu yüksekliği AŞMAZ ama doldurmak zorunda da değil. */
 .dash-cols--sabit{
   flex:1 1 auto;min-height:0;
-  grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));grid-auto-rows:minmax(0,1fr);align-items:stretch;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));grid-auto-rows:minmax(0,1fr);align-items:start;
 }
 @media (max-width:1200px){.dash-cols.dash-cols--sabit{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}}
-.dash-cols--sabit>.dash-gorunum-panel{display:flex;min-height:0}
-.dash-cols--sabit .dash-col{flex:1 1 auto;min-height:0}
+.dash-cols--sabit>.dash-gorunum-panel,.dash-gorunum-yigin>.dash-gorunum-panel{display:flex;flex-direction:column;min-height:0;max-height:100%}
+.dash-cols--sabit .dash-col{flex:0 1 auto;min-height:0}
+/* İletişim sütunu (mesajlar + posta): kartlar alt alta, her biri içeriği
+   kadar; toplam sütunu aşarsa ikisi de orantılı küçülür ve gövdeleri kayar. */
+.dash-gorunum-yigin{display:flex;flex-direction:column;gap:inherit;min-width:0;min-height:0;max-height:100%}
+.dash-cols--sabit{gap:var(--sp-4)}
+.dash-gorunum-yigin>.dash-gorunum-panel{flex:0 1 auto;max-height:none}
 /* Gövde: kartın tek kaydırma alanı. Satırların hover zemini kart kenarına
    uzanıyor (liste -8px); gövde aynı payı kendisi alıyor ki yatay taşma olmasın. */
 .dash-cols--sabit .dash-col-govde{
@@ -390,15 +403,40 @@ a.dash-setup-step:active{transform:scale(.985)}
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
 }
 .dash-cols--sabit .dash-col .dash-card-link{flex:none}
-/* Üstteki paneller doğal boyunda; kurulum adımları çoksa kendi içinde kayar. */
-.dash-sabit .dash-gorunum-panel.is-ust>.dash-setup{max-height:34dvh;overflow-y:auto;overscroll-behavior:contain}
+/* Grafik destekleyici: yüksekliği ekrana göre sınırlı, toplam ve tarih başlıkta okunur kalır. */
+.dash-sabit .dash-bars{height:clamp(36px,7dvh,80px)}
+
+/* Kurulum: tek satır özet (os/kurulum-ozeti.tsx, FX-01). */
+.dash-kurulum{flex-direction:row;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-5)}
+.dash-v2 .dash-kurulum{padding-block:var(--sp-3)}
+.dash-kurulum-metin{flex:1 1 220px;min-width:0}
+.dash-kurulum-metin h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
+.dash-kurulum-metin p{margin:2px 0 0;font-size:var(--fs-sm);color:var(--muted)}
+.dash-kurulum-cubuk{align-items:stretch}
+.dash-kurulum-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.dash-kurulum-pencere{
+  width:min(760px,calc(100vw - 32px));max-height:calc(100dvh - 64px);margin:auto;padding:0;
+  border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-lg);
+}
+.dash-kurulum-pencere[open]{display:flex;flex-direction:column}
+.dash-kurulum-pencere::backdrop{background:color-mix(in srgb,var(--n-900) 35%,transparent)}
+.dash-kurulum-pencere-bas{flex:none;display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-5) var(--sp-5) var(--sp-3);border-bottom:1px solid var(--line-soft)}
+.dash-kurulum-pencere-bas h2{margin:0;font-size:var(--fs-lg);font-weight:var(--fw-semibold)}
+.dash-kurulum-pencere-bas p{margin:4px 0 0;color:var(--muted);font-size:var(--fs-sm)}
+.dash-kurulum-pencere-govde{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4) var(--sp-5) var(--sp-5)}
+.dash-kurulum-aciklama{margin:0;color:var(--muted);font-size:var(--fs-sm)}
+@media (max-width:760px){
+  .dash-kurulum-pencere{width:100%;max-width:none;max-height:90dvh;margin:auto 0 0;border-width:1px 0 0;border-radius:var(--r-xl) var(--r-xl) 0 0;padding-bottom:env(safe-area-inset-bottom)}
+}
 
 /* NAV-01: ad iki satıra kadar; yer kalmazsa rozet ALT SATIRA iner, ad kesilmez. */
 .dash-cols--esnek .dash-col-row{flex-wrap:wrap;row-gap:4px}
 .dash-cols--esnek .dash-col-row>.dash-col-main{flex:1 1 160px}
 
-/* ---------- Dar ekran: kartlar yığılmaz, görünüm seçici ---------- */
-@media (max-width:900px){
+/* ---------- Dar YA DA KISA ekran: kartlar yığılmaz, görünüm seçici ----------
+   Karar yalnız genişliğe bağlı değil (FX-02): kısa ekranda (≤640px yükseklik)
+   liste gövdesi bir tam kaydın altına düşüyordu; orada da tek panel. */
+@media (max-width:900px), (max-height:640px){
   .dash-gorunum-sec{display:flex;flex-wrap:wrap;gap:6px;flex:none}
   .dash-gorunum-sec button{
     display:inline-flex;align-items:center;min-height:var(--ctl-h-sm);padding:0 12px;
@@ -408,14 +446,16 @@ a.dash-setup-step:active{transform:scale(.985)}
   .dash-gorunum-sec button[aria-pressed="true"]{border-color:transparent;background:var(--primary);color:var(--primary-on);font-weight:var(--fw-semibold)}
   .dash-gorunum-sec button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
   .dash-sabit .dash-gorunum-panel:not(.is-secili){display:none}
-  /* Seçili üst panel (Bugün, grafik, kurulum) kalan yüksekliği alır ve kendi içinde kayar. */
-  .dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-  .dash-sabit .dash-gorunum-panel.is-ust>.dash-setup{max-height:none;overflow:visible}
+  /* Seçili üst panel (Bugün, grafik, kurulum) içeriği kadar; uzunsa kendi içinde kayar. */
+  .dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
   .dash-cols--sabit{display:flex;flex-direction:column}
-  .dash-cols--sabit:not(:has(> .is-secili)){display:none}
-  .dash-cols--sabit>.dash-gorunum-panel.is-secili{flex:1 1 auto}
+  .dash-cols--sabit:not(:has(.is-secili)){display:none}
+  .dash-gorunum-yigin:not(:has(> .is-secili)){display:none}
+  .dash-gorunum-yigin{flex:0 1 auto}
+  .dash-cols--sabit .dash-gorunum-panel.is-secili{flex:0 1 auto;max-height:100%}
+  .dash-sabit .dash-bars{height:clamp(36px,12dvh,96px)}
 }
-/* Bugün yalnızca telefonda; 761–900px'te seçicide de yok. */
+/* Bugün yalnızca telefonda; 761px ve üstünde seçicide de yok. */
 @media (min-width:761px){.dash-gorunum-sec .is-telefon,.dash-gorunum-panel.is-telefon{display:none}}
 @media (max-width:760px){.dash-sabit .bugun{margin-bottom:0}}
 

@@ -29,6 +29,13 @@ export type GorunumPaneli = {
   yer: "ust" | "liste";
   /** Yalnızca telefonda (≤760px) olan panel (Bugün). */
   sadeceTelefon?: boolean;
+  /*
+    Aynı gruptaki liste panelleri masaüstünde TEK sütunda alt alta durur
+    (FX-02: müşteri mesajları + posta = iletişim sütunu); her biri içeriği
+    kadar, toplamı sütunu aşarsa her kart kendi gövdesinde kayar.
+    Görünüm seçicide (dar/kısa ekran) yine ayrı ayrı seçilir.
+  */
+  grup?: string;
   icerik: ReactNode;
 };
 
@@ -77,7 +84,24 @@ export function GorunumSecici({ paneller, etiket }: { paneller: GorunumPaneli[];
         </div>
       ) : null}
       {paneller.filter((p) => p.yer === "ust").map(panel)}
-      <div className="dash-cols dash-cols--esnek dash-cols--sabit">{paneller.filter((p) => p.yer === "liste").map(panel)}</div>
+      <div className="dash-cols dash-cols--esnek dash-cols--sabit">{listeOgeleri(paneller.filter((p) => p.yer === "liste"), panel)}</div>
     </div>
   );
+}
+
+/** Liste panelleri sırasıyla; aynı gruptakiler ilk göründükleri yerde tek sütunda. */
+function listeOgeleri(liste: GorunumPaneli[], panel: (p: GorunumPaneli) => ReactNode): ReactNode[] {
+  const ogeler: ReactNode[] = [];
+  const islenen = new Set<string>();
+  for (const p of liste) {
+    if (!p.grup) { ogeler.push(panel(p)); continue; }
+    if (islenen.has(p.grup)) continue;
+    islenen.add(p.grup);
+    ogeler.push(
+      <div key={`grup-${p.grup}`} className="dash-gorunum-yigin">
+        {liste.filter((q) => q.grup === p.grup).map(panel)}
+      </div>,
+    );
+  }
+  return ogeler;
 }

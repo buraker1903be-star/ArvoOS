@@ -1,6 +1,6 @@
 import { sureOlcer } from "@/lib/sure-olcumu";
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { getPanelContext } from "@/lib/panel-context";
 import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
@@ -17,6 +17,7 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { BELGEDE_ZORUNLU, eksikResmiAlanlar, legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { BugunPaneli } from "./os/bugun-paneli";
+import { KurulumOzeti } from "./os/kurulum-ozeti";
 import { GorunumSecici, type GorunumPaneli } from "./os/gorunum-secici";
 import { kurulumIlerlemesi } from "@/lib/kurulum-ilerlemesi";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "./os/genel-bakis";
@@ -237,19 +238,15 @@ export default async function PanelPage() {
     && !trend.total && !trend.previous && (talepToplami ?? 0) === 0;
   const kurulumOnce = showSetup && hicKayitYok;
 
+  /*
+    Kurulum ana ekranda tek satır özet; adımlar pencerede (os/kurulum-ozeti.tsx,
+    FX-01). Eskiden adımlarıyla 316 px kaplıyor, kendi içinde kayınca başlığı
+    da kayıyordu ve iş listelerine 65 px kalıyordu.
+  */
+  const devamAdimi = ilerleme.zorunlu.find((step) => !step.done) ?? null;
   const kurulumKarti = showSetup ? (
-    <section className="dash-card dash-setup" aria-label="Kurulum">
-      <header className="dash-card-head">
-        <div>
-          <h2>Kurulumu tamamlayın</h2>
-          <p>Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {ilerleme.toplam - ilerleme.tamamlanan} zorunlu adım kaldı.</p>
-        </div>
-        <div className="dash-setup-progress" role="progressbar" aria-valuemin={0} aria-valuemax={ilerleme.toplam} aria-valuenow={ilerleme.tamamlanan} aria-valuetext={ilerleme.ozet}>
-          <b>{ilerleme.tamamlanan}/{ilerleme.toplam}</b>
-          <span><i style={{ "--w": `${ilerleme.yuzde}%` } as CSSProperties} /></span>
-          <small>{ilerleme.ozet}</small>
-        </div>
-      </header>
+    <KurulumOzeti tamamlanan={ilerleme.tamamlanan} toplam={ilerleme.toplam} yuzde={ilerleme.yuzde} ozet={ilerleme.ozet} devamHref={devamAdimi?.href ?? null}>
+      <p className="dash-kurulum-aciklama">Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {ilerleme.toplam - ilerleme.tamamlanan} zorunlu adım kaldı.</p>
       <ol className="dash-setup-list">
         {ilerleme.zorunlu.map((step, index) => {
           const content = (
@@ -297,7 +294,7 @@ export default async function PanelPage() {
           </ul>
         </div>
       ) : null}
-    </section>
+    </KurulumOzeti>
   ) : null;
 
   /*
@@ -395,7 +392,7 @@ export default async function PanelPage() {
             hata={Boolean(asamaError)} gruplar={asamaGruplari} not={asamaNotu}>
           </ListeKarti>
     ) });
-    paneller.push({ anahtar: "mesajlar", etiket: "Mesajlar", yer: "liste", icerik: (
+    paneller.push({ anahtar: "mesajlar", etiket: "Mesajlar", yer: "liste", grup: "iletisim", icerik: (
           <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos={hicKayitYok ? "Müşteriniz iş portalından yazdığında mesajı burada görürsünüz." : "Müşterilerden mesaj yok."} href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length} hata={Boolean(mesajError)}>
             {mesajlar.map((mesaj) => (
               /* Operasyon genel bakışıyla aynı: iş detayı mesaj penceresi açık gelir. */
@@ -414,7 +411,7 @@ export default async function PanelPage() {
     ) });
   }
   if (canSeePosta) {
-    paneller.push({ anahtar: "posta", etiket: "Posta", yer: "liste", icerik: (
+    paneller.push({ anahtar: "posta", etiket: "Posta", yer: "liste", grup: "iletisim", icerik: (
           <ListeKarti baslik="Gelen postalar" alt={`Gelen müşteri e-postaları, son ${LISTE}`} bos="Kutuda konuşma yok." href="/panel/posta" hrefEtiket="Postaya git" sayi={postalar.length} hata={Boolean(postaError)}>
             {postalar.map((posta) => (
               <ListeSatiri
@@ -431,7 +428,7 @@ export default async function PanelPage() {
           </ListeKarti>
     ) });
   } else if (postaYetkisi) {
-    paneller.push({ anahtar: "posta", etiket: "Posta", yer: "liste", icerik: (
+    paneller.push({ anahtar: "posta", etiket: "Posta", yer: "liste", grup: "iletisim", icerik: (
           <ListeKarti
             baslik="Gelen postalar"
             alt="Gelen müşteri e-postaları"
