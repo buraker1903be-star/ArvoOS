@@ -22,12 +22,21 @@ function ActionFeedbackInner() {
     if (observerRef.current) observerRef.current.disconnect();
   }, []);
 
+  /* Çift gönderim kilidini kaldırır (aşağıdaki handleSubmitCapture). */
+  const kilitleriAc = useCallback(() => {
+    document.querySelectorAll<HTMLFormElement>("form[data-gonderiliyor]").forEach((form) => delete form.dataset.gonderiliyor);
+    document.querySelectorAll<HTMLElement>("[data-gonderim-dugmesi]").forEach((dugme) => {
+      dugme.removeAttribute("aria-busy");
+      delete dugme.dataset.gonderimDugmesi;
+    });
+  }, []);
   const finish = useCallback(() => {
     if (!activeRef.current) return;
     activeRef.current = false;
     clearTimers();
+    kilitleriAc();
     setVisible(false);
-  }, [clearTimers]);
+  }, [clearTimers, kilitleriAc]);
 
   const start = useCallback(() => {
     if (activeRef.current) return;
@@ -72,10 +81,39 @@ function ActionFeedbackInner() {
       if (form.dataset.noFeedback === "true") return;
       start();
     }
+    /*
+      ÇİFT GÖNDERİM ENGELİ (10.11.2026). Eskiden işlem sürerken düğmeye
+      ikinci kez basmak aynı sunucu işlemini ikinci kez çalıştırıyordu
+      (yavaş bağlantıda iki not, iki talep). Yakalama aşamasında —
+      React'in form işleyicisinden ÖNCE — aynı form zaten gönderiliyorsa
+      ikinci gönderim durdurulur. Düğme `disabled` yapılmıyor: React
+      FormData'yı gönderen düğmeden kuruyor, devre dışı düğmenin değeri
+      düşerdi; bunun yerine aria-busy (panel-premium.css'te tıklamayı
+      kapatıyor ve sönükleştiriyor). Kilit, gösterge kapanınca ya da en
+      geç 6 sn sonra kalkar — başarısız işlem formu kilitli bırakmaz.
+      data-no-feedback olan formlar (anlık arama gibi) kapsam dışı.
+    */
+    function handleSubmitCapture(event: SubmitEvent) {
+      const form = event.target as HTMLFormElement;
+      if (form.dataset.noFeedback === "true") return;
+      if (form.dataset.gonderiliyor) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      form.dataset.gonderiliyor = "1";
+      const dugme = event.submitter as HTMLElement | null;
+      if (dugme) {
+        dugme.setAttribute("aria-busy", "true");
+        dugme.dataset.gonderimDugmesi = "1";
+      }
+    }
     document.addEventListener("click", handleClick);
+    document.addEventListener("submit", handleSubmitCapture, true);
     document.addEventListener("submit", handleSubmit);
     return () => {
       document.removeEventListener("click", handleClick);
+      document.removeEventListener("submit", handleSubmitCapture, true);
       document.removeEventListener("submit", handleSubmit);
     };
   }, [start]);

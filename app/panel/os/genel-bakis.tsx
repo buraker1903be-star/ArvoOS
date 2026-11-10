@@ -18,6 +18,8 @@ import "../dashboard.css";
 export const GENEL_BAKIS_SATIR = 6;
 
 export function GenelBakis({ baslik, gizliBaslik, ust, uyari, sinif, children }: {
+  /* sinif="dash-sabit": sayfa kaymaz, kartlar kalan yüksekliği paylaşır
+     (os/gorunum-secici.tsx ile; dashboard.css). */
   /** Görünen başlık (ana ekranda selamlama). Modül genel bakışlarında yok. */
   baslik?: ReactNode;
   /*
@@ -184,6 +186,9 @@ export function ListeKarti({ baslik, alt, bos, href, hrefEtiket, sayi, hata = fa
   return (
     <article className="dash-card dash-col">
       <header className="dash-card-head"><div><h2>{baslik}</h2><p>{alt}</p></div></header>
+      {/* Gövde: sabit yükseklikli genel bakışta (dashboard.css · .dash-cols--sabit)
+          kartın TEK kaydırma alanı; başlık ve alt bağlantı yerinde kalır. */}
+      <div className="dash-col-govde">
       {hata ? (
         <p className="dash-empty dash-empty--hata" role="status">{baslik} yüklenemedi. Sayfayı yenileyin; sorun sürerse destek kaydı açın.</p>
       ) : !sayi ? (
@@ -199,6 +204,7 @@ export function ListeKarti({ baslik, alt, bos, href, hrefEtiket, sayi, hata = fa
         <ul className="dash-col-list">{children}</ul>
       )}
       {not && sayi && !hata ? <p className="dash-col-not">{not}</p> : null}
+      </div>
       {href ? <Link className="dash-card-link" href={href}>{hrefEtiket} <Chevron /></Link> : null}
     </article>
   );

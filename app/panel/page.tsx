@@ -17,8 +17,9 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { BELGEDE_ZORUNLU, eksikResmiAlanlar, legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { BugunPaneli } from "./os/bugun-paneli";
+import { GorunumSecici, type GorunumPaneli } from "./os/gorunum-secici";
 import { kurulumIlerlemesi } from "@/lib/kurulum-ilerlemesi";
-import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "./os/genel-bakis";
+import { GENEL_BAKIS_SATIR, GenelBakis, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "./os/genel-bakis";
 
 /*
   ANA EKRAN (2026-10, şirket işletim sistemi).
@@ -353,40 +354,48 @@ export default async function PanelPage() {
   const firstName = formatPersonName(me?.full_name).split(" ")[0];
 
   sure.bitir();
-  return (
-    <GenelBakis
-      ust={<span className="dash-tarih">{date}</span>}
-      baslik={<>{greeting}{firstName ? `, ${firstName}` : ""}</>}
-      uyari={failedQueries.map(([label]) => label)}
-    >
-      {/* Kurulum kartı gün bir'de "Bugün" panelinin ÜSTÜNDE (yukarıdaki not). */}
-      {kurulumOnce ? kurulumKarti : null}
-      {/* Telefonda "Bugün": hızlı işlemler, yönetici kutuları, adımlarım (masaüstünde gizli). */}
-      <BugunPaneli supabase={supabase} orgId={organizationId} userId={userId} izin={izin}
+  /*
+    SAYFA KAYMAZ, KART KAYAR (10.11.2026, ürün kuralı; os/gorunum-secici).
+    Masaüstünde liste kartları kalan yüksekliği paylaşır ve her biri kendi
+    içinde kayar (NAV-02: uzun aşama kartı kardeşlerinin altında boşluk
+    bırakıyordu). Telefonda kartlar yığılmaz: görünüm seçici. Kurulum kartı
+    gün bir'de Bugün panelinin ÖNÜNDE (yukarıdaki not).
+  */
+  const paneller: GorunumPaneli[] = [];
+  const kurulumPaneli: GorunumPaneli | null = kurulumKarti ? { anahtar: "kurulum", etiket: "Kurulum", yer: "ust", icerik: kurulumKarti } : null;
+  if (kurulumOnce && kurulumPaneli) paneller.push(kurulumPaneli);
+  /* Telefonda "Bugün": hızlı işlemler, yönetici kutuları, adımlarım (masaüstünde gizli, bugun-paneli.css). */
+  if (canSeeCrm || canSeeOperations) {
+    paneller.push({
+      anahtar: "bugun", etiket: "Bugün", yer: "ust", sadeceTelefon: true,
+      icerik: <BugunPaneli supabase={supabase} orgId={organizationId} userId={userId} izin={izin}
         crmGorur={canSeeCrm && modulAcik("crm")} operasyonGorur={canSeeOperations}
         finansGorur={canSee("finance") && modulAcik("finance") && izin("finance.gor")}
-        yeniKurum={hicKayitYok} />
-      {kurulumOnce ? null : kurulumKarti}
-
-      {/* Boş durumdaki "Yeni talep", telefondaki Bugün panelinin kısayoluyla aynı kural: CRM'i gören ve modülü açık olan. */}
-      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" hata={Boolean(talepError)}
+        yeniKurum={hicKayitYok} />,
+    });
+  }
+  if (!kurulumOnce && kurulumPaneli) paneller.push(kurulumPaneli);
+  /* Boş durumdaki "Yeni talep", telefondaki Bugün panelinin kısayoluyla aynı kural: CRM'i gören ve modülü açık olan. */
+  if (canSeeCrm) {
+    paneller.push({
+      anahtar: "talepler", etiket: "Talepler", yer: "ust",
+      icerik: <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" hata={Boolean(talepError)}
         bos={hicKayitYok ? "İlk talebinizi girdiğinizde günlük dağılım burada çizilir." : "Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir."}
-        eylem={modulAcik("crm") ? { href: "/panel/crm?yeni=talep", etiket: "+ Yeni talep" } : undefined} /> : null}
-
-      <ListeIzgarasi esnek>
-        {canSeeOperations ? (
+        eylem={modulAcik("crm") ? { href: "/panel/crm?yeni=talep", etiket: "+ Yeni talep" } : undefined} />,
+    });
+  }
+  if (canSeeOperations) {
+    paneller.push({ anahtar: "operasyon", etiket: "Operasyon", yer: "liste", icerik: (
           <ListeKarti baslik="Operasyon" alt={`Termini en yakın ${LISTE} iş`} bos={hicKayitYok ? "Sözleşme imzalanınca iş burada açılır; termini en yakın olan en üstte durur." : "Açık operasyon yok."} href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}
             hata={Boolean(isError)} gruplar={isGruplari} not={isNotu}>
           </ListeKarti>
-        ) : null}
-
-        {canSeeOperations ? (
+    ) });
+    paneller.push({ anahtar: "asamalar", etiket: "Aşamalar", yer: "liste", icerik: (
           <ListeKarti baslik="Aşama tarihleri" alt={`Tarihi en yakın ${LISTE} aşama`} bos={hicKayitYok ? "İşin adımlarına tarih girdikçe yaklaşanlar burada sıralanır." : "Tarihi girilmiş açık aşama yok."} href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamalar.length}
             hata={Boolean(asamaError)} gruplar={asamaGruplari} not={asamaNotu}>
           </ListeKarti>
-        ) : null}
-
-        {canSeeOperations ? (
+    ) });
+    paneller.push({ anahtar: "mesajlar", etiket: "Mesajlar", yer: "liste", icerik: (
           <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos={hicKayitYok ? "Müşteriniz iş portalından yazdığında mesajı burada görürsünüz." : "Müşterilerden mesaj yok."} href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length} hata={Boolean(mesajError)}>
             {mesajlar.map((mesaj) => (
               /* Operasyon genel bakışıyla aynı: iş detayı mesaj penceresi açık gelir. */
@@ -402,9 +411,10 @@ export default async function PanelPage() {
               />
             ))}
           </ListeKarti>
-        ) : null}
-
-        {canSeePosta ? (
+    ) });
+  }
+  if (canSeePosta) {
+    paneller.push({ anahtar: "posta", etiket: "Posta", yer: "liste", icerik: (
           <ListeKarti baslik="Gelen postalar" alt={`Gelen müşteri e-postaları, son ${LISTE}`} bos="Kutuda konuşma yok." href="/panel/posta" hrefEtiket="Postaya git" sayi={postalar.length} hata={Boolean(postaError)}>
             {postalar.map((posta) => (
               <ListeSatiri
@@ -419,7 +429,9 @@ export default async function PanelPage() {
               />
             ))}
           </ListeKarti>
-        ) : postaYetkisi ? (
+    ) });
+  } else if (postaYetkisi) {
+    paneller.push({ anahtar: "posta", etiket: "Posta", yer: "liste", icerik: (
           <ListeKarti
             baslik="Gelen postalar"
             alt="Gelen müşteri e-postaları"
@@ -428,8 +440,17 @@ export default async function PanelPage() {
             hrefEtiket="Posta kutusunu bağla"
             sayi={0}
           />
-        ) : null}
-      </ListeIzgarasi>
+    ) });
+  }
+
+  return (
+    <GenelBakis
+      sinif="dash-sabit"
+      ust={<span className="dash-tarih">{date}</span>}
+      baslik={<>{greeting}{firstName ? `, ${firstName}` : ""}</>}
+      uyari={failedQueries.map(([label]) => label)}
+    >
+      <GorunumSecici etiket="Ana ekran görünümü" paneller={paneller} />
     </GenelBakis>
   );
 }

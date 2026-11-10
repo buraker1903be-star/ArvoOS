@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { aramaAnahtari, basHarfler, canliTablolar, etkinUygulama, kenarGruplari, mobilAltCubuk, osSayfalari, osUygulamalari } from "@/app/panel/os/os-apps";
+import { aramaAnahtari, basHarfler, canliTablolar, etkinUygulama, mobilAltCubuk, osSayfalari, osUygulamalari } from "@/app/panel/os/os-apps";
 
 /*
   Şirket işletim sistemi kabuğu: dock ve Ctrl+K aynı uygulama listesini
@@ -112,21 +112,10 @@ test("mobil alt çubuk modül sırasına değil önceliğe bakar; yalnızca baş
   assert.deepEqual(birincil.map((u) => u.key), ["home", "operations", "finance", "hr"]);
 });
 
-test("rolün göremediği modül ne sol menüde ne mobil çubukta ne Daha fazla'da", () => {
+test("rolün göremediği modül ne dock'ta ne Uygulamalar panelinde (masaüstü ve telefon aynı yapı)", () => {
   const liste = osUygulamalari({ modules, role: "member" });
-  const gorunen = (u: { key: string }) => u.key;
-  const { ana, ek, ayarlar } = kenarGruplari(liste);
-  const kenar = [...ana, ...ek, ...(ayarlar ? [ayarlar] : [])].map(gorunen).sort();
   const { birincil, digerleri } = mobilAltCubuk(liste);
-  const mobil = [...birincil, ...digerleri].map(gorunen).sort();
-  assert.deepEqual(kenar, liste.map(gorunen).sort());
-  assert.deepEqual(mobil, kenar, "iki menü aynı kümeyi gösteriyor");
-});
-
-test("sol menü grupları: ayarlar en altta, yalnızca başlatıcıdakiler ayrı", () => {
-  const { ana, ek, ayarlar } = kenarGruplari(osUygulamalari({ modules, role: "admin", mesajlar: { okunmamis: 0 } }));
-  assert.equal(ana[0]?.key, "home");
-  assert.ok(!ana.some((u) => u.key === "settings" || u.yalnizBaslatici));
-  assert.deepEqual(ek.map((u) => u.key), ["whatsapp", "messages"]);
-  assert.equal(ayarlar?.key, "settings");
+  // Dock: birincil; Uygulamalar paneli: hepsi. İkisi de yalnızca süzülmüş listeden.
+  assert.deepEqual([...birincil, ...digerleri].map((u) => u.key).sort(), liste.map((u) => u.key).sort());
+  assert.ok(birincil.length <= 4, "en fazla dört ana giriş");
 });

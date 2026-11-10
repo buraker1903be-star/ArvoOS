@@ -352,3 +352,69 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-setup-step.is-istege{border-style:dashed;background:transparent}
 .dash-setup-step.is-istege .dash-setup-dot{border-style:dashed;border-color:var(--line);color:var(--muted)}
 .dash-setup-step.is-istege.is-done .dash-setup-dot{border-style:solid;border-color:transparent}
+
+/* ============================================================
+   SABİT GENEL BAKIŞ: SAYFA KAYMAZ, KART KAYAR (10.11.2026)
+   os/gorunum-secici.tsx · GenelBakis sinif="dash-sabit"
+
+   Ürün kuralı: ana ekran ve genel bakışlar hiçbir boyutta sayfa
+   düzeyinde kaymaz; uzun içerik yalnızca kendi kartında dikey kayar,
+   kart başlığı ve alt bağlantısı yerinde kalır. Yükseklik zinciri:
+   çalışma alanı (100dvh − üst çubuk − bölüm menüsü) → içerik (alt pay
+   dock için) → .dash-gorunum → liste ızgarası (kalan) → kart → gövde.
+   Her halkada min-height:0: flex/grid çocuğu içeriği kadar uzamasın.
+   Kaydırma alanı kart başına TEK (.dash-col-govde); iç içe yok.
+   ============================================================ */
+.os-root .panel-content:has(> .dash-sabit){
+  height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+  padding-bottom:var(--os-dock-space);
+  display:flex;flex-direction:column;box-sizing:border-box;
+}
+.dash-sabit{flex:1 1 auto;min-height:0}
+.dash-sabit .dash-gorunum{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:inherit}
+.dash-sabit .dash-gorunum-panel{min-width:0}
+.dash-gorunum-sec{display:none}
+/* Liste kartları kalan yüksekliği paylaşır; dört kart tek sırada (≥~1060px). */
+.dash-cols--sabit{
+  flex:1 1 auto;min-height:0;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));grid-auto-rows:minmax(0,1fr);align-items:stretch;
+}
+@media (max-width:1200px){.dash-cols.dash-cols--sabit{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}}
+.dash-cols--sabit>.dash-gorunum-panel{display:flex;min-height:0}
+.dash-cols--sabit .dash-col{flex:1 1 auto;min-height:0}
+/* Gövde: kartın tek kaydırma alanı. Satırların hover zemini kart kenarına
+   uzanıyor (liste -8px); gövde aynı payı kendisi alıyor ki yatay taşma olmasın. */
+.dash-cols--sabit .dash-col-govde{
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:var(--sp-2);
+  margin-inline:calc(var(--sp-2) * -1);padding-inline:var(--sp-2);
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+}
+.dash-cols--sabit .dash-col .dash-card-link{flex:none}
+/* Üstteki paneller doğal boyunda; kurulum adımları çoksa kendi içinde kayar. */
+.dash-sabit .dash-gorunum-panel.is-ust>.dash-setup{max-height:34dvh;overflow-y:auto;overscroll-behavior:contain}
+
+/* NAV-01: ad iki satıra kadar; yer kalmazsa rozet ALT SATIRA iner, ad kesilmez. */
+.dash-cols--esnek .dash-col-row{flex-wrap:wrap;row-gap:4px}
+.dash-cols--esnek .dash-col-row>.dash-col-main{flex:1 1 160px}
+
+/* ---------- Dar ekran: kartlar yığılmaz, görünüm seçici ---------- */
+@media (max-width:900px){
+  .dash-gorunum-sec{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+  .dash-gorunum-sec button{
+    display:inline-flex;align-items:center;min-height:var(--ctl-h-sm);padding:0 12px;
+    border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);
+    color:var(--ink-soft);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer;
+  }
+  .dash-gorunum-sec button[aria-pressed="true"]{border-color:transparent;background:var(--primary);color:var(--primary-on);font-weight:var(--fw-semibold)}
+  .dash-gorunum-sec button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .dash-sabit .dash-gorunum-panel:not(.is-secili){display:none}
+  /* Seçili üst panel (Bugün, grafik, kurulum) kalan yüksekliği alır ve kendi içinde kayar. */
+  .dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .dash-sabit .dash-gorunum-panel.is-ust>.dash-setup{max-height:none;overflow:visible}
+  .dash-cols--sabit{display:flex;flex-direction:column}
+  .dash-cols--sabit:not(:has(> .is-secili)){display:none}
+  .dash-cols--sabit>.dash-gorunum-panel.is-secili{flex:1 1 auto}
+}
+/* Bugün yalnızca telefonda; 761–900px'te seçicide de yok. */
+@media (min-width:761px){.dash-gorunum-sec .is-telefon,.dash-gorunum-panel.is-telefon{display:none}}
+@media (max-width:760px){.dash-sabit .bugun{margin-bottom:0}}

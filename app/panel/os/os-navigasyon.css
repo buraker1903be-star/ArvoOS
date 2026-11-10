@@ -1,172 +1,161 @@
 /* ============================================================
-   SOL MENÜ + MOBİL ALT ÇUBUK (os-navigasyon.tsx, 10.11.2026)
+   ETİKETLİ DOCK, UYGULAMALAR PANELİ, BÖLÜM MENÜSÜ (10.11.2026)
+   os-navigasyon.tsx · os-bolum-menusu.tsx
 
-   ≥1100px  sol menü; adlar görünür, kullanıcı daraltabilir (data-nav).
-   761–1099 sol menü her zaman dar (ikon + ipucu): 768px'te 248px'lik
-            menü içeriğe 520px bırakıyordu.
-   ≤760px   alta yapışık çubuk + "Daha fazla" yaprağı; sol menü yok.
+   Mevcut tasarım dili: panel-tokens.css değerleri, kurum rengi --primary,
+   ince çizgi, düz yüzey. Yoğun cam (backdrop-filter) ve zıplayan/büyüyen
+   ikon yok; geçişler kısa, prefers-reduced-motion'da kapalı.
 
-   Yalnızca panel-tokens.css değerleri; kurum rengi --primary. Ağır bulanıklık
-   ve dekoratif animasyon yok: menü düz yüzey, geçişler kısa ve
-   prefers-reduced-motion'da kapalı.
+   Yükseklik sözleşmesi (sabit yükseklikli sayfalar bunu kullanır):
+     --os-dock-space  içeriğin altında dock'a bırakılan pay
+     --os-bolum-h     bölüm menüsünün ölçülen yüksekliği (JS yazar)
+     --os-ust-h       üst çubuk + bölüm menüsü
+   Seçici .panel-root.os-root: bu dosya bileşenle birlikte yükleniyor ve
+   yerleşimin CSS'inden önce ya da sonra gelebilir; özgüllük sırayı
+   bağımsız kılar.
    ============================================================ */
 
-.os-root{--os-nav-w-genis:248px;--os-nav-w-dar:68px;--os-nav-w:var(--os-nav-w-genis)}
-.os-root[data-nav="dar"]{--os-nav-w:var(--os-nav-w-dar)}
-@media (max-width:1099px){.os-root{--os-nav-w:var(--os-nav-w-dar)}}
+.panel-root.os-root{
+  --os-dock-h:54px;
+  --os-dock-space:calc(var(--os-dock-h) + 8px + 12px + var(--sp-4));
+  --os-ust-h:calc(var(--os-bar-h) + var(--os-bolum-h, 0px));
+}
+/* JS ölçmeden önceki ilk çizim için tahmin (sayfa açılırken taşmasın). */
+.panel-root.os-root:has(.os-bolumler){--os-bolum-h:44px}
+@media (max-width:760px){
+  .panel-root.os-root{--os-tab-h:58px;--os-dock-space:calc(var(--os-tab-h) + env(safe-area-inset-bottom) + var(--sp-3))}
+  .panel-root.os-root:has(.os-bolumler){--os-bolum-h:48px}
+}
 
 .os-root .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
-/* ---------- Sol menü ---------- */
-.os-nav{
-  position:fixed;z-index:50;top:var(--os-bar-h);bottom:0;left:0;
-  width:var(--os-nav-w);box-sizing:border-box;
-  display:flex;flex-direction:column;gap:var(--sp-1);
-  padding:var(--sp-3) var(--sp-2) var(--sp-3);
-  /* Kısa ekran (10.11.2026): modül listesi .os-nav-kaydir içinde kayar, alt
-     kontroller sabit. Ekran o kadar kısaysa ki alt kontroller de sığmıyor,
-     menünün tamamı kayar — hiçbir kontrol erişilemez kalmaz. */
-  overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;overscroll-behavior:contain;
-  border-right:1px solid var(--line);background:var(--surface);
-  transition:width var(--dur) var(--ease);
+/* ---------- Dock ---------- */
+.os-dock{
+  position:fixed;z-index:55;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);
+  display:flex;align-items:stretch;gap:2px;max-width:calc(100vw - 24px);padding:4px;box-sizing:border-box;
+  border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);box-shadow:var(--shadow-md);
 }
-.os-nav-kaydir{
-  flex:1 1 auto;min-height:calc(var(--ctl-h) * 3);
-  overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;overscroll-behavior:contain;
-  /* Odak çerçevesi (outline-offset:-2px) kenarda kesilmesin. */
-  margin:0 calc(var(--sp-1) * -1);padding:0 var(--sp-1);
-}
-/* İçerik menünün altında kalmasın: çalışma alanı menünün genişliği kadar içeride. */
-.os-root .os-frame:has(> .os-nav) .os-workspace{margin-left:var(--os-nav-w);transition:margin-left var(--dur) var(--ease)}
-
-.os-nav-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
-.os-nav-grup{margin:var(--sp-3) var(--sp-3) var(--sp-1);font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--muted);letter-spacing:.02em}
-.os-nav-alt{flex:none;margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:var(--sp-2);border-top:1px solid var(--line-soft)}
-
-.os-nav-link{
-  position:relative;display:flex;align-items:center;gap:var(--sp-3);
-  width:100%;min-height:var(--ctl-h);padding:0 var(--sp-3);box-sizing:border-box;
-  border:0;border-radius:var(--r-md);background:transparent;
-  color:var(--ink-soft);font:inherit;font-size:var(--fs-base);font-weight:var(--fw-medium);text-align:left;text-decoration:none;cursor:pointer;
+.os-dock-oge{
+  position:relative;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  min-width:76px;height:var(--os-dock-h);padding:0 10px;box-sizing:border-box;
+  border:0;border-radius:var(--r-lg);background:none;color:var(--ink-soft);font:inherit;text-decoration:none;cursor:pointer;
   transition:background-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
 }
-.os-nav-link>svg{flex:none}
-.os-nav-ad{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.os-nav-link:hover{background:var(--surface-2);color:var(--ink)}
-.os-nav-link:focus-visible,.os-nav-bolumler a:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
-/* Seçili: kurum renginde zemin + solda çizgi (renk tek başına durumu taşımasın). */
-.os-nav-link.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
-.os-nav-link.is-active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--primary)}
-.os-nav-link:disabled,.os-nav-link[aria-disabled="true"]{opacity:.5;cursor:not-allowed;background:transparent}
-.os-nav-rozet{
-  flex:none;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:var(--r-pill);
+.os-dock-ad{font-size:12px;font-weight:var(--fw-medium);line-height:1.1;white-space:nowrap}
+.os-dock-ad-dar{display:none}
+.os-dock-oge:hover{background:var(--surface-2);color:var(--ink)}
+.os-dock-oge:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+/* Seçili: zemin + kalın ad (renk tek başına durumu taşımasın). */
+.os-dock-oge.is-active{background:var(--primary-soft);color:var(--primary)}
+.os-dock-oge.is-active .os-dock-ad{font-weight:var(--fw-semibold)}
+.os-dock-rozet{
+  position:absolute;top:4px;right:calc(50% - 24px);
+  min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:var(--r-pill);
   background:var(--danger);color:var(--n-0);font-size:11px;font-weight:var(--fw-semibold);line-height:18px;text-align:center;
 }
+.os-dock-rozet--satir{position:static;flex:none}
 
-/* Açık modülün bölümleri, modülün altında girintili. */
-.os-nav-bolumler{list-style:none;margin:2px 0 var(--sp-1);padding:0 0 0 calc(var(--sp-3) + 18px + var(--sp-3) - var(--sp-2));display:flex;flex-direction:column;gap:1px}
-.os-nav-bolumler a{
-  display:flex;align-items:center;min-height:var(--ctl-h-sm);padding:0 var(--sp-2);border-radius:var(--r-sm);
-  color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;
-  transition:background-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
-}
-.os-nav-bolumler a:hover{background:var(--surface-2);color:var(--ink)}
-.os-nav-bolumler a.is-active{color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent);font-weight:var(--fw-semibold)}
-
-.os-nav-daralt{color:var(--muted)}
-
-/* ---------- Dar (ikon) hâli: kullanıcı seçimi ≥1100, zorunlu 761–1099 ----------
-   Ad görünmez kalır ama DOM'da: ekran okuyucu okur, fareyle ve klavye
-   odağıyla ipucu olarak çıkar (yalnızca hover'a bağlı değil). */
-.os-root[data-nav="dar"] .os-nav-link{justify-content:center;padding:0}
-.os-root[data-nav="dar"] .os-nav-ad{
-  /* fixed: kaydırma alanının dışına çizilir, kesilmez (konum os-navigasyon.tsx · ipucunuKonumla). */
-  position:fixed;left:calc(var(--os-nav-w) + 8px);top:var(--ipucu-y,-100px);transform:translateY(-50%);flex:none;
-  padding:4px 8px;border-radius:var(--r-xs);background:var(--ink);color:var(--surface);
-  font-size:var(--fs-micro);font-weight:var(--fw-medium);pointer-events:none;opacity:0;z-index:2;
-  transition:opacity var(--dur-fast) var(--ease);
-}
-.os-root[data-nav="dar"] .os-nav-link:is(:hover,:focus-visible) .os-nav-ad{opacity:1}
-.os-root[data-nav="dar"] .os-nav-rozet{position:absolute;top:2px;right:6px}
-.os-root[data-nav="dar"] .os-nav-grup{height:1px;margin:var(--sp-2) var(--sp-2);overflow:hidden;color:transparent;background:var(--line-soft)}
-.os-root[data-nav="dar"] .os-nav-bolumler{display:none}
-
-@media (min-width:761px) and (max-width:1099px){
-  .os-root .os-nav-link{justify-content:center;padding:0}
-  .os-root .os-nav-ad{
-    position:fixed;left:calc(var(--os-nav-w) + 8px);top:var(--ipucu-y,-100px);transform:translateY(-50%);flex:none;
-    padding:4px 8px;border-radius:var(--r-xs);background:var(--ink);color:var(--surface);
-    font-size:var(--fs-micro);font-weight:var(--fw-medium);pointer-events:none;opacity:0;z-index:2;
-    transition:opacity var(--dur-fast) var(--ease);
-  }
-  .os-root .os-nav-link:is(:hover,:focus-visible) .os-nav-ad{opacity:1}
-  .os-root .os-nav-rozet{position:absolute;top:2px;right:6px}
-  .os-root .os-nav-grup{height:1px;margin:var(--sp-2) var(--sp-2);overflow:hidden;color:transparent;background:var(--line-soft)}
-  .os-root .os-nav-bolumler{display:none}
-  /* Bu genişlikte menü hep dar; daraltma düğmesi bir şey değiştirmez. */
-  .os-root .os-nav-daralt{display:none}
-}
-
-/* ---------- Mobil alt çubuk ---------- */
-.os-tabbar{display:none}
 @media (max-width:760px){
-  .os-nav{display:none}
-  .os-root .os-frame:has(> .os-nav) .os-workspace{margin-left:0}
-  .os-tabbar{
-    position:fixed;z-index:55;left:0;right:0;bottom:0;
-    display:flex;align-items:stretch;
+  .os-dock{
+    left:0;right:0;bottom:0;transform:none;max-width:none;gap:0;
     padding:4px max(4px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px,env(safe-area-inset-left));
-    border-top:1px solid var(--line);background:var(--surface);
+    border-width:1px 0 0;border-radius:0;box-shadow:none;
   }
-  .os-tab{
-    position:relative;flex:1 1 0;min-width:0;height:var(--os-tab-h,58px);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    border:0;border-radius:var(--r-md);background:none;color:var(--muted);font:inherit;text-decoration:none;cursor:pointer;
-  }
-  .os-tab>span{max-width:100%;padding:0 2px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:var(--fw-medium)}
-  .os-tab:active{background:var(--surface-2)}
-  .os-tab:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
-  .os-tab.is-active{color:var(--primary)}
-  .os-tab.is-active>span{font-weight:var(--fw-semibold)}
-  .os-tab .os-nav-rozet{position:absolute;top:4px;right:calc(50% - 24px)}
+  .os-dock-oge{flex:1 1 0;min-width:0;height:var(--os-tab-h);padding:0 2px;border-radius:var(--r-md)}
+  .os-dock-oge:hover{background:none}
+  .os-dock-oge:active{background:var(--surface-2)}
+  .os-dock-oge.is-active{background:none}
+  .os-dock-ad{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+  .os-dock-ad-genis{display:none}
+  .os-dock-ad-dar{display:inline}
 }
 
-/* ---------- "Daha fazla" / "Arvo ürünleri" penceresi ---------- */
-.os-daha{
-  width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 64px);margin:auto;padding:0;overflow:auto;
+/* ---------- Uygulamalar paneli ---------- */
+.os-uygulamalar{
+  width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 64px);margin:auto;padding:0;
   border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-lg);
 }
-.os-daha::backdrop{background:color-mix(in srgb,var(--n-900) 35%,transparent)}
-.os-daha[open]{animation:os-daha-ac var(--dur) var(--ease)}
-@keyframes os-daha-ac{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.os-daha-bas{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-4) var(--sp-4) var(--sp-2) var(--sp-5)}
-.os-daha-bas h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold)}
-.os-daha-liste{list-style:none;margin:0;padding:0 var(--sp-2) var(--sp-3);display:flex;flex-direction:column;gap:2px}
-.os-daha-oge{
+/* Açıkken üç kat: başlık + arama sabit, liste tek kaydırma alanı. */
+.os-uygulamalar[open]{display:flex;flex-direction:column;animation:os-uygulamalar-ac var(--dur) var(--ease)}
+.os-uygulamalar::backdrop{background:color-mix(in srgb,var(--n-900) 35%,transparent)}
+@keyframes os-uygulamalar-ac{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.os-uygulamalar-bas{flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-4) var(--sp-4) var(--sp-2) var(--sp-5)}
+.os-uygulamalar-bas h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+.os-uygulamalar-ara{
+  flex:none;display:flex;align-items:center;gap:var(--sp-2);margin:0 var(--sp-4) var(--sp-2);padding:0 var(--sp-3);
+  min-height:var(--ctl-h);border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--muted);
+}
+.os-uygulamalar-ara:focus-within{border-color:var(--primary);box-shadow:var(--shadow-glow)}
+.os-uygulamalar-ara input{flex:1;min-width:0;height:var(--ctl-h);border:0;outline:none;background:transparent;color:var(--ink);font:inherit;font-size:16px}
+.os-uygulamalar-govde{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 var(--sp-2) var(--sp-3)}
+.os-uygulamalar-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.os-uygulama{
   display:flex;align-items:center;gap:var(--sp-3);min-height:var(--ctl-h-touch);padding:0 var(--sp-3);
   border-radius:var(--r-md);color:var(--ink);font-size:var(--fs-base);font-weight:var(--fw-medium);text-decoration:none;
 }
-.os-daha-oge>span:nth-child(2){flex:1;min-width:0}
-.os-daha-oge:hover{background:var(--surface-2)}
-.os-daha-oge:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
-.os-daha-oge.is-active{background:var(--primary-soft);color:var(--primary)}
-.os-daha-simge{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);color:var(--ink-soft)}
-.os-daha-oge.is-active .os-daha-simge{border-color:transparent;background:var(--primary);color:var(--primary-on)}
-.os-daha-simge--urun{padding:5px;box-sizing:border-box}
-.os-daha-simge--urun img{width:100%;height:auto}
-.os-daha-simge--urun>i{font-style:normal;font-weight:var(--fw-bold)}
-.os-daha .marka-koyu{display:none}
-html[data-theme="dark"] .os-daha .marka-acik{display:none}
-html[data-theme="dark"] .os-daha .marka-koyu{display:block}
-.os-daha-urunler{border-top:1px solid var(--line-soft)}
-.os-daha-urunler h3{margin:0;padding:var(--sp-4) var(--sp-5) var(--sp-2);font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--muted)}
-/* Masaüstünde modüllerin hepsi sol menüde: pencere yalnızca ürünleri gösterir. */
-@media (min-width:761px){.os-daha-moduller{display:none}}
+.os-uygulama-ad{flex:1;min-width:0;overflow-wrap:anywhere}
+.os-uygulama:hover{background:var(--surface-2)}
+.os-uygulama:focus-visible,.os-uygulama-bolumler a:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.os-uygulama.is-active{background:var(--primary-soft);color:var(--primary)}
+.os-uygulama-simge{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);color:var(--ink-soft)}
+.os-uygulama.is-active .os-uygulama-simge{border-color:transparent;background:var(--primary);color:var(--primary-on)}
+.os-uygulama-simge--urun{padding:5px;box-sizing:border-box}
+.os-uygulama-simge--urun img{width:100%;height:auto}
+.os-uygulama-simge--urun>i{font-style:normal;font-weight:var(--fw-bold)}
+.os-uygulamalar .marka-koyu{display:none}
+html[data-theme="dark"] .os-uygulamalar .marka-acik{display:none}
+html[data-theme="dark"] .os-uygulamalar .marka-koyu{display:block}
+/* Bölümler: satır sarılan bağlantılar, yatay kaydırma yok. */
+.os-uygulama-bolumler{list-style:none;margin:0 0 var(--sp-2);padding:0 var(--sp-3) 0 calc(var(--sp-3) + 36px + var(--sp-3));display:flex;flex-wrap:wrap;gap:4px}
+.os-uygulama-bolumler a{display:inline-flex;align-items:center;min-height:var(--ctl-h-sm);padding:0 10px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm);text-decoration:none}
+.os-uygulama-bolumler a:hover{color:var(--ink);background:color-mix(in srgb,var(--primary) 10%,var(--surface-2))}
+.os-uygulamalar-urunler{border-top:1px solid var(--line-soft);margin-top:var(--sp-2)}
+.os-uygulamalar-urunler h3{margin:0;padding:var(--sp-3) var(--sp-3) var(--sp-2);font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--muted)}
+.os-uygulamalar-bos{margin:0;padding:var(--sp-6) var(--sp-3);text-align:center;color:var(--muted)}
 @media (max-width:760px){
-  .os-daha{width:100%;max-width:none;max-height:85dvh;margin:auto 0 0;border-width:1px 0 0;border-radius:var(--r-xl) var(--r-xl) 0 0;padding-bottom:env(safe-area-inset-bottom)}
+  .os-uygulamalar{width:100%;max-width:none;max-height:85dvh;margin:auto 0 0;border-width:1px 0 0;border-radius:var(--r-xl) var(--r-xl) 0 0;padding-bottom:env(safe-area-inset-bottom)}
+}
+
+/* ---------- Bölüm menüsü (içeriğin üstünde) ---------- */
+.os-bolumler{position:relative;padding:var(--sp-3) var(--sp-6) 0}
+.os-workspace:has(> .os-bolumler)>.panel-content{padding-top:var(--sp-4)}
+.os-bolumler-ac{display:none}
+.os-bolumler-liste{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px}
+.os-bolumler-liste a{
+  display:inline-flex;align-items:center;min-height:var(--ctl-h-sm);padding:0 12px;border-radius:var(--r-pill);
+  color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap;
+  transition:background-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
+}
+.os-bolumler-liste a:hover{background:var(--surface-2);color:var(--ink)}
+.os-bolumler-liste a:focus-visible,.os-bolumler-ac:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.os-bolumler-liste a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
+@media (max-width:900px){.os-bolumler{padding:var(--sp-3) var(--sp-3) 0}}
+@media (max-width:760px){
+  .os-bolumler{padding:var(--sp-2) var(--sp-3) 0}
+  .os-workspace:has(> .os-bolumler)>.panel-content{padding-top:var(--sp-3)}
+  .os-bolumler-ac{
+    display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:40px;padding:0 12px;box-sizing:border-box;
+    border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;font-size:14px;cursor:pointer;
+  }
+  .os-bolumler-modul{color:var(--muted)}
+  .os-bolumler-ac>b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:var(--fw-semibold)}
+  .os-bolumler-ac>svg{flex:none;transform:rotate(-90deg);transition:transform var(--dur-fast) var(--ease)}
+  .os-bolumler-ac[aria-expanded="true"]>svg{transform:rotate(90deg)}
+  /* Açılır liste: ekran sınırında kalır, gerekirse yalnızca dikey kayar. */
+  .os-bolumler-liste{
+    display:none;position:absolute;z-index:58;left:var(--sp-3);right:var(--sp-3);top:calc(100% + 4px);
+    flex-direction:column;flex-wrap:nowrap;gap:2px;padding:4px;max-height:min(60dvh,420px);overflow-y:auto;overscroll-behavior:contain;
+    border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-raised);box-shadow:var(--shadow-lg);
+  }
+  .os-bolumler-liste.is-acik{display:flex}
+  .os-bolumler-liste a{display:flex;min-height:var(--ctl-h-touch);border-radius:var(--r-md);font-size:15px;white-space:normal}
 }
 
 @media (prefers-reduced-motion:reduce){
-  .os-nav,.os-root .os-frame:has(> .os-nav) .os-workspace,.os-nav-link,.os-nav-bolumler a,.os-nav-ad{transition:none}
-  .os-daha[open]{animation:none}
+  .os-dock-oge,.os-bolumler-liste a,.os-bolumler-ac>svg{transition:none}
+  .os-uygulamalar[open]{animation:none}
 }
+
+/* Sayfa akışında alta yapışan eylem şeritleri dock'un altında kalmasın
+   (kurucu konsolu ayar formlarının Kaydet şeridi). */
+.os-root .plt-kaydet-serit{bottom:calc(var(--os-dock-space) - var(--sp-4))}

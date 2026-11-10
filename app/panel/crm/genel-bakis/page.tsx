@@ -2,7 +2,8 @@ import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { formatSubject } from "@/lib/table-format";
 import { gunlukSeriDilimler } from "@/lib/gunluk-seri";
-import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi, yeniMi } from "../../os/genel-bakis";
+import { GENEL_BAKIS_SATIR, GenelBakis, ListeKarti, ListeSatiri, SeriKarti, simdi, yeniMi } from "../../os/genel-bakis";
+import { GorunumSecici } from "../../os/gorunum-secici";
 import { daysSince, relativeTime, waitingLabel } from "../last-contact";
 import "../crm.css";
 import { modulGerek } from "@/lib/modul-kapisi";
@@ -142,10 +143,16 @@ export default async function CrmOverviewPage() {
   return (
     <GenelBakis
       gizliBaslik="CRM genel bakış"
+      sinif="dash-sabit"
     >
-      <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={seri} adet="talep" bos="Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir." />
-
-      <ListeIzgarasi etiket="Satış işleri">
+      {/* Sayfa kaymaz, kartlar kendi içinde kayar; telefonda görünüm seçici
+          (os/gorunum-secici.tsx). NAV-01: müşteri adı iki satıra kadar,
+          rozet gerekirse alt satıra iner (dashboard.css · esnek satır). */}
+      <GorunumSecici
+        etiket="CRM görünümü"
+        paneller={[
+          { anahtar: "talepler", etiket: "Talepler", yer: "ust", icerik: <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={seri} adet="talep" bos="Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir." /> },
+          { anahtar: "yeni", etiket: "Yeni talepler", yer: "liste", icerik: (
         <ListeKarti baslik="Yeni talepler" alt={unassignedCount ? `${unassignedCount} talep temsilci bekliyor` : "Teklif öncesi aşamadaki talepler"} bos="Yeni talep yok. Girilen talepler burada belirir." href="/panel/crm" hrefEtiket="Tüm talepler" sayi={sayi(ozet.yeni_talep)}>
           {newRequests.slice(0, GENEL_BAKIS_SATIR).map((row) => {
             const assignee = row.assigned_employee_id ? employeeName.get(row.assigned_employee_id) ?? "Pasif personel" : null;
@@ -161,7 +168,8 @@ export default async function CrmOverviewPage() {
             );
           })}
         </ListeKarti>
-
+          ) },
+          { anahtar: "teklif", etiket: "Teklifler", yer: "liste", icerik: (
         <ListeKarti baslik="Yanıt bekleyen teklifler" alt={expiringCount ? `${expiringCount} teklifin süresi 3 gün içinde doluyor` : sayi(ozet.bekleyen_teklif) ? `${money(pendingProposalValue)} teklif değeri` : "Müşteriye gönderilmiş, karar bekleyen"} bos="Yanıt bekleyen teklif yok." href="/panel/crm/proposals?status=sent" hrefEtiket="Tüm teklifler" sayi={sayi(ozet.bekleyen_teklif)}>
           {pendingProposals.slice(0, GENEL_BAKIS_SATIR).map((row) => {
             const left = row.valid_until ? daysUntil(row.valid_until, bugun) : null;
@@ -180,7 +188,8 @@ export default async function CrmOverviewPage() {
             );
           })}
         </ListeKarti>
-
+          ) },
+          { anahtar: "imza", etiket: "İmza bekleyen", yer: "liste", icerik: (
         <ListeKarti baslik="İmza bekleyen sözleşmeler" alt={lateContracts ? `${lateContracts} sözleşme 7 günden uzun süredir bekliyor` : "Müşteriye gönderilmiş, imzalanmamış"} bos="İmza bekleyen sözleşme yok." href="/panel/crm/contracts?status=sent" hrefEtiket="Tüm sözleşmeler" sayi={sayi(ozet.bekleyen_sozlesme)}>
           {pendingContracts.slice(0, GENEL_BAKIS_SATIR).map((row) => {
             const late = (daysSince(row.sent_at) ?? 0) >= 7;
@@ -196,7 +205,8 @@ export default async function CrmOverviewPage() {
             );
           })}
         </ListeKarti>
-
+          ) },
+          { anahtar: "imzali", etiket: "İmzalananlar", yer: "liste", icerik: (
         <ListeKarti baslik="Son imzalanan sözleşmeler" alt={signedThisMonth ? `Bu ay ${signedThisMonth} imza · ${money(signedThisMonthValue)}` : "Bu ay henüz imza yok"} bos="İmzalanmış sözleşme yok." href="/panel/crm/contracts" hrefEtiket="Sözleşmelere git" sayi={sayi(ozet.imzali_toplam)}>
           {recentSigned.slice(0, GENEL_BAKIS_SATIR).map((row) => (
             <ListeSatiri
@@ -209,7 +219,9 @@ export default async function CrmOverviewPage() {
             />
           ))}
         </ListeKarti>
-      </ListeIzgarasi>
+          ) },
+        ]}
+      />
     </GenelBakis>
   );
 }

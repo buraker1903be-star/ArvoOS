@@ -9,11 +9,10 @@
       görmek için pencereyi açmak gerekiyordu, yani hiçbir işe yaramıyordu.
    2. Rozeti gizleyen bir kural. Eski kenar menüsünde daraltılınca
       kayboluyordu; 2026-10'da posta dock'un kendi uygulaması oldu.
-      10.11.2026'dan beri dock yerine sol menü + mobil alt çubuk var
-      (os/os-navigasyon.tsx): menü DARALTILABİLİYOR, yani eski hata
-      yeniden mümkün. Daraltılmış menüde rozet ikonun köşesinde kalır;
-      telefonda posta "Daha fazla"daysa rozet o düğmede toplanır. Rozeti
-      gizleyen bir CSS kuralı eklenirse bu test yakalar.
+      10.11.2026'dan beri etiketli dock (os/os-navigasyon.tsx): posta
+      dock'ta değilse (Uygulamalar panelinde) rozeti dock'taki
+      "Uygulamalar / Daha fazla" düğmesinde TOPLANIR — paneli açmadan
+      görünür. Rozeti gizleyen bir CSS kuralı eklenirse bu test yakalar.
 
   Sayım da burada sabitleniyor: rozetin gösterdiği sayı, rozete basınca
   açılan listeyle aynı olmalı (/panel/posta süzgeçsiz açılıyor).
@@ -42,17 +41,17 @@ describe("posta okunmamış rozeti", () => {
     );
   });
 
-  test("menü rozeti gizlenmiyor (daraltılmış menü ve telefon dahil)", () => {
+  test("dock rozeti gizlenmiyor (telefon dahil)", () => {
     const kurallar = [...SHELL_CSS.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)];
-    const gizleyen = kurallar.find(([, secici, govde]) => /os-nav-rozet/.test(secici) && /display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0\b/.test(govde));
+    const gizleyen = kurallar.find(([, secici, govde]) => /os-dock-rozet/.test(secici) && /display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0\b/.test(govde));
     assert.equal(gizleyen, undefined, `rozeti gizleyen kural: ${gizleyen?.[1]?.trim()}`);
-    assert.match(NAV, /className="os-nav-rozet"/, "menü rozeti çizmiyor");
-    // Telefonda "Daha fazla"daki uygulamaların rozeti düğmenin kendisinde toplanıyor.
-    assert.match(NAV, /dahaRozeti\s*=\s*digerleri\.reduce/, "Daha fazla düğmesi gizli uygulamaların rozetini toplamıyor");
+    assert.match(NAV, /className="os-dock-rozet"/, "dock rozeti çizmiyor");
+    // Dock'ta olmayan uygulamaların rozeti Uygulamalar / Daha fazla düğmesinde toplanıyor.
+    assert.match(NAV, /panelRozeti\s*=\s*digerleri\.reduce/, "Uygulamalar düğmesi paneldeki uygulamaların rozetini toplamıyor");
   });
 
   test("sayı 99+ ile sınırlanıyor (ikona sığmayan rakam yok)", () => {
-    assert.match(NAV, /rozet\s*>\s*99\s*\?\s*"99\+"/, "menü: 99+ sınırı yok");
+    assert.match(NAV, />\s*99\s*\?\s*"99\+"/, "dock: 99+ sınırı yok");
   });
 
   test("sayım, rozete basınca açılan listeyle aynı kümeyi sayıyor", () => {

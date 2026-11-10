@@ -6,9 +6,9 @@
   kartları) ve PR #314'te liste kartları esnek ızgaraya geçti. Yüklenirken
   dört kutu, yüklenince bambaşka bir düzen: her açılışta göz kayması.
 
-  Şimdi aynı ölçüler (dashboard.css, .dash-v2): kartlar arası 16px, kart
-  iç boşluğu 16/20px, köşe --r-xl; liste kartları ana ekranla AYNI ızgara
-  kuralında (en az ~340px, sütun sayısı genişliğe göre). Sol menü ve
+  Şimdi aynı ölçüler ve aynı SABİT düzen (dashboard.css · .dash-sabit):
+  sayfa kaymaz, liste kartları kalan yüksekliği paylaşır; telefonda
+  görünüm seçici + tek panel. Sol menü ve
   çalışma alanı boşlukları yerleşimde (layout.tsx) olduğu için iskelet
   zaten aynı kutunun içinde çiziliyor; menü yüklenirken yeniden kurulmuyor.
 
@@ -24,6 +24,11 @@ export default function PanelLoading() {
       <div className="skel-hero">
         <div className="skel skel-kicker" />
         <div className="skel skel-title" />
+      </div>
+      <div className="skel-sekmeler">
+        <div className="skel" />
+        <div className="skel" />
+        <div className="skel" />
       </div>
       <div className="skel-kart">
         <div className="skel skel-kart-bas" />

@@ -158,20 +158,15 @@
 }
 
 /* ---------- ALT SEKME ÇUBUĞU ----------
-   10.11.2026'dan beri os-navigasyon.css'te (.os-tabbar): Ana ekran + en
-   fazla üç modül + etiketli "Daha fazla". Eskiden dock'un telefon hâliydi
-   ve hangi modülün öne çıkacağı burada bir nth-child seçicisine gömülüydü.
-   --os-dock-space (içeriğin alt payı) telefonda çubuğun yüksekliği. */
-@media (max-width:760px){
-  .os-root{--os-tab-h:58px;--os-dock-space:calc(var(--os-tab-h) + 20px)}
-}
+   os-navigasyon.css'te (.os-dock'un telefon hâli): Ana ekran + en fazla üç
+   modül + etiketli "Daha fazla". Alt pay (--os-dock-space) de orada. */
 
 /* ---------- UYGULAMA DAVRANIŞI ----------
    Dokununca çıkan gri vurgu yok, çift dokunma yakınlaştırmıyor (düğmeye
    art arda basmak sayfayı büyütüyordu), çubuklarda metin seçilmiyor. */
 @media (max-width:760px){
   .os-root :is(a,button,summary,label,select,[role="button"]){-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-  .os-root :is(.os-tabbar,.os-bar){-webkit-user-select:none;user-select:none}
+  .os-root :is(.os-dock,.os-bar){-webkit-user-select:none;user-select:none}
   .os-root .os-bar{padding-left:max(var(--sp-3),env(safe-area-inset-left));padding-right:max(var(--sp-3),env(safe-area-inset-right))}
 
   /* PANO: süzgeçler iki sütun (üç seçim alt alta ekranın yarısını
@@ -204,26 +199,11 @@
   .os-root .os-bar:has(>.os-geri) .os-brand{display:none}
 }
 
-/* ---------- BÖLÜM ŞERİDİ (os-bolum-seridi.tsx) ----------
-   Açık uygulamanın bölümleri üst çubuğun altında, yana kayan sekmeler;
-   sayfa kayarken üstte kalır. Masaüstünde gizli. */
-.os-bolum-serit{display:none}
-@media (max-width:760px){
-  .os-root .os-bolum-serit{
-    position:sticky;top:var(--os-bar-h);z-index:50;
-    display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;
-    padding:6px var(--sp-3);border-bottom:1px solid var(--line);
-    background:color-mix(in srgb,var(--surface) 94%,transparent);
-    -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
-  }
-  .os-root .os-bolum-serit::-webkit-scrollbar{display:none}
-  .os-root .os-bolum-serit a{
-    flex:none;display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;
-    color:var(--muted);font-size:14px;font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap;
-  }
-  .os-root .os-bolum-serit a:active{background:var(--surface-2)}
-  .os-root .os-bolum-serit a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
-}
+/* ---------- BÖLÜMLER ----------
+   Eskiden burada telefonda yatay kayan bir bölüm şeridi vardı
+   (os-bolum-seridi.tsx); sağdaki bölümler ekran dışında kalıyordu.
+   10.11.2026'dan beri bölümler os-bolum-menusu.tsx'te: telefonda açılır
+   liste, kaydırma yok (os-navigasyon.css). */
 
 /* ---------- LİSTE ÜSTÜ: özet ve süzgeç daha az yer ----------
    Talepler'de ilk kayıt ekranın ortasından (485px) başlıyordu: özet

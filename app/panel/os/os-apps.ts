@@ -113,7 +113,7 @@ export function osUygulamalari({
 }
 
 /*
-  SOL MENÜ VE MOBİL ALT ÇUBUK AYNI LİSTEDEN (10.11.2026).
+  DOCK, MOBİL ALT ÇUBUK VE UYGULAMALAR PANELİ AYNI LİSTEDEN (10.11.2026).
 
   Eskiden masaüstünde yüzen dock, telefonda dock'un "alt sekme çubuğu"
   hâli vardı; ikisi de bu listeyi kullanıyordu ama hangi uygulamanın
@@ -126,9 +126,6 @@ export function osUygulamalari({
   gizlenenler zaten süzülmüş durumda. İki menü de yalnızca bu listeyi
   dağıtıyor; birinde görünen yetkisiz bir modül ötekinde de görünürdü.
 */
-
-/** Sol menünün daraltılmış/geniş seçimi; sunucu (layout.tsx) ilk çizimde okur, bileşen yazar. Burada çünkü "use client" dosyasından sunucuya sabit aktarılamaz. */
-export const NAV_CEREZI = "os_nav";
 
 /**
  * Telefonda öne çıkan uygulamaların sırası. Gerekçe mevcut kullanım
@@ -156,14 +153,6 @@ export function mobilAltCubuk(uygulamalar: OsUygulama[], sinir = 4): { birincil:
   return { birincil, digerleri: uygulamalar.filter((u) => !secilen.has(u.key)) };
 }
 
-/** Sol menünün grupları: modüller, yalnızca başlatıcıdakiler ("Diğer"), Ayarlar en altta. */
-export function kenarGruplari(uygulamalar: OsUygulama[]): { ana: OsUygulama[]; ek: OsUygulama[]; ayarlar: OsUygulama | null } {
-  return {
-    ana: uygulamalar.filter((u) => u.key !== "settings" && !u.yalnizBaslatici),
-    ek: uygulamalar.filter((u) => u.yalnizBaslatici),
-    ayarlar: uygulamalar.find((u) => u.key === "settings") ?? null,
-  };
-}
 
 /**
  * Açık sayfanın uygulaması. En uzun eşleşen yol kazanır; "/panel/crm"

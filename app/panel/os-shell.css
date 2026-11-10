@@ -222,7 +222,7 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
    kalıyor, yalnızca satırlar kayıyor. */
 .os-root main.liste-sayfa{
   display:flex;flex-direction:column;
-  height:calc(100dvh - var(--os-bar-h) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
+  height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
   /* Çok kısa pencerede liste okunamayacak kadar incelmesin; orada sayfa kayar. */
   min-height:420px;
 }
