@@ -11,6 +11,7 @@
 .dash [data-tone="gold"]{--tone-bg:var(--accent-soft);--tone-fg:var(--accent-strong)}
 .dash [data-tone="success"]{--tone-bg:var(--success-soft);--tone-fg:var(--success)}
 .dash [data-tone="danger"]{--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
+.dash [data-tone="warning"]{--tone-bg:var(--warning-soft);--tone-fg:var(--warning)}
 .dash [data-tone="brand"]{--tone-bg:color-mix(in srgb,var(--brand-500) 14%,var(--surface));--tone-fg:var(--brand-600)}
 html[data-theme="dark"] .dash [data-tone="brand"]{--tone-fg:var(--brand-200)}
 
@@ -296,3 +297,10 @@ a.dash-setup-step:active{transform:scale(.985)}
 @media (max-width:760px){
   .dash-ozet{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3) var(--sp-5)}
 }
+/* Kurulum: sayaç altında açık metin; isteğe bağlı adım ayrı ve kesik çerçeveli (OS-03, ilerlemeye sayılmaz). */
+.dash-setup-progress small{color:var(--muted);font-size:12px;text-align:right}
+.dash-setup-istege{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px dashed var(--line)}
+.dash-setup-istege-bas{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.02em}
+.dash-setup-step.is-istege{border-style:dashed;background:transparent}
+.dash-setup-step.is-istege .dash-setup-dot{border-style:dashed;border-color:var(--line);color:var(--muted)}
+.dash-setup-step.is-istege.is-done .dash-setup-dot{border-style:solid;border-color:transparent}

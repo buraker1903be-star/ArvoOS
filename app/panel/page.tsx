@@ -17,6 +17,7 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { BELGEDE_ZORUNLU, eksikResmiAlanlar, legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { BugunPaneli } from "./os/bugun-paneli";
+import { kurulumIlerlemesi } from "@/lib/kurulum-ilerlemesi";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "./os/genel-bakis";
 
 /*
@@ -216,9 +217,11 @@ export default async function PanelPage() {
     );
     if (canSeeCrm) setupSteps.push({ key: "talep", title: "İlk talebinizi girin", note: talepVar ? `${talepToplami} talep kayıtlı` : "Teklif, sözleşme ve takip buradan başlar", href: "/panel/crm", done: talepVar });
   }
-  const requiredSteps = setupSteps.filter((step) => !step.optional);
-  const setupDone = requiredSteps.filter((step) => step.done).length;
-  const showSetup = requiredSteps.length > 0 && setupDone < requiredSteps.length;
+  /* Sayaç, çubuk, "kaldı" metni ve kartın kapanması aynı zorunlu
+     listeden (OS-03, lib/kurulum-ilerlemesi.ts); isteğe bağlı ekip adımı
+     ayrı bölümde ve ilerlemeye girmiyor. */
+  const ilerleme = kurulumIlerlemesi(setupSteps);
+  const showSetup = ilerleme.toplam > 0 && !ilerleme.bitti;
 
   /*
     GÜN BİR (15.10.2026). Kurum daha hiç çalışmaya başlamamışken ana
@@ -238,21 +241,22 @@ export default async function PanelPage() {
       <header className="dash-card-head">
         <div>
           <h2>Kurulumu tamamlayın</h2>
-          <p>Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {requiredSteps.length - setupDone} adım kaldı.</p>
+          <p>Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {ilerleme.toplam - ilerleme.tamamlanan} zorunlu adım kaldı.</p>
         </div>
-        <div className="dash-setup-progress" aria-label={`${requiredSteps.length} adımdan ${setupDone} tamamlandı`}>
-          <b>{setupDone}/{requiredSteps.length}</b>
-          <span><i style={{ "--w": `${Math.round((setupDone / requiredSteps.length) * 100)}%` } as CSSProperties} /></span>
+        <div className="dash-setup-progress" role="progressbar" aria-valuemin={0} aria-valuemax={ilerleme.toplam} aria-valuenow={ilerleme.tamamlanan} aria-valuetext={ilerleme.ozet}>
+          <b>{ilerleme.tamamlanan}/{ilerleme.toplam}</b>
+          <span><i style={{ "--w": `${ilerleme.yuzde}%` } as CSSProperties} /></span>
+          <small>{ilerleme.ozet}</small>
         </div>
       </header>
       <ol className="dash-setup-list">
-        {setupSteps.map((step, index) => {
+        {ilerleme.zorunlu.map((step, index) => {
           const content = (
             <>
               <span className="dash-setup-dot" aria-hidden="true">{step.done ? <Icon name="check" size={14} /> : index + 1}</span>
               <span className="dash-setup-text">
                 <b>{step.title}</b>
-                <small>{step.optional ? "İsteğe bağlı · " : ""}{step.note}</small>
+                <small>{step.note}</small>
                 {step.done ? <span className="dash-setup-state">Tamamlandı</span> : <span className="dash-setup-go">Tamamla <Chevron /></span>}
               </span>
             </>
@@ -266,6 +270,32 @@ export default async function PanelPage() {
           );
         })}
       </ol>
+      {ilerleme.istegeBagli.length ? (
+        <div className="dash-setup-istege" aria-label="İsteğe bağlı adımlar">
+          <small className="dash-setup-istege-bas">İsteğe bağlı · kurulum ilerlemesine sayılmaz</small>
+          <ul className="dash-setup-list">
+            {ilerleme.istegeBagli.map((step) => {
+              const content = (
+                <>
+                  <span className="dash-setup-dot" aria-hidden="true">{step.done ? <Icon name="check" size={14} /> : "+"}</span>
+                  <span className="dash-setup-text">
+                    <b>{step.title}</b>
+                    <small>{step.note}</small>
+                    {step.done ? <span className="dash-setup-state">Yapıldı</span> : <span className="dash-setup-go">Davet et <Chevron /></span>}
+                  </span>
+                </>
+              );
+              return (
+                <li key={step.key}>
+                  {step.done
+                    ? <div className="dash-setup-step is-done is-istege">{content}</div>
+                    : <Link className="dash-setup-step is-istege" href={step.href}>{content}</Link>}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
     </section>
   ) : null;
 
@@ -288,7 +318,7 @@ export default async function PanelPage() {
         yeniKurum={hicKayitYok} />
       {kurulumOnce ? null : kurulumKarti}
 
-      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" bos={hicKayitYok ? "İlk talebinizi girdiğinizde günlük dağılım burada çizilir." : "Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir."} /> : null}
+      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" hata={Boolean(talepError)} bos={hicKayitYok ? "İlk talebinizi girdiğinizde günlük dağılım burada çizilir." : "Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir."} /> : null}
 
       <ListeIzgarasi>
         {canSeeOperations ? (

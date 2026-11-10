@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { gunlukSeri, gunlukSeriDilimler } from "@/lib/gunluk-seri";
+import { donemDegisimi, gunlukSeri, gunlukSeriDilimler } from "@/lib/gunluk-seri";
 
 /*
   Genel bakış grafiği (ana ekran ve modül genel bakışları). Gün sınırı
@@ -76,4 +76,56 @@ test("boş özet: on dört boş gün, yüzde yok", () => {
   assert.equal(seri.previous, 0);
   assert.equal(seri.delta, null);
   assert.equal(seri.max, 1, "sıfır bölme olmasın diye taban 1");
+});
+
+/*
+  OS-02 (09.11.2026): önceki dönem de takvim günüyle ve yüzde metni tek
+  kuraldan (donemDegisimi).
+*/
+test("önceki dönem takvim günüyle: bu dönemin ilk gününden önceki günün tamamı önceki döneme", () => {
+  // SIMDI 08.10 12:00 İstanbul; bu dönem 25.09–08.10, önceki 11.09–24.09.
+  // 24.09 20:00 İstanbul (17:00 UTC): eskiden kayan saatle (14 günden az önce
+  // değil) hiçbir yere sayılmıyordu.
+  const seri = gunlukSeri(["2026-09-24T17:00:00Z", "2026-09-11T05:00:00Z", "2026-09-10T20:00:00Z"], SIMDI);
+  assert.equal(seri.total, 0);
+  assert.equal(seri.previous, 2, "24.09 akşamı ve 11.09 sabahı önceki dönemde; 10.09 dışarıda");
+  assert.equal(seri.aralik, "25 Eyl – 8 Eki");
+  assert.equal(seri.oncekiAralik, "11 Eyl – 24 Eyl");
+});
+
+test("dönem değişimi: pozitif, negatif, eşit, −%100", () => {
+  assert.deepEqual(donemDegisimi({ total: 6, previous: 4 }, { adet: "talep" }), { tur: "artis", yuzde: 50, metin: "+%50 önceki 14 güne göre", ton: "success" });
+  assert.deepEqual(donemDegisimi({ total: 3, previous: 4 }, { adet: "talep" }), { tur: "azalis", yuzde: -25, metin: "−%25 önceki 14 güne göre", ton: "danger" });
+  const esit = donemDegisimi({ total: 4, previous: 4 }, { adet: "talep" });
+  assert.equal(esit.tur, "esit");
+  assert.equal(esit.ton, "neutral", "değişim yokken büyüme rengi yok");
+  assert.ok(!esit.metin.includes("+"));
+  const sifir = donemDegisimi({ total: 0, previous: 5 }, { adet: "talep" });
+  assert.equal(sifir.yuzde, -100);
+  assert.equal(sifir.metin, "−%100 önceki 14 güne göre");
+});
+
+test("dönem değişimi: önceki dönem sıfır → yüzde yok, nötr; ikisi de sıfır → değişim yok", () => {
+  const yeni = donemDegisimi({ total: 3, previous: 0 }, { adet: "talep" });
+  assert.equal(yeni.tur, "onceki-yok");
+  assert.equal(yeni.yuzde, null);
+  assert.equal(yeni.ton, "neutral");
+  assert.match(yeni.metin, /Önceki 14 günde talep yok/);
+  assert.ok(!/%/.test(yeni.metin), "tanımsız değişim için yüzde yok");
+  const bos = donemDegisimi({ total: 0, previous: 0 }, { adet: "talep" });
+  assert.equal(bos.tur, "ikisi-sifir");
+  assert.equal(bos.ton, "neutral");
+  assert.match(bos.metin, /Değişim yok/);
+});
+
+test("dönem değişimi: okunamayan veri sıfırdan ayrı", () => {
+  const hata = donemDegisimi({ total: 0, previous: 0 }, { adet: "talep", hata: true });
+  assert.equal(hata.tur, "yuklenemedi");
+  assert.equal(hata.ton, "warning");
+  assert.equal(hata.yuzde, null);
+  assert.match(hata.metin, /yüklenemedi/);
+});
+
+test("dönem uzunluğu metne yansıyor (7 günlük seri)", () => {
+  assert.equal(donemDegisimi({ total: 2, previous: 1 }, { adet: "talep", gun: 7 }).metin, "+%100 önceki 7 güne göre");
 });

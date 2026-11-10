@@ -53,3 +53,6 @@
 .abk-tutar strong{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;white-space:nowrap}
 .abk-iban{flex:none;padding:4px 8px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink);font-size:var(--fs-micro);letter-spacing:.03em;white-space:nowrap}
 @media (max-width:640px){.abk-iban{white-space:normal;word-break:break-all}}
+/* OS-05: özetteki bitişin hangi ürüne ve tarih türüne ait olduğu; tarih yokken nedeni uyarı tonunda. */
+.os-root .abk-ozet-not{display:block;color:var(--muted);font-size:var(--fs-micro);font-weight:400}
+.os-root .abk-satir-not[data-tone="warning"]{color:var(--warning)}

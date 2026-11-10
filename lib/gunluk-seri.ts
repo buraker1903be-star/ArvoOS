@@ -16,7 +16,13 @@ const gunAnahtari = (deger: string | number) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(deger));
 
 export type SeriGunu = { key: string; count: number; day: string; title: string; isToday: boolean };
-export type GunlukSeri = { days: SeriGunu[]; total: number; previous: number; today: number; max: number; delta: number | null };
+export type GunlukSeri = {
+  days: SeriGunu[]; total: number; previous: number; today: number; max: number; delta: number | null;
+  /** Bu dönemin ve önceki dönemin takvim aralığı ("27 Eki – 9 Kas"); etiket hesapla aynı günlerden. */
+  aralik: string; oncekiAralik: string;
+};
+
+const kisaGun = (an: number) => new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, day: "numeric", month: "short" }).format(new Date(an));
 
 /**
  * @param tarihler kaydın zamanı (ISO). Önceki dönem kıyası için en az
@@ -42,9 +48,11 @@ function dilimleriKur(simdi: number, gun: number) {
 }
 
 /** Dilimler dolduktan sonraki özet alanları (iki girişte ortak). */
-function seriOzeti(days: SeriGunu[], previous: number, gun: number): GunlukSeri {
+function seriOzeti(days: SeriGunu[], previous: number, gun: number, simdi: number): GunlukSeri {
   const total = days.reduce((toplam, g) => toplam + g.count, 0);
   return {
+    aralik: `${kisaGun(simdi - (gun - 1) * GUN_MS)} – ${kisaGun(simdi)}`,
+    oncekiAralik: `${kisaGun(simdi - (2 * gun - 1) * GUN_MS)} – ${kisaGun(simdi - gun * GUN_MS)}`,
     days,
     total,
     previous,
@@ -56,18 +64,27 @@ function seriOzeti(days: SeriGunu[], previous: number, gun: number): GunlukSeri 
 
 export function gunlukSeri(tarihler: string[], simdi: number, gun = 14, agirlik?: number[]): GunlukSeri {
   const { days, indeks } = dilimleriKur(simdi, gun);
+  /*
+    Önceki dönem de TAKVİM günüyle (OS-02, 09.11.2026). Eskiden bu dönem
+    takvim günüyle (bugün dahil 14 gün), önceki dönem kayan saatle
+    (şimdiden 14–28 gün önce) sayılıyordu: iki pencere arasında, bu
+    dönemin ilk gününden önceki günün saat şimdiye kadarki kısmı hiçbir
+    yere sayılmıyor, öndeki bir günün kalanı da önceki döneme
+    giriyordu — "önceki döneme göre" yüzdesi etiketteki günlerle
+    eşleşmiyordu. Veritabanı dilimlerindeki (gunlukSeriDilimler) kural.
+  */
+  const oncekiBasi = gunAnahtari(simdi - (2 * gun - 1) * GUN_MS);
+  const buDonemBasi = days[0].key;
   let previous = 0;
   tarihler.forEach((tarih, sira) => {
     if (!tarih) return;
     const katki = agirlik?.[sira] ?? 1;
-    const yer = indeks.get(gunAnahtari(tarih));
+    const anahtar = gunAnahtari(tarih);
+    const yer = indeks.get(anahtar);
     if (yer !== undefined) days[yer].count += katki;
-    else {
-      const yas = simdi - Date.parse(tarih);
-      if (yas >= gun * GUN_MS && yas < 2 * gun * GUN_MS) previous += katki;
-    }
+    else if (anahtar >= oncekiBasi && anahtar < buDonemBasi) previous += katki;
   });
-  return seriOzeti(days, previous, gun);
+  return seriOzeti(days, previous, gun, simdi);
 }
 
 /*
@@ -102,5 +119,40 @@ export function gunlukSeriDilimler(
     if (yer !== undefined) days[yer].count += adet;
     else if (satir.gun >= oncekiBasi) previous += adet;
   }
-  return seriOzeti(days, previous, gun);
+  return seriOzeti(days, previous, gun, simdi);
+}
+
+/*
+  DÖNEM DEĞİŞİMİ METNİ (OS-02, 09.11.2026). Grafik kartı yüzdeyi kendisi
+  yazıyordu: %0 yeşil "+0%" çıkıyor (değişim yokken büyüme rengi), iki
+  dönem de sıfırken hiçbir şey yazmıyor, okunamayan veri gerçek sıfırla
+  aynı çiziliyordu. Kural tek yerde ve saf:
+    - önceki > 0      → yüzde (bu dönem 0 ise −%100), artış yeşil, düşüş kırmızı, eşit nötr
+    - önceki = 0 < bu → yüzde YOK, "önceki 14 günde talep yok", nötr
+    - ikisi de 0      → "değişim yok", nötr
+    - okunamadı       → "yüklenemedi", uyarı; sıfır gibi gösterilmez
+  Tanımsız değişim hiçbir zaman yeşil ya da ok almaz.
+*/
+export type DonemDegisimi = {
+  tur: "artis" | "azalis" | "esit" | "onceki-yok" | "ikisi-sifir" | "yuklenemedi";
+  yuzde: number | null;
+  metin: string;
+  ton: "success" | "danger" | "neutral" | "warning";
+};
+
+export function donemDegisimi(
+  { total, previous }: { total: number; previous: number },
+  { adet, gun = 14, hata = false }: { adet: string; gun?: number; hata?: boolean },
+): DonemDegisimi {
+  const donem = `önceki ${gun} güne göre`;
+  if (hata) return { tur: "yuklenemedi", yuzde: null, metin: "Veri yüklenemedi; değişim hesaplanamadı", ton: "warning" };
+  if (previous > 0) {
+    const yuzde = Math.round(((total - previous) / previous) * 100);
+    if (yuzde === 0) return { tur: "esit", yuzde: 0, metin: `${donem} değişim yok`, ton: "neutral" };
+    return yuzde > 0
+      ? { tur: "artis", yuzde, metin: `+%${yuzde} ${donem}`, ton: "success" }
+      : { tur: "azalis", yuzde, metin: `−%${Math.abs(yuzde)} ${donem}`, ton: "danger" };
+  }
+  if (total > 0) return { tur: "onceki-yok", yuzde: null, metin: `Önceki ${gun} günde ${adet} yok; yüzde hesaplanmadı`, ton: "neutral" };
+  return { tur: "ikisi-sifir", yuzde: null, metin: `Değişim yok; önceki ${gun} günde de ${adet} yok`, ton: "neutral" };
 }
