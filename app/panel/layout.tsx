@@ -71,19 +71,18 @@ import { SozlesmeOnayi } from "./sozlesme-onayi";
   "giriş yapılmadı" ekranını metadata'dan tetiklemek olurdu.
 */
 /*
-  PANELDE YAKINLAŞTIRMA KAPALI (13.10.2026, kurum sahibinin isteği).
-  Telefonda panel uygulama gibi kullanılıyor: iki parmakla ya da çift
-  dokunuşla sayfa büyüyünce düzen kayıyor, alt çubuk ekran dışına
-  çıkıyordu. Android Chrome bu satırı uyguluyor; iOS Safari erişilebilirlik
-  gereği "user-scalable=no"yu YOK SAYIYOR — orada hareketi
-  os-uygulama-kabugu.tsx engelliyor. Yalnızca panel: müşteriye giden
-  teklif/sözleşme belgesi ve pazarlama sitesi yakınlaştırılabilir kalır.
+  PANELDE YAKINLAŞTIRMA AÇIK (10.11.2026, ürün kararı).
+  13.10.2026'dan beri kapalıydı (maximumScale:1, userScalable:false +
+  os-uygulama-kabugu.tsx'te iOS hareket engeli): telefonda büyüyen sayfada
+  düzen kayıyor, alt çubuk ekran dışına çıkıyordu. Yeni ürün kuralı
+  büyütülmüş yazıda/yakınlaştırmada hiçbir bilgi ve işlemin erişilemez
+  olmamasını istiyor; taşmayı yakınlaştırmayı kapatarak önlemek o kuralın
+  tersi. Taşmaya karşı çözüm yerleşimde: sayfa sabit, içerik alanı kendi
+  içinde dikey kayar (dashboard.css · .dash-sabit, os-navigasyon.css).
 */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },

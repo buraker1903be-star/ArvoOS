@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { PORTAL_BUCKET } from "./portal-files-shared";
-import { isDurumAdi, isStepStatus, STEP_STATUS_LABELS } from "@/lib/is-adimlari";
+import { adimZatenHedefte, isDurumAdi, isStepStatus, STEP_STATUS_LABELS } from "@/lib/is-adimlari";
 import { BEKLEYEN_TARAF_ADLARI, bekleyenTarafMi, type BekleyenTaraf } from "@/lib/bekleyen-taraf";
 import { tasimaPlani } from "@/lib/operasyon-panosu";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
@@ -506,10 +506,28 @@ async function toggleWorkflowStep__impl(formData: FormData) {
     completed_by yine de gönderiliyor: tetikleyici boşsa auth.uid() yazar,
     burada zaten biliniyor.
   */
-  const { data, error } = await supabase.from("operation_steps").update({ status: completed ? "done" : "planned", completed_by: completed ? userId : null }).eq("id", stepId).eq("organization_id", membership.organization_id).select("id");
+  /*
+    Koşullu güncelleme (10.11.2026): yalnızca durum GERÇEKTEN değişecekse.
+    Eskiden çift gönderimde ikinci istek de güncelliyor ve kayıt geçmişine
+    ikinci "Aşama tamamlandı" satırını yazıyordu. Koşul veritabanında
+    olduğu için aynı anda gelen iki istekten yalnızca biri satırı değiştirir.
+  */
+  const sorgu = supabase.from("operation_steps").update({ status: completed ? "done" : "planned", completed_by: completed ? userId : null })
+    .eq("id", stepId).eq("organization_id", membership.organization_id);
+  const { data, error } = await (completed ? sorgu.neq("status", "done") : sorgu.eq("status", "done")).select("id");
   if (error) throw new Error("İş adımı güncellenemedi: " + error.message);
-  // RLS engellediğinde güncelleme sessizce 0 satır döner
-  if (!data?.length) throw new Error("İş adımı güncellenemedi: bu iş için yetkiniz yok.");
+  /* Sıfır satır iki şey olabilir: adım zaten istenen durumda (çift gönderim,
+     başka sekme) ya da RLS engelledi. İlki sessiz başarı, ikincisi hata. */
+  if (!data?.length) {
+    const { data: simdi, error: okumaHatasi } = await supabase.from("operation_steps").select("status")
+      .eq("id", stepId).eq("organization_id", membership.organization_id).maybeSingle();
+    if (okumaHatasi) throw new Error("İş adımı güncellenemedi: " + okumaHatasi.message);
+    if (adimZatenHedefte((simdi as { status?: string } | null)?.status, completed)) {
+      revalidateOperations();
+      return;
+    }
+    throw new Error("İş adımı güncellenemedi: bu iş için yetkiniz yok.");
+  }
   await kayitDus(context, {
     workflowId: step.workflowId,
     action: completed ? "step_done" : "step_undone",

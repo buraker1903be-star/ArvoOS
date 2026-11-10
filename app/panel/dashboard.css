@@ -418,3 +418,17 @@ a.dash-setup-step:active{transform:scale(.985)}
 /* Bugün yalnızca telefonda; 761–900px'te seçicide de yok. */
 @media (min-width:761px){.dash-gorunum-sec .is-telefon,.dash-gorunum-panel.is-telefon{display:none}}
 @media (max-width:760px){.dash-sabit .bugun{margin-bottom:0}}
+
+/* NAV-01: kısaltılmış adın tamamı (os/tam-metin-dugmesi.tsx). Düğme
+   yalnızca metin kısaltılmışsa çizilir; boş yer tutucu yer kaplamaz.
+   Açık satırda kısaltma kalkar. */
+.dash-tam-metin:empty{display:none}
+.dash-tam-metin{display:block;padding:0 var(--sp-2) var(--sp-1)}
+.dash-tam-metin>button{
+  min-height:var(--ctl-h-sm);padding:0 var(--sp-2);margin-left:calc(var(--sp-2) * -1);
+  border:0;border-radius:var(--r-sm);background:none;color:var(--primary);
+  font:inherit;font-size:var(--fs-micro);font-weight:var(--fw-semibold);cursor:pointer;
+}
+.dash-tam-metin>button:hover{background:var(--surface-2)}
+.dash-tam-metin>button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.dash-col-list li.is-acik .dash-col-main :is(b,small){-webkit-line-clamp:unset;display:block;white-space:normal;overflow:visible}

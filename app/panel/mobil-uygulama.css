@@ -11,13 +11,11 @@
    ve aynı ağırlıktaki kuralları ezerdi.
    ============================================================ */
 
-/* Çift dokunuşla büyütme kapalı (dokunmatik ekranların hepsinde, tablet
-   dahil — bu yüzden genişlik sorgusunun dışında). İki parmakla büyütme:
-   panel/layout.tsx viewport + os-uygulama-kabugu.tsx. Yan etkisi iyi:
-   tarayıcı çift dokunuşu beklemediği için dokunuşlar 300 ms gecikmesiz. */
-@media (pointer:coarse){
-  html:has(.os-root),html:has(.os-root) body{touch-action:manipulation}
-}
+/* Sayfa düzeyinde çift dokunuşla büyütme 10.11.2026'dan beri AÇIK
+   (eskiden html'e touch-action:manipulation yazılıydı). Kullanıcı
+   yakınlaştırması serbest: gerekçe app/panel/layout.tsx · viewport.
+   Düğme ve bağlantılarda manipulation kalıyor (aşağıda): orada çift
+   dokunuşu beklemeden tepki versin; sayfa yine iki parmakla büyür. */
 
 @media (max-width:760px){
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { donemDegisimi, type GunlukSeri } from "@/lib/gunluk-seri";
+import { TamMetinDugmesi } from "./tam-metin-dugmesi";
 import "../dashboard.css";
 
 /*
@@ -267,6 +268,8 @@ export function ListeSatiri({ href, baslik, baslikIpucu, alt, onizleme, sag, zam
         */}
         {!sag && !zaman ? <Chevron /> : null}
       </Link>
+      {/* Kısaltılmış adın tamamı dokunmayla da açılır; bağlantının dışında (NAV-01). */}
+      <TamMetinDugmesi />
     </li>
   );
 }

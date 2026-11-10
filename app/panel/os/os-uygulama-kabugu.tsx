@@ -47,25 +47,10 @@ export function OsUygulamaKabugu() {
   const [gizli, setGizli] = useState(false);
 
   /*
-    YAKINLAŞTIRMA KAPALI (layout.tsx'teki viewport'un iOS tarafı). iOS
-    Safari "user-scalable=no"yu yok sayıyor; iki parmak hareketi
-    gesture* olaylarıyla, çift dokunuş büyütmesi ise CSS'teki
-    touch-action: manipulation ile (mobil-uygulama.css) kapanıyor.
-    Tek parmakla kaydırmaya dokunulmuyor: yalnızca iki parmak engelleniyor.
+    Yakınlaştırma engeli (gesturestart, gesturechange ve iki parmak touchmove preventDefault)
+    10.11.2026'da kaldırıldı: panelde kullanıcı yakınlaştırması serbest
+    (gerekçe app/panel/layout.tsx · viewport).
   */
-  useEffect(() => {
-    const engelle = (olay: Event) => olay.preventDefault();
-    const ikiParmak = (olay: TouchEvent) => { if (olay.touches.length > 1) olay.preventDefault(); };
-    const secenek = { passive: false } as const;
-    document.addEventListener("gesturestart", engelle, secenek);
-    document.addEventListener("gesturechange", engelle, secenek);
-    document.addEventListener("touchmove", ikiParmak, secenek);
-    return () => {
-      document.removeEventListener("gesturestart", engelle);
-      document.removeEventListener("gesturechange", engelle);
-      document.removeEventListener("touchmove", ikiParmak);
-    };
-  }, []);
 
   // 1–2: kayıt ve yeni sürüm
   useEffect(() => {
