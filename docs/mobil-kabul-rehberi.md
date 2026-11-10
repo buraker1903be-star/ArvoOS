@@ -1,6 +1,6 @@
 # Mobil ve kısa ekran kabulü — çalıştırma rehberi
 
-`scripts/mobil-kabul.mjs` ana ekranı ve CRM genel bakışı gerçek uygulamada ölçer.
+`scripts/mobil-kabul.mjs` ana ekranı, CRM genel bakışı ve Operasyon genel bakışı gerçek uygulamada ölçer.
 
 - **Boyutlar:** 390×844, 768×600, 1440×900, 1440×600.
 - **Temalar:** açık ve koyu.
@@ -72,6 +72,7 @@ Windows PowerShell'de değişkeni ayrı satırda verin: `$env:ARVO_URL="https://
 |---|---|
 | `BOYUTLAR=390x844,768x600` | Yalnızca bu boyutlar (varsayılan dördü) |
 | `TEMALAR=dark` | Yalnızca bu tema (varsayılan `light,dark`) |
+| `SAYFALAR=ops` | Yalnızca bu sayfalar: `ana`, `crm`, `ops` (varsayılan üçü). Operasyonda masaüstü kart hizası da denetlenir. |
 | `--zoom-yok` | %200 yakınlaştırma senaryosunu atla |
 | `KABUL_CIKTI=~/arvo-kabul-ciktisi` | Çıktı dizini (depo içi reddedilir) |
 | `KABUL_PROFIL=~/…` | Tarayıcı profili dizini (depo içi reddedilir) |
