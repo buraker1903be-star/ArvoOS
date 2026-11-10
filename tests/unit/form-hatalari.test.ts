@@ -49,3 +49,20 @@ test("Yeni talep formu: sonucu bilen işlemle elle gönderilir, düğme gerçek 
   // Form yalnızca sunucu "tamam" dediğinde sıfırlanır.
   assert.match(form, /if \(sonuc\.tamam\) \{[\s\S]*?form\?\.reset\(\)/);
 });
+
+/*
+  F-01 (PR #316, 10.11.2026): Yeni talep açıkken Tab pencereden çıkıp Vercel
+  Preview araç çubuğuna, BODY'ye ve arka plan katmanına gidiyordu. Kök neden
+  ortak odak kancasıydı (yerel sınamada araç çubuğu yokken de oluyordu).
+  Geometri ve klavye kanıtı scripts/pencere-odak-tarayici.mjs; bu test
+  kararların koddan sessizce dönmesini yakalar.
+*/
+test("pencere odağı: inert bütün belgede, sınırda sarma, arka plan katmanı Tab sırasında değil", () => {
+  const kanca = fs.readFileSync(path.join(process.cwd(), "app/panel/components/odak-tuzagi.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(kanca, /for \(let yol: HTMLElement \| null = kok; yol && yol !== document\.body; yol = yol\.parentElement\)/, "inert yalnızca .panel-root çocuklarına uygulanıyor (body'deki dış öğeler odaklanabilir kalır)");
+  assert.match(kanca, /addEventListener\("keydown", tabla\)/);
+  assert.match(kanca, /addEventListener\("focusout", kayip\)/, "beklerken devre dışı kalan düğmede odak BODY'ye düşer");
+  const pencere = fs.readFileSync(path.join(process.cwd(), "app/panel/components/panel-drawer.tsx"), "utf8");
+  assert.match(pencere, /className="panel-drawer-backdrop"[^>]*tabIndex=\{-1\}/);
+  assert.match(pencere, /useOdakTuzagi\(open, pencereRef, "panel-drawer-root", \[\], true\)/);
+});

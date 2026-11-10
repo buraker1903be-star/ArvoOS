@@ -27,6 +27,24 @@ sonra yayılacak. Yeni görsel kimlik yok: renk, tipografi, açık/koyu tema ve 
 - **Yerleşim.** Pencere başlığı ve kaydet çubuğu sabit kalır; yalnızca gövde dikey kayar. Yatay taşma olmaz. Telefonda kaydet çubuğu satır kırar (hata özeti tam satır) ve formun üçte birini aşmaz.
 - **Hareket.** Mevcut 0.15–0.18 sn geçişler kullanılır. Hareketi azaltma tercihinde geçiş ve dönen halka durur. Animasyon kütüphanesi ya da ağır bulanıklık eklenmez.
 
+## Pencere odağı (F-01, PR #316)
+
+Kural `app/panel/components/odak-tuzagi.ts` · `useOdakTuzagi` içinde. Bu kancayı PanelDrawer, PanelBottomSheet, bildirim ve mesaj
+çekmeceleri ile rapor penceresi kullanıyor.
+
+- **Arka plan inert.** Pencere açıkken katmanın kökünden `body`'ye kadar her atanın kardeşleri `inert` olur: dock, sayfa ve kabuğun
+  dışına eklenen öğeler (ör. Vercel Preview araç çubuğu). Eskiden yalnızca `.panel-root`'un çocukları inert oluyordu.
+- **Sınırda sarma.** Tab son kontrolden ilk kontrole, Shift+Tab ilk kontrolden son kontrole döner. Kontroller her basışta yeniden
+  sayılır; hata alanları ve beklerken devre dışı kalan düğme döngüyü bozmaz. Dinleyici katmanın kendi öğesindedir, yani odağı
+  yalnızca en üstteki katman yönetir. Takvim gibi `.panel-root`'a çizilen açılır kontroller kendi tuşlarını yönetir.
+- **Odak kaybı.** Odaktaki düğme devre dışı kalınca odak katmanın kapsayıcısına geri alınır.
+- **Arka plan katmanı** fareyle ve dokunarak kapatır, Tab sırasında değildir. Klavyeyle kapatma Esc ve Kapat düğmesiyle olur. İlk Esc
+  açık takvimi, sonraki Esc pencereyi kapatır; odak açan düğmeye döner.
+- **Açılış.** Fareli cihazda odak ilk form alanına gider. Telefonda (`pointer: coarse`) kapsayıcıda kalır, çünkü alana odak sanal
+  klavyeyi hemen açar.
+- **Görünür odak.** Tab ile odaklanan alan sabit kaydet çubuğunun altında kalırsa pencere gövdesi o kadar kayar
+  (`panel-drawer.tsx`).
+
 ## Ortak değişikliklerin diğer formlara etkisi
 
 - **`kayit-formu.css`** panelde 50'yi aşkın formda kullanılıyor.
@@ -40,6 +58,8 @@ sonra yayılacak. Yeni görsel kimlik yok: renk, tipografi, açık/koyu tema ve 
 ## Sınama
 
 - `scripts/talep-formu-tarayici.mjs`: bileşen düzeyi, gerçek Chromium, sunucu işlemi taklit. 10 senaryo × 4 boyut × 2 tema.
+- `scripts/pencere-odak-tarayici.mjs`: bileşen düzeyi; Yeni talep, Yeni teklif, Direkt sözleşme ve temsili Talebi düzenle pencereleri,
+  `body`'ye eklenmiş dış öğe (Preview benzeri) varken ve yokken.
 - `tests/unit/form-hatalari.test.ts`.
 
 Gerçek uygulamada kabul ve sanal klavye: **UNVERIFIED** (ayrıntı PR'da).
