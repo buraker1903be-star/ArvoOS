@@ -11,6 +11,9 @@ soket), yeni `initdb`, sentetik veri; üretime hiçbir bağlantı ya da kimlik b
 `canli-sema.sql` + bekleyen migration'lar (bu migration HARİÇ) ile "üretimdeki hâl" kuruldu, migration
 ardından §0.2'deki gibi tek işlemde uygulandı. PayTR çağrısı taklit edildi; gerçek ödeme yok.
 
+Prova yeniden çalıştırılabilir: `scripts/yayin-provasi.sh` (gereksinimler dosyanın başında; PostgreSQL 16 +
+Node 22.18+, Docker/Supabase gerekmez). Çıkış kodu 0 → bütün kontroller geçti.
+
 | Kontrol | Durum | Kanıt |
 |---|---|---|
 | §1 ön kontrol sorguları çalışıyor | Doğrulandı (sentetik veri) | prova, 6 sorgu hatasız |
