@@ -324,6 +324,43 @@ describe("lisans kaydı yokken", () => {
       }
     }));
 
+  /*
+    Mevcut ürün kuralı (değiştirilmedi, sabitleniyor): lisansa uygulanmamış
+    tahsilat varken müşteri yeni ödeme başlatabilir mi?
+      - Kart: lib/license-checkout ücreti lisans satırından okuyor; satır
+        yokken ücret 0 → "fee_not_set", Abonelik ekranında kart düğmesi
+        yok ("Aylık ücret henüz belirlenmedi"). Bu dosya TS'ye dokunmadığı
+        için kart yolu burada değil; kural kodda.
+      - Havale: bildirimi lisansa bakmadan kaydediliyor. Onay lisans yokken
+        'license_missing' ile reddediliyor; bildirim bekliyor kalıyor.
+        Lisans açıldıktan sonra kurucu onaylarsa İKİNCİ gerçek ödeme olarak
+        ikinci ay eklenir — onaylayan kurucu, bekleyen PayTR olayını
+        Ödemeler ekranında aynı anda görüyor.
+  */
+  test("lisansa uygulanmamış tahsilat varken havale bildirimi kabul edilir ama lisans açılana kadar onaylanamaz", () =>
+    islem(db, async () => {
+      await tohum();
+      await baglanti();
+      await lisansiSil();
+      assert.equal(await bildirim(), "no_license");
+      const id = await dekont();
+      assert.ok(id, "havale bildirimi kaydedildi (müşteriye kapalı değil)");
+      await rol(db, "authenticated", KURUCU);
+      await reddedilir(db, `select public.review_bank_transfer_payment($1, 'approved', null)`, [id], /license_missing/);
+      await rol(db, "postgres");
+      assert.equal((await tek(`select status from public.organization_payment_requests where id = $1`, [id])).status, "pending");
+      assert.equal(await onayliOdemeSayisi(), 0);
+
+      await lisansiOlustur();
+      const { id: olay } = await tek(OLAY);
+      assert.equal(await yenidenIsle(olay), "recorded");
+      const birAy = await lisans();
+      await onayla(id);
+      const ikiAy = await lisans();
+      ayniAn(ikiAy.son, await birAySonra(Number(birAy.son)));
+      assert.equal(await onayliOdemeSayisi(), 2, "iki gerçek ödeme, iki dönem");
+    }));
+
   test("ek ürün ödemesi ArvoOS lisansı olmasa da kendi satırını açar (değişmedi)", () =>
     islem(db, async () => {
       await tohum();

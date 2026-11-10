@@ -5,6 +5,7 @@ import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { paytrKimligi } from "@/lib/payments/kimlik";
 import { deletePaytrLink, fromCallbackId, verifyPaytrCallback, type PaytrCredentials } from "@/lib/paytr";
 import { direktBildirimiIsle } from "@/lib/paytr-kart-akisi";
+import { linkBildiriminiIsle } from "@/lib/paytr-link-bildirimi";
 
 // PayTR "Link ile Ödeme" bildirimi (herkese açık, giriş yok).
 //
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return text(503, "service unavailable"); // PayTR sonra yeniden dener
 
-  const { data: link } = await admin.from("payment_links").select("id,organization_id,provider_link_id,purpose,product,payer_organization_id,subscriber_id").eq("id", linkId).maybeSingle();
+  const { data: link } = await admin.from("payment_links").select("id,organization_id,provider_link_id,purpose,product,payer_organization_id,subscriber_id,status").eq("id", linkId).maybeSingle();
   if (!link) {
     // Bizim oluşturmadığımız (ya da silinmiş) bir bağlantı: yeniden denemesin.
     console.warn("[paytr] bilinmeyen bağlantı bildirimi", fields.callback_id);
@@ -94,104 +95,104 @@ export async function POST(request: Request) {
   */
   const reported = kurus(field("payment_amount")) ?? totalAmount;
   const paymentAmount = totalAmount === null ? reported : Math.min(reported ?? totalAmount, totalAmount);
-  const { data: result, error } = await admin.rpc("arvo_record_paytr_payment", {
-    p_payment_link_id: link.id,
-    p_merchant_oid: fields.merchant_oid,
-    p_total_amount: totalAmount,
-    p_payment_amount: paymentAmount,
-    p_currency: field("currency") || "TL",
-    p_test_mode: field("test_mode") === "1",
-    p_payload: {
-      payment_type: field("payment_type") || null,
-      currency: field("currency") || null,
-      test_mode: field("test_mode") || null,
-      total_amount: fields.total_amount,
-      payment_amount: field("payment_amount") || null,
-    },
-  });
-  if (error) {
-    console.error("[paytr] ödeme kaydedilemedi", error.message);
-    return text(500, "record failed"); // OK dönmüyoruz: PayTR yeniden dener
-  }
-
   /*
-    Ödenen bağlantıyı PayTR'de de kapat (tek kullanımlık; en iyi çaba).
-    'no_license' da tahsil edilmiş bir ödeme (20261110063102): para
-    alındı, yalnızca lisansa uygulanamadı. Eskiden bağlantı yalnızca
-    'recorded'da kapatılıyordu; lisansı olmayan kurumda PayTR adresi açık
-    kalıyor ve müşteri aynı dönemi ikinci kez ödeyebiliyordu.
+    Kayıt sonrası karar lib/paytr-link-bildirimi'nde (saf, bağımlılıkları
+    buradan veriliyor; tests/db/paytr-link-bildirimi.test.mjs aynı işlevi
+    gerçek veritabanı ve taklit PayTR ile sınıyor). Bağlantı kapatma artık
+    başarısızsa 503 dönüyor ve PayTR'nin yeniden gönderdiği bildirimde —
+    önceki olay gerçekten bu bağlantının tahsilatıysa — yeniden deneniyor.
   */
-  if (result === "recorded" || result === "no_license") {
-    try {
-      await deletePaytrLink(credentials, link.provider_link_id);
-    } catch (closeError) {
-      console.warn("[paytr] ödenen bağlantı kapatılamadı", closeError instanceof Error ? closeError.message : closeError);
-    }
-  }
-  if (result === "no_license") {
-    console.error("[paytr] tahsil edildi, lisans kaydı yok; Platform → Ödemeler'den yeniden işlenmeli", link.payer_organization_id, fields.merchant_oid);
-  }
-
-  if (result === "recorded") {
-    /*
-      AI kredisi ArvoLab'ın veritabanında; ArvoOS'un SQL'i oraya
-      ulaşamıyor, bu yüzden yükleme burada. Başarısız olursa PayTR'ye yine
-      OK dönüyoruz — ödeme kaydedildi ve tekrar bildirim yeni bir şey
-      yazmaz. İzi ai_credit_orders.loaded_at'te: boş kalan satır "para
-      alındı ama kredi yüklenmedi" demek ve elle yüklenebilir.
-    */
-    if (link.purpose === "ai_credit" && link.payer_organization_id) {
-      const { data: siparis } = await admin.from("ai_credit_orders")
-        .select("id,kredi").eq("payment_link_id", link.id).maybeSingle();
-      if (!siparis) {
-        console.error("[paytr] kredi siparişi bulunamadı", link.id);
-      } else {
-        const yuklendi = await arvolabKrediYukle(link.payer_organization_id, Number(siparis.kredi), fields.merchant_oid);
-        if (yuklendi === "loaded") {
-          await admin.from("ai_credit_orders").update({ loaded_at: new Date().toISOString() }).eq("id", siparis.id);
-        } else {
-          console.error("[paytr] AI kredisi yüklenemedi", link.payer_organization_id, yuklendi);
+  const sonuc = await linkBildiriminiIsle(
+    { linkId: link.id, merchantOid: fields.merchant_oid, baglantiDurumu: link.status ?? null, payerOrganizationId: link.payer_organization_id ?? null },
+    {
+      kaydet: async () => {
+        const { data, error } = await admin.rpc("arvo_record_paytr_payment", {
+          p_payment_link_id: link.id,
+          p_merchant_oid: fields.merchant_oid,
+          p_total_amount: totalAmount,
+          p_payment_amount: paymentAmount,
+          p_currency: field("currency") || "TL",
+          p_test_mode: field("test_mode") === "1",
+          p_payload: {
+            payment_type: field("payment_type") || null,
+            currency: field("currency") || null,
+            test_mode: field("test_mode") || null,
+            total_amount: fields.total_amount,
+            payment_amount: field("payment_amount") || null,
+          },
+        });
+        return { sonuc: (data as string | null) ?? null, hata: error?.message ?? null };
+      },
+      oncekiOlay: async () => {
+        const { data, error } = await admin.from("payment_provider_events")
+          .select("payment_link_id,result,test_mode").eq("provider", "paytr").eq("merchant_oid", fields.merchant_oid).maybeSingle();
+        return { olay: data ?? null, hata: error?.message ?? null };
+      },
+      kapat: () => deletePaytrLink(credentials, link.provider_link_id),
+      tahsilatSonrasi: async () => {
+        /*
+          AI kredisi ArvoLab'ın veritabanında; ArvoOS'un SQL'i oraya
+          ulaşamıyor, bu yüzden yükleme burada. Başarısız olursa PayTR'ye yine
+          OK dönüyoruz — ödeme kaydedildi ve tekrar bildirim yeni bir şey
+          yazmaz. İzi ai_credit_orders.loaded_at'te: boş kalan satır "para
+          alındı ama kredi yüklenmedi" demek ve elle yüklenebilir.
+        */
+        if (link.purpose === "ai_credit" && link.payer_organization_id) {
+          const { data: siparis } = await admin.from("ai_credit_orders")
+            .select("id,kredi").eq("payment_link_id", link.id).maybeSingle();
+          if (!siparis) {
+            console.error("[paytr] kredi siparişi bulunamadı", link.id);
+          } else {
+            const yuklendi = await arvolabKrediYukle(link.payer_organization_id, Number(siparis.kredi), fields.merchant_oid);
+            if (yuklendi === "loaded") {
+              await admin.from("ai_credit_orders").update({ loaded_at: new Date().toISOString() }).eq("id", siparis.id);
+            } else {
+              console.error("[paytr] AI kredisi yüklenemedi", link.payer_organization_id, yuklendi);
+            }
+          }
         }
-      }
-    }
-    /*
-      Bireysel abonenin kredisi (26.10.2026): ArvoLab'daki KİŞİSEL bakiyeye.
-      Kimlik abonenin ArvoLab kullanıcı kimliği (external_user_id). Aynı
-      kural: yüklenemezse OK dönülür, sipariş loaded_at'siz kalır ve
-      bekleyen krediler cron'u yeniden dener (lib/ai-kredi-yukleme.ts).
-    */
-    if (link.purpose === "ai_credit" && link.subscriber_id) {
-      const [{ data: siparis }, { data: abone }] = await Promise.all([
-        admin.from("ai_credit_orders").select("id,kredi").eq("payment_link_id", link.id).maybeSingle(),
-        admin.from("product_subscribers").select("external_user_id").eq("id", link.subscriber_id).maybeSingle(),
-      ]);
-      if (!siparis || !abone?.external_user_id) {
-        console.error("[paytr] bireysel kredi siparişi ya da abone bulunamadı", link.id);
-      } else {
-        const yuklendi = await arvolabBireyselKrediYukle(abone.external_user_id, Number(siparis.kredi), fields.merchant_oid);
-        if (yuklendi === "loaded") {
-          await admin.from("ai_credit_orders").update({ loaded_at: new Date().toISOString() }).eq("id", siparis.id);
-        } else {
-          console.error("[paytr] bireysel AI kredisi yüklenemedi", link.subscriber_id, yuklendi);
+        /*
+          Bireysel abonenin kredisi (26.10.2026): ArvoLab'daki KİŞİSEL bakiyeye.
+          Kimlik abonenin ArvoLab kullanıcı kimliği (external_user_id). Aynı
+          kural: yüklenemezse OK dönülür, sipariş loaded_at'siz kalır ve
+          bekleyen krediler cron'u yeniden dener (lib/ai-kredi-yukleme.ts).
+        */
+        if (link.purpose === "ai_credit" && link.subscriber_id) {
+          const [{ data: siparis }, { data: abone }] = await Promise.all([
+            admin.from("ai_credit_orders").select("id,kredi").eq("payment_link_id", link.id).maybeSingle(),
+            admin.from("product_subscribers").select("external_user_id").eq("id", link.subscriber_id).maybeSingle(),
+          ]);
+          if (!siparis || !abone?.external_user_id) {
+            console.error("[paytr] bireysel kredi siparişi ya da abone bulunamadı", link.id);
+          } else {
+            const yuklendi = await arvolabBireyselKrediYukle(abone.external_user_id, Number(siparis.kredi), fields.merchant_oid);
+            if (yuklendi === "loaded") {
+              await admin.from("ai_credit_orders").update({ loaded_at: new Date().toISOString() }).eq("id", siparis.id);
+            } else {
+              console.error("[paytr] bireysel AI kredisi yüklenemedi", link.subscriber_id, yuklendi);
+            }
+          }
         }
-      }
-    }
 
-    // ArvoLab ayrı veritabanında: uzayan lisansı oraya yansıt. Başarısız olsa
-    // bile PayTR'ye OK dönüyoruz; ödeme kaydedildi, tekrar bildirim yeni bir
-    // şey yazmaz. Kurucu Platform → Lisans'tan kaydederek elle tetikleyebilir.
-    if (link.purpose === "subscription" && link.product === "arvolab" && link.payer_organization_id) {
-      const synced = await syncArvolabLicense(link.payer_organization_id);
-      if (synced !== "synced") console.error("[paytr] ArvoLab lisansı yansıtılamadı", link.payer_organization_id, synced);
-    }
-    // ArvoARC lisansı uzadıysa kademe hemen açılsın; 10 dakikayı beklemesin.
-    if (link.purpose === "subscription" && link.product === "arc" && link.payer_organization_id) {
-      await syncArcTenantQuietly(link.payer_organization_id);
-    }
-    // Randevu lisansı uzadıysa salonun online sayfası hemen açılsın.
-    if (link.purpose === "subscription" && link.product === "randevu" && link.payer_organization_id) {
-      await syncRandevuTenantQuietly(link.payer_organization_id);
-    }
-  }
-  return OK();
+        // ArvoLab ayrı veritabanında: uzayan lisansı oraya yansıt. Başarısız olsa
+        // bile PayTR'ye OK dönüyoruz; ödeme kaydedildi, tekrar bildirim yeni bir
+        // şey yazmaz. Kurucu Platform → Lisans'tan kaydederek elle tetikleyebilir.
+        if (link.purpose === "subscription" && link.product === "arvolab" && link.payer_organization_id) {
+          const synced = await syncArvolabLicense(link.payer_organization_id);
+          if (synced !== "synced") console.error("[paytr] ArvoLab lisansı yansıtılamadı", link.payer_organization_id, synced);
+        }
+        // ArvoARC lisansı uzadıysa kademe hemen açılsın; 10 dakikayı beklemesin.
+        if (link.purpose === "subscription" && link.product === "arc" && link.payer_organization_id) {
+          await syncArcTenantQuietly(link.payer_organization_id);
+        }
+        // Randevu lisansı uzadıysa salonun online sayfası hemen açılsın.
+        if (link.purpose === "subscription" && link.product === "randevu" && link.payer_organization_id) {
+          await syncRandevuTenantQuietly(link.payer_organization_id);
+        }
+      },
+      hata: (...a) => console.error(...a),
+      uyari: (...a) => console.warn(...a),
+    },
+  );
+  return text(sonuc.durum, sonuc.govde);
 }
