@@ -218,14 +218,134 @@ describe("Eşitleme: izin listesi tek doğruluk kaynağı", () => {
       assert.equal(await acikMi(AM, GENEL), true);
     }));
 
-  test("modül özel olmaktan çıkarılınca açık olduğu yerde açık kalır ve artık her kurumda açılabilir", () =>
+  test("service_role izni kaldırınca modül kapanır ve geçmişe yazılır", () =>
     islem(db, async () => {
       await rol(db, "postgres");
       await db.query("update public.organization_modules set is_enabled = true where organization_id = $1 and module_code = $2", [AM, OZEL]);
-      await db.query("delete from public.ozel_moduller where module_code = $1", [OZEL]);
-      assert.equal(await acikMi(AM, OZEL), true, "kaskatla giden izin satırı modülü kapatmamalı");
+      await rol(db, "service_role");
+      const r = await db.query("delete from public.ozel_modul_kurumlari where module_code = $1 and organization_id = $2 returning 1", [OZEL, AM]);
+      assert.equal(r.rows.length, 1);
+      await rol(db, "postgres");
+      assert.equal(await acikMi(AM, OZEL), false);
+      const g = await tek("select islem, veritabani_rolu from public.ozel_modul_gecmisi where module_code = $1 and organization_id = $2 order by id desc limit 1", [OZEL, AM]);
+      assert.deepEqual(g, { islem: "izin_kaldirildi", veritabani_rolu: "service_role" });
+    }));
+
+  test("izinli kurum silinince (kaskat) izin satırı gider, işlem düşmez, geçmiş kalır", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      const GECICI = "00000000-0000-4000-8000-00000000c1f1";
+      await db.exec(`
+        insert into public.organizations (id,name,slug,status,plan_code) values ('${GECICI}','Geçici','gecici-kurum','active','starter');
+        insert into public.organization_modules (organization_id,module_code,is_enabled) values ('${GECICI}','${OZEL}',false);
+        insert into public.ozel_modul_kurumlari (module_code, organization_id) values ('${OZEL}','${GECICI}');
+        update public.organization_modules set is_enabled = true where organization_id = '${GECICI}' and module_code = '${OZEL}';
+      `);
+      await db.query("delete from public.organizations where id = $1", [GECICI]);
+      assert.equal((await tek("select count(*)::int n from public.ozel_modul_kurumlari where organization_id = $1", [GECICI])).n, 0);
+      assert.equal((await tek("select count(*)::int n from public.organization_modules where organization_id = $1", [GECICI])).n, 0);
+      assert.equal((await tek("select count(*)::int n from public.ozel_modul_gecmisi where organization_id = $1 and islem = 'izin_kaldirildi'", [GECICI])).n, 1);
+      assert.equal(await acikMi(AM, OZEL), false, "başka kurumların satırı etkilenmez");
+    }));
+});
+
+describe("Fail-closed özel statü", () => {
+  test("özel modül kaydı doğrudan silinemez: migration (postgres) dahil", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await reddedilir(db, "delete from public.ozel_moduller where module_code = $1", [OZEL], /doğrudan kaldırılamaz/);
+      assert.equal((await tek("select count(*)::int n from public.ozel_modul_kurumlari where module_code = $1", [OZEL])).n, 1, "izin listesi yerinde");
+    }));
+
+  test("service_role ve kurucu özel statüyü kaldıramaz, kaydı değiştiremez", () =>
+    islem(db, async () => {
+      await rol(db, "service_role");
+      await reddedilir(db, "delete from public.ozel_moduller where module_code = $1", [OZEL], /permission denied/);
+      await reddedilir(db, "update public.ozel_moduller set aciklama = 'x' where module_code = $1", [OZEL], /permission denied/);
+      // İşareti kendisi koysa bile: DELETE yetkisi yok.
+      await db.query("select set_config('arvo.ozel_modul_kaldirma', $1, true)", [OZEL]);
+      await reddedilir(db, "delete from public.ozel_moduller where module_code = $1", [OZEL], /permission denied/);
+      await rol(db, "authenticated", KURUCU);
+      await reddedilir(db, "delete from public.ozel_moduller where module_code = $1", [OZEL], /permission denied/);
+    }));
+
+  test("özel modül kaydı (modül kodu dahil) değiştirilemez", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await reddedilir(db, "update public.ozel_moduller set aciklama = 'yeni' where module_code = $1", [OZEL], /değiştirilemez/);
+    }));
+
+  test("katalogdan özel modül silinmek istenirse kaskat korumaya çarpar ve işlem düşer", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await db.exec(`
+        insert into public.arvo_modules (code,name,description,sort_order,is_active) values ('deneme_bos','Boş','',992,true);
+        insert into public.ozel_moduller (module_code) values ('deneme_bos');
+      `);
+      await reddedilir(db, "delete from public.arvo_modules where code = 'deneme_bos'", [], /doğrudan kaldırılamaz/);
+      assert.equal((await tek("select count(*)::int n from public.ozel_moduller where module_code = 'deneme_bos'")).n, 1);
+    }));
+
+  test("statü kaldırma işlevi: gerekçe zorunlu; yalnızca veritabanı sahibi çalıştırır", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await reddedilir(db, "select private.ozel_modul_statusunu_kaldir($1, $2)", [OZEL, "kısa"], /gerekçe/);
+      await reddedilir(db, "select private.ozel_modul_statusunu_kaldir($1, $2)", [GENEL, "Bu modül zaten özel değil, deneme."], /özel değil/);
+      const yetki = async (r) => (await tek("select has_function_privilege($1, 'private.ozel_modul_statusunu_kaldir(text, text)', 'execute') as v", [r])).v;
+      assert.equal(await yetki("service_role"), false);
+      assert.equal(await yetki("authenticated"), false);
+      assert.equal(await yetki("anon"), false);
+    }));
+
+  test("açık süreçle kaldırılan statü: kayıt ve izinler gider, açık satır açık kalır, gerekçe geçmişte", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await db.query("update public.organization_modules set is_enabled = true where organization_id = $1 and module_code = $2", [AM, OZEL]);
+      await db.query("select private.ozel_modul_statusunu_kaldir($1, $2)", [OZEL, "Modül bütün kurumlara açılacak (ürün kararı, deneme)."]);
+      assert.equal((await tek("select count(*)::int n from public.ozel_moduller where module_code = $1", [OZEL])).n, 0);
+      assert.equal((await tek("select count(*)::int n from public.ozel_modul_kurumlari where module_code = $1", [OZEL])).n, 0);
+      assert.equal(await acikMi(AM, OZEL), true, "açık olduğu yerde açık kalır");
+      const g = await tek("select gerekce from public.ozel_modul_gecmisi where module_code = $1 and islem = 'ozel_kaldirildi'", [OZEL]);
+      assert.match(g.gerekce, /ürün kararı/);
+      assert.equal((await tek("select coalesce(current_setting('arvo.ozel_modul_kaldirma', true), '') as v")).v, "", "işaret işlevden sonra temizlenir");
       await db.query("update public.organization_modules set is_enabled = true where organization_id = $1 and module_code = $2", [YABANCI, OZEL]);
-      assert.equal(await acikMi(YABANCI, OZEL), true);
+      assert.equal(await acikMi(YABANCI, OZEL), true, "artık her kurumda açılabilir");
+    }));
+});
+
+describe("organization_modules kimliği: kurum ve modül kodu değişmez", () => {
+  test("kurucu açık özel satırı başka kuruma taşıyamaz", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await db.query("update public.organization_modules set is_enabled = true where organization_id = $1 and module_code = $2", [AM, OZEL]);
+      await db.query("delete from public.organization_modules where organization_id = $1 and module_code = $2", [YABANCI, OZEL]);
+      await rol(db, "authenticated", KURUCU);
+      await reddedilir(db,
+        "update public.organization_modules set organization_id = $1 where organization_id = $2 and module_code = $3",
+        [YABANCI, AM, OZEL], /kurumu ve modül kodu değiştirilemez/);
+    }));
+
+  test("kurucu açık genel satırın modül kodunu özel modüle çeviremez", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await db.query("update public.organization_modules set is_enabled = true where organization_id = $1 and module_code = $2", [YABANCI, GENEL]);
+      await db.query("delete from public.organization_modules where organization_id = $1 and module_code = $2", [YABANCI, OZEL]);
+      await rol(db, "authenticated", KURUCU);
+      await reddedilir(db,
+        "update public.organization_modules set module_code = $1 where organization_id = $2 and module_code = $3",
+        [OZEL, YABANCI, GENEL], /kurumu ve modül kodu değiştirilemez/);
+    }));
+
+  test("kapalı satırda da kimlik değişmez; service_role ve migration dahil", () =>
+    islem(db, async () => {
+      await rol(db, "service_role");
+      await reddedilir(db,
+        "update public.organization_modules set organization_id = $1 where organization_id = $2 and module_code = $3",
+        [BOS_KURUM, YABANCI, GENEL], /değiştirilemez/);
+      await rol(db, "postgres");
+      await reddedilir(db,
+        "update public.organization_modules set module_code = $1 where organization_id = $2 and module_code = $3",
+        [GENEL, AM, OZEL], /değiştirilemez/);
     }));
 });
 
@@ -292,6 +412,36 @@ describe("RLS yardımcısı: private.modul_kurumda_acik", () => {
     }));
 });
 
+/*
+  PR3 VE SONRASI İÇİN SÖZLEŞME. RLS yardımcısı kendi başına hiçbir veriyi
+  korumuyor; özel bir modülün tabloları ancak politikaları onu çağırırsa
+  korunur. Bu senaryo düzeneğin kurduğu veritabanında (canlı şema +
+  BEKLEYEN_MIGRATIONLAR; bu dosyanın deneme modülleri YOK) migration'ların
+  özel ilan ettiği her modül için, yardımcıyı ve modül kodunu birlikte
+  anan en az bir politika arıyor. Bugün hiçbir modül özel değil, senaryo
+  boş geçiyor; Doçentlik'i özel ilan edip politikalarına yardımcıyı
+  yazmayı unutan bir migration burada düşer.
+*/
+describe("Özel modül RLS sözleşmesi", () => {
+  test("migration'ların özel ilan ettiği her modülün RLS'i private.modul_kurumda_acik'i çağırıyor", async () => {
+    const temiz = await veritabani();
+    try {
+      const moduller = (await temiz.query("select module_code from public.ozel_moduller order by 1")).rows.map((r) => r.module_code);
+      for (const kod of moduller) {
+        const { n } = (await temiz.query(
+          `select count(*)::int n from pg_policies
+            where coalesce(qual, '') || ' ' || coalesce(with_check, '') ilike '%modul_kurumda_acik%'
+              and coalesce(qual, '') || ' ' || coalesce(with_check, '') like $1`,
+          [`%'${kod}'%`],
+        )).rows[0];
+        assert.ok(n > 0, `${kod} özel ilan edilmiş ama hiçbir RLS politikası private.modul_kurumda_acik(…, '${kod}') çağırmıyor`);
+      }
+    } finally {
+      await temiz.close();
+    }
+  });
+});
+
 describe("Fonksiyon yetkileri", () => {
   test("anon yardımcıları çalıştıramaz; tetikleyici fonksiyonları kimseye açık değil", () =>
     islem(db, async () => {
@@ -300,7 +450,7 @@ describe("Fonksiyon yetkileri", () => {
       assert.equal(await yetki("anon", "private.modul_kurumda_acik(uuid, text)"), false);
       assert.equal(await yetki("anon", "private.ozel_modul_izinli(uuid, text)"), false);
       assert.equal(await yetki("authenticated", "private.modul_kurumda_acik(uuid, text)"), true);
-      for (const f of ["private.ozel_modul_koru()", "private.ozel_modul_ilan_edildi()", "private.ozel_modul_izni_kaldirildi()", "private.ozel_modul_izni_degismez()"]) {
+      for (const f of ["private.ozel_modul_koru()", "private.ozel_modul_ilan_edildi()", "private.ozel_modul_izni_eklendi()", "private.ozel_modul_izni_kaldirildi()", "private.ozel_modul_izni_degismez()", "private.ozel_modul_kaydi_koru()"]) {
         assert.equal(await yetki("authenticated", f), false, f);
         assert.equal(await yetki("anon", f), false, f);
       }

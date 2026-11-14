@@ -398,6 +398,10 @@
         "ad": "public.ozel_modul_kurumlari"
       },
       {
+        "tur": "tablo",
+        "ad": "public.ozel_modul_gecmisi"
+      },
+      {
         "tur": "islev",
         "ad": "private.ozel_modul_izinli"
       },
@@ -415,11 +419,23 @@
       },
       {
         "tur": "islev",
+        "ad": "private.ozel_modul_izni_eklendi"
+      },
+      {
+        "tur": "islev",
         "ad": "private.ozel_modul_izni_kaldirildi"
       },
       {
         "tur": "islev",
         "ad": "private.ozel_modul_izni_degismez"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_kaydi_koru"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_statusunu_kaldir"
       },
       {
         "tur": "tetikleyici",
@@ -430,6 +446,16 @@
         "tur": "tetikleyici",
         "ad": "ozel_modul_ilan_edildi",
         "tablo": "public.ozel_moduller"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "ozel_modul_kaydi_koru",
+        "tablo": "public.ozel_moduller"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "ozel_modul_izni_eklendi",
+        "tablo": "public.ozel_modul_kurumlari"
       },
       {
         "tur": "tetikleyici",
