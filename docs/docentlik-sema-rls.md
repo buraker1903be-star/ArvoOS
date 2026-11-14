@@ -43,6 +43,11 @@ Bu üç anahtarın varsayılanı **boştur**; yalnızca Kurum Sahibi yetkilidir.
 yüzden `lib/yetkiler.ts`teki varsayılan listesinin SQL'e kopyalanmasına gerek
 kalmadı.
 
+İşlev **yalnızca bu üç anahtarla** çalışır. Başka bir modülün yeteneği,
+yazımı benzeyen ya da büyük harfli bir anahtar ve bilinmeyen bir
+`docentlik.*` anahtarı, Kurum Sahibi için bile HAYIR döner. Yeni bir
+Doçentlik yeteneği eklemek işlevdeki listeyi değiştirmeyi gerektirir.
+
 Anahtarlar Yetkilendirme ekranına bu PR'da **eklenmedi**. Ekran grupları
 modüle göre süzmüyor; Doçentlik grubu her kurumda görünürdü. Ekran PR'ında
 gelecek.
@@ -61,6 +66,36 @@ gelecek.
 | K2 (kurum sahipliği) | Satıra kurum yaz, tetikleyici korusun | Kurum + sahip değişmez (tetikleyici, service_role dahil). Faaliyet ↔ kriter bileşik FK ile aynı kurumda. | — |
 | K5 (ÜAK onayı) | Sunucu fonksiyonu | `authenticated` durum/öneri/onay sütunlarına dokunamaz; service_role yazar | Öneriyi doğrulayan sunucu yolu ekran PR'ında. |
 
+## Kova: geniş politikalara karşı yalıtım (güvenlik incelemesi, 14.11.2026)
+
+`storage.objects` bütün kovaların tek tablosu ve izin veren politikalar VEYA
+ile birleşiyor. Bu depodaki öteki kova politikalarının hepsi kendi kovasıyla
+sınırlı (tarandı; tek UPDATE politikası `organization-assets`'te). Ama canlıda
+panelden eklenmiş ya da ileride yazılacak kova süzgeçsiz bir politika bu
+kovayı açabilirdi. Örneğin Supabase'in "kendi nesnesini günceller" şablonu
+(`owner = auth.uid()`) belgenin taşınmasına ve üzerine yazılmasına izin
+verirdi.
+
+İlk sürümdeki tek kısıtlayıcı politika yalnızca modül kapısını soruyordu.
+Modülü açık bir kullanıcı için bu koşul doğru olduğundan, böyle bir politika
+taşımayı açardı.
+
+Artık her işlem için ayrı bir kısıtlayıcı politika var:
+
+| İşlem | Kısıtlayıcı koşul (bu kovada) |
+|---|---|
+| SELECT | Modül kapısı + `docentlik_belge_izni(…, 'select')` |
+| INSERT | Modül kapısı + `docentlik_belge_izni(…, 'insert')` |
+| UPDATE | **Hiç kimse**: using ve with check. Yeniden adlandırma, başka klasöre/faaliyete/kullanıcıya/kuruma taşıma, kovadan dışarı ya da dışarıdan içeri taşıma, upsert'in `ON CONFLICT DO UPDATE` dalı kapalı. |
+| DELETE | Modül kapısı + `docentlik_belge_izni(…, 'delete')` |
+| anon (hepsi) | Bu kovada hiçbir şey; işlev çağırmaz |
+
+`CASE` kullanılmasının nedeni, öteki kovalardaki satırlarda Doçentlik
+yardımcılarının hiç çağrılmaması. Testte her işlem için herkese açık izin
+veren politikalar ve "sahibi günceller" şablonu kuruluyor. Bunların öteki
+kovada gerçekten etkili olduğu ve o kovanın davranışının değişmediği
+gösteriliyor; Doçentlik kovasındaki izin matrisi ise aynı kalıyor.
+
 ## Kalan bilinçli farklar (ArvoLab'a göre)
 
 - **Girdisi değişmeyen düzenleme puana dokunmaz.** Başlık ya da belge
@@ -75,9 +110,9 @@ gelecek.
 | Dosya | Kapsam |
 |---|---|
 | `docentlik-rls-matrisi` | 5 tablo × 8 aktör × 4 işlem (160 hücre) |
-| `docentlik-guvenlik` | Kapalı modül, izin listesinden çıkarma, kişide gizli modül, sahte gevşek politika, iptal edilmiş üye, kişi > rol kuralı, boş varsayılan, NULL ve çapraz kurum, K1/K2/K5, belge yolu, gözetim için en az veri, fonksiyon yetkileri, politika sözleşmesi |
+| `docentlik-guvenlik` | Yetki anahtarı kapsamı (başka modül, benzer yazım, başka kurum, owner istisnası yalnızca üç anahtarda), kapalı modül, izin listesinden çıkarma, kişide gizli modül, sahte gevşek politika, iptal edilmiş üye, kişi > rol kuralı, boş varsayılan, NULL ve çapraz kurum, K1/K2/K5, belge yolu, gözetim için en az veri, fonksiyon yetkileri, politika sözleşmesi |
 | `docentlik-puan-tetikleyicisi` | Tetikleyici ↔ `lib/docentlik` çekirdeği: ~5900 ekleme+düzenleme senaryosu, `Object.is` ile birebir; JS `Math.round` sınırları |
-| `docentlik-belge-kovasi` | 2 nesne türü × 7 aktör × 4 işlem, 15 uydurma yol, modül kapısı, iptal edilmiş üye, sahte politika, öteki kovalarda gerileme yok |
+| `docentlik-belge-kovasi` | 2 nesne türü × 7 aktör × 4 işlem, 15 uydurma yol, modül kapısı, iptal edilmiş üye, sahte politika, öteki kovalarda gerileme yok; geniş politikalar altında okuma/yükleme/silme matrisi, 5 taşıma hedefi + kova dışı/içi taşıma + yerinde değiştirme, upsert/üzerine yazma |
 | `docentlik-kurum-cozumu` | Slug birebir; kurum yoksa fail-closed |
 
 **Mutasyon denetimi:** testlerin kör olmadığı, migration'da tek tek bozulan
@@ -95,6 +130,15 @@ gelecek.
 - kovada faaliyet varlığı denetiminin kalkması;
 - gözetimin yükleyebilmesi;
 - slug'ın `like` ile aranması.
+
+İnceleme düzeltmesinden sonra 8 mutasyon daha denendi ve 8'i de yakalandı:
+
+- anahtar süzgecinin kalkması;
+- listeye başka modülün anahtarının girmesi;
+- kısıtlayıcı UPDATE kapısının kalkması;
+- UPDATE'in with check'inin kalkması;
+- okuma, yükleme ve silme kapılarının yalnızca modüle bakması;
+- anon kapısının kalkması.
 
 ## Doğrulanamayanlar (canlı ortam gerekir)
 

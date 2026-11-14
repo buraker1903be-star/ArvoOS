@@ -79,6 +79,14 @@ end $$;
   (lib/yetkiler.ts kuralı 1). Kişi kuralı rol kuralını ezer (kural 3). Hiç
   kural yoksa HAYIR: bu anahtarların varsayılanı boş. Üyelik etkin olmalı;
   iptal edilmiş üye hiçbir şey yapamaz.
+
+  YALNIZCA ÜÇ ANAHTAR. İşlev başka bir anahtarla çağrılırsa (başka modülün
+  yeteneği, yazım hatası, büyük harf, boşluk) Kurum Sahibi için bile HAYIR
+  döner. Eskiden (PR #319'un ilk commit'i) anahtar süzülmüyordu: bir
+  politika yanlışlıkla 'crm.kayit.ata' ile yazılsa, o yeteneği taşıyan
+  herkes Doçentlik verisine erişirdi; Kurum Sahibi istisnası da bilinmeyen
+  anahtarı "evet"e çeviriyordu (güvenlik incelemesi, 14.11.2026). Yeni bir
+  Doçentlik yeteneği eklemek bu listeyi değiştirmeyi gerektirir — bilerek.
 */
 create or replace function private.docentlik_yetkisi(p_org uuid, p_key text)
 returns boolean
@@ -87,7 +95,8 @@ stable
 security definer
 set search_path to ''
 as $$
-  select exists (
+  select coalesce(p_key in ('docentlik.tumunu_gor', 'docentlik.kriter_yonet', 'docentlik.uak_yonet'), false)
+  and exists (
     select 1
     from public.organization_memberships m
     where m.organization_id = p_org

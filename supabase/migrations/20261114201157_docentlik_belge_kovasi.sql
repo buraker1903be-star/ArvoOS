@@ -27,8 +27,9 @@
       Kurum Sahibi yalnızca okur.
     ÜAK PDF'i: yalnızca docentlik.uak_yonet (ve Kurum Sahibi). Faaliyet
       izni ÜAK'ı, ÜAK izni faaliyeti AÇMAZ.
-    Güncelleme (UPDATE, depo API'sinde "move"): hiç kimse. Yeni belge yeni
-      nesnedir; üzerine yazma ya da başka yola taşıma yok.
+    Güncelleme (UPDATE; depo API'sinde "move" ve upsert/üzerine yazma):
+      hiç kimse. Yeni belge yeni nesnedir. Bunu izin veren politikanın
+      yokluğu değil, aşağıdaki kısıtlayıcı politika garanti eder.
     İmzalı URL: depo API'si imzayı ancak çağıran nesneyi SELECT ile
       görebiliyorsa üretir, yani okuma politikasına tabidir. İmzalı URL
       sahibine süresi dolana kadar erişim verir; sunucu kısa süre
@@ -118,16 +119,65 @@ grant execute on function private.docentlik_yol_uuid(text, integer) to authentic
 grant execute on function private.docentlik_belge_izni(text, text) to authenticated;
 
 /*
-  Kısıtlayıcı kapı: yalnızca bu kovanın nesnelerine dokunur (öteki kovalar
-  için koşul doğrudan doğru). Başka bir migration bu kova için gevşek bir
-  izin veren politika yazsa bile modül kapısı düşmez.
+  KISITLAYICI KAPILAR: KOVA KENDİ KENDİNE YETER.
+
+  storage.objects BÜTÜN kovaların tek tablosu ve Postgres izin veren
+  politikaları VEYA ile birleştiriyor. Bu depodaki öteki kova politikaları
+  kendi kovalarıyla sınırlı (14.11.2026'da tarandı), ama canlıda panelden
+  eklenmiş ya da ileride yazılacak tek bir geniş politika — ör. Supabase'in
+  "kullanıcı kendi nesnesini günceller" şablonu (owner = auth.uid()),
+  kova süzgeci olmadan — bu kovadaki nesneyi taşımaya, üzerine yazmaya ya
+  da okumaya açardı. İlk sürümde (PR #319'un ilk commit'i) kısıtlayıcı
+  politika yalnızca modül kapısını soruyordu: modülü açık bir kullanıcı
+  için o koşul doğru, yani geniş bir UPDATE politikası taşımayı açardı
+  (güvenlik incelemesi, 14.11.2026).
+
+  Artık her işlem için ayrı bir kısıtlayıcı politika var ve izin koşulunun
+  TAMAMINI taşıyor; izin veren politikalar ne derse desin bu kovada son söz
+  bunlarda:
+    SELECT / INSERT / DELETE  modül kapısı + docentlik_belge_izni
+    UPDATE                    HİÇ KİMSE (yerinde değiştirme, yeniden
+                              adlandırma, başka klasöre/kovaya taşıma ve
+                              upsert'in ON CONFLICT DO UPDATE dalı)
+  UPDATE'in with check'i başka bir kovadaki nesnenin bu kovaya
+  taşınmasını da engelliyor.
+
+  CASE bilerek: VEYA'nın sol tarafının önce değerlendirileceği garanti
+  değil; öteki kovalardaki her satırda Doçentlik yardımcılarını çağırmak
+  hem boşuna iş hem de yardımcılar kapalı olan rollerde hata olurdu.
+
+  anon için ayrı ve işlev çağırmayan bir kapı: yardımcılar anon'a kapalı
+  (#317), anon'un bu kovada zaten hiçbir işi yok.
 */
 drop policy if exists docentlik_belgeleri_modul_kapisi on storage.objects;
-create policy docentlik_belgeleri_modul_kapisi on storage.objects as restrictive for all to authenticated
-  using (bucket_id is distinct from 'docentlik-belgeleri'
-         or private.modul_kurumda_acik(private.docentlik_yol_uuid(name, 1), 'docentlik'))
-  with check (bucket_id is distinct from 'docentlik-belgeleri'
-              or private.modul_kurumda_acik(private.docentlik_yol_uuid(name, 1), 'docentlik'));
+
+drop policy if exists docentlik_belgeleri_kapi_okuma on storage.objects;
+create policy docentlik_belgeleri_kapi_okuma on storage.objects as restrictive for select to authenticated
+  using (case when bucket_id is distinct from 'docentlik-belgeleri' then true
+              else private.modul_kurumda_acik(private.docentlik_yol_uuid(name, 1), 'docentlik')
+                   and private.docentlik_belge_izni(name, 'select') end);
+
+drop policy if exists docentlik_belgeleri_kapi_yukleme on storage.objects;
+create policy docentlik_belgeleri_kapi_yukleme on storage.objects as restrictive for insert to authenticated
+  with check (case when bucket_id is distinct from 'docentlik-belgeleri' then true
+                   else private.modul_kurumda_acik(private.docentlik_yol_uuid(name, 1), 'docentlik')
+                        and private.docentlik_belge_izni(name, 'insert') end);
+
+drop policy if exists docentlik_belgeleri_kapi_guncelleme on storage.objects;
+create policy docentlik_belgeleri_kapi_guncelleme on storage.objects as restrictive for update to authenticated
+  using (bucket_id is distinct from 'docentlik-belgeleri')
+  with check (bucket_id is distinct from 'docentlik-belgeleri');
+
+drop policy if exists docentlik_belgeleri_kapi_silme on storage.objects;
+create policy docentlik_belgeleri_kapi_silme on storage.objects as restrictive for delete to authenticated
+  using (case when bucket_id is distinct from 'docentlik-belgeleri' then true
+              else private.modul_kurumda_acik(private.docentlik_yol_uuid(name, 1), 'docentlik')
+                   and private.docentlik_belge_izni(name, 'delete') end);
+
+drop policy if exists docentlik_belgeleri_kapi_anon on storage.objects;
+create policy docentlik_belgeleri_kapi_anon on storage.objects as restrictive for all to anon
+  using (bucket_id is distinct from 'docentlik-belgeleri')
+  with check (bucket_id is distinct from 'docentlik-belgeleri');
 
 drop policy if exists docentlik_belgeleri_okur on storage.objects;
 create policy docentlik_belgeleri_okur on storage.objects for select to authenticated
@@ -147,4 +197,4 @@ create policy docentlik_belgeleri_siler on storage.objects for delete to authent
          and private.modul_kurumda_acik(private.docentlik_yol_uuid(name, 1), 'docentlik')
          and private.docentlik_belge_izni(name, 'delete'));
 
--- UPDATE politikası bilerek YOK: kimse nesneyi yerinde değiştiremez ya da taşıyamaz.
+-- İzin veren UPDATE politikası bilerek YOK; kısıtlayıcı kapı da UPDATE'i bu kovada tümden reddediyor.

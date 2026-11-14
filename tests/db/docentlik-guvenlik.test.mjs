@@ -380,3 +380,72 @@ describe("Fonksiyon yetkileri", () => {
     assert.equal(await yetki("authenticated", "private.docentlik_yetkisi(uuid,text)"), true, "RLS yardımcısı politikada kullanılıyor");
   });
 });
+
+/*
+  YETKİ ANAHTARI KAPSAMI (güvenlik incelemesi, 14.11.2026).
+  private.docentlik_yetkisi yalnızca üç Doçentlik anahtarıyla çalışır.
+  Başka bir modülün yeteneği, yazımı benzeyen bir anahtar ya da başka bir
+  kurumda verilmiş yetki Doçentlik erişimi SAĞLAMAZ.
+*/
+describe("Yetki anahtarı kapsamı", () => {
+  const yetki = async (org, anahtar) => (await tek("select private.docentlik_yetkisi($1, $2) as v", [org, anahtar])).v;
+
+  test("Kurum Sahibi istisnası yalnızca tanımlı üç anahtarda: bilinmeyen ve başka modülün anahtarı HAYIR", () =>
+    islem(db, async () => {
+      await aktorOl(db, "kurumSahibi");
+      for (const a of ["docentlik.tumunu_gor", "docentlik.kriter_yonet", "docentlik.uak_yonet"]) assert.equal(await yetki(AM, a), true, a);
+      for (const a of ["crm.teklif.sil", "crm.kayit.ata", "settings.yetki.yonet", "docentlik.bilinmeyen", "docentlik.*", "", "Docentlik.tumunu_gor"]) {
+        assert.equal(await yetki(AM, a), false, `owner + '${a}'`);
+      }
+      assert.equal(await yetki(AM, null), false, "NULL anahtar");
+    }));
+
+  test("başka modülün yeteneği ya da yazımı benzeyen anahtar, kurumca 'izinli' yazılmış olsa bile erişim vermez", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await db.query(
+        `insert into public.member_capability_permissions (organization_id, user_id, capability_key, allowed, updated_at) values
+           ($1, $2, 'crm.kayit.ata', true, now()), ($1, $2, 'crm.teklif.sil', true, now()),
+           ($1, $2, 'Docentlik.tumunu_gor', true, now()), ($1, $2, ' docentlik.tumunu_gor', true, now()),
+           ($1, $2, 'docentlik.tumunu_gor ', true, now()), ($1, $2, 'docentlik.tumunu_gör', true, now())`,
+        [AM, K.uye]);
+      await db.query(
+        "insert into public.role_capability_permissions (organization_id, role, capability_key, allowed, updated_at) values ($1, 'member', 'operations.is.sil', true, now())",
+        [AM]);
+      await aktorOl(db, "uye");
+      assert.equal(await gorur(R.faaliyet), 0, "başka bir anahtar faaliyetleri açtı");
+      assert.equal((await db.query("select * from public.docentlik_profil_ozetleri($1)", [AM])).rows.length, 0);
+      await reddedilir(db, "insert into public.docentlik_kriterleri (organization_id, code, label) values ($1, 'X', 'x')", [AM], /row-level security/);
+      for (const a of ["crm.kayit.ata", "Docentlik.tumunu_gor", " docentlik.tumunu_gor", "docentlik.tumunu_gor ", "docentlik.tumunu_gör", "operations.is.sil"]) {
+        assert.equal(await yetki(AM, a), false, `'${a}'`);
+      }
+      assert.equal(await yetki(AM, "docentlik.tumunu_gor"), false, "doğru anahtar hiç verilmedi");
+    }));
+
+  test("yetki kuruma bağlı: başka kurumda verilen tumunu_gor bu kurumda geçmez", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await db.query("insert into public.organization_memberships (organization_id, user_id, role, is_active) values ($1, $2, 'member', true)", [AM, K.yabanci]);
+      await db.query(
+        "insert into public.member_capability_permissions (organization_id, user_id, capability_key, allowed, updated_at) values ($1, $2, 'docentlik.tumunu_gor', true, now())",
+        [AM2, K.yabanci]);
+      await aktorOl(db, "yabanci");
+      assert.equal(await yetki(AM2, "docentlik.tumunu_gor"), true, "kendi kurumunda (owner) yetkili");
+      assert.equal(await yetki(AM, "docentlik.tumunu_gor"), false, "başka kurumdaki yetki bu kurumda geçti");
+      assert.equal(await gorur(R.faaliyet), 0);
+    }));
+
+  test("korunan davranışlar: iptal edilmiş üyede owner bile değil, kişi kuralı rolü ezer, varsayılan HAYIR", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      // İptal edilmiş Kurum Sahibi: istisna da düşer.
+      await db.query("update public.organization_memberships set is_active = false where organization_id = $1 and user_id = $2", [AM, K.kurumSahibi]);
+      await aktorOl(db, "kurumSahibi");
+      assert.equal(await yetki(AM, "docentlik.tumunu_gor"), false);
+      await rol(db, "authenticated", K.gozetimKapali);
+      assert.equal(await yetki(AM, "docentlik.tumunu_gor"), false, "kişi kuralı (false) rol kuralını (true) ezmeli");
+      await aktorOl(db, "gozetim");
+      assert.equal(await yetki(AM, "docentlik.tumunu_gor"), true, "rol kuralı çalışmalı");
+      assert.equal(await yetki(AM, "docentlik.kriter_yonet"), false, "kural yoksa varsayılan HAYIR");
+    }));
+});
