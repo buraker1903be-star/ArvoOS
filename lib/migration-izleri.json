@@ -568,5 +568,15 @@
         "tablo": "public.docentlik_uak_tablolari"
       }
     ]
+  },
+  {
+    "migration": "20261114213340_docentlik_istek_anahtari",
+    "izler": [
+      {
+        "tur": "sutun",
+        "tablo": "public.docentlik_faaliyetleri",
+        "sutun": "istek_anahtari"
+      }
+    ]
   }
 ]
