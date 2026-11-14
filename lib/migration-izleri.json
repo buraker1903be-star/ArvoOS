@@ -468,5 +468,105 @@
         "tablo": "public.ozel_modul_kurumlari"
       }
     ]
+  },
+  {
+    "migration": "20261114200939_docentlik_sema_rls",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_kriterleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_hedefleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_profilleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_faaliyetleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_uak_tablolari"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_yetkisi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_js_round"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_yuvarla"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_paylasim"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_sayi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_kimlik_koru"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_faaliyet_puani"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_uak_koru"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_profil_ozetleri"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_faaliyet_donemleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_kriterleri_kimlik",
+        "tablo": "public.docentlik_kriterleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_hedefleri_kimlik",
+        "tablo": "public.docentlik_hedefleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_profilleri_kimlik",
+        "tablo": "public.docentlik_profilleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_faaliyetleri_kimlik",
+        "tablo": "public.docentlik_faaliyetleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_uak_kimlik",
+        "tablo": "public.docentlik_uak_tablolari"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_faaliyet_puani",
+        "tablo": "public.docentlik_faaliyetleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_uak_koru",
+        "tablo": "public.docentlik_uak_tablolari"
+      }
+    ]
   }
 ]

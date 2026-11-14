@@ -89,6 +89,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261103142231_sozlesme_imza_son_tarihi.sql",
   "20261103144006_sozlesmeye_ozel_maddeler.sql",
   "20261114190657_ozel_modul_izin_listesi.sql",
+  "20261114200939_docentlik_sema_rls.sql",
 ];
 
 /*
