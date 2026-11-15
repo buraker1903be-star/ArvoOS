@@ -24,6 +24,11 @@ export const navigationGroups: NavigationGroup[] = [
   { key: "documents", label: "Dokümanlar", icon: "D", codes: ["documents", "files", "templates"] },
   // Ayrı satılan modül (20261022092820): kurumda kapalıysa dock'ta yok.
   { key: "analitik", label: "Analitik", icon: "A", codes: ["analitik"], preferredHref: "/panel/analitik" },
+  // Kuruma özel modül (20261114190657): yalnızca izin listesindeki ve modülü
+  // açık kurumda organization_modules'ta görünür, yani başka hiçbir kurumda
+  // dock'a giremez. Kurucu konsolu Arvo'nun kendi kurumuyla çalıştığı için
+  // orada da yok.
+  { key: "docentlik", label: "Doçentlik", icon: "DÇ", codes: ["docentlik"], preferredHref: "/panel/docentlik" },
   // Raporlar ayrı menü değil: Finans → Raporlar sekmesi (/panel/finance/raporlar).
 ];
 
