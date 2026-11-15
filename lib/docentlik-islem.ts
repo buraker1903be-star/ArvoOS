@@ -365,6 +365,33 @@ export const puanDogrulandiMi = (beklenen: BeklenenPuan, kayit: { computed_point
   && beklenen.surum === kayit.kural_surumu;
 
 /* ---------------------------------------------------------------------- */
+/* Yazım hatası → kullanıcı cümlesi                                       */
+/* ---------------------------------------------------------------------- */
+
+/* Puan uyuşmazlığı: işlem geri alındı (20261115014302). */
+export const PUAN_UYUSMAZLIGI = "DP001";
+/* Aynı istek anahtarı FARKLI içerikle geldi (20261115101820): bu bir tekrar
+   değil; ilk kaydı "kaydedildi" diye döndürmek yeni faaliyeti sessizce kaybederdi. */
+export const ANAHTAR_BASKA_ICERIKTE = "DP002";
+
+/*
+  Faaliyet ekleme/düzenleme RPC'sinin hatasından kullanıcı cümlesi. Saf ve
+  testli: cümle, kullanıcının NE YAPACAĞINI söylemeli (yöneticiye bildir,
+  sayfayı yenile, yetkini kontrol et). Bilinmeyen hata veritabanının
+  metnini taşır — kod listede yok diye boş "hata oluştu" demek, destek
+  ekibinin sebebi bulmasını imkânsızlaştırırdı.
+*/
+export function faaliyetYazimHatasi(error: { code?: string | null; message: string }, eylem: "kaydedilmedi" | "değiştirilmedi"): string {
+  switch (error.code) {
+    case PUAN_UYUSMAZLIGI: return `Puan doğrulanamadı; faaliyet ${eylem}. Lütfen yöneticinize bildirin.`;
+    case ANAHTAR_BASKA_ICERIKTE: return "Bu form daha önce başka bir faaliyetle gönderilmiş; faaliyet kaydedilmedi. Sayfayı yenileyip yeniden girin.";
+    case "23503": return "Seçilen kriter bulunamadı.";
+    case "42501": return `Faaliyet ${eylem}: modül ya da üyeliğiniz kapanmış olabilir.`;
+    default: return `Faaliyet ${eylem}: ${error.message}`;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
 /* Özet: grup puanları, tavan, hedef durumları (lib/docentlik/ozet.ts)     */
 /* ---------------------------------------------------------------------- */
 

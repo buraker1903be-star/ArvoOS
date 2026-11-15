@@ -13,7 +13,7 @@ import {
   BELGE_AZAMI_BAYT, DOCENTLIK_KOVASI, IMZALI_ADRES_SANIYE, UAK_ONAYI_ETKIN, beklenenDuzenlemePuani, beklenenEklemePuani,
   depoNesnesiUygunMu, docentlikOzeti, faaliyetBelgeYolu, faaliyetBelgeYoluMu, faaliyetFormu, gercekTarihMi, hedefFormu,
   hesapGirdileriAyniMi, kriterFormu, metinAlani, pdfMi, profilFormu, puanDogrulandiMi, sayiEsitMi, uakBelgeYolu,
-  uakBelgeYoluMu, uakOnayKarari, uuidMu, type FaaliyetYazimi,
+  uakBelgeYoluMu, uakOnayKarari, uuidMu, faaliyetYazimHatasi, ANAHTAR_BASKA_ICERIKTE, PUAN_UYUSMAZLIGI, type FaaliyetYazimi,
 } from "@/lib/docentlik-islem";
 import { etkinHedefler, hedefDurumlari, puanGruplari, tavanUygula } from "@/lib/docentlik/ozet";
 
@@ -257,5 +257,18 @@ describe("ÜAK onayı", () => {
     const k = uakOnayKarari();
     assert.equal(k.izin, false);
     assert.match(k.neden, /henüz etkin değil/);
+  });
+});
+
+describe("yazım hatası → kullanıcı cümlesi", () => {
+  test("DP001 geri alındı ve yöneticiye bildirilmeli; DP002 sayfayı yenile; yetki ve kriter; bilinmeyen kod metni taşır", () => {
+    assert.equal(PUAN_UYUSMAZLIGI, "DP001");
+    assert.equal(ANAHTAR_BASKA_ICERIKTE, "DP002");
+    assert.equal(faaliyetYazimHatasi({ code: "DP001", message: "x" }, "kaydedilmedi"), "Puan doğrulanamadı; faaliyet kaydedilmedi. Lütfen yöneticinize bildirin.");
+    assert.equal(faaliyetYazimHatasi({ code: "DP001", message: "x" }, "değiştirilmedi"), "Puan doğrulanamadı; faaliyet değiştirilmedi. Lütfen yöneticinize bildirin.");
+    assert.match(faaliyetYazimHatasi({ code: "DP002", message: "x" }, "kaydedilmedi"), /başka bir faaliyetle gönderilmiş.*Sayfayı yenileyip/);
+    assert.match(faaliyetYazimHatasi({ code: "42501", message: "x" }, "değiştirilmedi"), /modül ya da üyeliğiniz kapanmış/);
+    assert.equal(faaliyetYazimHatasi({ code: "23503", message: "x" }, "kaydedilmedi"), "Seçilen kriter bulunamadı.");
+    assert.equal(faaliyetYazimHatasi({ code: null, message: "bağlantı koptu" }, "kaydedilmedi"), "Faaliyet kaydedilmedi: bağlantı koptu");
   });
 });

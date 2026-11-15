@@ -123,6 +123,24 @@ export function PanelModal({
     öteki pencerelerin kökü (aynı sınıf) inert yapılmaz.
   */
   const kapatRef = useRef<HTMLButtonElement>(null);
+  /*
+    İÇ İÇE PENCEREDE ODAK DÖNÜŞÜ. Ortak kanca odağı, açan öğe bir
+    "panel-modal-root"un İÇİNDEYSE geri vermiyor (kendi katmanına dönmemek
+    için). İç pencerenin tetikleyicisi DIŞ pencerenin içinde olduğundan
+    iç pencere kapanınca odak sayfanın gövdesine düşüyordu (tarayıcı
+    sınaması: scripts/panel-modal-odak-tarayici.mjs). Kancaya dokunmadan:
+    açan öğe burada tutulur, kapanışta odak hiçbir yerde değilse ona döner.
+  */
+  useEffect(() => {
+    if (!open) return;
+    const acan = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => {
+      window.requestAnimationFrame(() => {
+        const bosta = !document.activeElement || document.activeElement === document.body;
+        if (bosta && acan?.isConnected && acan.offsetParent !== null) acan.focus({ preventScroll: true });
+      });
+    };
+  }, [open]);
   useOdakTuzagi(open, kapatRef, "panel-modal-root");
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;

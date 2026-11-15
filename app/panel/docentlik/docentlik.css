@@ -82,7 +82,19 @@
 .docentlik-eylem-hucre{inline-size:1%;white-space:nowrap}
 .docentlik-eylemler{display:flex;gap:var(--sp-2);justify-content:flex-end;flex-wrap:nowrap}
 .docentlik-sil{margin:0;display:inline-flex}
-.docentlik-tehlike{color:var(--danger)}
+/*
+  Silme düğmesi panelin ikincil düğmesi + tehlike rengi. Tek sınıfla
+  yazılmıştı ve panelin kendi kuralları onu eziyordu: panel-premium.css
+  `.panel-secondary{color:var(--ink)}` ve koyu temada
+  `html[data-theme="dark"] .panel-secondary{color:var(--ink)}` (0,2,1) ve
+  `html[data-theme="dark"] .os-root .panel-secondary` (0,3,1) — düğme iki
+  temada da sıradan gri bir düğme gibi görünüyordu (ilk düzeltme 0,3,0
+  idi ve koyu temada hâlâ yeniliyordu; tarayıcı ölçümü yakaladı). Özgüllük
+  (0,4,0) bilerek o kuralların üstünde; renk yine token (--danger açık ve
+  koyu temada ayrı tanımlı, panel-tokens.css).
+*/
+.docentlik-sayfa .docentlik-sil .panel-secondary.docentlik-tehlike{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
+.docentlik-sayfa .docentlik-sil .panel-secondary.docentlik-tehlike:hover{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--surface))}
 .docentlik-sayfalama{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding-top:var(--sp-2);color:var(--muted);font-size:var(--fs-sm)}
 
 /* Ekranda görünmeyen ama ekran okuyucunun okuduğu başlık (işlem sütunu). */

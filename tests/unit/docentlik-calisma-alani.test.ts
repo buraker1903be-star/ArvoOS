@@ -74,12 +74,21 @@ describe("faaliyet formu", () => {
   test("istek anahtarı gönderimde üretiliyor (çizimde değil), başarıda sıfırlanıyor, hatada KORUNUYOR", () => {
     const k = kod(FORM);
     assert.match(k, /const anahtar = useRef<string \| null>\(null\)/);
-    assert.match(k, /async function gonder\(formData: FormData\) \{[\s\S]*anahtar\.current \?\?= crypto\.randomUUID\(\);[\s\S]*formData\.set\("istek_anahtari", anahtar\.current\);[\s\S]*const sonuc = await faaliyetEkle\(formData\);[\s\S]*if \(sonuc\) \{[\s\S]*anahtar\.current = null;/);
+    assert.match(k, /async function gonder\(olay: FormEvent<HTMLFormElement>\) \{[\s\S]*anahtar\.current \?\?= crypto\.randomUUID\(\);[\s\S]*formData\.set\("istek_anahtari", anahtar\.current\);[\s\S]*const sonuc = await faaliyetEkle\(formData\);[\s\S]*if \(sonuc\) \{[\s\S]*anahtar\.current = null;[\s\S]*form\.reset\(\);/);
     // Çizimde rastgele değer yok (sunucu/tarayıcı uyuşmazlığı).
     assert.equal([...k.matchAll(/crypto\.randomUUID\(\)/g)].length, 1);
     assert.ok(!/useState\(\(\) => crypto/.test(k));
-    // Başarısız gönderimde anahtar silinmiyor: sıfırlama yalnızca `if (sonuc)` içinde.
+    // Başarısız gönderimde anahtar silinmiyor ve form sıfırlanmıyor: ikisi de yalnızca `if (sonuc)` içinde.
     assert.ok(!/anahtar\.current = null;[\s\S]*if \(sonuc\)/.test(k));
+    assert.equal([...k.matchAll(/form\.reset\(\)/g)].length, 1);
+  });
+
+  test("form <form action> DEĞİL onSubmit ile: React 19 action'lı formu hatada da sıfırlıyordu", () => {
+    const k = kod(FORM);
+    assert.match(k, /<form onSubmit=\{gonder\}/);
+    assert.ok(!/<form[^>]*\saction=/.test(k));
+    assert.match(k, /olay\.preventDefault\(\);\s*if \(gonderiliyor\.current\) return;/);
+    assert.match(k, /finally \{\s*gonderiliyor\.current = false;\s*setBekliyor\(false\);\s*\}/);
   });
 
   test("düzenleme sürümü (updated_at) ve kayıt kimliği gizli alanla gidiyor; düzenlemede anahtar yok", () => {
@@ -89,9 +98,9 @@ describe("faaliyet formu", () => {
     assert.match(kod(FORM), /if \(mevcut\) \{\s*await faaliyetDuzenle\(formData\);\s*return;\s*\}/);
   });
 
-  test("çift tıklama: ortak gönderim düğmesi (işlem sürerken kilitli)", () => {
-    assert.match(FORM, /<GonderDugmesi/);
-    assert.ok(!/<button type="submit"/.test(FORM));
+  test("çift tıklama: gönderim düğmesi işlem sürerken kilitli, kilit eşzamanlı (ref)", () => {
+    assert.match(FORM, /<button type="submit" className="panel-primary" disabled=\{bekliyor\}/);
+    assert.match(kod(FORM), /const gonderiliyor = useRef\(false\)/);
   });
 
   test("erişilebilirlik: her alanın etiketi var, başlıca yazar seçimi fieldset/legend", () => {

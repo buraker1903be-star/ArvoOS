@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { TarihSecici } from "../components/tarih-secici";
-import { GonderDugmesi } from "../components/gonder-dugmesi";
+import "../components/gonder-dugmesi.css";
 import type { KriterSecenegi } from "@/lib/docentlik-gorunum";
 import { faaliyetDuzenle, faaliyetEkle } from "./actions";
 
@@ -52,26 +52,56 @@ export function FaaliyetFormu({ secenekler, mevcut, bugun }: {
   /** Türkiye günü (todayInIstanbul): ileri tarihli faaliyet girilmesin. */
   bugun: string;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
   const anahtar = useRef<string | null>(null);
   const [yazar, setYazar] = useState(String(mevcut?.yazar_sayisi ?? 1));
   const tekYazar = yazar.trim() === "1" || yazar.trim() === "";
   const onek = mevcut ? `faaliyet-${mevcut.id.slice(0, 8)}` : "faaliyet-yeni";
   const secenekVar = secenekler.some((g) => g.secenekler.length > 0);
 
-  async function gonder(formData: FormData) {
-    if (mevcut) {
-      await faaliyetDuzenle(formData);
-      return;
-    }
-    anahtar.current ??= crypto.randomUUID();
-    formData.set("istek_anahtari", anahtar.current);
-    const sonuc = await faaliyetEkle(formData);
-    if (sonuc) {
-      // Başarı (ya da aynı isteğin tekrarı): bir sonraki faaliyet yeni anahtar alır.
-      anahtar.current = null;
-      formRef.current?.reset();
-      setYazar("1");
+  /*
+    GÖNDERİM onSubmit İLE, <form action> İLE DEĞİL. React 19 `action` verilen
+    formu işlem bitince KENDİLİĞİNDEN sıfırlıyor; panelin sunucu işlemi hatayı
+    fırlatmayıp bildirim olarak döndürdüğü için (runPanelAction) hata da
+    "bitti" sayılıyordu: DP001, yetki ya da doğrulama hatasından sonra
+    kullanıcının yazdığı her şey siliniyordu ve düzeltip yeniden göndermek
+    yerine baştan yazmak gerekiyordu (tarayıcı ölçümü,
+    scripts/docentlik-yerlesim-tarayici.mjs). Şimdi form yalnızca BAŞARIDA
+    sıfırlanır.
+
+    Çift gönderim kilidi bir REF'te ve eşzamanlı kuruluyor: durum (state)
+    güncellemesi bir sonraki çizime kadar görünmez ve hızlı ikinci tık o
+    arada ikinci isteği gönderebilirdi. Düğme de işlem süresince kapalı
+    (ortak gönderim düğmesiyle aynı görünüm ve "Hâlâ işleniyor" metni).
+    Panelin bildirimi (flash-toast) "submit" olayını dinliyor; olay
+    preventDefault'tan sonra da yayılıyor, hata mesajı yine görünür.
+  */
+  const gonderiliyor = useRef(false);
+  const [bekliyor, setBekliyor] = useState(false);
+
+  async function gonder(olay: FormEvent<HTMLFormElement>) {
+    olay.preventDefault();
+    if (gonderiliyor.current) return;
+    const form = olay.currentTarget;
+    const formData = new FormData(form);
+    gonderiliyor.current = true;
+    setBekliyor(true);
+    try {
+      if (mevcut) {
+        await faaliyetDuzenle(formData);
+        return;
+      }
+      anahtar.current ??= crypto.randomUUID();
+      formData.set("istek_anahtari", anahtar.current);
+      const sonuc = await faaliyetEkle(formData);
+      if (sonuc) {
+        // Başarı (ya da aynı isteğin tekrarı): bir sonraki faaliyet yeni anahtar alır.
+        anahtar.current = null;
+        form.reset();
+        setYazar("1");
+      }
+    } finally {
+      gonderiliyor.current = false;
+      setBekliyor(false);
     }
   }
 
@@ -85,7 +115,7 @@ export function FaaliyetFormu({ secenekler, mevcut, bugun }: {
   }
 
   return (
-    <form ref={formRef} action={gonder} className="panel-form kayit-formu docentlik-form" aria-describedby={`${onek}-not`}>
+    <form onSubmit={gonder} className="panel-form kayit-formu docentlik-form" aria-describedby={`${onek}-not`}>
       {mevcut ? (
         <>
           <input type="hidden" name="faaliyet_id" value={mevcut.id} />
@@ -149,7 +179,14 @@ export function FaaliyetFormu({ secenekler, mevcut, bugun }: {
         <p id={`${onek}-not`}>
           <b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu. Puanı sistem hesaplar; tarihi boş bırakılan faaliyet doktora sonrası şartlarına sayılmaz.
         </p>
-        <GonderDugmesi bekleyenEtiket="Kaydediliyor…">{mevcut ? "Değişiklikleri kaydet" : "Faaliyeti ekle"}</GonderDugmesi>
+        <button type="submit" className="panel-primary" disabled={bekliyor} aria-busy={bekliyor || undefined}>
+          {bekliyor ? (
+            <span className="gonder-bekleme" role="status">
+              <span className="gonder-bekleme-kisa">Kaydediliyor…</span>
+              <span className="gonder-bekleme-uzun">Hâlâ işleniyor — sonucu bekleyin</span>
+            </span>
+          ) : mevcut ? "Değişiklikleri kaydet" : "Faaliyeti ekle"}
+        </button>
       </div>
     </form>
   );

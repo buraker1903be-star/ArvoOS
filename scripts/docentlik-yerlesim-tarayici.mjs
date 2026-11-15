@@ -91,12 +91,17 @@ export async function profilim() { return profil; }
 export async function faaliyetlerim() { return { satirlar, toplam: satirlar.length, sayfaBoyu: 50, aralikDisi: false }; }
 export async function kriterlerTumu() { return kriterler; }
 `);
+/* Taklit işlemler çağrıları kaydeder; sonuç window.__sonuc ile seçilir ("basari" | "hata").
+   runPanelAction hatada undefined döndürür (mesaj çerezle bildirilir) — burada da öyle. */
 fs.writeFileSync(path.join(shim, "actions.ts"), `
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
-export async function faaliyetEkle() { await bekle(50); return { id: "x", tekrar: false }; }
-export async function faaliyetDuzenle() { await bekle(50); return { id: "x", tekrar: false }; }
-export async function faaliyetSil() { await bekle(50); return { silindi: true }; }
-export async function profilKaydet() { await bekle(50); }
+window.__cagrilar = [];
+const kaydet = (ad, fd) => window.__cagrilar.push({ ad, alanlar: Object.fromEntries(fd ? fd.entries() : []) });
+const sonuc = (deger) => (window.__sonuc === "hata" ? undefined : deger);
+export async function faaliyetEkle(fd) { kaydet("ekle", fd); await bekle(250); return sonuc({ id: "x", tekrar: false }); }
+export async function faaliyetDuzenle(fd) { kaydet("duzenle", fd); await bekle(250); return sonuc({ id: "x", tekrar: false }); }
+export async function faaliyetSil(fd) { kaydet("sil", fd); await bekle(50); return sonuc({ silindi: true }); }
+export async function profilKaydet(fd) { kaydet("profil", fd); await bekle(50); }
 `);
 
 const a = (p) => JSON.stringify(path.join(KOK, p));
@@ -170,6 +175,67 @@ const olc = () => {
   return { yatay: `${s.scrollWidth}/${s.clientWidth}`, yatayTasma: s.scrollWidth > s.clientWidth + 1, tasan, icTasma, metin: metinler.length, enDusukKontrast: Number(enDusuk.toFixed(2)), dusukKontrast: dusuk };
 };
 
+/*
+  Doçentlik formunun istemci davranışı (sunucu işlemleri taklit):
+   - hata (DP001 vb.; runPanelAction undefined döndürür) → pencere açık, anahtar KORUNUR;
+   - aynı formun yeniden gönderimi aynı anahtarı taşır; başarıdan sonra form sıfırlanır,
+     sonraki gönderim YENİ anahtar alır;
+   - çift tıklama tek çağrı;
+   - silme: onay penceresinde Vazgeç → çağrı yok; Sil → tek çağrı, doğru kayıt kimliği.
+  DP001/DP002 METİNLERİ sunucuda (lib/docentlik-islem → faaliyetYazimHatasi, birim testli);
+  bildirimin ekrana ulaşması gerçek oturum ister (UNVERIFIED).
+*/
+async function formDurumlari(sayfa) {
+  const s = {};
+  const cagrilar = () => sayfa.evaluate(() => window.__cagrilar.map((c) => ({ ad: c.ad, anahtar: c.alanlar.istek_anahtari ?? null, id: c.alanlar.faaliyet_id ?? null })));
+  const sifirla = () => sayfa.evaluate(() => { window.__cagrilar.length = 0; });
+  const gonder = () => sayfa.locator("form.docentlik-form button[type=submit]").click();
+  await sayfa.getByRole("button", { name: "Yeni faaliyet" }).first().click();
+  await sayfa.waitForTimeout(150);
+  await sayfa.locator("form.docentlik-form select[name=kriter_id]").selectOption("k1");
+  await sayfa.locator("form.docentlik-form input[name=baslik]").fill("Sentetik makale");
+  await sifirla();
+  await sayfa.evaluate(() => { window.__sonuc = "hata"; });
+  await gonder(); await sayfa.waitForTimeout(400);
+  await gonder(); await sayfa.waitForTimeout(400);
+  let c = await cagrilar();
+  s["hata: iki gönderim, ikisi de aynı anahtar"] = c.length === 2 && Boolean(c[0].anahtar) && c[0].anahtar === c[1].anahtar || c;
+  s["hata: pencere açık, alanlar korunuyor"] = (await sayfa.locator("form.docentlik-form input[name=baslik]").inputValue()) === "Sentetik makale";
+  await sayfa.evaluate(() => { window.__sonuc = "basari"; });
+  await gonder(); await sayfa.waitForTimeout(400);
+  c = await cagrilar();
+  s["başarı: düzeltilmiş gönderim AYNI anahtarı taşır (hata anahtarı tüketmez)"] = c.length === 3 && c[2].anahtar === c[0].anahtar || c;
+  const ilkAnahtar = c[0]?.anahtar ?? null;
+  s["başarı: form sıfırlandı"] = (await sayfa.locator("form.docentlik-form input[name=baslik]").inputValue()) === "";
+  await sayfa.locator("form.docentlik-form select[name=kriter_id]").selectOption("k2");
+  await sayfa.locator("form.docentlik-form input[name=baslik]").fill("İkinci faaliyet");
+  await sifirla();
+  /* Çift tıklama: ikinci tık işlem sürerken (düğme kilitli). */
+  await gonder();
+  await sayfa.locator("form.docentlik-form button[type=submit]").click({ force: true, timeout: 300 }).catch(() => {});
+  await sayfa.waitForTimeout(500);
+  c = await cagrilar();
+  s["çift tıklama: tek çağrı"] = c.length === 1 || c;
+  s["yeni faaliyet YENİ anahtar alır"] = c.length === 1 && c[0].anahtar && c[0].anahtar !== ilkAnahtar || c;
+  await sayfa.keyboard.press("Escape");
+  await sayfa.waitForTimeout(150);
+  // Silme onayı
+  await sifirla();
+  await sayfa.locator(".docentlik-tehlike").first().click();
+  await sayfa.waitForTimeout(150);
+  s["silme: onay penceresi açılıyor"] = await sayfa.evaluate(() => Boolean([...document.querySelectorAll("dialog")].find((d) => d.open)));
+  await sayfa.getByRole("button", { name: "Vazgeç" }).click();
+  await sayfa.waitForTimeout(150);
+  s["silme: Vazgeç → çağrı yok"] = (await cagrilar()).length === 0;
+  await sayfa.locator(".docentlik-tehlike").first().click();
+  await sayfa.waitForTimeout(150);
+  await sayfa.locator("dialog[open] button[type=submit]").click();
+  await sayfa.waitForTimeout(300);
+  c = await cagrilar();
+  s["silme: onay → tek çağrı, doğru kayıt"] = c.length === 1 && c[0].ad === "sil" && c[0].id === "00000000-0000-4000-8000-000000000000" || c;
+  return s;
+}
+
 const sorunlar = [];
 const sonuc = {};
 const tarayici = await chromium.launch();
@@ -236,7 +302,20 @@ for (const [w, h] of BOYUTLAR) for (const tema of ["light", "dark"]) for (const 
     o.escKapatti = await sayfa.evaluate(() => !document.querySelector("form.docentlik-form"));
     o.odakGeriDondu = await sayfa.evaluate(() => document.activeElement?.textContent?.includes("Yeni faaliyet") ?? false);
   }
+  /* Silme düğmesinin tehlike rengi (iki temada da --danger; panelin ikincil düğme kuralı eziyordu). */
+  if (ekran === "faaliyetler" && veri === "dolu") {
+    o.silRengi = await sayfa.evaluate(() => {
+      const d = document.querySelector(".docentlik-tehlike");
+      const olcu = document.createElement("span"); olcu.style.color = "var(--danger)"; d.parentElement.appendChild(olcu);
+      const beklenen = getComputedStyle(olcu).color; olcu.remove();
+      return { renk: getComputedStyle(d).color, beklenen };
+    });
+  }
+  /* Form durumları: yalnızca bir boyut/temada (mantık boyuta bağlı değil). */
+  if (ekran === "faaliyetler" && veri === "dolu" && w === BOYUTLAR[0][0] && tema === "light") o.formDurumlari = await formDurumlari(sayfa);
   sonuc[anahtar] = o;
+  if (o.silRengi && o.silRengi.renk !== o.silRengi.beklenen) sorunlar.push(`${anahtar}: Sil düğmesi tehlike renginde değil ${JSON.stringify(o.silRengi)}`);
+  if (o.formDurumlari) for (const [ad, gecti] of Object.entries(o.formDurumlari)) if (gecti !== true) sorunlar.push(`${anahtar}: form durumu "${ad}" ${JSON.stringify(gecti)}`);
   if (o.icTasma.length) sorunlar.push(`${anahtar}: kart/tablo içinde yatay taşma ${o.icTasma.join(", ")}`);
   if (o.yatayTasma || o.tasan.length) sorunlar.push(`${anahtar}: yatay taşma ${o.yatay} ${o.tasan.join(", ")}`);
   if (o.dusukKontrast.length) sorunlar.push(`${anahtar}: düşük kontrast ${o.dusukKontrast.join(" | ")}`);
