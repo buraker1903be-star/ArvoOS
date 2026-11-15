@@ -24,6 +24,9 @@ import { formatPersonName } from "@/lib/format-name";
   GÖRÜNÜR bir yedek, yanlış bir cümle değil. Yine de iz bırakıyor:
   sessizce isimsizleşen bir denetim satırının sebebi aranabilsin.
 */
+/** Tek istekte sorulan en fazla kimlik (adres uzunluğu sınırı; bkz. aşağıdaki not). */
+export const KISI_PARCA = 100;
+
 export async function kisiAdlari(
   supabase: SupabaseClient,
   organizationId: string,
@@ -33,10 +36,23 @@ export async function kisiAdlari(
   const adlar = new Map<string, string>();
   if (!kimlikler.length) return adlar;
 
-  const [{ data: profiller, error: profilHatasi }, { data: personeller, error: personelHatasi }] = await Promise.all([
-    supabase.from("profiles").select("id,full_name").in("id", kimlikler),
-    supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", kimlikler),
-  ]);
+  /*
+    Kimlikler PARÇA PARÇA soruluyor. Eskiden hepsi tek bir `in.(…)`
+    süzgecindeydi: her kimlik ~37 karakter, 1100 akademisyenli bir kurumda
+    adres ~40 KB'ı aşıyor ve istek boş bir hatayla düşüyordu — gözetim
+    listesindeki herkes "Üye xxxxxxxx" yedeğiyle göründü (F6 PR7, gerçek
+    PostgREST'te ölçüldü). Barındırılan Supabase'in adres sınırı daha düşük.
+  */
+  const parcalar: string[][] = [];
+  for (let i = 0; i < kimlikler.length; i += KISI_PARCA) parcalar.push(kimlikler.slice(i, i + KISI_PARCA));
+  const yanitlar = await Promise.all(parcalar.map((parca) => Promise.all([
+    supabase.from("profiles").select("id,full_name").in("id", parca),
+    supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", parca),
+  ])));
+  const profiller = yanitlar.flatMap(([p]) => p.data ?? []);
+  const personeller = yanitlar.flatMap(([, h]) => h.data ?? []);
+  const profilHatasi = yanitlar.find(([p]) => p.error)?.[0].error ?? null;
+  const personelHatasi = yanitlar.find(([, h]) => h.error)?.[1].error ?? null;
   if (profilHatasi || personelHatasi) {
     console.error("[kisi-adlari] adlar okunamadı", {
       organizationId,

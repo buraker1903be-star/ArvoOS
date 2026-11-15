@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/otomatik-proforma",
       "schedule": "40 5 * * *"
+    },
+    {
+      "path": "/api/cron/docentlik-belge-temizligi",
+      "schedule": "35 * * * *"
     }
   ]
 }

@@ -57,6 +57,7 @@ const ADLAR: Record<string, string> = {
   "/panel/notifications": "Bildirimler",
   "/panel/documents": "Dokümanlar",
   "/panel/analitik": "Analitik",
+  "/panel/docentlik": "Doçentlik",
   "/panel/billing": "Abonelik ve faturalama",
   "/panel/settings": "Ayarlar",
   "/panel/support": "Destek",
