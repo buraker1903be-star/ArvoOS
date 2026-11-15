@@ -110,3 +110,22 @@ export const AKTORLER = {
 };
 
 export const aktorOl = (db, ad) => rol(db, AKTORLER[ad][0], AKTORLER[ad][1]);
+
+/*
+  ÜAK DOSYASI (F6 PR8 ad kilidi, 20261115154855). ÜAK kaydı kullanıcı
+  oturumuyla ancak çağıranın SON 1 SAATTE yüklediği, temizlikte olmayan bir
+  nesneye yazılabiliyor — gerçek akış "önce yükle, sonra kaydet". PGlite'ta
+  storage şeması yok: gerçek Supabase'deki sütun adlarıyla (owner, owner_id,
+  created_at, metadata) küçük bir taklit. Rol postgres'te bırakılır; çağıran
+  aktörüne geri döner. İşlem (islem) içinde çağrılır, sonunda geri alınır.
+*/
+export async function depoNesnesi(db, yol, sahip) {
+  await rol(db, "postgres");
+  await db.exec(`create schema if not exists storage;
+    create table if not exists storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner uuid, metadata jsonb, unique (bucket_id, name));
+    alter table storage.objects add column if not exists owner_id text;
+    alter table storage.objects add column if not exists created_at timestamptz default now();
+    grant usage on schema storage to anon, authenticated, service_role;`);
+  await db.query(`insert into storage.objects (bucket_id, name, owner, owner_id, metadata)
+    values ('docentlik-belgeleri', $1, $2::uuid, $3::text, '{"mimetype":"application/pdf","size":10}')`, [yol, sahip, sahip]);
+}

@@ -20,6 +20,10 @@ export const dynamic = "force-dynamic";
    - en az 24 saatlik eşik (işlev daha düşüğünü kabul etmiyor); bağlama
      işlevi ise yalnızca 1 saatten YENİ nesneyi kabul ediyor — temizleyici
      ile bağlayan aynı nesneye hiçbir zaman bakmıyor;
+   - AD KİLİDİ (20261115154855): silme Storage API'siyle ADLA yapılıyor;
+     onaydan sonra aynı adla yeniden yüklenen yeni bir nesne bağlanıp
+     gecikmiş silmeye gidebiliyordu. Temizlik kaydı olan ad (kiralı, hatalı
+     ya da 24 saat kapanmış) hiçbir faaliyete ya da ÜAK kaydına bağlanamaz;
    - aday: yalnızca docentlik-belgeleri kovası, yalnızca doçentlik yolu,
      hiçbir faaliyetin ya da ÜAK kaydının göstermediği nesne;
    - kira: aynı anda iki temizleyici koşarsa her nesneyi yalnızca biri alır

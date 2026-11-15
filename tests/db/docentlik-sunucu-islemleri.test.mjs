@@ -26,7 +26,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
-import { AM, AM2, K, R, aktorOl, dene, tohumla } from "./docentlik-ortak.mjs";
+import { AM, AM2, K, R, aktorOl, dene, depoNesnesi, tohumla } from "./docentlik-ortak.mjs";
 
 await import("../register.mjs");
 const islemCekirdegi = await import("../../lib/docentlik-islem.ts");
@@ -258,8 +258,9 @@ describe("işlemlerin yakaladığı hata kodları", () => {
 
   test("ÜAK: aynı temel alan için ikinci tablo 23505 (işlem: 'önce mevcut tabloyu kaldırın'); onay sütunları kullanıcıya kapalı", () =>
     islem(db, async () => {
-      await aktorOl(db, "yonetici");
       const yol = islemCekirdegi.uakBelgeYolu(AM, "00000000-0000-4000-8000-00000000cc01", "00000000-0000-4000-8000-00000000cc02");
+      await depoNesnesi(db, yol, K.yonetici); // meşru akış: önce yükleme (ad kilidi, 20261115154855)
+      await aktorOl(db, "yonetici");
       const ikinci = await dene(db, "insert into public.docentlik_uak_tablolari (organization_id, temel_alan, donem, depo_yolu) values ($1,'Eğitim Bilimleri','2027',$2)", [AM, yol]);
       assert.match(ikinci.hata, /duplicate key/);
       await reddedilir(db, "update public.docentlik_uak_tablolari set durum='onaylandi' where id=$1", [R.uak], /yalnızca sunucu/);

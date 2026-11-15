@@ -87,7 +87,8 @@ describe("temizlik rotası (gerçek Next.js + Storage)", () => {
     assert.ok(var_(KOVA, yeni), "24 saatten yeni nesne silindi");
     assert.ok(var_(KOVA, bagli), "kayda bağlı nesne silindi");
     assert.ok(var_(BASKA_KOVA, "eski.pdf"), "başka kovadaki nesne silindi");
-    assert.equal(psql("select count(*) from private.docentlik_belge_temizligi"), "0");
+    // Satırlar silinmiyor, kapanıyor (24 saatlik ad kilidi, 20261115154855).
+    assert.equal(psql("select count(*) from private.docentlik_belge_temizligi where kapandi_at is null"), "0");
     // Cron kaydı: sayılar var, yol yok.
     const kayit = psql(`select ayrinti::text from public.platform_cron_kayitlari where is_adi='/api/cron/docentlik-belge-temizligi' order by basladi_at desc limit 1`);
     assert.match(kayit, /"silinen"/);
@@ -124,7 +125,7 @@ describe("temizlik rotası (gerçek Next.js + Storage)", () => {
     const j2 = await (await kos()).json();
     assert.equal(j2.silinen, 1, JSON.stringify(j2));
     assert.equal(var_(KOVA, ad), false);
-    assert.equal(psql("select count(*) from private.docentlik_belge_temizligi"), "0");
+    assert.equal(psql("select count(*) from private.docentlik_belge_temizligi where kapandi_at is null"), "0");
   });
 
   test("sunucu günlüğünde sahipsiz nesne yolu yok", { skip: !GUNLUK }, () => {

@@ -114,3 +114,76 @@ G = gerçek yığın (PG17 + GoTrue + PostgREST + Storage + `next start`, Chromi
 - Migration canlıya uygulanmadan önce `supabase/schema/canli-sema.sql` ve `katalog.json`
   yenilenmeli. `check:schema` yeni işlevleri şimdilik "katalog gecikmesi" uyarısıyla geçiriyor.
 - Vercel Cron, `CRON_SECRET` ortam değişkenini gerektirir. Bu değişken mevcut cron işleri için zaten tanımlı olmalı.
+
+## Son güvenlik kabulü (15.11.2026)
+
+Yarışlar gerçek PostgreSQL 17 ve Storage API üzerinde incelendi
+(`tests/entegrasyon/docentlik-yaris.test.mjs`, 13 senaryo). Temizleyicinin adımları
+(al → onayla → Storage silme → sonuç) cron rotasındaki sırayla elle sürüldü; böylece
+"onaydan sonra, silmeden önce" aralığına girilebildi.
+
+### Bulunan iki açık (kritik: kayda bağlı PDF siliniyordu)
+
+1. **Aynı ad, yeni nesne.**
+   - Storage API nesneyi kimliğiyle değil **adıyla** siliyor.
+   - Onaydan sonra sahip kendi sahipsiz nesnesini sildi, aynı adla yeniden yükledi ve faaliyete bağladı.
+   - Bağlama işlevinin kira denetimi nesne kimliğine bakıyordu; yeni nesnenin kimliği farklıydı.
+   - Sonuç: gecikmiş silme **bağlı** belgeyi götürdü.
+2. **ÜAK `depo_yolu` denetimsizdi.**
+   - `uak_yonet` yetkili kullanıcı, temizleyicinin onayladığı eski bir nesneye PostgREST'ten doğrudan ÜAK kaydı yazdı.
+   - Silme yine gerçekleşti ve kayıt silinmiş dosyayı gösterdi.
+
+### Düzeltme
+
+Yeni migration: `20261115154855_docentlik_temizlik_ad_kilidi.sql`.
+- **Ad kilidi.** Temizlik kaydı olan bir ad hiçbir faaliyete ya da ÜAK kaydına bağlanamaz. Kayıt kiralı, hatalı ya da kapanmış olabilir; hepsi kilitler.
+- **Kayıt silinmiyor, kapanıyor.** Başarılı silmeden ya da vazgeçmeden sonra satır 24 saat kapanmış (`kapandi_at`) olarak kalıyor.
+  - Böylece kirası dolmuş ve silme isteği hâlâ yolda olan bir temizleyici, aynı adla yeni bağlanan bir nesneye denk gelemiyor.
+  - Nesnesi yok olmuş açık satır kendiliğinden kapanıyor; kapanmış satırlar 24 saat sonra süpürülüyor.
+- **ÜAK.** `authenticated` bir ÜAK kaydını yalnızca şu koşullarda yazabiliyor ya da yolunu değiştirebiliyor:
+  - nesneyi kendisi yüklemiş olmalı;
+  - nesne 1 saatten yeni olmalı;
+  - nesnenin adında temizlik kaydı olmamalı.
+  - Bunu bir tetikleyici ve dar bir definer yardımcı (`auth.uid()` tabanlı) uyguluyor.
+  - Sunucu (`service_role`) yolu değişmedi.
+- Görünürlük işlevi (`temizlik_durumu`) kapanmış satırları saymıyor.
+
+**Regresyon kanıtı:** eski işlev gövdeleri yerel veritabanına geri yüklendiğinde 4 senaryo düşüyor; düzeltmeyle 13/13 geçiyor.
+
+### Güven sınırı (`docentlik_belge_bagla` / `_kaldir`)
+
+- **Kimliğin kaynağı.** Kimlik doğrulanmış oturumdan geliyor: `getPanelContext` → `getClaims` (imza doğrulanıyor) → `docentlikBaglami().ben`.
+  - Hiçbir dışa açık işlem kimlik ya da kurum parametresi almıyor.
+  - Çalışma alanı çerezi yalnızca kullanıcının kendi üyelikleri arasından seçim yapıyor.
+- **Tek çağıran.** İşlevleri yalnızca `belge-baglama.ts` çağırıyor (server-only, "use server" değil); onu da yalnızca `actions.ts`. Birim testi depoyu tarayıp bunu sabitliyor.
+- **Dışarıdan çağrı yok.**
+  - `authenticated` ve `anon` rolleri işlevleri PostgREST'ten çağıramıyor.
+  - Yanlış imzalı ya da imzasız sahte `service_role` jetonu 401 alıyor.
+- **Karar yalnızca `p_kullanici` ile.** İşlemde önceden ayarlanmış başka bir JWT iddiası kararı değiştirmiyor. Üyeliği iptal edilmiş sahip adına bağlama reddediliyor (DB403).
+- **`request.jwt.claims` işlem dışına taşmıyor.**
+  - Başarı ve hata sonrasında iddia boş ve `auth.uid()` boş.
+  - Oturum düzeyinde önceden ayarlı bir değer işlevden sonra geri geliyor.
+  - PostgREST havuzunda iç içe 30 istekte başka kullanıcı sahibin kimliğini devralmadı.
+
+### Matris (son kabul)
+
+| Madde | Sonuç | Tür |
+|---|---|---|
+| Onaydan sonra aynı nesneyi bağlama reddediliyor | PASS | G |
+| Onaydan sonra aynı adla yeniden yükleme ve bağlama reddediliyor; gecikmiş silme bağlı belgeyi götürmüyor | PASS (düzeltmeyle; önce FAIL) | G + P |
+| Kira dolunca ikinci temizleyici devralıyor; ilkinin gecikmiş silmesi yeni bağlantıyı götürmüyor | PASS (düzeltmeyle; önce FAIL) | G |
+| Gecikmiş ya da başarısız Storage silmesinde kayıt bağlanamıyor, sonra yeniden deneniyor | PASS | G |
+| İki eşzamanlı temizleyicinin adayları ayrık | PASS | G |
+| ÜAK kaydı onaylanmış ya da eski ya da başkasının nesnesine yazılamıyor | PASS (düzeltmeyle; önce FAIL) | G + P |
+| ÜAK meşru yükleme (gerçek Next.js) | PASS | G (tarayıcı 4.3) |
+| İşlevler istemciye kapalı; sahte jeton reddediliyor | PASS | G |
+| Kimlik yalnızca `p_kullanici`; iptal edilmiş üye reddediliyor | PASS | G |
+| `request.jwt.claims` sızıntısı yok (oturum ve havuz) | PASS | G |
+| Supavisor (işlem havuzu) ile barındırılan bağlantı | UNVERIFIED | yerelde yok |
+
+### `check:schema` katalog gecikmesi (uyarı, gizlenmedi)
+
+`npm run check:schema` 0 ile çıkıyor ve şu uyarıyı veriyor: "Katalog 43 yeni adın gerisinde".
+- Bu 43 adın 18'i Doçentlik'e ait (PR3–PR8 tabloları ve işlevleri); kalanı main'de zaten bekleyen PayTR ve `platform_*` adları.
+- 184 kullanımın tamamını yerel bir migration yaratıyor, yani yazım hatası değil.
+- Migration'lar canlıya uygulanıp `canli-sema.sql` ile `katalog.json` yenilenince uyarı kalkar. O zamana kadar şema sözleşmesi bu adlar için sütun ve değer denetimi YAPAMIYOR; bu bilinen bir körlük.

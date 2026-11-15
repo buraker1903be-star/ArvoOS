@@ -663,5 +663,43 @@
         "ad": "public.docentlik_gozetim_ozeti"
       }
     ]
+  },
+  {
+    "migration": "20261115154855_docentlik_temizlik_ad_kilidi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_belge_bagla"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_uak_nesnesi_baglanabilir"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_uak_koru"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_temizlik_al"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_temizlik_onayla"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_temizlik_sonuc"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_temizlik_durumu"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "private.docentlik_belge_temizligi",
+        "sutun": "kapandi_at"
+      }
+    ]
   }
 ]

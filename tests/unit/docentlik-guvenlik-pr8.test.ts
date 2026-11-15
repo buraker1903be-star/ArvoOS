@@ -74,6 +74,19 @@ describe("dosya sözleşmeleri", () => {
     assert.match(BAGLAMA, /p_kullanici: b\.ben, p_org: b\.kurum/);
   });
 
+  test("bağlama işlevlerini (ve belgeyiBagla/belgeyiKaldir'i) başka hiçbir sunucu yolu çağırmıyor", () => {
+    /* Kimliği parametreyle alan işlev service_role'le çağrılıyor: tek kapı belge-baglama.ts, tek
+       çağıran actions.ts (kimlik docentlikBaglami()'ndan). Yeni bir yol (route, cron, başka işlem)
+       bu işlevi çağırırsa kimliği nereden aldığı burada yeniden incelenmeli. */
+    const tara = (dizin: string): string[] => fs.readdirSync(path.resolve(import.meta.dirname, "../..", dizin), { withFileTypes: true })
+      .flatMap((g) => (g.isDirectory() ? tara(`${dizin}/${g.name}`) : /\.(ts|tsx|mjs|js)$/.test(g.name) ? [`${dizin}/${g.name}`] : []));
+    const dosyalar = [...tara("app"), ...tara("lib")];
+    const rpc = dosyalar.filter((d) => /docentlik_belge_(bagla|kaldir)/.test(kod(oku(d))));
+    assert.deepEqual(rpc, ["app/panel/docentlik/belge-baglama.ts"]);
+    const sarmal = dosyalar.filter((d) => d !== "app/panel/docentlik/belge-baglama.ts" && /belgeyi(Bagla|Kaldir)\b/.test(kod(oku(d))));
+    assert.deepEqual(sarmal, ["app/panel/docentlik/actions.ts"]);
+  });
+
   test("actions.ts yönetici istemcisini kendisi açmıyor; belge_yolu'nu doğrudan yazmıyor", () => {
     const k = kod(ISLEM);
     assert.ok(!/createAdminClient/.test(k));

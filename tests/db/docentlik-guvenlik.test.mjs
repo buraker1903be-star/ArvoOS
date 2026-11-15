@@ -11,7 +11,7 @@
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
-import { AM, AM2, K, R, aktorOl, dene, tohumla } from "./docentlik-ortak.mjs";
+import { AM, AM2, K, R, aktorOl, dene, depoNesnesi, tohumla } from "./docentlik-ortak.mjs";
 
 let db;
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
@@ -314,8 +314,9 @@ describe("K2: sahiplik", () => {
 describe("K5: ÜAK önerisi ve onayı yalnızca sunucudan", () => {
   test("yönetici durumu/öneriyi/onaylayanı yazamaz; meşru yükleme ve service_role yolu çalışır", () =>
     islem(db, async () => {
-      await aktorOl(db, "yonetici");
       const yol = `${AM}/uak/00000000-0000-4000-8000-00000000d598/t.pdf`;
+      await depoNesnesi(db, yol, K.yonetici); // meşru akış: önce yükleme
+      await aktorOl(db, "yonetici");
       await reddedilir(db,
         "insert into public.docentlik_uak_tablolari (organization_id, temel_alan, donem, depo_yolu, durum) values ($1, 'Hukuk', '2026', $2, 'onaylandi')",
         [AM, yol], /yalnızca sunucu/);
@@ -325,7 +326,8 @@ describe("K5: ÜAK önerisi ve onayı yalnızca sunucudan", () => {
       assert.deepEqual(y, { yukleyen: K.yonetici, durum: "yuklendi" }, "yükleyen sunucuda damgalanmalı");
       await reddedilir(db, "update public.docentlik_uak_tablolari set oneri = '{}'::jsonb where id = $1", [R.uak], /yalnızca sunucu/);
       await reddedilir(db, "update public.docentlik_uak_tablolari set durum = 'onaylandi' where id = $1", [R.uak], /yalnızca sunucu/);
-      await reddedilir(db, "update public.docentlik_uak_tablolari set depo_yolu = $1 where id = $2", [`${AM2}/uak/x/t.pdf`, R.uak], /check constraint/);
+      // Başka kurumun yolu: 20261115154855'ten beri önce ad kilidi tetikleyicisi reddediyor (nesne yok), CHECK kısıtı da duruyor.
+      await reddedilir(db, "update public.docentlik_uak_tablolari set depo_yolu = $1 where id = $2", [`${AM2}/uak/x/t.pdf`, R.uak], /check constraint|ÜAK dosyası bulunamadı/);
       await rol(db, "service_role");
       const s = await tek("update public.docentlik_uak_tablolari set oneri = '{\"kriterler\":[]}'::jsonb, durum = 'oneri_hazir' where id = $1 returning durum", [R.uak]);
       assert.equal(s.durum, "oneri_hazir");

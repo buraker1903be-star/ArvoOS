@@ -169,7 +169,7 @@ describe("3. sahipsiz belge temizliği", () => {
       await rol(db, "service_role");
       const ilk = (await al()).rows;
       assert.equal(ilk.length, 2);
-      assert.equal((await al()).rows.length, 0, "kiralı nesneler ikinci kez alınmaz");
+      assert.equal((await al()).rows.length, 0, "kirali nesneler ikinci kez alınmaz");
       const kira = ilk[0].kira;
       assert.equal((await tek("select public.docentlik_temizlik_onayla($1, gen_random_uuid()) as ad", [aId])).ad, null, "yanlış kira");
       assert.equal((await tek("select public.docentlik_temizlik_onayla($1, $2) as ad", [aId, kira])).ad, a);
@@ -179,10 +179,11 @@ describe("3. sahipsiz belge temizliği", () => {
       await rol(db, "service_role");
       assert.equal((await tek("select public.docentlik_temizlik_onayla($1, $2) as ad", [bId, kira])).ad, null);
       await rol(db, "postgres");
-      assert.equal((await tek("select count(*)::int n from private.docentlik_belge_temizligi where nesne_id = $1", [bId])).n, 0);
+      // Eskiden satır siliniyordu; artık kapanıyor (ad kilidi 24 saat, 20261115154855).
+      assert.equal((await tek("select count(*)::int n from private.docentlik_belge_temizligi where nesne_id = $1 and kapandi_at is not null and kira is null", [bId])).n, 1);
     }));
 
-  test("başarısız silme: deneme sayılır, geri çekilme süresince alınmaz, süre dolunca yeniden denenir; başarı kaydı siler", () =>
+  test("başarısız silme: deneme sayılır, geri çekilme süresince alınmaz, süre dolunca yeniden denenir; başarı kaydı kapatır", () =>
     islem(db, async () => {
       const a = yol(K.sahip, R.faaliyet); const aId = await nesne(a, { yas: "2 days" });
       await rol(db, "service_role");
@@ -197,8 +198,70 @@ describe("3. sahipsiz belge temizliği", () => {
       const [yeniden] = (await al()).rows;
       assert.equal(yeniden.nesne_id, aId);
       await db.query("select public.docentlik_temizlik_sonuc($1, $2, true, null)", [aId, yeniden.kira]);
+      const sonra = await tek("select * from public.docentlik_temizlik_durumu()");
+      assert.deepEqual([Number(sonra.bekleyen_hatali), sonra.en_cok_deneme], [0, 0], "kapanmış satır görünürlükte sayılmaz");
+      await rol(db, "postgres");
+      assert.equal((await tek("select count(*)::int n from private.docentlik_belge_temizligi where kapandi_at is null")).n, 0);
+      // 24 saat sonra kapanmış satır süpürülür (nesne gerçekte Storage API'siyle silindi; taklitte elle).
+      await db.query("delete from storage.objects where id = $1", [aId]);
+      await db.query("update private.docentlik_belge_temizligi set kapandi_at = now() - interval '25 hours'");
+      await rol(db, "service_role");
+      await al();
       await rol(db, "postgres");
       assert.equal((await tek("select count(*)::int n from private.docentlik_belge_temizligi")).n, 0);
+    }));
+
+  test("ad kilidi: temizlik kaydı olan ad (kirali, kapanmış) faaliyete bağlanamaz — aynı adla yeniden yüklense bile", () =>
+    islem(db, async () => {
+      const a = yol(K.sahip, R.faaliyet); const aId = await nesne(a, { yas: "2 days" });
+      await rol(db, "service_role");
+      const [aday] = (await al()).rows;
+      assert.equal((await tek("select public.docentlik_temizlik_onayla($1, $2) as ad", [aId, aday.kira])).ad, a);
+      // Onaydan sonra sahip nesneyi silip AYNI adla yeniden yükler (yeni kimlik, yeni tarih).
+      await rol(db, "postgres");
+      await db.query("delete from storage.objects where id = $1", [aId]);
+      await nesne(a);
+      await rol(db, "service_role");
+      assert.equal(await kod("select * from public.docentlik_belge_bagla($1, $2, $3, $4, null)", [K.sahip, AM, R.faaliyet, a]), "DB410", "kirali ad bağlandı");
+      // Kira dolup başka bir temizleyici kapatsa bile (gecikmiş silme hâlâ yolda olabilir) 24 saat kilitli.
+      await rol(db, "postgres");
+      await db.query("update private.docentlik_belge_temizligi set kira_bitis = now() - interval '1 second'");
+      await rol(db, "service_role");
+      await al(); // nesnesi gitmiş açık satır kapanır
+      await rol(db, "postgres");
+      assert.equal((await tek("select count(*)::int n from private.docentlik_belge_temizligi where ad = $1 and kapandi_at is not null", [a])).n, 1);
+      await rol(db, "service_role");
+      assert.equal(await kod("select * from public.docentlik_belge_bagla($1, $2, $3, $4, null)", [K.sahip, AM, R.faaliyet, a]), "DB410", "kapanmış ad bağlandı");
+      await rol(db, "postgres");
+      assert.equal((await tek("select coalesce(belge_yolu, '') y from public.docentlik_faaliyetleri where id = $1", [R.faaliyet])).y === a, false);
+    }));
+
+  test("ÜAK depo_yolu (authenticated): yalnızca kendi yüklediği, 1 saatten yeni ve temizlikte olmayan nesne", () =>
+    islem(db, async () => {
+      const uak = (u) => `${AM}/uak/${u}/t.pdf`;
+      const yeni = uak("00000000-0000-4000-8000-0000000e0001");
+      const eski = uak("00000000-0000-4000-8000-0000000e0002");
+      const baskasinin = uak("00000000-0000-4000-8000-0000000e0003");
+      const kirali = uak("00000000-0000-4000-8000-0000000e0004");
+      const yok = uak("00000000-0000-4000-8000-0000000e0005");
+      await nesne(yeni, { sahip: K.yonetici });
+      await nesne(eski, { sahip: K.yonetici, yas: "2 days" });
+      await nesne(baskasinin, { sahip: K.kurumSahibi });
+      const kId = await nesne(kirali, { sahip: K.yonetici });
+      await rol(db, "postgres");
+      await db.query("insert into private.docentlik_belge_temizligi (nesne_id, ad, kapandi_at) values ($1, $2, now())", [kId, kirali]);
+      const ekle = (y, alan) => kod("insert into public.docentlik_uak_tablolari (organization_id, temel_alan, donem, depo_yolu) values ($1, $2, '2026', $3) returning id", [AM, alan, y]);
+      await aktorOl(db, "yonetici");
+      for (const [y, ad] of [[eski, "eski"], [baskasinin, "başkasının"], [kirali, "temizlikteki"], [yok, "olmayan"]]) {
+        assert.equal(await ekle(y, `PR8 ${ad}`), "42501", `${ad} nesneye ÜAK kaydı yazıldı`);
+      }
+      // Var olan kaydın yolunu eski nesneye çevirmek de reddedilir; başka sütun güncellemesi serbest.
+      assert.equal(await kod("update public.docentlik_uak_tablolari set depo_yolu = $1 where id = $2 returning id", [eski, R.uak]), "42501");
+      assert.equal(await kod("update public.docentlik_uak_tablolari set donem = '2027' where id = $1 returning id", [R.uak]), "ok");
+      assert.equal(await ekle(yeni, "PR8 meşru"), "ok", "meşru akış (yeni yüklenen kendi nesnesi) çalışmalı");
+      // service_role yolu (sunucu) bu kurala tabi değil — tetikleyici yalnızca authenticated için.
+      await rol(db, "service_role");
+      assert.equal(await kod("update public.docentlik_uak_tablolari set depo_yolu = $1 where id = $2 returning id", [eski, R.uak]), "ok");
     }));
 
   test("temizlik işlevleri ve kira tablosu yalnızca service_role'e açık", () =>

@@ -18,7 +18,7 @@
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { islem, rol, veritabani } from "./ortam.mjs";
-import { AM, K, R, aktorOl, dene, tohumla } from "./docentlik-ortak.mjs";
+import { AKTORLER, AM, K, R, aktorOl, dene, depoNesnesi, tohumla } from "./docentlik-ortak.mjs";
 
 let db;
 before(async () => {
@@ -103,6 +103,9 @@ async function hucre(tablo, aktor, islemAdi) {
       await rol(db, "postgres");
       await db.query(t.hazirlik[0], t.hazirlik[1]);
     }
+    /* ÜAK kaydı yalnızca çağıranın yeni yüklediği nesneye (20261115154855): hücre meşru akışı ölçsün,
+       "dosya yok" reddini yetki reddi sanmasın. Nesnenin sahibi o hücrenin aktörü. */
+    if (islemAdi === "insert" && tablo === "docentlik_uak_tablolari" && AKTORLER[aktor]?.[1]) await depoNesnesi(db, UAK_YOLU, AKTORLER[aktor][1]);
     await aktorOl(db, aktor);
     const [sql, params] = t[islemAdi];
     const sonuc = await dene(db, sql, params);
