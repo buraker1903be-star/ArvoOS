@@ -6,7 +6,8 @@ import { sayfaNumarasi } from "@/lib/liste-sayfalama";
 import { donemEtiketi, gunMetni, kriterSecenekleri, puanMetni, yazarMetni } from "@/lib/docentlik-gorunum";
 import { kendiDonemi } from "@/lib/docentlik-islem";
 import { PanelModal } from "../../components/panel-modal";
-import { faaliyetlerim, kriterlerTumu, profilim } from "../veri";
+import { faaliyetlerim, kriterlerTumu, profilim, yetkilerim } from "../veri";
+import { FaaliyetBelgesiGoruntule, FaaliyetBelgesiKaldir, FaaliyetBelgesiYukle } from "../belge";
 import { FaaliyetFormu } from "../faaliyet-formu";
 import { FaaliyetSil } from "../faaliyet-sil";
 import { DocentlikSekmeleri } from "../sekmeler";
@@ -33,7 +34,7 @@ export const metadata: Metadata = { title: "Faaliyetlerim · Doçentlik" };
 export default async function FaaliyetlerPage({ searchParams }: { searchParams: Promise<{ sayfa?: string }> }) {
   const { sayfa: ham } = await searchParams;
   const sayfa = sayfaNumarasi(ham);
-  const [liste, kriterler, profil] = await Promise.all([faaliyetlerim(sayfa), kriterlerTumu(), profilim()]);
+  const [liste, kriterler, profil, yetkiler] = await Promise.all([faaliyetlerim(sayfa), kriterlerTumu(), profilim(), yetkilerim()]);
   if (liste.aralikDisi) redirect("/panel/docentlik/faaliyetler");
 
   const kriterAdi = new Map(kriterler.map((k) => [k.id, `${k.code} · ${k.label}`]));
@@ -56,7 +57,7 @@ export default async function FaaliyetlerPage({ searchParams }: { searchParams: 
       </div>
     </header>
 
-    <DocentlikSekmeleri etkin="faaliyetler" />
+    <DocentlikSekmeleri etkin="faaliyetler" yetkiler={yetkiler} />
 
     <section className="panel-card docentlik-kart" aria-label={`Faaliyet listesi, ${liste.toplam} kayıt`}>
       {liste.satirlar.length === 0 ? (
@@ -73,6 +74,7 @@ export default async function FaaliyetlerPage({ searchParams }: { searchParams: 
                 <th scope="col">Tarih</th>
                 <th scope="col" className="crm-col-amount">Birim</th>
                 <th scope="col" className="crm-col-amount">Puan</th>
+                <th scope="col">Belge</th>
                 <th scope="col"><span className="docentlik-gizli">İşlemler</span></th>
               </tr>
             </thead>
@@ -94,6 +96,17 @@ export default async function FaaliyetlerPage({ searchParams }: { searchParams: 
                   </td>
                   <td className="crm-col-amount" data-label="Birim">{puanMetni(f.unit_count)}</td>
                   <td className="crm-col-amount" data-label="Puan"><b>{puanMetni(f.computed_points)}</b></td>
+                  {/* Belge (PR6b): görüntüle/değiştir/kaldır ya da ekle. Yol ve doğrulama sunucuda (belge.tsx). */}
+                  <td className="docentlik-eylem-hucre" data-label="Belge">
+                    <div className="docentlik-eylemler">
+                      {f.belge_yolu ? <FaaliyetBelgesiGoruntule faaliyetId={f.id} baslik={f.title} /> : null}
+                      <PanelModal triggerLabel={f.belge_yolu ? "Değiştir" : "PDF ekle"} triggerClassName="panel-secondary" kicker="BELGE"
+                        title={f.belge_yolu ? "Belgeyi değiştir" : "PDF belge ekle"} description={f.title} boy="dar">
+                        <FaaliyetBelgesiYukle faaliyetId={f.id} degistir={Boolean(f.belge_yolu)} />
+                      </PanelModal>
+                      {f.belge_yolu ? <FaaliyetBelgesiKaldir faaliyetId={f.id} baslik={f.title} /> : null}
+                    </div>
+                  </td>
                   {/* Esneyen kutu hücrenin İÇİNDE: td'ye display:flex vermek onu tablo
                       hücresi olmaktan çıkarıyor, sütun kartın dışına taşıyordu (768 px ölçümü). */}
                   <td className="docentlik-eylem-hucre">

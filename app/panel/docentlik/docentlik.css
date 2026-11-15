@@ -113,6 +113,22 @@
 .docentlik-not{margin:0;color:var(--muted);font-size:var(--fs-sm);line-height:1.5}
 .docentlik-bilgi{padding:var(--sp-3) var(--sp-4);border:1px dashed var(--line);border-radius:var(--r-md)}
 
+/* PR6b: tarayıcıdaki ön elemenin ve yükleme hatasının formdaki yeri (sunucu hatası panel bildiriminde). */
+.docentlik-hata{margin:0;padding:var(--sp-2) var(--sp-3);border:1px solid color-mix(in srgb,var(--danger) 40%,var(--line));border-radius:var(--r-md);color:var(--danger);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+
+/* Onay kutusu + uzun açıklama: kutu satırın başında kalsın, metin sarılsın. */
+.docentlik-onay{align-items:flex-start;gap:var(--sp-2)}
+.docentlik-onay > span{color:var(--ink);font-size:var(--fs-sm);line-height:1.4}
+
+/*
+  ÜAK durum rozeti. Üç durum üç ayrı tonda: "Öneri hazır" uyarı rengi,
+  çünkü doğrulanmamış bir öneri "onaylandı" ile aynı yeşili taşırsa
+  uygulanıyormuş gibi okunur.
+*/
+.docentlik-rozet{display:inline-flex;align-items:center;align-self:flex-start;padding:2px var(--sp-2);border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-micro);font-weight:var(--fw-semibold);white-space:nowrap}
+.docentlik-rozet[data-ton="uyari"]{border-color:color-mix(in srgb,var(--warning) 45%,var(--line));color:var(--warning);background:color-mix(in srgb,var(--warning) 10%,var(--surface))}
+.docentlik-rozet[data-ton="basari"]{border-color:color-mix(in srgb,var(--success) 45%,var(--line));color:var(--success);background:color-mix(in srgb,var(--success) 10%,var(--surface))}
+
 @media (max-width:760px){
   .docentlik-sekmeler{align-self:stretch}
   /*

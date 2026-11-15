@@ -42,13 +42,25 @@ const cssler = {
   ana: rotaCss("panel/docentlik"),
   faaliyetler: rotaCss("panel/docentlik/faaliyetler"),
   profil: rotaCss("panel/docentlik/profil"),
+  // PR6b: yönetim ve gözetim ekranları.
+  kurum: rotaCss("panel/docentlik/kurum"),
+  kisi: rotaCss("panel/docentlik/kurum/[kisi]"),
+  kriterler: rotaCss("panel/docentlik/kriterler"),
+  uak: rotaCss("panel/docentlik/uak"),
 };
 
 const dizin = fs.mkdtempSync(path.join(os.tmpdir(), "docentlik-yerlesim-"));
 const shim = path.join(dizin, "shim");
 fs.mkdirSync(shim);
 fs.writeFileSync(path.join(shim, "link.tsx"), `export default function Link({ href, children, prefetch, scroll, replace, ...p }) { return <a href={typeof href === "string" ? href : "#"} {...p}>{children}</a>; }`);
-fs.writeFileSync(path.join(shim, "navigation.ts"), `export const usePathname = () => "/panel/docentlik"; export const useSearchParams = () => new URLSearchParams(); export const useRouter = () => ({ push(){}, replace(){}, refresh(){} }); export function redirect(a) { throw new Error("redirect " + a); }`);
+fs.writeFileSync(path.join(shim, "navigation.ts"), `export const usePathname = () => "/panel/docentlik"; export const useSearchParams = () => new URLSearchParams(); export const useRouter = () => ({ push(){}, replace(){}, refresh(){} }); export function redirect(a) { throw new Error("redirect " + a); } export function notFound() { throw new Error("notFound"); }`);
+/* Tarayıcı Supabase istemcisi: yalnızca depoya yükleme (PR6b belge akışı). Çağrıyı kaydeder;
+   window.__yukleme === "hata" ise kova hatası döndürür. */
+fs.writeFileSync(path.join(shim, "supabase-client.ts"), `export function createClient() { return { storage: { from(kova) { return { async upload(yol, dosya, secenek) {
+  window.__cagrilar.push({ ad: "upload", alanlar: { kova, yol, tur: secenek?.contentType, upsert: String(secenek?.upsert), boyut: String(dosya?.size) } });
+  await new Promise((r) => setTimeout(r, 50));
+  return window.__yukleme === "hata" ? { data: null, error: { message: "new row violates row-level security policy" } } : { data: { path: yol }, error: null };
+} }; } } }; }`);
 fs.writeFileSync(path.join(shim, "bos.ts"), `export {}; export const revalidatePath = () => {};`);
 
 /* Taklit veri: uzun başlık, tavana takılan grup, doktora sonrası hedef (dolu);
@@ -90,6 +102,25 @@ export async function docentlikOzetim() {
 export async function profilim() { return profil; }
 export async function faaliyetlerim() { return { satirlar, toplam: satirlar.length, sayfaBoyu: 50, aralikDisi: false }; }
 export async function kriterlerTumu() { return kriterler; }
+/* PR6b. ?yetki=yok: üç yönetim anahtarı da kapalı (YetkiYok ekranı). */
+const yetkiYok = new URLSearchParams(location.search).get("yetki") === "yok";
+export async function yetkilerim() { return { tumunuGor: !yetkiYok, kriterYonet: !yetkiYok, uakYonet: !yetkiYok }; }
+const kisiler = bos ? [] : [
+  { kisi: "11111111-0000-4000-8000-000000000001", ad: "Dr. Öğr. Üyesi Ayşe Yılmaz-Karaosmanoğlu", temelAlan: "Sosyal, Beşeri ve İdari Bilimler", altAlan: "Eğitim Yönetimi ve Denetimi", doktoraTarihiGirildi: true, faaliyet: 12 },
+  { kisi: "11111111-0000-4000-8000-000000000002", ad: "Üye 11111111", temelAlan: null, altAlan: null, doktoraTarihiGirildi: false, faaliyet: 3 },
+  { kisi: "11111111-0000-4000-8000-000000000003", ad: "Dr. Mehmet Demir", temelAlan: "Sağlık Bilimleri", altAlan: null, doktoraTarihiGirildi: true, faaliyet: 0 },
+];
+export async function gozetimListesi() { if (yetkiYok) throw new Error("yetkisiz okuma"); return kisiler; }
+export async function kisiAdi() { if (yetkiYok) throw new Error("yetkisiz okuma"); return kisiler[0]?.ad ?? "Üye 11111111"; }
+export async function kisiOzeti() { if (yetkiYok) throw new Error("yetkisiz okuma"); return docentlikOzetim(); }
+export async function kurumFaaliyetleri() { if (yetkiYok) throw new Error("yetkisiz okuma"); return { satirlar: satirlar.map((f, i) => ({ ...f, belge_yolu: i % 3 === 0 ? "k/o/f.pdf" : null })), toplam: satirlar.length, sayfaBoyu: 50, aralikDisi: false }; }
+const tamKriter = (k, i) => ({ ...k, notes: i === 0 ? "Uzun bir not" : null, baslica_yazar_katsayisi: i === 0 ? 0.8 : null, diger_yazar_katsayisi: i === 0 ? 0.5 : null, esit_bolusum: i === 1, updated_at: "2026-11-01T10:00:00Z", temel_alan: i === 2 ? "Sağlık Bilimleri" : null, alt_alan: null });
+export async function kriterleriOku() { if (yetkiYok) throw new Error("yetkisiz okuma"); return kriterler.map(tamKriter); }
+export async function hedefleriOku() { if (yetkiYok) throw new Error("yetkisiz okuma"); return hedefler.map((h, i) => ({ id: "h" + i, temel_alan: i === 3 ? "Sağlık Bilimleri" : null, alt_alan: null, grup: h.grup, asgari_puan: h.asgari_puan, azami_puan: h.azami_puan, doktora_sonrasi: h.doktora_sonrasi, notlar: null, updated_at: "2026-11-01T10:00:00Z" })); }
+export async function uakTablolari() { if (yetkiYok) throw new Error("yetkisiz okuma"); return bos ? [] : [
+  { id: "22222222-0000-4000-8000-000000000001", temel_alan: "Sosyal, Beşeri ve İdari Bilimler", donem: "2026 Ekim", dosya_adi: "uak-2026-ekim-sosyal-beseri-idari-bilimler-temel-alani-puan-tablosu.pdf", durum: "yuklendi", yuklendi_at: "2026-11-14T21:30:00Z", onaylandi_at: null },
+  { id: "22222222-0000-4000-8000-000000000002", temel_alan: "Sağlık Bilimleri", donem: "2026 Mart", dosya_adi: "saglik.pdf", durum: "oneri_hazir", yuklendi_at: "2026-11-10T09:00:00Z", onaylandi_at: null },
+]; }
 `);
 /* Taklit işlemler çağrıları kaydeder; sonuç window.__sonuc ile seçilir ("basari" | "hata").
    runPanelAction hatada undefined döndürür (mesaj çerezle bildirilir) — burada da öyle. */
@@ -102,6 +133,15 @@ export async function faaliyetEkle(fd) { kaydet("ekle", fd); await bekle(250); r
 export async function faaliyetDuzenle(fd) { kaydet("duzenle", fd); await bekle(250); return sonuc({ id: "x", tekrar: false }); }
 export async function faaliyetSil(fd) { kaydet("sil", fd); await bekle(50); return sonuc({ silindi: true }); }
 export async function profilKaydet(fd) { kaydet("profil", fd); await bekle(50); }
+const genel = (ad) => async (fd) => { kaydet(ad, fd); await bekle(80); return sonuc({ id: "x" }); };
+export const kriterEkle = genel("kriterEkle"), kriterDuzenle = genel("kriterDuzenle"), kriterSil = genel("kriterSil");
+export const hedefKaydet = genel("hedefKaydet"), hedefSil = genel("hedefSil"), belgeKaldir = genel("belgeKaldir"), uakSil = genel("uakSil"), uakOnayla = genel("uakOnayla");
+export async function belgeYuklemeHazirla(id) { kaydet("belgeHazirla", null); await bekle(30); return sonuc({ kova: "docentlik", yol: "kurum/sahip/" + id + "/sunucu-uretti.pdf" }); }
+export async function uakYuklemeHazirla() { kaydet("uakHazirla", null); await bekle(30); return sonuc({ kova: "docentlik", yol: "kurum/uak/sunucu-uretti.pdf" }); }
+export async function belgeKaydet(fd) { kaydet("belgeKaydet", fd); await bekle(50); return window.__kayit === "hata" ? undefined : { yol: fd.get("yol") }; }
+export async function uakKaydet(fd) { kaydet("uakKaydet", fd); await bekle(50); return window.__kayit === "hata" ? undefined : { id: "u" }; }
+export async function belgeAdresi() { kaydet("belgeAdresi", null); return { adres: "about:blank#imzali", saniye: 60 }; }
+export async function uakAdresi() { kaydet("uakAdresi", null); return { adres: "about:blank#imzali", saniye: 60 }; }
 `);
 
 const a = (p) => JSON.stringify(path.join(KOK, p));
@@ -110,10 +150,19 @@ import { createRoot } from "react-dom/client";
 import Ana from ${a("app/panel/docentlik/page.tsx")};
 import Faaliyetler from ${a("app/panel/docentlik/faaliyetler/page.tsx")};
 import Profil from ${a("app/panel/docentlik/profil/page.tsx")};
+import Kurum from ${a("app/panel/docentlik/kurum/page.tsx")};
+import Kisi from ${a("app/panel/docentlik/kurum/[kisi]/page.tsx")};
+import Kriterler from ${a("app/panel/docentlik/kriterler/page.tsx")};
+import Uak from ${a("app/panel/docentlik/uak/page.tsx")};
 /* file:// altında modül betiği yüklenmiyor (CORS); paket iife, üst düzey await yerine async işlev. */
 (async () => {
 const ekran = new URLSearchParams(location.search).get("ekran") || "ana";
-const sayfa = ekran === "faaliyetler" ? await Faaliyetler({ searchParams: Promise.resolve({}) }) : ekran === "profil" ? await Profil() : await Ana();
+const sayfalar = {
+  faaliyetler: () => Faaliyetler({ searchParams: Promise.resolve({}) }), profil: () => Profil(), ana: () => Ana(),
+  kurum: () => Kurum(), kriterler: () => Kriterler(), uak: () => Uak(),
+  kisi: () => Kisi({ params: Promise.resolve({ kisi: "11111111-0000-4000-8000-000000000001" }), searchParams: Promise.resolve({}) }),
+};
+const sayfa = await sayfalar[ekran]();
 createRoot(document.getElementById("kok")).render(
   <div className="panel-root os-root"><main className="panel-frame os-frame">
     <header className="os-bar"><a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a></header>
@@ -128,6 +177,7 @@ const stubEklentisi = {
     b.onResolve({ filter: /^(\.\.?\/)+(veri|actions)$/ }, (args) =>
       args.importer.includes(`${path.sep}app${path.sep}panel${path.sep}docentlik`) ? { path: path.join(shim, `${path.basename(args.path)}.ts`) } : undefined);
     b.onResolve({ filter: /^server-only$|^next\/cache$/ }, () => ({ path: path.join(shim, "bos.ts") }));
+    b.onResolve({ filter: /^@\/lib\/supabase\/client$/ }, () => ({ path: path.join(shim, "supabase-client.ts") }));
   },
 };
 await build({
@@ -236,18 +286,103 @@ async function formDurumlari(sayfa) {
   return s;
 }
 
+
+/*
+  PR6b davranışları (sunucu işlemleri ve depo taklit; GERÇEK yükleme/imzalı adres UNVERIFIED):
+   - belge: PDF olmayan dosya sunucuya hiç gitmeden formda reddedilir; geçerli PDF
+     sırası hazırla → yükle (sunucunun yolu, upsert yok, PDF türü) → kaydet (aynı yol);
+     kova hatası formda gösterilir ve kayıt çağrılmaz;
+   - ÜAK: aynı akış + temel alan/dönem/dosya adı; onay düğmesi devre dışı;
+   - kriter: hata alanları korur, başarı sıfırlar; silme onaylı ve doğru kimlikle;
+   - gözetim: yazma düğmesi yok (yalnızca Görüntüle).
+*/
+const PDF = { name: "makale.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%sentetik\n") };
+const PNG = { name: "resim.png", mimeType: "image/png", buffer: Buffer.from("\x89PNG sentetik") };
+async function yonetimDurumlari(sayfa, ekran) {
+  const s = {};
+  const cagrilar = () => sayfa.evaluate(() => window.__cagrilar.map((c) => ({ ad: c.ad, ...c.alanlar })));
+  const sifirla = () => sayfa.evaluate(() => { window.__cagrilar.length = 0; window.__sonuc = "basari"; window.__yukleme = "tamam"; window.__kayit = "tamam"; });
+  const acikPencere = "dialog[open], .panel-modal-root";
+  if (ekran === "faaliyetler") {
+    await sifirla();
+    await sayfa.getByRole("button", { name: "PDF ekle" }).first().click();
+    await sayfa.waitForTimeout(150);
+    const form = sayfa.locator(`${acikPencere} form.docentlik-form`).last();
+    await form.locator("input[type=file]").setInputFiles(PNG);
+    await form.locator("button[type=submit]").click(); await sayfa.waitForTimeout(200);
+    s["belge: PDF olmayan dosya formda reddedilir"] = await form.locator("[role=alert]").isVisible();
+    s["belge: reddedilen dosya sunucuya gitmez"] = (await cagrilar()).length === 0 || await cagrilar();
+    await form.locator("input[type=file]").setInputFiles(PDF);
+    s["belge: yeni seçim hatayı temizler"] = (await form.locator("[role=alert]").count()) === 0;
+    await sayfa.evaluate(() => { window.__yukleme = "hata"; });
+    await form.locator("button[type=submit]").click(); await sayfa.waitForTimeout(400);
+    let c = await cagrilar();
+    s["belge: kova hatası formda, kayıt çağrılmaz"] = (await form.locator("[role=alert]").isVisible()) && c.map((x) => x.ad).join(",") === "belgeHazirla,upload" || c;
+    await sifirla();
+    await form.locator("button[type=submit]").click(); await sayfa.waitForTimeout(400);
+    c = await cagrilar();
+    s["belge: sıra hazırla → yükle → kaydet"] = c.map((x) => x.ad).join(",") === "belgeHazirla,upload,belgeKaydet" || c;
+    s["belge: yükleme sunucunun yoluna, upsert yok, PDF türü"] = c[1]?.yol === c[2]?.yol && /sunucu-uretti\.pdf$/.test(c[1]?.yol ?? "") && c[1]?.upsert === "false" && c[1]?.tur === "application/pdf" || c;
+    await sayfa.keyboard.press("Escape"); await sayfa.waitForTimeout(150);
+  }
+  if (ekran === "uak") {
+    s["üak: onay düğmesi devre dışı"] = await sayfa.getByRole("button", { name: "Onayla" }).first().isDisabled();
+    s["üak: onay nedeni görünür"] = await sayfa.locator("#uak-onay-neden").isVisible();
+    s["üak: öneri durumu ayrı rozet"] = (await sayfa.locator('.docentlik-rozet[data-ton="uyari"]').count()) === 1 && (await sayfa.locator('.docentlik-rozet[data-ton="notr"]').count()) === 1;
+    await sifirla();
+    const form = sayfa.locator("form.docentlik-form").last();
+    await form.locator("input[name=temel_alan]").fill("Fen Bilimleri ve Matematik");
+    await form.locator("input[name=donem]").fill("2026 Ekim");
+    await form.locator("input[type=file]").setInputFiles(PDF);
+    await form.locator("button[type=submit]").click(); await sayfa.waitForTimeout(400);
+    const c = await cagrilar();
+    s["üak: sıra hazırla → yükle → kaydet, alanlar doğru"] = c.map((x) => x.ad).join(",") === "uakHazirla,upload,uakKaydet" && c[2].yol === c[1].yol && c[2].temel_alan === "Fen Bilimleri ve Matematik" && c[2].donem === "2026 Ekim" && c[2].dosya_adi === "makale.pdf" || c;
+    s["üak: başarıdan sonra form sıfırlandı"] = (await form.locator("input[name=temel_alan]").inputValue()) === "";
+    s["üak: onay işlemi hiç çağrılmadı"] = !c.some((x) => x.ad === "uakOnayla");
+  }
+  if (ekran === "kriterler") {
+    await sifirla();
+    await sayfa.getByRole("button", { name: "Yeni kriter" }).click(); await sayfa.waitForTimeout(150);
+    const form = sayfa.locator(`${acikPencere} form.docentlik-form`).last();
+    await form.locator("input[name=kod]").fill("E5");
+    await form.locator("input[name=birim_puan]").fill("12,5");
+    await form.locator("input[name=etiket]").fill("Sentetik kriter");
+    await sayfa.evaluate(() => { window.__sonuc = "hata"; });
+    await form.locator("button[type=submit]").click(); await sayfa.waitForTimeout(300);
+    s["kriter: hata alanları korur"] = (await form.locator("input[name=etiket]").inputValue()) === "Sentetik kriter";
+    await sayfa.evaluate(() => { window.__sonuc = "basari"; });
+    await form.locator("button[type=submit]").click(); await sayfa.waitForTimeout(300);
+    const c = await cagrilar();
+    s["kriter: iki çağrı, alanlar doğru (aktif=1)"] = c.length === 2 && c[1].ad === "kriterEkle" && c[1].kod === "E5" && c[1].birim_puan === "12,5" && c[1].aktif === "1" || c;
+    await sayfa.keyboard.press("Escape"); await sayfa.waitForTimeout(150);
+    await sifirla();
+    await sayfa.locator(".docentlik-tehlike").first().click(); await sayfa.waitForTimeout(150);
+    await sayfa.locator("dialog[open] button[type=submit]").click(); await sayfa.waitForTimeout(300);
+    const c2 = await cagrilar();
+    s["kriter: silme onaylı, doğru kimlik"] = c2.length === 1 && c2[0].ad === "kriterSil" && c2[0].kriter_id === "k1" || c2;
+  }
+  if (ekran === "kurum" || ekran === "kisi") {
+    const dugmeler = await sayfa.evaluate(() => [...document.querySelectorAll(".docentlik-sayfa button")].map((b) => b.textContent.trim()).filter((t) => t !== "Görüntüle"));
+    s["gözetim: yazma düğmesi yok"] = dugmeler.length === 0 || dugmeler;
+    s["gözetim: doktora tarihi görünmüyor"] = !(await sayfa.evaluate(() => /2019|15\.06/.test(document.querySelector(".docentlik-sayfa").textContent)));
+  }
+  return s;
+}
+
 const sorunlar = [];
 const sonuc = {};
 const tarayici = await chromium.launch();
 const BOYUTLAR = (process.env.BOYUTLAR ?? "1440x900,1024x768,768x1024,390x844").split(",").map((b) => b.split("x").map(Number));
-const EKRANLAR = [["ana", "dolu"], ["ana", "bos"], ["faaliyetler", "dolu"], ["faaliyetler", "bos"], ["profil", "dolu"], ["profil", "bos"]];
+const EKRANLAR = [["ana", "dolu"], ["ana", "bos"], ["faaliyetler", "dolu"], ["faaliyetler", "bos"], ["profil", "dolu"], ["profil", "bos"],
+  ["kurum", "dolu"], ["kurum", "bos"], ["kurum", "yetkisiz"], ["kisi", "dolu"], ["kisi", "yetkisiz"],
+  ["kriterler", "dolu"], ["kriterler", "bos"], ["kriterler", "yetkisiz"], ["uak", "dolu"], ["uak", "bos"], ["uak", "yetkisiz"]];
 for (const [w, h] of BOYUTLAR) for (const tema of ["light", "dark"]) for (const [ekran, veri] of EKRANLAR) {
   const anahtar = `${w}x${h} ${tema} ${ekran}/${veri}`;
   const sayfa = await tarayici.newPage({ viewport: { width: w, height: h } });
   const hatalar = [];
   sayfa.on("pageerror", (e) => hatalar.push(e.message));
   sayfa.on("console", (m) => { if (m.type() === "error") hatalar.push(m.text()); });
-  await sayfa.goto(`file://${path.join(dizin, `${tema}-${ekran}.html`)}?ekran=${ekran}&veri=${veri}`);
+  await sayfa.goto(`file://${path.join(dizin, `${tema}-${ekran}.html`)}?ekran=${ekran}&veri=${veri === "yetkisiz" ? "dolu" : veri}${veri === "yetkisiz" ? "&yetki=yok" : ""}`);
   await sayfa.waitForFunction(() => window.__hazir === true || window.__hata, null, { timeout: 10000 }).catch(() => {});
   const hata = await sayfa.evaluate(() => window.__hata || null);
   if (hata || hatalar.length) { console.error(anahtar, hata, hatalar); }
@@ -256,7 +391,7 @@ for (const [w, h] of BOYUTLAR) for (const tema of ["light", "dark"]) for (const 
   o.hatalar = hatalar;
 
   // Yeni faaliyet penceresi (ana ve faaliyetler; dolu veride kriter var).
-  if (ekran !== "profil" && veri === "dolu") {
+  if ((ekran === "ana" || ekran === "faaliyetler") && veri === "dolu") {
     await sayfa.getByRole("button", { name: "Yeni faaliyet" }).first().click();
     await sayfa.waitForTimeout(200);
     o.pencere = await sayfa.evaluate(() => {
@@ -313,8 +448,13 @@ for (const [w, h] of BOYUTLAR) for (const tema of ["light", "dark"]) for (const 
   }
   /* Form durumları: yalnızca bir boyut/temada (mantık boyuta bağlı değil). */
   if (ekran === "faaliyetler" && veri === "dolu" && w === BOYUTLAR[0][0] && tema === "light") o.formDurumlari = await formDurumlari(sayfa);
+  if (veri === "dolu" && ["faaliyetler", "uak", "kriterler", "kurum", "kisi"].includes(ekran) && w === BOYUTLAR[0][0] && tema === "light") o.yonetimDurumlari = await yonetimDurumlari(sayfa, ekran);
+  /* Yetkisiz: veri okunmadan YetkiYok (taklit okuma yetkisizken fırlatır → __hata). */
+  if (veri === "yetkisiz") o.yetkiYok = await sayfa.evaluate(() => ({ kapali: /yetkiniz yok/.test(document.querySelector(".docentlik-sayfa [role=status]")?.textContent ?? ""), tablo: document.querySelectorAll(".docentlik-sayfa table").length, sekmeler: [...document.querySelectorAll(".docentlik-sekmeler a")].map((a) => a.textContent.trim()) }));
   sonuc[anahtar] = o;
   if (o.silRengi && o.silRengi.renk !== o.silRengi.beklenen) sorunlar.push(`${anahtar}: Sil düğmesi tehlike renginde değil ${JSON.stringify(o.silRengi)}`);
+  if (o.yonetimDurumlari) for (const [ad, gecti] of Object.entries(o.yonetimDurumlari)) if (gecti !== true) sorunlar.push(`${anahtar}: "${ad}" ${JSON.stringify(gecti)}`);
+  if (o.yetkiYok && (!o.yetkiYok.kapali || o.yetkiYok.tablo || o.yetkiYok.sekmeler.length !== 3)) sorunlar.push(`${anahtar}: yetkisiz görünüm ${JSON.stringify(o.yetkiYok)}`);
   if (o.formDurumlari) for (const [ad, gecti] of Object.entries(o.formDurumlari)) if (gecti !== true) sorunlar.push(`${anahtar}: form durumu "${ad}" ${JSON.stringify(gecti)}`);
   if (o.icTasma.length) sorunlar.push(`${anahtar}: kart/tablo içinde yatay taşma ${o.icTasma.join(", ")}`);
   if (o.yatayTasma || o.tasan.length) sorunlar.push(`${anahtar}: yatay taşma ${o.yatay} ${o.tasan.join(", ")}`);

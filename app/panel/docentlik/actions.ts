@@ -277,6 +277,9 @@ async function hedefKaydet__impl(formData: FormData) {
   if (sonuc.error) throw new Error("Hedef kaydedilemedi: " + sonuc.error.message);
   if (!sonuc.data?.length) throw new Error("Hedef bulunamadı ya da yetkiniz yok.");
   yenile();
+  /* Kimlik döner: formun "başarıda sıfırla" kararı ancak bir değerle verilebiliyor
+     (runPanelAction hatada undefined döndürür; değersiz bir işlemin başarısı ayırt edilemez). */
+  return { id: sonuc.data[0].id as string };
 }
 
 async function hedefSil__impl(formData: FormData) {

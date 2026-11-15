@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import test, { describe } from "node:test";
 import { docentlikOzeti } from "@/lib/docentlik-islem";
 import {
+  PDF_AZAMI_BAYT, boyutMetni, docentlikSekmeleri, gozetimKisileri, pdfOnDenetimi, uakDurumu,
   UAK_BILGI_NOTU, donemEtiketi, grupSatirlari, gunMetni, hedefGorunumu, kriterSecenekleri, profilEksikleri, puanMetni, yazarMetni,
   type KriterSatiri,
 } from "@/lib/docentlik-gorunum";
@@ -162,5 +163,67 @@ describe("küçük metinler", () => {
     assert.match(UAK_BILGI_NOTU, /bilgilendirme amaçlı/);
     assert.match(UAK_BILGI_NOTU, /resmî değerlendirmesi yerine geçmez/);
     assert.doesNotMatch(UAK_BILGI_NOTU, /uygunsunuz|başvurabilirsiniz/i);
+  });
+});
+
+describe("PR6b: belge ön denetimi", () => {
+  const pdf = (o: Partial<{ name: string; size: number; type: string }> = {}) => ({ name: "makale.pdf", size: 1024, type: "application/pdf", ...o });
+  test("geçerli PDF kabul", () => assert.deepEqual(pdfOnDenetimi(pdf()), { ok: true }));
+  test("dosya yoksa reddedilir", () => assert.equal(pdfOnDenetimi(null).ok, false));
+  test("PDF olmayan tür reddedilir (uzantı .pdf olsa da tür başka ise)", () => {
+    assert.equal(pdfOnDenetimi(pdf({ type: "image/png" })).ok, false);
+    assert.equal(pdfOnDenetimi(pdf({ name: "a.pdf", type: "text/html" })).ok, false);
+  });
+  test("türü boş bildiren tarayıcıda uzantı yeterli; uzantı da yoksa red", () => {
+    assert.equal(pdfOnDenetimi(pdf({ type: "" })).ok, true);
+    assert.equal(pdfOnDenetimi(pdf({ type: "", name: "a.docx" })).ok, false);
+  });
+  test("boş ve 20 MB'ı aşan dosya reddedilir; sınırın kendisi kabul", () => {
+    assert.equal(pdfOnDenetimi(pdf({ size: 0 })).ok, false);
+    assert.equal(pdfOnDenetimi(pdf({ size: PDF_AZAMI_BAYT })).ok, true);
+    assert.equal(pdfOnDenetimi(pdf({ size: PDF_AZAMI_BAYT + 1 })).ok, false);
+  });
+  test("boyut metni", () => {
+    assert.equal(boyutMetni(500), "1 KB");
+    assert.equal(boyutMetni(1536 * 1024), "1,5 MB");
+  });
+});
+
+describe("PR6b: ÜAK durumu — öneri ile onay ayrı", () => {
+  test("üç durum üç ayrı etiket ve ton", () => {
+    assert.deepEqual([uakDurumu("yuklendi").ton, uakDurumu("oneri_hazir").ton, uakDurumu("onaylandi").ton], ["notr", "uyari", "basari"]);
+    assert.equal(uakDurumu("oneri_hazir").etiket, "Öneri hazır");
+  });
+  test("öneri 'uygulanmıyor' diyor; onaylandı ile aynı tonu taşımıyor", () => {
+    assert.match(uakDurumu("oneri_hazir").aciklama, /uygulanmıyor/);
+    assert.notEqual(uakDurumu("oneri_hazir").ton, uakDurumu("onaylandi").ton);
+  });
+  test("bilinmeyen durum en temkinlisi: Yüklendi", () => assert.equal(uakDurumu("baska").etiket, "Yüklendi"));
+});
+
+describe("PR6b: gözetim listesi", () => {
+  const A = "aaaaaaaa-0000-4000-8000-000000000001", B = "bbbbbbbb-0000-4000-8000-000000000002";
+  test("profili olmayan ama faaliyeti olan kişi de listede; ad yoksa görünür yedek", () => {
+    const l = gozetimKisileri([{ owner_id: A, temel_alan: "Eğitim", alt_alan: null, doktora_tarihi_girildi: true }], new Map([[B, 3]]), new Map([[A, "Ayşe"]]));
+    assert.equal(l.length, 2);
+    assert.deepEqual(l[0], { kisi: B, ad: "Üye bbbbbbbb", temelAlan: null, altAlan: null, doktoraTarihiGirildi: false, faaliyet: 3 });
+    assert.equal(l[1].ad, "Ayşe");
+    assert.equal(l[1].faaliyet, 0);
+  });
+  test("satırda doktora TARİHİ alanı yok, yalnızca girildi bilgisi", () => {
+    const [k] = gozetimKisileri([{ owner_id: A, temel_alan: null, alt_alan: null, doktora_tarihi_girildi: true }], new Map(), new Map());
+    assert.ok(!Object.keys(k).some((a) => /tarih/i.test(a) && a !== "doktoraTarihiGirildi"));
+  });
+});
+
+describe("PR6b: sekmeler yetkiden", () => {
+  const hayir = { tumunuGor: false, kriterYonet: false, uakYonet: false };
+  test("yetkisiz kişi yalnızca kendi üç sekmesini görür", () => {
+    assert.deepEqual(docentlikSekmeleri(hayir).map((s) => s.anahtar), ["ozet", "faaliyetler", "profil"]);
+  });
+  test("her anahtar yalnızca kendi sekmesini açar", () => {
+    assert.deepEqual(docentlikSekmeleri({ ...hayir, tumunuGor: true }).map((s) => s.anahtar).slice(3), ["kurum"]);
+    assert.deepEqual(docentlikSekmeleri({ ...hayir, kriterYonet: true }).map((s) => s.anahtar).slice(3), ["kriterler"]);
+    assert.deepEqual(docentlikSekmeleri({ ...hayir, uakYonet: true }).map((s) => s.anahtar).slice(3), ["uak"]);
   });
 });

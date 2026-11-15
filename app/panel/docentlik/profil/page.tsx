@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { TEMEL_ALAN_ONERILERI } from "@/lib/docentlik/ozet";
 import { profilEksikleri } from "@/lib/docentlik-gorunum";
-import { GonderDugmesi } from "../../components/gonder-dugmesi";
 import { TarihSecici } from "../../components/tarih-secici";
 import { profilKaydet } from "../actions";
-import { profilim } from "../veri";
+import { profilim, yetkilerim } from "../veri";
+import { IslemFormu } from "../islem-formu";
 import { DocentlikSekmeleri } from "../sekmeler";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../../components/kayit-formu.css";
@@ -28,7 +28,7 @@ export const metadata: Metadata = { title: "Akademik profil · Doçentlik" };
   günü, gelecekte değil (Türkiye günü), alt alan ancak temel alanla.
 */
 export default async function DocentlikProfilPage() {
-  const profil = await profilim();
+  const [profil, yetkiler] = await Promise.all([profilim(), yetkilerim()]);
   const eksikler = profilEksikleri(profil);
   const bugun = todayInIstanbul();
 
@@ -41,14 +41,15 @@ export default async function DocentlikProfilPage() {
       </div>
     </header>
 
-    <DocentlikSekmeleri etkin="profil" />
+    <DocentlikSekmeleri etkin="profil" yetkiler={yetkiler} />
 
     <section className="panel-card docentlik-kart docentlik-dar" aria-labelledby="docentlik-profil-form-baslik">
       <header className="docentlik-kart-bas">
         <h2 id="docentlik-profil-form-baslik">Bilgileriniz</h2>
         <p>{eksikler.length ? `${eksikler.length} alan eksik` : "Profiliniz tamam"}</p>
       </header>
-      <form action={profilKaydet} className="panel-form kayit-formu docentlik-form" aria-describedby="docentlik-profil-gizlilik">
+      {/* Ortak işlem formu: hatada yazılanlar silinmesin (React 19 action'lı formu hatada da sıfırlıyordu). */}
+      <IslemFormu islem={profilKaydet} dugme="Profili kaydet">
         <label className="wide">
           <span>Temel alan</span>
           <input name="temel_alan" list="docentlik-temel-alanlar" maxLength={120} autoComplete="off"
@@ -71,13 +72,10 @@ export default async function DocentlikProfilPage() {
           <TarihSecici name="doktora_tarihi" max={bugun} defaultValue={profil?.doktora_tarihi ?? ""} aria-label="Doktora tarihi" />
         </label>
 
-        <div className="wide panel-form-actions kayit-formu-eylem">
-          <p id="docentlik-profil-gizlilik">
-            Doktora tarihiniz yalnızca size görünür; kurumunuzdaki gözetim yetkisi olanlar tarihin kendisini değil, yalnızca girilip girilmediğini görür.
-          </p>
-          <GonderDugmesi bekleyenEtiket="Kaydediliyor…">Profili kaydet</GonderDugmesi>
-        </div>
-      </form>
+        <p className="wide docentlik-ipucu" id="docentlik-profil-gizlilik">
+          Doktora tarihiniz yalnızca size görünür; kurumunuzdaki gözetim yetkisi olanlar tarihin kendisini değil, yalnızca girilip girilmediğini görür.
+        </p>
+      </IslemFormu>
     </section>
   </main>;
 }

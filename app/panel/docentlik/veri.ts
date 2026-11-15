@@ -2,6 +2,8 @@ import "server-only";
 import { SAYFA_BOYU, aralikDisiMi, sayfaAraligi } from "@/lib/liste-sayfalama";
 import { docentlikOzeti, kendiDonemi, type OzetFaaliyeti } from "@/lib/docentlik-islem";
 import type { Hedef } from "@/lib/docentlik/ozet";
+import { gozetimKisileri, type DocentlikYetkileri } from "@/lib/docentlik-gorunum";
+import { kisiAdlari } from "@/lib/kisi-adlari";
 import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBaglami } from "./baglam";
 
 /*
@@ -47,8 +49,9 @@ export async function kurumFaaliyetleri(sayfa = 1, kisi: string | null = null) {
     .eq("organization_id", b.kurum);
   if (kisi) sorgu = sorgu.eq("owner_id", kisi);
   const { data, error, count } = await sorgu.order("created_at", { ascending: false }).range(bas, son);
+  if (aralikDisiMi(error)) return { satirlar: [], toplam: 0, sayfaBoyu: SAYFA_BOYU, aralikDisi: true };
   okunamadiysaFirlat(error, "Faaliyetler");
-  return { satirlar: data ?? [], toplam: count ?? 0, sayfaBoyu: SAYFA_BOYU };
+  return { satirlar: data ?? [], toplam: count ?? 0, sayfaBoyu: SAYFA_BOYU, aralikDisi: false };
 }
 
 /*
@@ -187,4 +190,53 @@ export async function uakTablolari() {
     .eq("organization_id", b.kurum).order("temel_alan");
   okunamadiysaFirlat(error, "ÜAK tabloları");
   return data ?? [];
+}
+
+/*
+  Kişinin Doçentlik yetkileri (PR6b). Yalnızca ekranın neyi GÖSTERECEĞİ için:
+  her yönetim okuması ve işlemi yetkiyi ayrıca soruyor (yetkiGerekli) ve
+  RLS asıl kapı. Modül kurumda kapalıysa üç anahtar da yok
+  (kurumaOzelYetkileriSuz) — sayfa zaten yerleşimde düşüyor.
+*/
+export async function yetkilerim(): Promise<DocentlikYetkileri> {
+  const b = await docentlikBaglami();
+  return {
+    tumunuGor: b.izin("docentlik.tumunu_gor"),
+    kriterYonet: b.izin("docentlik.kriter_yonet"),
+    uakYonet: b.izin("docentlik.uak_yonet"),
+  };
+}
+
+/*
+  GÖZETİM LİSTESİ (PR6b, docentlik.tumunu_gor). Doktora TARİHİ hiçbir yoldan
+  okunmuyor: profil alanları docentlik_profil_ozetleri'nden ("girildi mi"),
+  kişi başına faaliyet sayısı docentlik_faaliyet_donemleri'nden. İkincisi
+  kurumun BÜTÜN faaliyetlerini döndürüyor; PostgREST'in satır tavanına
+  (1000) çarpan tek okuma sayıları sessizce eksiltirdi — sayfa sayfa okunuyor
+  (AGENTS.md: rakam denetimi). Adlar panelin ortak yardımcısından
+  (lib/kisi-adlari: profiles + hr_employees).
+*/
+export async function gozetimListesi() {
+  const b = await docentlikBaglami();
+  yetkiGerekli(b, "docentlik.tumunu_gor", "Kurumun faaliyetlerini görme yetkiniz yok.");
+  const { data: profiller, error } = await b.supabase.rpc("docentlik_profil_ozetleri", { p_org: b.kurum });
+  okunamadiysaFirlat(error, "Profil özetleri");
+  const sayilar = new Map<string, number>();
+  for (let bas = 0; ; bas += SAYFA) {
+    const { data, error: donemHatasi } = await b.supabase.rpc("docentlik_faaliyet_donemleri", { p_org: b.kurum })
+      .order("faaliyet_id").range(bas, bas + SAYFA - 1);
+    okunamadiysaFirlat(donemHatasi, "Faaliyetler");
+    for (const d of (data ?? []) as { owner_id: string }[]) sayilar.set(d.owner_id, (sayilar.get(d.owner_id) ?? 0) + 1);
+    if ((data?.length ?? 0) < SAYFA) break;
+  }
+  const profilListesi = (profiller ?? []) as { owner_id: string; temel_alan: string | null; alt_alan: string | null; doktora_tarihi_girildi: boolean }[];
+  const adlar = await kisiAdlari(b.supabase, b.kurum, [...profilListesi.map((p) => p.owner_id), ...sayilar.keys()]);
+  return gozetimKisileri(profilListesi, sayilar, adlar);
+}
+
+/** Gözetimde tek kişinin adı (başlık için). Kişi kurumda değilse ad yerine yedek. */
+export async function kisiAdi(kisi: string) {
+  const b = await docentlikBaglami();
+  yetkiGerekli(b, "docentlik.tumunu_gor", "Bu kişinin faaliyetlerini görme yetkiniz yok.");
+  return (await kisiAdlari(b.supabase, b.kurum, [kisi])).get(kisi) ?? `Üye ${kisi.slice(0, 8)}`;
 }

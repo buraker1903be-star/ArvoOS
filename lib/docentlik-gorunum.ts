@@ -188,3 +188,94 @@ export const puanMetni = (n: number | string | null | undefined): string =>
 */
 export const UAK_BILGI_NOTU =
   "Puan ve hedef durumu, kurumunuzun tanımladığı kriter ve hedeflere göre hesaplanan bilgilendirme amaçlı bir sonuçtur; ÜAK'ın resmî değerlendirmesi yerine geçmez.";
+
+/* ---------------------------------------------------------------------- */
+/* PR6b: belge, gözetim, yönetim                                          */
+/* ---------------------------------------------------------------------- */
+
+/** Yüklenebilecek en büyük PDF (bayt). Sunucu da aynı sınırı uygular (lib/docentlik-islem → BELGE_AZAMI_BAYT, kova 20 MB). */
+export const PDF_AZAMI_BAYT = 20 * 1024 * 1024;
+
+/*
+  Tarayıcıda seçilen dosyanın ÖN denetimi. Güvenlik sınırı DEĞİL: istemci
+  atlatılabilir; asıl karar sunucuda (belgeKaydet → nesneyiDogrula: depodan
+  okunan tür, boyut ve "%PDF-" imzası) ve kovanın kendisinde (yalnızca PDF,
+  20 MB). Bu ön denetim, 30 MB'lık bir taramayı yükleyip ancak sonunda
+  reddedilmesin diye — kullanıcının zamanı ve kotası için.
+*/
+export function pdfOnDenetimi(dosya: { name: string; size: number; type: string } | null | undefined): { ok: true } | { ok: false; hata: string } {
+  if (!dosya) return { ok: false, hata: "Dosya seçilmedi." };
+  const pdfAdi = /\.pdf$/i.test(dosya.name);
+  if (dosya.type !== "application/pdf" && !(dosya.type === "" && pdfAdi)) return { ok: false, hata: "Yalnızca PDF dosyası yüklenebilir." };
+  if (dosya.size <= 0) return { ok: false, hata: "Dosya boş." };
+  if (dosya.size > PDF_AZAMI_BAYT) return { ok: false, hata: "Dosya 20 MB'tan büyük olamaz." };
+  return { ok: true };
+}
+
+export const boyutMetni = (bayt: number): string =>
+  bayt >= 1024 * 1024 ? `${(bayt / (1024 * 1024)).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(bayt / 1024))} KB`;
+
+/*
+  ÜAK tablosunun durumu. Öneri ile onay AYRI: "öneri hazır" yalnızca bir
+  makinenin önerdiği kriter/hedef listesinin VAR olduğunu söyler, kurumun
+  kabul ettiğini değil. Onay bugün kapalı (lib/docentlik-islem →
+  UAK_ONAYI_ETKIN): PDF içeriği doğrulanmadan onay, kurumun bütün
+  akademisyenlerine doğrulanmamış kriter yazmak olurdu.
+*/
+export function uakDurumu(durum: string): { etiket: string; aciklama: string; ton: "notr" | "uyari" | "basari" } {
+  switch (durum) {
+    case "oneri_hazir": return { etiket: "Öneri hazır", aciklama: "Önerilen kriter ve hedefler henüz doğrulanmadı ve uygulanmıyor.", ton: "uyari" };
+    case "onaylandi": return { etiket: "Onaylandı", aciklama: "Kurum yöneticisi onayladı.", ton: "basari" };
+    default: return { etiket: "Yüklendi", aciklama: "PDF yüklendi; öneri üretilmedi.", ton: "notr" };
+  }
+}
+
+export type GozetimKisisi = {
+  kisi: string; ad: string; temelAlan: string | null; altAlan: string | null;
+  doktoraTarihiGirildi: boolean; faaliyet: number;
+};
+
+/*
+  Gözetim listesinin satırları. Doktora TARİHİ hiçbir alanda yok — yalnızca
+  "girildi mi" (docentlik_profil_ozetleri). Profili olmayan ama faaliyeti
+  olan kişi de listede (profil girilmeden faaliyet eklenebiliyor).
+  Ad bulunamazsa görünür bir yedek: kimliğin ilk sekiz hanesi.
+*/
+export function gozetimKisileri(
+  profiller: readonly { owner_id: string; temel_alan: string | null; alt_alan: string | null; doktora_tarihi_girildi: boolean }[],
+  faaliyetSayilari: ReadonlyMap<string, number>,
+  adlar: ReadonlyMap<string, string>,
+): GozetimKisisi[] {
+  const kisiler = new Map<string, GozetimKisisi>();
+  const yedekAd = (kisi: string) => `Üye ${kisi.slice(0, 8)}`;
+  for (const p of profiller) {
+    kisiler.set(p.owner_id, { kisi: p.owner_id, ad: adlar.get(p.owner_id) ?? yedekAd(p.owner_id), temelAlan: p.temel_alan, altAlan: p.alt_alan, doktoraTarihiGirildi: Boolean(p.doktora_tarihi_girildi), faaliyet: 0 });
+  }
+  for (const [kisi, adet] of faaliyetSayilari) {
+    const k = kisiler.get(kisi) ?? { kisi, ad: adlar.get(kisi) ?? yedekAd(kisi), temelAlan: null, altAlan: null, doktoraTarihiGirildi: false, faaliyet: 0 };
+    k.faaliyet = adet;
+    kisiler.set(kisi, k);
+  }
+  return [...kisiler.values()].sort((a, b) => b.faaliyet - a.faaliyet || a.ad.localeCompare(b.ad, "tr"));
+}
+
+export type DocentlikYetkileri = { tumunuGor: boolean; kriterYonet: boolean; uakYonet: boolean };
+export type DocentlikSekmesi = { anahtar: string; etiket: string; href: string };
+
+/*
+  Sekmeler yetkiden: herkes Özet/Faaliyetlerim/Profil; gözetim, kriter ve
+  ÜAK sekmeleri YALNIZCA anahtarı olana görünür. Gizlemek güvenlik değil
+  (sayfa ve RLS ayrıca soruyor), ama yetkisi olmayana kapalı bir kapı
+  göstermek yanlış izlenim verir.
+*/
+export function docentlikSekmeleri(y: DocentlikYetkileri): DocentlikSekmesi[] {
+  const s: DocentlikSekmesi[] = [
+    { anahtar: "ozet", etiket: "Özet", href: "/panel/docentlik" },
+    { anahtar: "faaliyetler", etiket: "Faaliyetlerim", href: "/panel/docentlik/faaliyetler" },
+    { anahtar: "profil", etiket: "Akademik profil", href: "/panel/docentlik/profil" },
+  ];
+  if (y.tumunuGor) s.push({ anahtar: "kurum", etiket: "Kurum", href: "/panel/docentlik/kurum" });
+  if (y.kriterYonet) s.push({ anahtar: "kriterler", etiket: "Kriter ve hedefler", href: "/panel/docentlik/kriterler" });
+  if (y.uakYonet) s.push({ anahtar: "uak", etiket: "ÜAK tabloları", href: "/panel/docentlik/uak" });
+  return s;
+}

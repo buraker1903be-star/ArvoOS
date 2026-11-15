@@ -7,7 +7,7 @@ import {
 } from "@/lib/docentlik-gorunum";
 import { kendiDonemi } from "@/lib/docentlik-islem";
 import { PanelModal } from "../components/panel-modal";
-import { docentlikOzetim, faaliyetlerim, kriterlerTumu, profilim } from "./veri";
+import { docentlikOzetim, faaliyetlerim, kriterlerTumu, profilim, yetkilerim } from "./veri";
 import { FaaliyetFormu } from "./faaliyet-formu";
 import { DocentlikSekmeleri } from "./sekmeler";
 import "../crm/crm.css";
@@ -38,11 +38,12 @@ export const metadata: Metadata = { title: "Doçentlik" };
   "Yeni panel sayfası, kardeş sayfanın iskeletiyle yazılır".
 */
 export default async function DocentlikPage() {
-  const [ozet, profil, sonlar, kriterler] = await Promise.all([
+  const [ozet, profil, sonlar, kriterler, yetkiler] = await Promise.all([
     docentlikOzetim(),
     profilim(),
     faaliyetlerim(1),
     kriterlerTumu(),
+    yetkilerim(),
   ]);
   const hedef = hedefGorunumu(ozet);
   const gruplar = grupSatirlari(ozet.gruplar);
@@ -76,7 +77,7 @@ export default async function DocentlikPage() {
       </div>
     </header>
 
-    <DocentlikSekmeleri etkin="ozet" />
+    <DocentlikSekmeleri etkin="ozet" yetkiler={yetkiler} />
 
     <nav className="kayit-serit talep-serit" aria-label="Puan özeti">
       <dl>
