@@ -30,6 +30,15 @@ import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBagla
 */
 
 const YOL = "/panel/docentlik";
+/*
+  "layout" ile: Doçentlik'in BÜTÜN ekranları (özet, faaliyetler, profil ve
+  yönetim sayfaları) yenilensin. Eskiden revalidatePath(YOL) yalnızca
+  /panel/docentlik sayfasını geçersiz kılıyordu; Next sunucu işleminde
+  arayüzü "yalnızca etkilenen yol görüntüleniyorsa" anında yeniliyor —
+  Faaliyetlerim sayfasında ekleme/düzenleme/silmeden sonra liste eski
+  hâliyle kalıyordu (node_modules/next/dist/docs → revalidatePath).
+*/
+const yenile = () => revalidatePath(YOL, "layout");
 const metin = (formData: FormData, ad: string) => formData.get(ad);
 const kimlik = (formData: FormData, ad: string, neyin: string) => {
   const deger = String(formData.get(ad) ?? "").trim();
@@ -102,7 +111,7 @@ async function faaliyetEkle__impl(formData: FormData) {
   if (error) yazimHatasi(error, "kaydedilmedi");
   const sonuc = (data as { kayit_id: string; tekrar: boolean }[] | null)?.[0];
   if (!sonuc) throw new Error("Faaliyet kaydedilmedi: modül ya da üyeliğiniz bu arada kapanmış olabilir.");
-  revalidatePath(YOL);
+  yenile();
   return { id: sonuc.kayit_id, tekrar: sonuc.tekrar };
 }
 
@@ -141,7 +150,7 @@ async function faaliyetDuzenle__impl(formData: FormData) {
   if (error) yazimHatasi(error, "değiştirilmedi");
   const sonuc = (data as { kayit_id: string; guncellendi: boolean }[] | null)?.[0];
   if (!sonuc?.guncellendi) return ayniIstekMi(b, id, yazim);
-  revalidatePath(YOL);
+  yenile();
   return { id, tekrar: false };
 }
 
@@ -152,7 +161,7 @@ async function ayniIstekMi(b: DocentlikBaglami, id: string, yazim: FaaliyetYazim
   okunamadiysaFirlat(error, "Faaliyet");
   if (!simdiki) throw new Error("Faaliyet değiştirilmedi: kayıt silinmiş, modül kapanmış ya da yetkiniz kalmamış.");
   if (!ayniYazim(simdiki, yazim)) throw new Error("Faaliyet bu arada değişti; sayfayı yenileyip tekrar deneyin.");
-  revalidatePath(YOL);
+  yenile();
   return { id, tekrar: true }; // aynı isteğin tekrarı: zaten kayıtlı
 }
 
@@ -176,7 +185,7 @@ async function faaliyetSil__impl(formData: FormData) {
   if (error) throw new Error("Faaliyet silinemedi: " + error.message);
   const silinen = data?.[0];
   if (silinen?.belge_yolu) await nesneyiSil(b, silinen.belge_yolu, "faaliyet silindi");
-  revalidatePath(YOL);
+  yenile();
   return { silindi: Boolean(silinen) };
 }
 
@@ -193,7 +202,7 @@ async function profilKaydet__impl(formData: FormData) {
     .select("owner_id");
   if (error) throw new Error("Profil kaydedilemedi: " + error.message);
   if (!data?.length) throw new Error("Profil kaydedilemedi: modül ya da üyeliğiniz bu arada kapanmış olabilir.");
-  revalidatePath(YOL);
+  yenile();
 }
 
 /* ====================================================================== */
@@ -221,7 +230,7 @@ async function kriterEkle__impl(formData: FormData) {
   if (error?.code === "23505") throw new Error("Bu kodla bir kriter zaten var (aynı temel alanda).");
   if (error) throw new Error("Kriter kaydedilemedi: " + error.message);
   if (!data?.length) throw new Error("Kriter kaydedilemedi: yetkiniz ya da modül bu arada kapanmış olabilir.");
-  revalidatePath(YOL);
+  yenile();
   return { id: data[0].id as string };
 }
 
@@ -236,7 +245,7 @@ async function kriterDuzenle__impl(formData: FormData) {
     .eq("id", id).eq("organization_id", b.kurum).select("id");
   if (error) throw new Error("Kriter kaydedilemedi: " + error.message);
   if (!data?.length) throw new Error("Kriter bulunamadı ya da yetkiniz yok.");
-  revalidatePath(YOL);
+  yenile();
 }
 
 async function kriterSil__impl(formData: FormData) {
@@ -247,7 +256,7 @@ async function kriterSil__impl(formData: FormData) {
   /* Faaliyeti olan kriter silinemez (yabancı anahtar, veri korunur). Yönlendirme: pasife alın. */
   if (error?.code === "23503") throw new Error("Bu kritere bağlı faaliyetler var; silmek yerine pasife alın.");
   if (error) throw new Error("Kriter silinemedi: " + error.message);
-  revalidatePath(YOL);
+  yenile();
   return { silindi: Boolean(data?.length) };
 }
 
@@ -267,7 +276,7 @@ async function hedefKaydet__impl(formData: FormData) {
   if (sonuc.error?.code === "23505") throw new Error("Bu kapsam için (temel alan, alt alan, grup, dönem) zaten bir hedef var.");
   if (sonuc.error) throw new Error("Hedef kaydedilemedi: " + sonuc.error.message);
   if (!sonuc.data?.length) throw new Error("Hedef bulunamadı ya da yetkiniz yok.");
-  revalidatePath(YOL);
+  yenile();
 }
 
 async function hedefSil__impl(formData: FormData) {
@@ -276,7 +285,7 @@ async function hedefSil__impl(formData: FormData) {
   const { data, error } = await b.supabase.from("docentlik_hedefleri").delete()
     .eq("id", kimlik(formData, "hedef_id", "Hedef")).eq("organization_id", b.kurum).select("id");
   if (error) throw new Error("Hedef silinemedi: " + error.message);
-  revalidatePath(YOL);
+  yenile();
   return { silindi: Boolean(data?.length) };
 }
 
@@ -352,7 +361,7 @@ async function belgeKaydet__impl(formData: FormData) {
     throw hata;
   }
   if (mevcut.belge_yolu) await nesneyiSil(b, mevcut.belge_yolu, "yerine yenisi yüklendi");
-  revalidatePath(YOL);
+  yenile();
   return { yol, tekrar: false };
 }
 
@@ -384,7 +393,7 @@ async function belgeKaldir__impl(formData: FormData) {
   if (error) throw new Error("Belge kaldırılamadı: " + error.message);
   if (!data?.length) throw new Error("Belge kaldırılamadı: modül ya da üyeliğiniz bu arada kapanmış olabilir.");
   await nesneyiSil(b, mevcut.belge_yolu, "belge kaldırıldı");
-  revalidatePath(YOL);
+  yenile();
   return { kaldirildi: true };
 }
 
@@ -431,7 +440,7 @@ async function uakKaydet__impl(formData: FormData) {
     }).select("id");
     if (error) throw new Error("ÜAK tablosu kaydedilemedi: " + error.message);
     if (!data?.length) throw new Error("ÜAK tablosu kaydedilemedi: yetkiniz ya da modül bu arada kapanmış olabilir.");
-    revalidatePath(YOL);
+    yenile();
     return { id: data[0].id as string, tekrar: false };
   } catch (hata) {
     await nesneyiSil(b, yol, "ÜAK kaydı tamamlanamadı");
@@ -459,7 +468,7 @@ async function uakSil__impl(formData: FormData) {
   if (error) throw new Error("ÜAK tablosu kaldırılamadı: " + error.message);
   const silinen = data?.[0];
   if (silinen?.depo_yolu) await nesneyiSil(b, silinen.depo_yolu, "ÜAK tablosu kaldırıldı");
-  revalidatePath(YOL);
+  yenile();
   return { silindi: Boolean(silinen) };
 }
 

@@ -142,6 +142,11 @@ describe("işlem dosyası", () => {
     assert.match(d, /if \(!sonuc\?\.guncellendi\) return ayniIstekMi\(/);
   });
 
+  test("yazımlardan sonra Doçentlik'in BÜTÜN ekranları yenileniyor (layout); tek sayfalık revalidatePath yok", () => {
+    assert.match(ISLEM, /const yenile = \(\) => revalidatePath\(YOL, "layout"\);/);
+    assert.equal([...ISLEM.matchAll(/revalidatePath\(/g)].length, 1, "revalidatePath yalnızca yenile() içinde");
+  });
+
   test("ÜAK onayı veritabanına dokunmadan reddediyor", () => {
     const g = GOVDELER.get("uakOnayla")!;
     assert.match(g, /uakOnayKarari\(\)/);
