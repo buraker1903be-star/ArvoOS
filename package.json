@@ -10,6 +10,7 @@
     "build": "node scripts/check-css-tokens.mjs && next build",
     "start": "next start",
     "test": "npm run test:unit && npm run test:db",
+    "test:entegrasyon": "node --test tests/entegrasyon/*.test.mjs",
     "test:unit": "node --import ./tests/register.mjs --test 'tests/unit/*.test.ts'",
     "test:db": "node --test 'tests/db/*.test.mjs'",
     "check:migrations": "node scripts/check-migrations.mjs && node scripts/migration-izleri.mjs --denetle",

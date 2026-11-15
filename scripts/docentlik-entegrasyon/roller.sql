@@ -1,0 +1,21 @@
+-- Yalnızca yerel, sentetik PR7 ortamı (pr7db). Gerçek bir ortama bağlanmaz.
+create role anon nologin noinherit;
+create role authenticated nologin noinherit;
+create role service_role nologin noinherit bypassrls;
+create role authenticator login noinherit password 'pr7-yerel';
+grant anon, authenticated, service_role to authenticator;
+create role supabase_auth_admin login createrole noinherit password 'pr7-yerel';
+create role supabase_storage_admin login createrole noinherit password 'pr7-yerel';
+grant anon, authenticated, service_role to supabase_storage_admin;
+create role supabase_admin login superuser password 'pr7-yerel';
+create role dashboard_user nologin;
+create schema if not exists auth authorization supabase_auth_admin;
+create schema if not exists storage authorization supabase_storage_admin;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+create extension if not exists "uuid-ossp" with schema extensions;
+grant usage on schema auth to anon, authenticated, service_role, postgres;
+grant usage on schema public, extensions to anon, authenticated, service_role;
+grant create on database postgres to supabase_storage_admin;
+alter role supabase_auth_admin set search_path = auth;
+alter role supabase_storage_admin set search_path = storage;
