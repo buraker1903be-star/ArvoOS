@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { useOdakTuzagi } from "./odak-tuzagi";
 import "./panel-modal.css";
 
 type PanelModalProps = {
@@ -111,6 +112,18 @@ export function PanelModal({
   }, [router, kapaninca, acilinca]);
   const titleId = useId();
   const kokRef = useRef<HTMLDivElement>(null);
+  /*
+    ODAK TUZAĞI (15.11.2026, F6 PR6a). Panelin öteki dört katmanı
+    (PanelDrawer, PanelBottomSheet, mesaj ve bildirim çekmeceleri) bu
+    kancayı kullanıyordu, pencere kullanmıyordu: Doçentlik formunun
+    tarayıcı ölçümünde açılışta odak arkadaki düğmede kalıyor, son
+    alandan Tab arkadaki sayfanın başlığına düşüyordu (aria-modal
+    klavyeyi hapsetmez). Açılışta odak kapat düğmesine, açıkken kabuğun
+    kalanı inert, kapanınca odak açan düğmeye döner. İç içe pencerede
+    öteki pencerelerin kökü (aynı sınıf) inert yapılmaz.
+  */
+  const kapatRef = useRef<HTMLButtonElement>(null);
+  useOdakTuzagi(open, kapatRef, "panel-modal-root");
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
 
@@ -168,7 +181,7 @@ export function PanelModal({
             <h2 id={titleId}>{title}</h2>
             {description ? <p>{description}</p> : null}
           </div>
-          <button className="panel-modal-close" type="button" aria-label="Kapat" onClick={() => setOpen(false)}>×</button>
+          <button ref={kapatRef} className="panel-modal-close" type="button" aria-label="Kapat" onClick={() => setOpen(false)}>×</button>
         </header>
         <div className="panel-modal-body">{children}</div>
       </div>

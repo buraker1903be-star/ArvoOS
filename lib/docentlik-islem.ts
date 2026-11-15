@@ -390,7 +390,12 @@ export function docentlikOzeti(g: {
   temelAlan: string | null;
   altAlan: string | null;
   doktoraTarihiBiliniyor: boolean;
-}): { toplam: number; ham: number; gruplar: SayilanGrup<OzetFaaliyeti>[]; sonraToplam: number | null; toplamHedefleri: HedefDurumu[]; grupHedefleri: HedefDurumu[] } {
+}): {
+  toplam: number; ham: number; gruplar: SayilanGrup<OzetFaaliyeti>[]; sonraToplam: number | null;
+  toplamHedefleri: HedefDurumu[]; grupHedefleri: HedefDurumu[];
+  /** Doktora tarihi bilinmediği için ÖLÇÜLEMEYEN doktora sonrası hedef sayısı (ekranda "hesaplanamadı" demek için). */
+  olculemeyenHedefSayisi: number;
+} {
   const grupHaritasi = new Map(g.kriterler.map((k) => [k.id, k.category_group]));
   const kayit = (f: OzetFaaliyeti) => ({ ...f, computed_points: Number(f.computed_points), criteria: { category_group: grupHaritasi.get(f.criteria_id) ?? null } });
   const etkin = etkinHedefler([...g.hedefler], g.kurum, g.temelAlan, g.altAlan);
@@ -399,7 +404,14 @@ export function docentlikOzeti(g: {
     ? tavanUygula(puanGruplari(g.faaliyetler.filter((f) => f.donem === "sonra").map(kayit)), etkin)
     : null;
   const durum = hedefDurumlari(etkin, tum, sonra);
+  /* Çekirdek bu hedefleri sessizce atlıyor (yanlış alarm vermemek için);
+     ekran ise "şart yok" ile "şart var ama ölçülemedi"yi ayırmalı — yoksa
+     doktora tarihini girmemiş kişi doktora sonrası şartı hiç yokmuş sanır. */
+  const olculemeyenHedefSayisi = sonra === null
+    ? etkin.filter((h) => h.doktora_sonrasi && h.asgari_puan != null && Number(h.asgari_puan) > 0).length
+    : 0;
   return {
+    olculemeyenHedefSayisi,
     toplam: tum.toplam,
     ham: tum.ham,
     gruplar: tum.gruplar as unknown as SayilanGrup<OzetFaaliyeti>[],

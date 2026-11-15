@@ -1,5 +1,5 @@
 import "server-only";
-import { SAYFA_BOYU, sayfaAraligi } from "@/lib/liste-sayfalama";
+import { SAYFA_BOYU, aralikDisiMi, sayfaAraligi } from "@/lib/liste-sayfalama";
 import { docentlikOzeti, kendiDonemi, type OzetFaaliyeti } from "@/lib/docentlik-islem";
 import type { Hedef } from "@/lib/docentlik/ozet";
 import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBaglami } from "./baglam";
@@ -19,6 +19,12 @@ import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBagla
 export const FAALIYET_SUTUNLARI =
   "id, owner_id, criteria_id, title, unit_count, yazar_sayisi, baslica_yazar, faaliyet_tarihi, notes, computed_points, paylasim_katsayisi, kural_surumu, belge_yolu, created_at, updated_at";
 
+/*
+  Aralık dışı sayfa (?sayfa=99999, bayat yer imi) bir HATA değil: PostgREST
+  416 döndürüyor ve onu "okunamadı" diye fırlatmak sayfayı çökertirdi
+  (16.10.2026'da sekiz listede böyleydi, lib/liste-sayfalama → aralikDisiMi).
+  Çağıran ilk sayfaya yönlendirir.
+*/
 export async function faaliyetlerim(sayfa = 1) {
   const b = await docentlikBaglami();
   const [bas, son] = sayfaAraligi(sayfa);
@@ -26,8 +32,9 @@ export async function faaliyetlerim(sayfa = 1) {
     .select(FAALIYET_SUTUNLARI, { count: "exact" })
     .eq("organization_id", b.kurum).eq("owner_id", b.ben)
     .order("created_at", { ascending: false }).range(bas, son);
+  if (aralikDisiMi(error)) return { satirlar: [], toplam: 0, sayfaBoyu: SAYFA_BOYU, aralikDisi: true };
   okunamadiysaFirlat(error, "Faaliyetler");
-  return { satirlar: data ?? [], toplam: count ?? 0, sayfaBoyu: SAYFA_BOYU };
+  return { satirlar: data ?? [], toplam: count ?? 0, sayfaBoyu: SAYFA_BOYU, aralikDisi: false };
 }
 
 /** Kurumun bütün faaliyetleri — yalnızca docentlik.tumunu_gor (ve Kurum Sahibi). */
@@ -143,6 +150,22 @@ export async function kriterleriOku() {
     .eq("organization_id", b.kurum);
   if (!b.izin("docentlik.kriter_yonet")) sorgu = sorgu.eq("is_active", true);
   const { data, error } = await sorgu.order("code");
+  okunamadiysaFirlat(error, "Kriterler");
+  return data ?? [];
+}
+
+/*
+  Kurumun BÜTÜN kriterleri (pasifler dahil), yalnızca görüntü için:
+  faaliyet listesinde pasife alınmış bir kriterin kaydı da adıyla
+  görünmeli, "bilinmeyen kriter" değil. Formun seçenekleri bunun içinden
+  süzülüyor (lib/docentlik-gorunum → kriterSecenekleri): etkin + alana
+  uygun + düzenlenen kaydın kendi kriteri.
+*/
+export async function kriterlerTumu() {
+  const b = await docentlikBaglami();
+  const { data, error } = await b.supabase.from("docentlik_kriterleri")
+    .select("id, code, label, category_group, points_per_unit, is_active, temel_alan, alt_alan")
+    .eq("organization_id", b.kurum).order("code");
   okunamadiysaFirlat(error, "Kriterler");
   return data ?? [];
 }
