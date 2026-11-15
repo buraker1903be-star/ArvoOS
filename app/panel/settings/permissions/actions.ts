@@ -5,7 +5,7 @@ import { runPanelAction } from "@/lib/panel-action";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
-import { TUM_YETKILER, grubunYetkileri, varsayilanAcikMi, yetkiDegisikligiEngeli } from "@/lib/yetkiler";
+import { KURUMA_OZEL_YETKILER, TUM_YETKILER, gorunurYetkiAnahtarlari, gorunurYetkiGruplari, grubunYetkileri, varsayilanAcikMi, yetkiDegisikligiEngeli } from "@/lib/yetkiler";
 import { profilBul, profilDepartmanEngeli, profilModulKararlari } from "@/lib/yetki-profilleri";
 import { yonetimDepartmanindaMi } from "@/lib/yonetim-departmani";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
@@ -54,7 +54,7 @@ async function updateModulePermissions__impl(formData: FormData) {
 }
 
 async function updateCapabilityPermissions__impl(formData: FormData) {
-  const { supabase, membership, userId } = await yetkiContext();
+  const { supabase, membership, userId, modules } = await yetkiContext();
 
   const acikMi = (rol: string, key: string) => formData.get(`cap:${rol}:${key}`) === "on";
 
@@ -75,6 +75,11 @@ async function updateCapabilityPermissions__impl(formData: FormData) {
   const grupId = String(formData.get("grup") ?? "").trim();
   const grupYetkileri = grubunYetkileri(grupId);
   if (!grupYetkileri.length) throw new Error("Yetki grubu tanınmadı; sayfayı yenileyip tekrar deneyin.");
+  /* Kuruma özel grup (Doçentlik) modülü açık olmayan kurumda ekranda yok;
+     doğrudan gönderilen form da yazılmasın (lib/yetkiler.ts). */
+  if (!gorunurYetkiGruplari(modules.map((modul) => modul.code)).some((grup) => grup.id === grupId)) {
+    throw new Error("Bu yetki grubu kurumunuzda kullanılamıyor.");
+  }
 
   /*
     Kendi ayağına sıkma koruması: Yetkilendirme ekranını açan Yönetici kendi
@@ -118,7 +123,7 @@ async function updateCapabilityPermissions__impl(formData: FormData) {
   "neden bu kişide farklı" sorusunun cevabı görünmez olur.
 */
 async function updateMemberPermissions__impl(formData: FormData) {
-  const { supabase, membership, userId } = await yetkiContext();
+  const { supabase, membership, userId, modules } = await yetkiContext();
   const hedef = String(formData.get("user_id") ?? "").trim();
   if (!hedef) throw new Error("Kişi seçilmedi.");
 
@@ -156,7 +161,18 @@ async function updateMemberPermissions__impl(formData: FormData) {
     if (engel) throw new Error(engel);
   }
 
+  /*
+    Yalnızca kurumda GÖSTERİLEN yetkiler yazılır ve silinir. Kuruma özel
+    grubun (Doçentlik) anahtarları modül açık değilse formda yok: eskiden
+    bütün katalog dolaşıldığı için (a) modülü olmayan kurumda elle
+    hazırlanmış bir form Doçentlik istisnası yazabilir, (b) modülü geçici
+    olarak kapatılan kurumda kişi formunu kaydetmek o kişinin mevcut
+    Doçentlik istisnalarını sessizce silerdi. Öteki modüllerin anahtarları
+    her kurumda görünür; onlar için davranış aynı.
+  */
+  const gorunurAnahtarlar = gorunurYetkiAnahtarlari(modules.map((modul) => modul.code));
   const yetkiSatirlari = TUM_YETKILER
+    .filter((yetki) => gorunurAnahtarlar.has(yetki.key))
     .map((yetki) => ({ key: yetki.key, secim: secim(`mcap:${yetki.key}`) }))
     .filter((satir) => satir.secim !== "rolden");
   const modulSatirlari = PERMISSION_MODULES
@@ -165,7 +181,7 @@ async function updateMemberPermissions__impl(formData: FormData) {
 
   const ortak = { organization_id: membership.organization_id, user_id: hedef, updated_by: userId, updated_at: new Date().toISOString() };
 
-  const silinecekYetkiler = TUM_YETKILER.map((yetki) => yetki.key).filter((key) => !yetkiSatirlari.some((satir) => satir.key === key));
+  const silinecekYetkiler = [...gorunurAnahtarlar].filter((key) => !yetkiSatirlari.some((satir) => satir.key === key));
   const silinecekModuller = PERMISSION_MODULES.map((module) => module.key).filter((key) => !modulSatirlari.some((satir) => satir.key === key));
 
   const islemler = [];
@@ -264,9 +280,13 @@ async function applyPermissionProfile__impl(formData: FormData) {
   }
 
   const ortak = { organization_id: membership.organization_id, user_id: hedef, updated_by: userId, updated_at: new Date().toISOString() };
+  /* Hazır profiller iş bölümünü (satış, operasyon) tanımlıyor; kuruma özel
+     modülün yetkilerini (Doçentlik) yönetmiyor. Eskiden profil dışındaki
+     her istisna siliniyordu: birine "Satış Müdürü" profili uygulamak, o
+     kişinin Doçentlik gözetim yetkisini de sessizce alırdı. */
   const silinecekYetkiler = TUM_YETKILER
     .map((yetki) => yetki.key)
-    .filter((key) => !profil.acikYetkiler.includes(key));
+    .filter((key) => !profil.acikYetkiler.includes(key) && !KURUMA_OZEL_YETKILER.has(key));
 
   /*
     ROL DEĞİŞİMİ KULLANICI İSTEMCİSİYLE. Üyelik tablosunda UPDATE
