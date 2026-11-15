@@ -92,6 +92,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261114200939_docentlik_sema_rls.sql",
   "20261114213340_docentlik_istek_anahtari.sql",
   "20261115014302_docentlik_atomik_faaliyet_yazimi.sql",
+  "20261115101820_docentlik_istek_ozeti.sql",
 ];
 
 /*

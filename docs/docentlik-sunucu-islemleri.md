@@ -14,6 +14,7 @@ ekranları bu PR'da YOK; sayfalar sonraki PR'da buradaki işlemleri çağırır.
 | `app/panel/docentlik/actions.ts` | "use server" yazma işlemleri | Yalnızca dışarıya açık olması gerekenler export |
 | `supabase/migrations/20261114213340_docentlik_istek_anahtari.sql` | `istek_anahtari` sütunu + benzersiz dizin + sütun INSERT yetkisi | Çift gönderimde ikinci satır doğmasın |
 | `supabase/migrations/20261115014302_docentlik_atomik_faaliyet_yazimi.sql` | `docentlik_faaliyet_ekle` / `docentlik_faaliyet_duzenle` (security invoker RPC) | Yazım ve puan doğrulaması tek veritabanı işleminde |
+| `supabase/migrations/20261115101820_docentlik_istek_ozeti.sql` | `istek_ozeti` (ilk isteğin değişmez özeti, tetikleyici yazar) + ekleme RPC'sinin çakışma dalı | Aynı anahtar farklı içerikle "tekrar" sayılmasın |
 
 ## Her işlemin ortak kapısı
 
@@ -67,6 +68,21 @@ kullanılmıyor.
 - Yalnızca `authenticated` çalıştırır (anon, public, service_role kapalı).
 - Karşılaştırma çift duyarlıkta (TS'teki `Object.is(Number(kayit), beklenen)` ile aynı soru) ve kural sürümünü de kapsar.
 - Tarayıcının oturum jetonuyla tabloya DOĞRUDAN yazımı RLS'in izin verdiği ölçüde hâlâ mümkün; o yolda da puanı tetikleyici yazar, yalnızca TS çekirdeğiyle karşılaştırma yapılmaz (kalan risk, aşağıda).
+
+## İstek anahtarı sözleşmesi (20261115101820)
+
+| Durum | Sonuç |
+|---|---|
+| Aynı anahtar + aynı içerik | İlk kayıt döner, `tekrar: true`, hiçbir şey yazılmaz |
+| Aynı anahtar + farklı içerik | `DP002`; yeni satır yok, mevcut kayıt değişmez |
+| Aynı anahtar, başka kullanıcı | Ayrı kayıt; anahtar alanı (kurum, kişi) başına; kimse ötekinin kaydını almaz (gözetimci dahil) |
+| Anahtar yok | Tekrar koruması yok, her çağrı ayrı kayıt (eski istemci/test) |
+| Bozuk anahtar | Sunucu formu reddeder; veritabanı da uuid olmayanı kabul etmez (`22P02`) |
+| Kayıt sonradan düzenlendi | Karşılaştırma İLK isteğe: ilk isteğin tekrarı `tekrar: true` döner ve düzenlemeyi bozmaz; düzenlenmiş içerikle aynı anahtar `DP002` |
+| Özetsiz anahtarlı satır (migration öncesi) | `DP002` — içerik doğrulanamıyorsa "tekrar" denmez |
+| Eşzamanlı aynı anahtar | Tekil dizin tek satır bırakır; ikinci istek ilkini bekleyip özeti karşılaştırır |
+
+Özet: `sha256` (kriter, kırpılmış başlık, `trim_scale(birim)`, yazar sayısı, tek yazarda `true` başlıca, ISO tarih, kırpılmış ve boşsa NULL not) — JSON dizisi olarak, NULL boş metinle karışmaz. Tetikleyici yazar, güncellemede korur; `authenticated`'ın sütuna yazma yetkisi yok.
 
 ## Depo temizliği (ayrı takip işi)
 

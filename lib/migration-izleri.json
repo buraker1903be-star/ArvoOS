@@ -591,5 +591,32 @@
         "ad": "public.docentlik_faaliyet_duzenle"
       }
     ]
+  },
+  {
+    "migration": "20261115101820_docentlik_istek_ozeti",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_istek_ozeti"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_istek_ozeti_yaz"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_faaliyet_ekle"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_istek_ozeti",
+        "tablo": "public.docentlik_faaliyetleri"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.docentlik_faaliyetleri",
+        "sutun": "istek_ozeti"
+      }
+    ]
   }
 ]

@@ -35,7 +35,7 @@ const KRITER = { points_per_unit: 20, baslica_yazar_katsayisi: 0.8, diger_yazar_
 const SURUM = "arvolab-2026-10-27";
 const TUM_SUTUNLAR = `id, organization_id, owner_id, criteria_id, title, unit_count::text, yazar_sayisi, baslica_yazar,
   faaliyet_tarihi::text, notes, computed_points::text, paylasim_katsayisi::text, kural_surumu, belge_yolu,
-  istek_anahtari, created_at::text, updated_at::text`;
+  istek_anahtari, istek_ozeti, created_at::text, updated_at::text`;
 const EKLE = "select * from public.docentlik_faaliyet_ekle($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)";
 const DUZENLE = "select * from public.docentlik_faaliyet_duzenle($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)";
 
@@ -458,5 +458,228 @@ describe("işlevlerin yetkisi", () => {
       const s = await cagir(EKLE, [AM, R.kriter, "x", 1, 1, true, null, null, null, 20, 1, SURUM]);
       assert.equal(s.ok, false);
       assert.match(s.hata, /permission denied/);
+    }));
+});
+
+/*
+  İSTEK ANAHTARI İÇERİĞE BAĞLI (20261115101820). Aynı anahtar yalnızca
+  AYNI içerikle "tekrar" sayılır; farklı içerik DP002 alır ve hiçbir şey
+  yazılmaz. Karşılaştırma ilk isteğin değişmez özetiyle (istek_ozeti).
+*/
+describe("istek anahtarı içerik sözleşmesi", () => {
+  const ANAHTAR = "00000000-0000-4000-8000-00000000ac01";
+  const TEMEL = { istekAnahtari: ANAHTAR, birimSayisi: "2", yazarSayisi: "3", baslicaYazar: "hayir", faaliyetTarihi: "2024-03-01", notlar: "Not" };
+
+  /** Ham RPC çağrısı: sunucu formunun kırpmadığı biçimleri (boşluk, "1.0", boş not) de sınamak için. */
+  const hamEkle = (y, beklenen) => cagir(EKLE, [AM, y.criteria_id, y.title, y.unit_count, y.yazar_sayisi, y.baslica_yazar,
+    y.faaliyet_tarihi, y.notes, y.anahtar ?? ANAHTAR, beklenen.puan, beklenen.katsayi, beklenen.surum]);
+
+  async function ilkKayit() {
+    const f = form(TEMEL);
+    const b = c.beklenenEklemePuani(f.yazim, KRITER);
+    const s = await ekle(f, b);
+    assert.ok(s.ok && s.rows[0].tekrar === false, s.hata);
+    return { f, b, id: s.rows[0].kayit_id };
+  }
+
+  test("aynı anahtar + aynı içerik: ilk kayıt döner (tekrar), tek satır", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const { f, b, id } = await ilkKayit();
+      const s = await ekle(f, b);
+      assert.ok(s.ok, s.hata);
+      assert.deepEqual(s.rows[0], { kayit_id: id, tekrar: true });
+      assert.equal((await tek("select count(*)::int n from public.docentlik_faaliyetleri where istek_anahtari = $1", [ANAHTAR])).n, 1);
+    }));
+
+  test("normalleştirme: kenar boşluğu, 2 ↔ 2.0, boş not ↔ NULL, tek yazarda başlıca bayrağı aynı içerik sayılır", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const { f, b, id } = await ilkKayit();
+      const y = f.yazim;
+      for (const [ad, degisik] of [
+        ["başlıkta kenar boşluğu", { title: `  ${y.title}\t` }],
+        ["birim 2.0", { unit_count: "2.0" }],
+        ["notta kenar boşluğu", { notes: " Not " }],
+      ]) {
+        const s = await hamEkle({ ...y, ...degisik }, b);
+        assert.ok(s.ok, `${ad}: ${s.hata}`);
+        assert.deepEqual(s.rows[0], { kayit_id: id, tekrar: true }, ad);
+      }
+      // Notsuz ve tek yazarlı ikinci bir kayıt: '' ↔ NULL ve başlıca false ↔ true aynı.
+      const tekYazar = form({ istekAnahtari: "00000000-0000-4000-8000-00000000ac02", yazarSayisi: "1", baslicaYazar: "evet" });
+      const tb = c.beklenenEklemePuani(tekYazar.yazim, KRITER);
+      const ilk = await ekle(tekYazar, tb);
+      assert.ok(ilk.ok, ilk.hata);
+      const t = await hamEkle({ ...tekYazar.yazim, anahtar: tekYazar.istekAnahtari, notes: "", baslica_yazar: false }, tb);
+      assert.ok(t.ok, t.hata);
+      assert.deepEqual(t.rows[0], { kayit_id: ilk.rows[0].kayit_id, tekrar: true });
+    }));
+
+  for (const [ad, degisiklik] of [
+    ["kriter", { kriterId: R.kriterSil }],
+    ["başlık", { baslik: "Başka makale" }],
+    ["birim", { birimSayisi: "3" }],
+    ["yazar sayısı", { yazarSayisi: "4" }],
+    ["başlıca (çok yazarlı)", { baslicaYazar: "evet" }],
+    ["tarih", { faaliyetTarihi: "2024-03-02" }],
+    ["tarih → boş", { faaliyetTarihi: "" }],
+    ["not → boş", { notlar: "" }],
+    ["not", { notlar: "Başka not" }],
+  ]) {
+    test(`aynı anahtar + farklı ${ad}: DP002, yeni satır yok, mevcut kayıt aynı`, () =>
+      islem(db, async () => {
+        await aktorOl(db, "sahip");
+        const { id } = await ilkKayit();
+        await rol(db, "postgres");
+        const once = await satir(id);
+        await aktorOl(db, "sahip");
+        const g = form({ ...TEMEL, ...degisiklik });
+        const kriter = degisiklik.kriterId ? { points_per_unit: 1, baslica_yazar_katsayisi: null, diger_yazar_katsayisi: null, esit_bolusum: false } : KRITER;
+        const s = await ekle(g, c.beklenenEklemePuani(g.yazim, kriter));
+        assert.equal(s.ok, false);
+        assert.equal(s.kod, "DP002", s.hata);
+        await rol(db, "postgres");
+        assert.equal((await tek("select count(*)::int n from public.docentlik_faaliyetleri where istek_anahtari = $1", [ANAHTAR])).n, 1);
+        assert.deepEqual(await satir(id), once);
+      }));
+  }
+
+  test("ilk boş tarih/not, sonra dolu: NULL ile değer ayrı tutulur (DP002)", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const bos = form({ ...TEMEL, faaliyetTarihi: "", notlar: "" });
+      const b = c.beklenenEklemePuani(bos.yazim, KRITER);
+      assert.ok((await ekle(bos, b)).ok);
+      for (const dolu of [{ faaliyetTarihi: "2024-03-01" }, { notlar: "x" }]) {
+        const g = form({ ...TEMEL, faaliyetTarihi: "", notlar: "", ...dolu });
+        assert.equal((await ekle(g, c.beklenenEklemePuani(g.yazim, KRITER))).kod, "DP002", JSON.stringify(dolu));
+      }
+    }));
+
+  test("kayıt sonradan düzenlenince: İLK isteğin tekrarı 'tekrar' döner ve düzenlemeyi bozmaz; düzenlenmiş içerikle aynı anahtar DP002", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const { f, b, id } = await ilkKayit();
+      await gecmiseAl(id);
+      await rol(db, "postgres");
+      const mevcut = await satir(id);
+      await aktorOl(db, "sahip");
+      const duzenlenen = form({ ...TEMEL, baslik: "Düzenlenmiş başlık" });
+      const d = await duzenle(id, mevcut.updated_at, duzenlenen.yazim, c.beklenenDuzenlemePuani(mevcut, duzenlenen.yazim, KRITER));
+      assert.ok(d.ok && d.rows[0].guncellendi, d.hata);
+      await rol(db, "postgres");
+      const sonra = await satir(id);
+      assert.equal(sonra.title, "Düzenlenmiş başlık");
+      await aktorOl(db, "sahip");
+      const tekrar = await ekle(f, b);
+      assert.deepEqual(tekrar.rows[0], { kayit_id: id, tekrar: true });
+      const yeniden = await ekle(duzenlenen, c.beklenenEklemePuani(duzenlenen.yazim, KRITER));
+      assert.equal(yeniden.kod, "DP002");
+      await rol(db, "postgres");
+      assert.deepEqual(await satir(id), sonra, "tekrar ve ret kayda dokunmadı");
+    }));
+
+  test("aynı anahtar başka kullanıcıda: ayrı kayıt; kimse ötekinin kaydını görmez ya da 'tekrar' diye almaz", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const { f, b, id } = await ilkKayit();
+      await aktorOl(db, "uye");
+      const u = await ekle(f, b);
+      assert.ok(u.ok, u.hata);
+      assert.equal(u.rows[0].tekrar, false);
+      assert.notEqual(u.rows[0].kayit_id, id);
+      assert.equal((await tek("select count(*)::int n from public.docentlik_faaliyetleri where istek_anahtari = $1", [ANAHTAR])).n, 1, "üye yalnızca kendininkini görür");
+      // Farklı içerik de üyenin kendi anahtar alanında değerlendirilir, sahibinkiyle değil.
+      const farkli = form({ ...TEMEL, baslik: "Üyenin başka makalesi" });
+      assert.equal((await ekle(farkli, c.beklenenEklemePuani(farkli.yazim, KRITER))).kod, "DP002");
+      await aktorOl(db, "sahip");
+      assert.equal((await tek("select count(*)::int n from public.docentlik_faaliyetleri where istek_anahtari = $1", [ANAHTAR])).n, 1);
+    }));
+
+  /*
+    Gözetim (tumunu_gor) başkalarının kaydını RLS'ten GÖREBİLİYOR. Çakışma
+    araması sahibe bağlı olmasaydı, aynı anahtarı kullanan başka birinin
+    kaydı bulunur: gözetimci kendi tekrarında başkasının kimliğini alır ya
+    da yersiz DP002 görürdü.
+  */
+  test("kurumun her kaydını gören gözetimci: aynı anahtarlı tekrarında YALNIZCA kendi kaydını alır", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const { id: sahibinki } = await ilkKayit();
+      await aktorOl(db, "gozetim");
+      const g = form({ ...TEMEL, baslik: "Gözetimcinin kendi makalesi" });
+      const b = c.beklenenEklemePuani(g.yazim, KRITER);
+      const ilk = await ekle(g, b);
+      assert.ok(ilk.ok && ilk.rows[0].tekrar === false, ilk.hata);
+      assert.equal((await tek("select count(*)::int n from public.docentlik_faaliyetleri where istek_anahtari = $1", [ANAHTAR])).n, 2, "gözetimci iki kaydı da görüyor");
+      const tekrar = await ekle(g, b);
+      assert.ok(tekrar.ok, tekrar.hata);
+      assert.deepEqual(tekrar.rows[0], { kayit_id: ilk.rows[0].kayit_id, tekrar: true });
+      assert.notEqual(tekrar.rows[0].kayit_id, sahibinki);
+    }));
+
+  test("anahtarsız istek: içerik aynı olsa da her çağrı ayrı kayıt (tekrar koruması yok, özet yazılmaz)", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const f = form({ ...TEMEL, istekAnahtari: "" });
+      assert.equal(f.istekAnahtari, null);
+      const b = c.beklenenEklemePuani(f.yazim, KRITER);
+      const a1 = await ekle(f, b);
+      const a2 = await ekle(f, b);
+      assert.notEqual(a1.rows[0].kayit_id, a2.rows[0].kayit_id);
+      await rol(db, "postgres");
+      assert.equal((await satir(a1.rows[0].kayit_id)).istek_ozeti ?? null, null);
+    }));
+
+  test("bozuk anahtar veritabanına ulaşmaz: uuid olmayan değer reddedilir (22P02)", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const once = await sayi();
+      const s = await cagir(EKLE, [AM, R.kriter, "x", 1, 1, true, null, null, "anahtar-degil", 20, 1, SURUM]);
+      assert.equal(s.kod, "22P02");
+      assert.equal(await sayi(), once);
+    }));
+
+  test("özeti istemci yazamaz ve değiştiremez; düzenleme özeti korur", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const { id } = await ilkKayit();
+      const s1 = await cagir("insert into public.docentlik_faaliyetleri (organization_id, owner_id, criteria_id, title, istek_anahtari, istek_ozeti) values ($1,$2,$3,'x',$4,'sahte')",
+        [AM, K.sahip, R.kriter, "00000000-0000-4000-8000-00000000ac09"]);
+      assert.match(s1.hata, /permission denied/);
+      const s2 = await cagir("update public.docentlik_faaliyetleri set istek_ozeti = 'sahte' where id = $1", [id]);
+      assert.match(s2.hata, /permission denied/);
+      await rol(db, "postgres");
+      const ozet = (await satir(id)).istek_ozeti;
+      assert.match(ozet, /^[0-9a-f]{64}$/);
+      await db.query("update public.docentlik_faaliyetleri set title = 'postgres düzenledi', istek_ozeti = 'sahte' where id = $1", [id]);
+      assert.equal((await satir(id)).istek_ozeti, ozet, "tetikleyici güncellemede eski özeti korur (veritabanı sahibi dahil)");
+    }));
+
+  test("özetsiz anahtarlı satır (bu migration'dan önce yazılmış): içerik doğrulanamaz, DP002", () =>
+    islem(db, async () => {
+      await aktorOl(db, "sahip");
+      const { f, b, id } = await ilkKayit();
+      await rol(db, "postgres");
+      await db.exec("set local session_replication_role = replica");
+      await db.query("update public.docentlik_faaliyetleri set istek_ozeti = null where id = $1", [id]);
+      await db.exec("set local session_replication_role = origin");
+      await aktorOl(db, "sahip");
+      assert.equal((await ekle(f, b)).kod, "DP002");
+    }));
+
+  test("özet işlevi saf: tabloya yazan roller (authenticated, service_role) çalıştırır, anon değil; tetikleyici işlevi kimseye açık değil", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      const imza = "private.docentlik_istek_ozeti(uuid,text,numeric,integer,boolean,date,text)";
+      for (const [r, v] of [["anon", false], ["authenticated", true], ["service_role", true]]) {
+        assert.equal((await tek("select has_function_privilege($1, $2, 'execute') v", [r, imza])).v, v, `${imza} → ${r}`);
+      }
+      for (const r of ["anon", "authenticated", "service_role"]) {
+        assert.equal((await tek("select has_function_privilege($1, 'private.docentlik_istek_ozeti_yaz()', 'execute') v", [r])).v, false, r);
+      }
+      const f = await tek("select provolatile from pg_proc where oid = $1::regprocedure", [imza]);
+      assert.equal(f.provolatile, "i");
     }));
 });

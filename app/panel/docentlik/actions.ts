@@ -74,11 +74,17 @@ function faaliyetFormunuOku(formData: FormData) {
   reddettirir.
 */
 const PUAN_UYUSMAZLIGI = "DP001";
+/* Aynı istek anahtarı FARKLI içerikle geldi (20261115101820): bu bir tekrar
+   değil; ilk kaydı "kaydedildi" diye döndürmek yeni faaliyeti sessizce kaybederdi. */
+const ANAHTAR_BASKA_ICERIKTE = "DP002";
 
 function yazimHatasi(error: { code?: string; message: string }, eylem: string): never {
   if (error.code === PUAN_UYUSMAZLIGI) {
     console.error("[docentlik] puan çekirdekle uyuşmadı; işlem geri alındı", error.message);
     throw new Error(`Puan doğrulanamadı; faaliyet ${eylem}. Lütfen yöneticinize bildirin.`);
+  }
+  if (error.code === ANAHTAR_BASKA_ICERIKTE) {
+    throw new Error("Bu form daha önce başka bir faaliyetle gönderilmiş; faaliyet kaydedilmedi. Sayfayı yenileyip yeniden girin.");
   }
   if (error.code === "23503") throw new Error("Seçilen kriter bulunamadı.");
   if (error.code === "42501") throw new Error(`Faaliyet ${eylem}: modül ya da üyeliğiniz kapanmış olabilir.`);

@@ -131,6 +131,9 @@ describe("işlem dosyası", () => {
 
   test("çift gönderim: istek anahtarı RPC'ye gidiyor; düzenleme sürüm ZORUNLU, iyimser eşzamanlı", () => {
     assert.match(GOVDELER.get("faaliyetEkle")!, /p_istek_anahtari: istekAnahtari/);
+    // Aynı anahtar + farklı içerik (DP002, 20261115101820) başarı gibi gösterilmez.
+    assert.match(ISLEM, /const ANAHTAR_BASKA_ICERIKTE = "DP002"/);
+    assert.match(ISLEM, /if \(error\.code === ANAHTAR_BASKA_ICERIKTE\) \{\s*throw new Error\(/);
     const d = GOVDELER.get("faaliyetDuzenle")!;
     assert.match(d, /if \(!surum\) throw/);
     assert.match(d, /\.eq\("updated_at", surum\)/, "beklenen puan okunan sürüme göre hesaplanmalı");
