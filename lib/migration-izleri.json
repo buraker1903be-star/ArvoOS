@@ -385,5 +385,238 @@
         "sutun": "ozel_maddeler"
       }
     ]
+  },
+  {
+    "migration": "20261114190657_ozel_modul_izin_listesi",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.ozel_moduller"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.ozel_modul_kurumlari"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.ozel_modul_gecmisi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_izinli"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.modul_kurumda_acik"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_koru"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_ilan_edildi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_izni_eklendi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_izni_kaldirildi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_izni_degismez"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_kaydi_koru"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.ozel_modul_statusunu_kaldir"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "ozel_modul_koru",
+        "tablo": "public.organization_modules"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "ozel_modul_ilan_edildi",
+        "tablo": "public.ozel_moduller"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "ozel_modul_kaydi_koru",
+        "tablo": "public.ozel_moduller"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "ozel_modul_izni_eklendi",
+        "tablo": "public.ozel_modul_kurumlari"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "ozel_modul_izni_kaldirildi",
+        "tablo": "public.ozel_modul_kurumlari"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "ozel_modul_izni_degismez",
+        "tablo": "public.ozel_modul_kurumlari"
+      }
+    ]
+  },
+  {
+    "migration": "20261114200939_docentlik_sema_rls",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_kriterleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_hedefleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_profilleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_faaliyetleri"
+      },
+      {
+        "tur": "tablo",
+        "ad": "public.docentlik_uak_tablolari"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_yetkisi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_js_round"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_yuvarla"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_paylasim"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_sayi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_kimlik_koru"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_faaliyet_puani"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_uak_koru"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_profil_ozetleri"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_faaliyet_donemleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_kriterleri_kimlik",
+        "tablo": "public.docentlik_kriterleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_hedefleri_kimlik",
+        "tablo": "public.docentlik_hedefleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_profilleri_kimlik",
+        "tablo": "public.docentlik_profilleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_faaliyetleri_kimlik",
+        "tablo": "public.docentlik_faaliyetleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_uak_kimlik",
+        "tablo": "public.docentlik_uak_tablolari"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_faaliyet_puani",
+        "tablo": "public.docentlik_faaliyetleri"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_uak_koru",
+        "tablo": "public.docentlik_uak_tablolari"
+      }
+    ]
+  },
+  {
+    "migration": "20261114213340_docentlik_istek_anahtari",
+    "izler": [
+      {
+        "tur": "sutun",
+        "tablo": "public.docentlik_faaliyetleri",
+        "sutun": "istek_anahtari"
+      }
+    ]
+  },
+  {
+    "migration": "20261115014302_docentlik_atomik_faaliyet_yazimi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_faaliyet_ekle"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_faaliyet_duzenle"
+      }
+    ]
+  },
+  {
+    "migration": "20261115101820_docentlik_istek_ozeti",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_istek_ozeti"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.docentlik_istek_ozeti_yaz"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_faaliyet_ekle"
+      },
+      {
+        "tur": "tetikleyici",
+        "ad": "docentlik_istek_ozeti",
+        "tablo": "public.docentlik_faaliyetleri"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.docentlik_faaliyetleri",
+        "sutun": "istek_ozeti"
+      }
+    ]
   }
 ]
