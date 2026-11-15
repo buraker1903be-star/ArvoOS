@@ -306,18 +306,26 @@ const cekirdekGirdisi = (y: FaaliyetYazimi) => ({
   faaliyetTarihi: y.faaliyet_tarihi,
 });
 
-export type BeklenenPuan = { puan: number; katsayi: number };
+/*
+  Beklenen puan, katsayı ve KURAL SÜRÜMÜ. Sürüm de karşılaştırılıyor:
+  tetikleyici (20261114200939) ileride başka bir kural sürümüyle yazmaya
+  başlarsa ama çekirdek eski sürümle hesaplarsa, sayılar tesadüfen tutsa
+  bile kayıt "hangi kuralla hesaplandı" sorusuna yanlış cevap taşırdı.
+  Karşılaştırmanın kendisi veritabanında, yazımla AYNI işlemde
+  (20261115014302); burada yalnızca beklenen hesaplanıyor.
+*/
+export type BeklenenPuan = { puan: number; katsayi: number; surum: string };
 
 /** Eklemede beklenen puan: lib/docentlik/puan.ts → faaliyetPuani. */
 export function beklenenEklemePuani(y: FaaliyetYazimi, kriter: KriterSatiri): BeklenenPuan {
   const s = faaliyetPuani(cekirdekGirdisi(y), puanKriteri(kriter));
   if (!s.ok) throw new Error(s.hata);
-  return { puan: s.deger.puan, katsayi: s.deger.paylasimKatsayisi };
+  return { puan: s.deger.puan, katsayi: s.deger.paylasimKatsayisi, surum: s.deger.kuralSurumu };
 }
 
 export type MevcutFaaliyet = {
   criteria_id: string; unit_count: number | string; computed_points: number | string;
-  paylasim_katsayisi: number | string; yazar_sayisi: number; baslica_yazar: boolean;
+  paylasim_katsayisi: number | string; yazar_sayisi: number; baslica_yazar: boolean; kural_surumu: string;
 };
 
 /*
@@ -333,7 +341,8 @@ export function hesapGirdileriAyniMi(m: MevcutFaaliyet, y: FaaliyetYazimi): bool
 
 /** Düzenlemede beklenen puan: girdiler aynıysa eski değer, değilse duzenlemePuani. */
 export function beklenenDuzenlemePuani(m: MevcutFaaliyet, y: FaaliyetYazimi, kriter: KriterSatiri): BeklenenPuan {
-  if (hesapGirdileriAyniMi(m, y)) return { puan: Number(m.computed_points), katsayi: Number(m.paylasim_katsayisi) };
+  // Girdiler aynıyken tetikleyici puanı, katsayıyı VE sürümü olduğu gibi bırakıyor.
+  if (hesapGirdileriAyniMi(m, y)) return { puan: Number(m.computed_points), katsayi: Number(m.paylasim_katsayisi), surum: m.kural_surumu };
   const s = duzenlemePuani(cekirdekGirdisi(y), {
     criteria_id: m.criteria_id,
     unit_count: Number(m.unit_count),
@@ -343,12 +352,17 @@ export function beklenenDuzenlemePuani(m: MevcutFaaliyet, y: FaaliyetYazimi, kri
     baslica_yazar: Boolean(m.baslica_yazar),
   }, y.criteria_id, () => puanKriteri(kriter));
   if (!s.ok) throw new Error(s.hata);
-  return { puan: s.deger.puan, katsayi: s.deger.paylasimKatsayisi };
+  return { puan: s.deger.puan, katsayi: s.deger.paylasimKatsayisi, surum: s.deger.kuralSurumu };
 }
 
-/** Kayıt beklenenle aynı mı; değilse sunucu kaydı kabul etmez (ekleme) ya da hatayı bildirir (düzenleme). */
-export const puanDogrulandiMi = (beklenen: BeklenenPuan, kayit: { computed_points: unknown; paylasim_katsayisi: unknown }) =>
-  sayiEsitMi(beklenen.puan, kayit.computed_points) && sayiEsitMi(beklenen.katsayi, kayit.paylasim_katsayisi);
+/**
+ * Kayıt beklenenle aynı mı. Sunucu işlemi bunu artık YAZIMDAN SONRA sormuyor
+ * (yazım ve karşılaştırma tek işlemde, 20261115014302); veritabanı
+ * işlevlerinin karşılaştırmasının TS ikizi olarak testlerde kullanılıyor.
+ */
+export const puanDogrulandiMi = (beklenen: BeklenenPuan, kayit: { computed_points: unknown; paylasim_katsayisi: unknown; kural_surumu: unknown }) =>
+  sayiEsitMi(beklenen.puan, kayit.computed_points) && sayiEsitMi(beklenen.katsayi, kayit.paylasim_katsayisi)
+  && beklenen.surum === kayit.kural_surumu;
 
 /* ---------------------------------------------------------------------- */
 /* Özet: grup puanları, tavan, hedef durumları (lib/docentlik/ozet.ts)     */

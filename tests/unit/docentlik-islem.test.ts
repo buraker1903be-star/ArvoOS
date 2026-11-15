@@ -146,16 +146,19 @@ describe("depodan okunan dosya", () => {
   });
 });
 
+const SURUM = "arvolab-2026-10-27";
+
 describe("puanın çekirdekle doğrulanması", () => {
   const kriter = { points_per_unit: "20", baslica_yazar_katsayisi: "0.8", diger_yazar_katsayisi: "0.5", esit_bolusum: false };
   const form = (d: Partial<FaaliyetYazimi> = {}): FaaliyetYazimi => ({ criteria_id: KR, title: "Makale", unit_count: 2, yazar_sayisi: 3, baslica_yazar: false, faaliyet_tarihi: null, notes: null, ...d });
 
   test("ekleme: 2 × 20 × 0,5 = 20; veritabanının metin olarak döndürdüğü numeric ile birebir", () => {
     const b = beklenenEklemePuani(form(), kriter);
-    assert.deepEqual(b, { puan: 20, katsayi: 0.5 });
-    assert.ok(puanDogrulandiMi(b, { computed_points: "20", paylasim_katsayisi: "0.5" }));
-    assert.ok(!puanDogrulandiMi(b, { computed_points: "20.000001", paylasim_katsayisi: "0.5" }), "en küçük sapma da yakalanmalı");
-    assert.ok(!puanDogrulandiMi(b, { computed_points: "9999", paylasim_katsayisi: "0.5" }));
+    assert.deepEqual(b, { puan: 20, katsayi: 0.5, surum: SURUM });
+    assert.ok(puanDogrulandiMi(b, { computed_points: "20", paylasim_katsayisi: "0.5", kural_surumu: SURUM }));
+    assert.ok(!puanDogrulandiMi(b, { computed_points: "20.000001", paylasim_katsayisi: "0.5", kural_surumu: SURUM }), "en küçük sapma da yakalanmalı");
+    assert.ok(!puanDogrulandiMi(b, { computed_points: "9999", paylasim_katsayisi: "0.5", kural_surumu: SURUM }));
+    assert.ok(!puanDogrulandiMi(b, { computed_points: "20", paylasim_katsayisi: "0.5", kural_surumu: "arvolab-2099-01-01" }), "kural sürümü de karşılaştırılır");
   });
 
   test("eşit bölüşüm ve 1/3 katsayısının metin gösterimi", () => {
@@ -164,13 +167,13 @@ describe("puanın çekirdekle doğrulanması", () => {
     assert.ok(sayiEsitMi(b.katsayi, "0.3333333333333333"));
   });
 
-  const mevcut = { criteria_id: KR, unit_count: "2", computed_points: "20", paylasim_katsayisi: "0.5", yazar_sayisi: 3, baslica_yazar: false };
+  const mevcut = { criteria_id: KR, unit_count: "2", computed_points: "20", paylasim_katsayisi: "0.5", yazar_sayisi: 3, baslica_yazar: false, kural_surumu: SURUM };
 
   test("başlık, not ya da tarih değişince puan aynen kalır (hesap girdileri aynı)", () => {
     const yeni = form({ title: "Yeni başlık", notes: "not", faaliyet_tarihi: "2023-01-01" });
     assert.ok(hesapGirdileriAyniMi(mevcut, yeni));
     // Kriterin puanı bu arada 50 olsa bile.
-    assert.deepEqual(beklenenDuzenlemePuani(mevcut, yeni, { ...kriter, points_per_unit: "50" }), { puan: 20, katsayi: 0.5 });
+    assert.deepEqual(beklenenDuzenlemePuani(mevcut, yeni, { ...kriter, points_per_unit: "50" }), { puan: 20, katsayi: 0.5, surum: SURUM });
   });
 
   /*
@@ -184,19 +187,25 @@ describe("puanın çekirdekle doğrulanması", () => {
     const k = { points_per_unit: 0.1234567, baslica_yazar_katsayisi: null, diger_yazar_katsayisi: null, esit_bolusum: true };
     const ilk = beklenenEklemePuani(form({ unit_count: 2, yazar_sayisi: 1 }), k);
     assert.equal(ilk.puan, 0.246913);
-    const kayit = { criteria_id: KR, unit_count: "2", computed_points: String(ilk.puan), paylasim_katsayisi: "1", yazar_sayisi: 1, baslica_yazar: true };
-    assert.deepEqual(beklenenDuzenlemePuani(kayit, form({ unit_count: 2, yazar_sayisi: 1, title: "Düzeltilmiş" }), k), { puan: 0.246913, katsayi: 1 });
+    const kayit = { criteria_id: KR, unit_count: "2", computed_points: String(ilk.puan), paylasim_katsayisi: "1", yazar_sayisi: 1, baslica_yazar: true, kural_surumu: SURUM };
+    assert.deepEqual(beklenenDuzenlemePuani(kayit, form({ unit_count: 2, yazar_sayisi: 1, title: "Düzeltilmiş" }), k), { puan: 0.246913, katsayi: 1, surum: SURUM });
   });
 
   test("kriter sonradan pahalansa da birim değişikliğinde eski birim puan korunur (korunanBirimPuan)", () => {
     const b = beklenenDuzenlemePuani(mevcut, form({ unit_count: 4 }), { ...kriter, points_per_unit: "50" });
-    assert.deepEqual(b, { puan: 40, katsayi: 0.5 });
+    assert.deepEqual(b, { puan: 40, katsayi: 0.5, surum: SURUM });
   });
 
   test("yazar bilgisi değişince katsayı kriterden; kriter değişince birim puan yeni kriterden", () => {
-    assert.deepEqual(beklenenDuzenlemePuani(mevcut, form({ baslica_yazar: true }), kriter), { puan: 32, katsayi: 0.8 });
+    assert.deepEqual(beklenenDuzenlemePuani(mevcut, form({ baslica_yazar: true }), kriter), { puan: 32, katsayi: 0.8, surum: SURUM });
     const yeniKriter = "00000000-0000-4000-8000-0000000000e2";
-    assert.deepEqual(beklenenDuzenlemePuani(mevcut, form({ criteria_id: yeniKriter, unit_count: 1, yazar_sayisi: 1 }), { points_per_unit: "7", baslica_yazar_katsayisi: null, diger_yazar_katsayisi: null, esit_bolusum: false }), { puan: 7, katsayi: 1 });
+    assert.deepEqual(beklenenDuzenlemePuani(mevcut, form({ criteria_id: yeniKriter, unit_count: 1, yazar_sayisi: 1 }), { points_per_unit: "7", baslica_yazar_katsayisi: null, diger_yazar_katsayisi: null, esit_bolusum: false }), { puan: 7, katsayi: 1, surum: SURUM });
+  });
+
+  test("girdiler aynıyken kaydın KENDİ kural sürümü beklenir (eski sürümle yazılmış kayıt eski sürümde kalır)", () => {
+    const eski = { ...mevcut, kural_surumu: "arvolab-eski" };
+    assert.equal(beklenenDuzenlemePuani(eski, form({ title: "Yeni" }), kriter).surum, "arvolab-eski");
+    assert.equal(beklenenDuzenlemePuani(eski, form({ unit_count: 4 }), kriter).surum, SURUM, "girdi değişince tetikleyici güncel sürümle yazar");
   });
 
   test("tek yazara düşürülen faaliyette başlıca bayrağı da değişmiş sayılır (tetikleyiciyle aynı)", () => {

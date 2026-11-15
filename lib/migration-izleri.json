@@ -578,5 +578,18 @@
         "sutun": "istek_anahtari"
       }
     ]
+  },
+  {
+    "migration": "20261115014302_docentlik_atomik_faaliyet_yazimi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_faaliyet_ekle"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_faaliyet_duzenle"
+      }
+    ]
   }
 ]

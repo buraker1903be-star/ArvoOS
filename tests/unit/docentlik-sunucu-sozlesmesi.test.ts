@@ -73,21 +73,35 @@ describe("işlem dosyası", () => {
     assert.match(BAGLAM, /kurum: baglam\.membership\.organization_id, ben: baglam\.userId/);
   });
 
-  test("puan istemciden okunmuyor ve yazılmıyor; sonuç çekirdekle doğrulanıyor", () => {
+  test("puan istemciden okunmuyor ve yazılmıyor; beklenen çekirdekten, karşılaştırma yazımla aynı RPC'de", () => {
     assert.ok(!/computed_points\s*:/.test(ISLEM), "computed_points yazılıyor");
     assert.ok(!/paylasim_katsayisi\s*:|kural_surumu\s*:/.test(ISLEM));
-    assert.ok(!/formData\.get\("(computed_points|puan|paylasim_katsayisi)"\)/.test(ISLEM));
-    assert.match(GOVDELER.get("faaliyetEkle")!, /beklenenEklemePuani\(yazim, kriter\)[\s\S]*puanDogrulandiMi\(beklenen, kayit\)/);
-    assert.match(GOVDELER.get("faaliyetDuzenle")!, /beklenenDuzenlemePuani\(mevcut, yazim, kriter\)[\s\S]*puanDogrulandiMi\(beklenen, kayit\)/);
-    // Eklemede uyuşmazlık: kayıt kalmaz.
-    assert.match(GOVDELER.get("faaliyetEkle")!, /if \(!puanDogrulandiMi\(beklenen, kayit\)\) \{[\s\S]*\.delete\(\)/);
+    assert.ok(!/formData\.get\("(computed_points|puan|paylasim_katsayisi|beklenen\w*)"\)/.test(ISLEM));
+    for (const [ad, hesap, rpc] of [
+      ["faaliyetEkle", /beklenenEklemePuani\(yazim, kriter\)/, "docentlik_faaliyet_ekle"],
+      ["faaliyetDuzenle", /beklenenDuzenlemePuani\(mevcut, yazim, kriter\)/, "docentlik_faaliyet_duzenle"],
+    ] as const) {
+      const g = GOVDELER.get(ad)!;
+      assert.match(g, new RegExp(`${hesap.source}[\\s\\S]*\\.rpc\\("${rpc}"`), `${ad}: beklenen hesaplanıp RPC'ye verilmiyor`);
+      assert.match(g, /p_beklenen_puan: beklenen\.puan, p_beklenen_katsayi: beklenen\.katsayi, p_beklenen_surum: beklenen\.surum/, ad);
+    }
+  });
+
+  test("faaliyet ekleme/düzenleme tabloya DOĞRUDAN yazmıyor ve telafi silmesi yok (atomiklik RPC'de)", () => {
+    for (const ad of ["faaliyetEkle", "faaliyetDuzenle"]) {
+      const g = GOVDELER.get(ad)!;
+      assert.ok(!/\.(insert|update|upsert|delete)\(/.test(g), `${ad}: ayrı HTTP çağrısıyla yazıyor`);
+    }
+    assert.ok(!/puanDogrulandiMi/.test(ISLEM), "yazımdan SONRA doğrulama (eski, atomik olmayan yol) geri gelmiş");
+    assert.match(ISLEM, /const PUAN_UYUSMAZLIGI = "DP001"/);
+    assert.match(ISLEM, /error\.code === PUAN_UYUSMAZLIGI/);
   });
 
   test("yazmalar returning ile (sıfır satır başarı sayılmaz)", () => {
     const yazmalar = [...ISLEM.matchAll(/\.(insert|update|upsert|delete)\(/g)].length;
     const returning = [...ISLEM.matchAll(/\.(insert|update|upsert|delete)\([\s\S]{0,400}?\.select\(/g)].length;
-    // Tek istisna: eklemede doğrulanamayan kaydın telafi amaçlı silinmesi (sonucu günlüğe yazılıyor).
-    assert.equal(yazmalar - returning, 1, `returning'siz yazma sayısı ${yazmalar - returning}`);
+    // Eski tek istisna (eklemede telafi silmesi) RPC'ye geçince kalktı.
+    assert.equal(yazmalar - returning, 0, `returning'siz yazma sayısı ${yazmalar - returning}`);
   });
 
   test("tek kova; yol sunucuda kuruluyor ve kayıtta yeniden doğrulanıyor; telafi silmesi var", () => {
@@ -115,9 +129,13 @@ describe("işlem dosyası", () => {
     }
   });
 
-  test("çift gönderim: istek anahtarı çakışmasında ilk kayıt döner; düzenleme iyimser eşzamanlı", () => {
-    assert.match(GOVDELER.get("faaliyetEkle")!, /error\?\.code === "23505" && istekAnahtari/);
-    assert.match(GOVDELER.get("faaliyetDuzenle")!, /\.eq\("updated_at", surum\)/);
+  test("çift gönderim: istek anahtarı RPC'ye gidiyor; düzenleme sürüm ZORUNLU, iyimser eşzamanlı", () => {
+    assert.match(GOVDELER.get("faaliyetEkle")!, /p_istek_anahtari: istekAnahtari/);
+    const d = GOVDELER.get("faaliyetDuzenle")!;
+    assert.match(d, /if \(!surum\) throw/);
+    assert.match(d, /\.eq\("updated_at", surum\)/, "beklenen puan okunan sürüme göre hesaplanmalı");
+    assert.match(d, /p_surum: surum/);
+    assert.match(d, /if \(!sonuc\?\.guncellendi\) return ayniIstekMi\(/);
   });
 
   test("ÜAK onayı veritabanına dokunmadan reddediyor", () => {

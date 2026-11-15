@@ -4,7 +4,11 @@
   Sunucu işlemleri (app/panel/docentlik/actions.ts) Next ve supabase-js
   üzerinden çalışıyor; burada çalıştırılamıyorlar. Sınanan, onların
   veritabanına gönderdiği yazımların AYNISI, kullanıcının kendi rolüyle
-  (authenticated) ve gerçek RLS/tetikleyicilerle:
+  (authenticated) ve gerçek RLS/tetikleyicilerle. Faaliyet EKLEME ve
+  DÜZENLEME 15.11.2026'dan beri tek işlemli RPC ile
+  (docentlik-atomik-yazim.test.mjs); buradaki doğrudan tablo yazımları,
+  tarayıcının oturum jetonuyla doğrudan yapabileceği yazımlar olarak
+  kalıyor — onlarda da puanı tetikleyici yazıyor:
    - meşru akış: ekleme → düzenleme → belge → silme; beklenen puan
      lib/docentlik-islem.ts'in kendisiyle hesaplanıyor (işlemin yaptığı
      doğrulamanın aynısı);
@@ -40,7 +44,7 @@ grant select, insert, update, delete on storage.objects to anon, authenticated;
 
 let db;
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
-const SUTUNLAR = "id, criteria_id, unit_count, computed_points::text, paylasim_katsayisi::text, yazar_sayisi, baslica_yazar, belge_yolu, updated_at::text, title, notes, faaliyet_tarihi::text";
+const SUTUNLAR = "id, criteria_id, unit_count, computed_points::text, paylasim_katsayisi::text, kural_surumu, yazar_sayisi, baslica_yazar, belge_yolu, updated_at::text, title, notes, faaliyet_tarihi::text";
 const KRITER = { points_per_unit: 20, baslica_yazar_katsayisi: 0.8, diger_yazar_katsayisi: 0.5, esit_bolusum: false };
 
 before(async () => {

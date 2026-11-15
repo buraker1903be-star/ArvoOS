@@ -6,7 +6,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import {
   DOCENTLIK_KOVASI, IMZALI_ADRES_SANIYE, beklenenDuzenlemePuani, beklenenEklemePuani, depoNesnesiUygunMu,
   faaliyetBelgeYolu, faaliyetBelgeYoluMu, faaliyetFormu, hedefFormu, kriterFormu, metinAlani, pdfMi,
-  profilFormu, puanDogrulandiMi, uakBelgeYolu, uakBelgeYoluMu, uakOnayKarari, uuidMu,
+  profilFormu, uakBelgeYolu, uakBelgeYoluMu, uakOnayKarari, uuidMu,
   type FaaliyetYazimi, type KriterSatiri,
 } from "@/lib/docentlik-islem";
 import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBaglami } from "./baglam";
@@ -50,7 +50,7 @@ async function kriterOku(b: DocentlikBaglami, kriterId: string) {
 /* Faaliyet                                                               */
 /* ====================================================================== */
 
-const KAYIT_SUTUNLARI = "id, criteria_id, unit_count, computed_points, paylasim_katsayisi, yazar_sayisi, baslica_yazar, belge_yolu, updated_at, title, notes, faaliyet_tarihi";
+const KAYIT_SUTUNLARI = "id, criteria_id, unit_count, computed_points, paylasim_katsayisi, kural_surumu, yazar_sayisi, baslica_yazar, belge_yolu, updated_at, title, notes, faaliyet_tarihi";
 
 function faaliyetFormunuOku(formData: FormData) {
   const form = faaliyetFormu({
@@ -62,6 +62,29 @@ function faaliyetFormunuOku(formData: FormData) {
   return form.deger;
 }
 
+/*
+  YAZIM VE PUAN DOĞRULAMASI TEK VERİTABANI İŞLEMİNDE (20261115014302).
+  Eskiden ekleme satırı yazıp puan tutmazsa İKİNCİ bir çağrıyla siliyor,
+  düzenleme ise güncellemeyi yazıp yalnızca hata dönüyordu: silme düşerse
+  ya da düzenlemede, yanlış puanlı kayıt kalıyordu. Artık beklenen puanı
+  (PR #318 çekirdeği) RPC'ye veriyoruz; işlev tetikleyicinin hesabıyla
+  karşılaştırıp tutmazsa hata fırlatıyor ve işlem bütünüyle geri alınıyor.
+  Telafi adımı yok. İşlevler security invoker: RLS, sütun yetkileri ve
+  tetikleyici aynen geçerli; beklenen değer puanı BELİRLEMEZ, yalnızca
+  reddettirir.
+*/
+const PUAN_UYUSMAZLIGI = "DP001";
+
+function yazimHatasi(error: { code?: string; message: string }, eylem: string): never {
+  if (error.code === PUAN_UYUSMAZLIGI) {
+    console.error("[docentlik] puan çekirdekle uyuşmadı; işlem geri alındı", error.message);
+    throw new Error(`Puan doğrulanamadı; faaliyet ${eylem}. Lütfen yöneticinize bildirin.`);
+  }
+  if (error.code === "23503") throw new Error("Seçilen kriter bulunamadı.");
+  if (error.code === "42501") throw new Error(`Faaliyet ${eylem}: modül ya da üyeliğiniz kapanmış olabilir.`);
+  throw new Error(`Faaliyet ${eylem}: ` + error.message);
+}
+
 async function faaliyetEkle__impl(formData: FormData) {
   const b = await docentlikBaglami();
   const { yazim, istekAnahtari } = faaliyetFormunuOku(formData);
@@ -69,90 +92,69 @@ async function faaliyetEkle__impl(formData: FormData) {
   if (!kriter || !kriter.is_active) throw new Error("Seçilen kriter bulunamadı.");
   const beklenen = beklenenEklemePuani(yazim, kriter);
 
-  const { data, error } = await b.supabase.from("docentlik_faaliyetleri")
-    .insert({ ...yazim, organization_id: b.kurum, owner_id: b.ben, istek_anahtari: istekAnahtari })
-    .select(KAYIT_SUTUNLARI);
-
-  /*
-    ÇİFT GÖNDERİM (20261114213340). Aynı istek anahtarıyla ikinci ekleme
-    tekil dizine çarpar; bu bir hata değil, aynı isteğin tekrarı: ilk
-    kaydı döndür. Anahtar kullanıcıya ve kuruma bağlı, başkasının kaydı
-    bu yoldan dönemez.
-  */
-  if (error?.code === "23505" && istekAnahtari) {
-    const { data: onceki, error: oncekiHatasi } = await b.supabase.from("docentlik_faaliyetleri").select("id")
-      .eq("organization_id", b.kurum).eq("owner_id", b.ben).eq("istek_anahtari", istekAnahtari).maybeSingle();
-    okunamadiysaFirlat(oncekiHatasi, "Önceki kayıt");
-    if (onceki) return { id: onceki.id as string, tekrar: true };
-  }
-  if (error) throw new Error("Faaliyet kaydedilemedi: " + error.message);
-  const kayit = data?.[0];
-  if (!kayit) throw new Error("Faaliyet kaydedilemedi: modül ya da üyeliğiniz bu arada kapanmış olabilir.");
-
-  /*
-    Tetikleyicinin hesabı çekirdekle aynı olmalı (iki kopyanın eşdeğerliği
-    tests/db/docentlik-puan-tetikleyicisi'nde sınanıyor). Değilse kayıt
-    KALMAZ: yanlış olduğu bilinen bir puanı başvuru dosyasında bırakmak,
-    kullanıcıyı hata mesajıyla bekletmekten kötü.
-  */
-  if (!puanDogrulandiMi(beklenen, kayit)) {
-    console.error("[docentlik] eklemede puan çekirdekle uyuşmadı", { id: kayit.id, beklenen, kayit: kayit.computed_points });
-    const { error: silmeHatasi } = await b.supabase.from("docentlik_faaliyetleri").delete().eq("id", kayit.id).eq("owner_id", b.ben);
-    if (silmeHatasi) console.error("[docentlik] doğrulanamayan kayıt silinemedi", silmeHatasi.message);
-    throw new Error("Puan doğrulanamadı; faaliyet kaydedilmedi. Lütfen yöneticinize bildirin.");
-  }
+  /* Çift gönderim (20261114213340) işlevin içinde: aynı istek anahtarı
+     ilk kaydı döndürür (tekrar = true), ikinci satır doğmaz. */
+  const { data, error } = await b.supabase.rpc("docentlik_faaliyet_ekle", {
+    p_org: b.kurum, p_kriter: yazim.criteria_id, p_baslik: yazim.title, p_birim: yazim.unit_count,
+    p_yazar_sayisi: yazim.yazar_sayisi, p_baslica: yazim.baslica_yazar, p_tarih: yazim.faaliyet_tarihi,
+    p_notlar: yazim.notes, p_istek_anahtari: istekAnahtari,
+    p_beklenen_puan: beklenen.puan, p_beklenen_katsayi: beklenen.katsayi, p_beklenen_surum: beklenen.surum,
+  });
+  if (error) yazimHatasi(error, "kaydedilmedi");
+  const sonuc = (data as { kayit_id: string; tekrar: boolean }[] | null)?.[0];
+  if (!sonuc) throw new Error("Faaliyet kaydedilmedi: modül ya da üyeliğiniz bu arada kapanmış olabilir.");
   revalidatePath(YOL);
-  return { id: kayit.id as string, tekrar: false };
+  return { id: sonuc.kayit_id, tekrar: sonuc.tekrar };
 }
 
 /*
   Düzenleme iyimser eşzamanlılıkla: form, okuduğu kaydın updated_at
-  değerini ("surum") geri gönderir. Arada kayıt değiştiyse (ikinci sekme,
-  çift gönderim) güncelleme sıfır satıra düşer. Tekrar edilen aynı istek
-  (kayıt zaten istenen değerlerde) başarı sayılır; farklıysa kullanıcıya
+  değerini ("surum") geri gönderir; sürüm ZORUNLU. Beklenen puan o sürüme
+  göre hesaplanır ve işlev yalnızca o sürüm hâlâ geçerliyse yazar — yani
+  karşılaştırma, hesabın dayandığı kayıtla aynı kayda yapılıyor. Arada
+  kayıt değiştiyse hiçbir şey yazılmaz; tekrar edilen aynı istek (kayıt
+  zaten istenen değerlerde) başarı sayılır, farklıysa kullanıcıya
   yenilemesi söylenir — sessizce üzerine yazmak öteki değişikliği kaybederdi.
 */
 async function faaliyetDuzenle__impl(formData: FormData) {
   const b = await docentlikBaglami();
   const id = kimlik(formData, "faaliyet_id", "Faaliyet");
   const surum = String(formData.get("surum") ?? "").trim();
+  if (!surum) throw new Error("Kayıt sürümü eksik; sayfayı yenileyip tekrar deneyin.");
   const { yazim } = faaliyetFormunuOku(formData);
 
   const { data: mevcut, error: okumaHatasi } = await b.supabase.from("docentlik_faaliyetleri").select(KAYIT_SUTUNLARI)
-    .eq("id", id).eq("organization_id", b.kurum).eq("owner_id", b.ben).maybeSingle();
+    .eq("id", id).eq("organization_id", b.kurum).eq("owner_id", b.ben).eq("updated_at", surum).maybeSingle();
   okunamadiysaFirlat(okumaHatasi, "Faaliyet");
-  if (!mevcut) throw new Error("Faaliyet bulunamadı ya da düzenleme yetkiniz yok.");
+  if (!mevcut) return ayniIstekMi(b, id, yazim);
 
   const kriter = await kriterOku(b, yazim.criteria_id);
   /* Kriter değişiyorsa yeni kriter etkin olmalı; değişmiyorsa pasife alınmış kriterin eski kaydı düzenlenebilir kalır (tetikleyiciyle aynı kural). */
   if (!kriter || (!kriter.is_active && yazim.criteria_id !== mevcut.criteria_id)) throw new Error("Seçilen kriter bulunamadı.");
   const beklenen = beklenenDuzenlemePuani(mevcut, yazim, kriter);
 
-  let sorgu = b.supabase.from("docentlik_faaliyetleri").update(yazim)
-    .eq("id", id).eq("organization_id", b.kurum).eq("owner_id", b.ben);
-  if (surum) sorgu = sorgu.eq("updated_at", surum);
-  const { data, error } = await sorgu.select(KAYIT_SUTUNLARI);
-  if (error) throw new Error("Faaliyet kaydedilemedi: " + error.message);
-  let kayit = data?.[0];
-
-  if (!kayit) {
-    const { data: simdiki, error: tekrarHatasi } = await b.supabase.from("docentlik_faaliyetleri").select(KAYIT_SUTUNLARI)
-      .eq("id", id).eq("organization_id", b.kurum).eq("owner_id", b.ben).maybeSingle();
-    okunamadiysaFirlat(tekrarHatasi, "Faaliyet");
-    if (!simdiki) throw new Error("Faaliyet kaydedilemedi: kayıt silinmiş, modül kapanmış ya da yetkiniz kalmamış.");
-    if (!ayniYazim(simdiki, yazim)) throw new Error("Faaliyet bu arada değişti; sayfayı yenileyip tekrar deneyin.");
-    kayit = simdiki; // aynı isteğin tekrarı: zaten kayıtlı
-    revalidatePath(YOL);
-    return { id, tekrar: true };
-  }
-
-  if (!puanDogrulandiMi(beklenen, kayit)) {
-    // Kayıt yazıldı; değer tetikleyicinin (tek doğruluk kaynağı). Uyuşmazlık bir hata, sessiz geçilmez.
-    console.error("[docentlik] düzenlemede puan çekirdekle uyuşmadı", { id, beklenen, kayit: kayit.computed_points });
-    throw new Error("Faaliyet kaydedildi ancak puanı doğrulanamadı. Lütfen yöneticinize bildirin.");
-  }
+  const { data, error } = await b.supabase.rpc("docentlik_faaliyet_duzenle", {
+    p_id: id, p_org: b.kurum, p_surum: surum, p_kriter: yazim.criteria_id, p_baslik: yazim.title,
+    p_birim: yazim.unit_count, p_yazar_sayisi: yazim.yazar_sayisi, p_baslica: yazim.baslica_yazar,
+    p_tarih: yazim.faaliyet_tarihi, p_notlar: yazim.notes,
+    p_beklenen_puan: beklenen.puan, p_beklenen_katsayi: beklenen.katsayi, p_beklenen_surum: beklenen.surum,
+  });
+  if (error) yazimHatasi(error, "değiştirilmedi");
+  const sonuc = (data as { kayit_id: string; guncellendi: boolean }[] | null)?.[0];
+  if (!sonuc?.guncellendi) return ayniIstekMi(b, id, yazim);
   revalidatePath(YOL);
   return { id, tekrar: false };
+}
+
+/* Sürüm tutmadı ya da okuma ile yazım arasında kayıt değişti: hiçbir şey yazılmadı. */
+async function ayniIstekMi(b: DocentlikBaglami, id: string, yazim: FaaliyetYazimi) {
+  const { data: simdiki, error } = await b.supabase.from("docentlik_faaliyetleri").select(KAYIT_SUTUNLARI)
+    .eq("id", id).eq("organization_id", b.kurum).eq("owner_id", b.ben).maybeSingle();
+  okunamadiysaFirlat(error, "Faaliyet");
+  if (!simdiki) throw new Error("Faaliyet değiştirilmedi: kayıt silinmiş, modül kapanmış ya da yetkiniz kalmamış.");
+  if (!ayniYazim(simdiki, yazim)) throw new Error("Faaliyet bu arada değişti; sayfayı yenileyip tekrar deneyin.");
+  revalidatePath(YOL);
+  return { id, tekrar: true }; // aynı isteğin tekrarı: zaten kayıtlı
 }
 
 function ayniYazim(kayit: Record<string, unknown>, y: FaaliyetYazimi) {
@@ -293,10 +295,18 @@ async function hedefSil__impl(formData: FormData) {
   bırakmaz.
 */
 
+/*
+  Kayıt doğru durumda; silme düşerse kalan tek iz depoda SAHİPSİZ bir
+  nesne. Kova politikası nesneyi kayda bağladığı için (docentlik_belge_izni)
+  kimse onu okuyamaz, ama kişisel veri taşıyan bir PDF depoda kalır.
+  Bugün yalnızca sabit etiketli bir günlük satırı var
+  ("[docentlik][sahipsiz-nesne]") — günlükten aranıp elle silinebilir.
+  Kalıcı çözüm (tekrar denenen temizlik kuyruğu + sahipsiz nesne
+  taraması) ayrı iş: docs/docentlik-sunucu-islemleri.md → "Depo temizliği".
+*/
 async function nesneyiSil(b: DocentlikBaglami, yol: string, neden: string) {
   const { error } = await b.supabase.storage.from(DOCENTLIK_KOVASI).remove([yol]);
-  // Kayıt doğru durumda; kalan tek iz depoda sahipsiz bir nesne. İşlemi düşürmez, günlüğe yazılır.
-  if (error) console.error("[docentlik] belge nesnesi silinemedi", { yol, neden, mesaj: error.message });
+  if (error) console.error("[docentlik][sahipsiz-nesne]", JSON.stringify({ kova: DOCENTLIK_KOVASI, yol, neden, mesaj: error.message }));
 }
 
 async function nesneyiDogrula(b: DocentlikBaglami, yol: string) {
