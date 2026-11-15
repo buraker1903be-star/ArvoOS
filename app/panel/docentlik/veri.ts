@@ -2,8 +2,7 @@ import "server-only";
 import { SAYFA_BOYU, aralikDisiMi, sayfaAraligi } from "@/lib/liste-sayfalama";
 import { docentlikOzeti, kendiDonemi, type OzetFaaliyeti } from "@/lib/docentlik-islem";
 import type { Hedef } from "@/lib/docentlik/ozet";
-import { gozetimKisileri, type DocentlikYetkileri } from "@/lib/docentlik-gorunum";
-import { kisiAdlari } from "@/lib/kisi-adlari";
+import type { DocentlikYetkileri } from "@/lib/docentlik-gorunum";
 import { hepsiniOku } from "@/lib/docentlik-sayfalama";
 import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBaglami } from "./baglam";
 
@@ -240,27 +239,63 @@ export async function yetkilerim(): Promise<DocentlikYetkileri> {
 }
 
 /*
-  GÖZETİM LİSTESİ (PR6b, docentlik.tumunu_gor). Doktora TARİHİ hiçbir yoldan
-  okunmuyor: profil alanları docentlik_profil_ozetleri'nden ("girildi mi"),
-  kişi başına faaliyet sayısı docentlik_faaliyet_donemleri'nden. İkincisi
-  kurumun BÜTÜN faaliyetlerini döndürüyor; PostgREST'in satır tavanına
-  (1000) çarpan tek okuma sayıları sessizce eksiltirdi — sayfa sayfa okunuyor
-  (AGENTS.md: rakam denetimi). Adlar panelin ortak yardımcısından
-  (lib/kisi-adlari: profiles + hr_employees).
+  GÖZETİM LİSTESİ — SUNUCUDA SAYFALI (F6 PR8, docentlik.tumunu_gor).
+
+  Eskiden (PR6b) kurumun bütün profil özetleri ve bütün faaliyet dönemleri
+  okunup kişi listesi bellekte kuruluyor, 1102 kişi TEK sayfada çiziliyordu
+  (~50.000 px; PR7'de gerçek Next.js'te ölçüldü). Artık sayma ve sayfalama
+  veritabanında (docentlik_gozetim_listesi, kararlı sıralama: faaliyet
+  sayısı, sonra kişi kimliği); şerit sayıları ayrı özet işlevinden — sayfa
+  satırlarından toplanan sayı "bu sayfanın toplamı" olurdu (AGENTS.md).
+
+  Doktora TARİHİ hiçbir yoldan dönmüyor: yalnızca "girildi mi". Adlar yalnızca
+  bu sayfanın kişileri için, Doçentlik'e özel dar işlevden
+  (docentlik_kisi_adlari): profiles RLS'i gevşetilmedi.
 */
-export async function gozetimListesi() {
+export const GOZETIM_SAYFA_BOYU = SAYFA_BOYU;
+
+export async function gozetimListesi(sayfa = 1) {
   const b = await docentlikBaglami();
   yetkiGerekli(b, "docentlik.tumunu_gor", "Kurumun faaliyetlerini görme yetkiniz yok.");
-  const [profilListesi, donemler] = await Promise.all([profilOzetleri(b, null), faaliyetDonemleri(b, null)]);
-  const sayilar = new Map<string, number>();
-  for (const d of donemler) sayilar.set(d.owner_id, (sayilar.get(d.owner_id) ?? 0) + 1);
-  const adlar = await kisiAdlari(b.supabase, b.kurum, [...profilListesi.map((p) => p.owner_id), ...sayilar.keys()]);
-  return gozetimKisileri(profilListesi, sayilar, adlar);
+  const [bas] = sayfaAraligi(sayfa, GOZETIM_SAYFA_BOYU);
+  const [liste, ozet] = await Promise.all([
+    b.supabase.rpc("docentlik_gozetim_listesi", { p_org: b.kurum, p_sinir: GOZETIM_SAYFA_BOYU, p_atla: bas }),
+    b.supabase.rpc("docentlik_gozetim_ozeti", { p_org: b.kurum }),
+  ]);
+  okunamadiysaFirlat(liste.error, "Gözetim listesi");
+  okunamadiysaFirlat(ozet.error, "Gözetim özeti");
+  const satirlar = (liste.data ?? []) as { kisi: string; temel_alan: string | null; alt_alan: string | null; doktora_tarihi_girildi: boolean; faaliyet_sayisi: number | string }[];
+  const o = ((ozet.data ?? []) as { kisi_sayisi: number | string; faaliyet_sayisi: number | string; tarihsiz_sayisi: number | string }[])[0];
+  const toplam = Number(o?.kisi_sayisi ?? 0);
+  const adlar = await kisiAdlariSayfa(b, satirlar.map((x) => x.kisi));
+  return {
+    satirlar: satirlar.map((x) => ({
+      kisi: x.kisi, ad: adlar.get(x.kisi) ?? yedekAd(x.kisi), temelAlan: x.temel_alan, altAlan: x.alt_alan,
+      doktoraTarihiGirildi: Boolean(x.doktora_tarihi_girildi), faaliyet: Number(x.faaliyet_sayisi),
+    })),
+    toplam,
+    ozet: { kisi: toplam, faaliyet: Number(o?.faaliyet_sayisi ?? 0), tarihsiz: Number(o?.tarihsiz_sayisi ?? 0) },
+    sayfaBoyu: GOZETIM_SAYFA_BOYU,
+    // Bayat yer imi (?sayfa=99999): satır yok ama kurumda kişi var → çağıran ilk sayfaya yönlendirir.
+    aralikDisi: sayfa > 1 && satirlar.length === 0 && toplam > 0,
+  };
+}
+
+const yedekAd = (kisi: string) => `Üye ${kisi.slice(0, 8)}`;
+
+/* Bir sayfanın adları (en çok 200 kişi; işlev daha fazlasını reddediyor). */
+async function kisiAdlariSayfa(b: DocentlikBaglami, kisiler: string[]) {
+  const adlar = new Map<string, string>();
+  if (!kisiler.length) return adlar;
+  const { data, error } = await b.supabase.rpc("docentlik_kisi_adlari", { p_org: b.kurum, p_kisiler: kisiler.slice(0, 200) });
+  okunamadiysaFirlat(error, "Akademisyen adları");
+  for (const satir of (data ?? []) as { kisi: string; ad: string | null }[]) if (satir.ad) adlar.set(satir.kisi, satir.ad);
+  return adlar;
 }
 
 /** Gözetimde tek kişinin adı (başlık için). Kişi kurumda değilse ad yerine yedek. */
 export async function kisiAdi(kisi: string) {
   const b = await docentlikBaglami();
   yetkiGerekli(b, "docentlik.tumunu_gor", "Bu kişinin faaliyetlerini görme yetkiniz yok.");
-  return (await kisiAdlari(b.supabase, b.kurum, [kisi])).get(kisi) ?? `Üye ${kisi.slice(0, 8)}`;
+  return (await kisiAdlariSayfa(b, [kisi])).get(kisi) ?? yedekAd(kisi);
 }

@@ -105,8 +105,13 @@ describe("meşru akış: ekle → düzenle → belge → sil", () => {
       const { rows: [f] } = await ekle({ baslik: "Belgeli", birimSayisi: "1" });
       const yol = islemCekirdegi.faaliyetBelgeYolu(AM, K.sahip, f.id, "00000000-0000-4000-8000-00000000aa01");
       assert.equal((await dene(db, "insert into storage.objects (bucket_id, name) values ('docentlik-belgeleri', $1) returning id", [yol])).ok, true, "sahip kendi yoluna yükleyebilmeli");
+      // F6 PR8: belge_yolu kullanıcı oturumuyla yazılamıyor; bağlama service_role işleviyle (actions → belge-baglama.ts).
+      const dogrudan = await dene(db, "update public.docentlik_faaliyetleri set belge_yolu = $2 where id = $1 returning id", [f.id, yol]);
+      assert.equal(dogrudan.ok, false, "sahip belge yolunu doğrudan yazabildi");
+      await rol(db, "service_role");
       const g = await dene(db, "update public.docentlik_faaliyetleri set belge_yolu = $2 where id = $1 and owner_id = $3 returning computed_points::text", [f.id, yol, K.sahip]);
       assert.ok(g.ok && g.rows[0].computed_points === f.computed_points, "belge eklemek puanı değiştirmemeli");
+      await aktorOl(db, "sahip");
       const sil = await dene(db, "delete from public.docentlik_faaliyetleri where id = $1 and owner_id = $2 returning belge_yolu", [f.id, K.sahip]);
       assert.equal(sil.rows[0].belge_yolu, yol, "işlem silinen kaydın belge yolunu alıp nesneyi sonra siliyor");
       assert.equal((await dene(db, "delete from storage.objects where bucket_id = 'docentlik-belgeleri' and name = $1 returning id", [yol])).rows.length, 0,

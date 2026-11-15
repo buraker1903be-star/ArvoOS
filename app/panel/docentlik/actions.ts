@@ -10,6 +10,7 @@ import {
   type FaaliyetYazimi, type KriterSatiri,
 } from "@/lib/docentlik-islem";
 import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBaglami } from "./baglam";
+import { belgeyiBagla, belgeyiKaldir } from "./belge-baglama";
 
 /*
   DOÇENTLİK SUNUCU İŞLEMLERİ (F6 PR5).
@@ -18,7 +19,9 @@ import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBagla
    - docentlikBaglami() ile başlar (oturum, modül, kişide gizleme);
    - kimliği ve kurumu yalnızca oturumdan alır, formdan ASLA;
    - kullanıcının kendi oturumuyla yazar (service_role YOK — bu dosyada
-     createAdminClient bilerek içe aktarılmıyor; RLS her yazmada çalışıyor);
+     createAdminClient bilerek içe aktarılmıyor; RLS her yazmada çalışıyor).
+     TEK İSTİSNA belge_yolu (F6 PR8): sütun istemciye kapalı, bağlama
+     belge-baglama.ts'teki iki service_role işleviyle; o dosya server-only;
    - "returning" ile etkilenen satırı ister: RLS'in sessizce sıfır satır
      döndürmesi (işlem sırasında üyelik düştü, modül kapandı, kayıt
      başkasının) başarı sayılmaz.
@@ -355,10 +358,13 @@ async function belgeKaydet__impl(formData: FormData) {
   if (mevcut.belge_yolu === yol) return { yol, tekrar: true }; // aynı isteğin tekrarı
   try {
     await nesneyiDogrula(b, yol);
-    const { data, error } = await b.supabase.from("docentlik_faaliyetleri").update({ belge_yolu: yol })
-      .eq("id", id).eq("organization_id", b.kurum).eq("owner_id", b.ben).select("id");
-    if (error) throw new Error("Belge kaydedilemedi: " + error.message);
-    if (!data?.length) throw new Error("Belge kaydedilemedi: modül ya da üyeliğiniz bu arada kapanmış olabilir.");
+    /*
+      Bağlama service_role işlevinden (belge-baglama.ts): belge_yolu istemciye
+      kapalı (20261115145234). İşlev sahip, kurum, modül, nesnenin sahibi/türü/
+      boyutu/yaşını yeniden denetler; eski yol beklenenden farklıysa (arada
+      başka bir bağlama) hiçbir şey yazmaz ve önceki belge bağlı kalır.
+    */
+    await belgeyiBagla(b, id, yol, mevcut.belge_yolu);
   } catch (hata) {
     await nesneyiSil(b, yol, "kayıt tamamlanamadı");
     throw hata;
@@ -391,10 +397,7 @@ async function belgeKaldir__impl(formData: FormData) {
   const id = kimlik(formData, "faaliyet_id", "Faaliyet");
   const mevcut = await kendiFaaliyetim(b, id);
   if (!mevcut.belge_yolu) return { kaldirildi: false };
-  const { data, error } = await b.supabase.from("docentlik_faaliyetleri").update({ belge_yolu: null })
-    .eq("id", id).eq("organization_id", b.kurum).eq("owner_id", b.ben).select("id");
-  if (error) throw new Error("Belge kaldırılamadı: " + error.message);
-  if (!data?.length) throw new Error("Belge kaldırılamadı: modül ya da üyeliğiniz bu arada kapanmış olabilir.");
+  await belgeyiKaldir(b, id, mevcut.belge_yolu);
   await nesneyiSil(b, mevcut.belge_yolu, "belge kaldırıldı");
   yenile();
   return { kaldirildi: true };

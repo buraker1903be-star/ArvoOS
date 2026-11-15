@@ -468,3 +468,22 @@ export const UAK_ONAYI_ETKIN = false as const;
 export function uakOnayKarari(): { izin: false; neden: string } {
   return { izin: false, neden: "ÜAK önerisi onayı henüz etkin değil: önerinin PDF içeriğiyle doğrulanması hazır olmadan onaylanamaz." };
 }
+
+/*
+  BELGE BAĞLAMA İŞLEVİNİN HATA KODLARI (20261115145234 → docentlik_belge_bagla /
+  docentlik_belge_kaldir). Sunucunun ham iletisi kullanıcıya gitmiyor; her
+  kodun Türkçe karşılığı burada. Bilinmeyen kod genel mesaja düşer (yol ya
+  da kimlik sızmasın).
+*/
+export function belgeBaglamaHatasi(error: { code?: string | null; message?: string | null }): string {
+  switch (error.code) {
+    case "DB403": return "Bu faaliyete belge ekleme yetkiniz yok ya da modül kapalı.";
+    case "DB404": return "Dosya depoda bulunamadı; yeniden yükleyin.";
+    case "DB409": return "Belge bu arada değişti; sayfayı yenileyip yeniden deneyin.";
+    case "DB410": return "Yükleme zaman aşımına uğradı; dosyayı yeniden yükleyin.";
+    case "DB415": return "Dosya PDF değil ya da boyutu uygun değil.";
+    case "DB400": return "Belge bilgisi eksik.";
+    case "42501": return "Belge ekleme yetkiniz yok.";
+    default: return "Belge kaydedilemedi; lütfen yeniden deneyin.";
+  }
+}

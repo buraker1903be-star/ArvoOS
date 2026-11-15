@@ -261,15 +261,43 @@ await senaryo("gozetim", async () => {
   const { ctx, sayfa } = await oturum("gozetim@am.test");
   await git(sayfa, "/panel/docentlik/kurum");
   const beklenenKisi = sayi(`select count(distinct k) from (select owner_id k from docentlik_profilleri where organization_id='${AM}' union select owner_id from docentlik_faaliyetleri where organization_id='${AM}') x`);
+  /* PR8: liste sunucuda sayfalı (50/sayfa). Şerit özet işlevinden — sayfa satırlarından toplanmıyor. */
   const satir = await sayfa.locator(".docentlik-tablo tbody tr").count();
   const serit = (await sayfa.locator(".kayit-serit").first().textContent()).replace(/\s+/g, " ");
-  kaydet("3.1 kurum listesi eksiksiz (profil 1101 + faaliyetli kişiler; tavan 1000'i aşıyor)", satir === beklenenKisi && (serit.includes(String(beklenenKisi)) || serit.includes(beklenenKisi.toLocaleString("tr-TR"))), { db: beklenenKisi, ekran: satir });
-  const ad = await sayfa.getByText("Ayşe Sentetik").count();
-  /* Ad kaynağı: hr_employees (profiles RLS'i kişinin kendisine açık; gözetim başkasının profiles satırını okuyamaz).
-     1102 kimlikte eskiden istek 431 ile düşüp HİÇBİR ad gelmiyordu; parçalı okumayla personel kaydı olanın adı geliyor. */
-  const yedek = await sayfa.getByText(/^Üye [0-9a-f]{8}$/).count();
-  kaydet("3.2 büyük kurumda (1102 kişi) personel kaydı olan akademisyenin adı görünüyor (eskiden 431 → hiçbiri)", ad > 0, { ayse: ad, yedek });
-  kaydet("3.2b bilgi: personel kaydı olmayanlar 'Üye xxxxxxxx' yedeğiyle (profiles RLS) — açık risk", true, { yedek });
+  const sonSayfa = Math.ceil(beklenenKisi / 50);
+  const baslikMetni = (await sayfa.locator(".docentlik-kart-bas").first().textContent()).replace(/\s+/g, " ");
+  kaydet("3.1 kurum listesi sayfalı: 50 satır, şerit ve toplam tam kişi sayısı (tavan 1000'i aşıyor)",
+    satir === 50 && (serit.includes(String(beklenenKisi)) || serit.includes(beklenenKisi.toLocaleString("tr-TR"))) && baslikMetni.includes(`1–50 / ${beklenenKisi}`)
+      && (await sayfa.getByText(`Sayfa 1 / ${sonSayfa}`).count()) > 0, { db: beklenenKisi, ekran: satir, baslik: baslikMetni });
+  /* Adlar daraltılmış RPC'den (docentlik_kisi_adlari): profiles RLS'i gevşetilmedi. Eskiden personel kaydı olmayanlar
+     "Üye xxxxxxxx" yedeğine düşüyordu. */
+  const yedek1 = await sayfa.getByText(/^Üye [0-9a-f]{8}$/).count();
+  const adlar1 = await sayfa.locator(".docentlik-tablo tbody tr td:first-child b").allTextContents();
+  const bag = () => sayfa.locator(".docentlik-tablo tbody tr a").evaluateAll((a) => a.map((x) => x.getAttribute("href")));
+  const bag1 = await bag();
+  // Sıra kararlı: faaliyet çok → az, eşitlikte kişi kimliği. Aynı sayfa iki kez aynı sırayı vermeli.
+  await git(sayfa, "/panel/docentlik/kurum?sayfa=1");
+  const adlarTekrar = await sayfa.locator(".docentlik-tablo tbody tr td:first-child b").allTextContents();
+  await sayfa.getByRole("link", { name: "Sonraki" }).click();
+  await sayfa.waitForURL(/sayfa=2/);
+  await sayfa.waitForLoadState("networkidle").catch(() => {});
+  const adlar2 = await sayfa.locator(".docentlik-tablo tbody tr td:first-child b").allTextContents();
+  const baslik2 = (await sayfa.locator(".docentlik-kart-bas").first().textContent()).replace(/\s+/g, " ");
+  kaydet("3.2 sayfa 2: 'Sonraki' bağlantısı, 51–100, sayfa 1 ile kesişim yok; sıra kararlı",
+    adlar2.length === 50 && baslik2.includes(`51–100 / ${beklenenKisi}`) && JSON.stringify(adlar1) === JSON.stringify(adlarTekrar)
+      && !(await bag()).some((h) => bag1.includes(h)), { baslik: baslik2 });
+  await git(sayfa, `/panel/docentlik/kurum?sayfa=${sonSayfa}`);
+  const sonSatir = await sayfa.locator(".docentlik-tablo tbody tr").count();
+  const yedekSon = await sayfa.getByText(/^Üye [0-9a-f]{8}$/).count();
+  kaydet(`3.2b son sayfa (${sonSayfa}): kalan ${beklenenKisi - (sonSayfa - 1) * 50} satır, 'Sonraki' yok`,
+    sonSatir === beklenenKisi - (sonSayfa - 1) * 50 && (await sayfa.getByRole("link", { name: "Sonraki" }).count()) === 0, { sonSatir });
+  await git(sayfa, "/panel/docentlik/kurum?sayfa=99999");
+  /* Panelin loading.tsx sınırı akışı başlattığı için redirect() istemcide uygulanıyor; networkidle'dan sonra gelebilir. */
+  await sayfa.waitForURL((u) => !u.search, { timeout: 15000 }).catch(() => {});
+  await sayfa.waitForLoadState("networkidle").catch(() => {});
+  kaydet("3.2c aralık dışı sayfa çökmez, ilk sayfaya döner", new URL(sayfa.url()).pathname === "/panel/docentlik/kurum" && !new URL(sayfa.url()).search && (await sayfa.locator(".docentlik-tablo tbody tr").count()) === 50, { url: sayfa.url() });
+  kaydet("3.2d adlar RPC'den: personel kaydı olmayanlar dahil 'Üye xxxxxxxx' yedeği yok (sayfa 1 ve son sayfa)", yedek1 === 0 && yedekSon === 0 && adlar1.every((a) => a.trim().length > 0), { yedek1, yedekSon });
+  await git(sayfa, "/panel/docentlik/kurum");
   kaydet("3.3 gözetim listesinde doktora tarihi yok", !/2020|2019/.test(await sayfa.locator(".docentlik-sayfa").textContent()));
   await goruntu(sayfa, "3-kurum");
   await git(sayfa, `/panel/docentlik/kurum/${SAHIP}`);

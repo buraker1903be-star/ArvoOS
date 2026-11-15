@@ -219,9 +219,14 @@ describe("K1: puan istemciden yazılamaz", () => {
     islem(db, async () => {
       await rol(db, "postgres");
       await db.query("update public.docentlik_kriterleri set points_per_unit = 50 where id = $1", [R.kriter]);
-      await aktorOl(db, "sahip");
+      // Belge yolu F6 PR8'den beri yalnızca service_role işleviyle yazılıyor (20261115145234):
+      // puanın belgeden etkilenmediğini o yolla sınıyoruz, başlığı sahibin kendisi değiştiriyor.
+      await rol(db, "service_role");
       const yol = `${AM}/faaliyet/${K.sahip}/${R.faaliyet}/belge.pdf`;
-      const a = await tek("update public.docentlik_faaliyetleri set title = 'Yeni başlık', belge_yolu = $2 where id = $1 returning computed_points::text p", [R.faaliyet, yol]);
+      const belge = await tek("update public.docentlik_faaliyetleri set belge_yolu = $2 where id = $1 returning computed_points::text p", [R.faaliyet, yol]);
+      assert.equal(belge.p, "20");
+      await aktorOl(db, "sahip");
+      const a = await tek("update public.docentlik_faaliyetleri set title = 'Yeni başlık' where id = $1 returning computed_points::text p", [R.faaliyet]);
       assert.equal(a.p, "20");
       // Birim değişince birim puan KAYITTAN türetilir (20 / (2 × 0,5) = 20), kriterin yeni 50'si değil:
       // 4 × 20 × 0,5 = 40. Kriterden okunsaydı 4 × 50 × 0,5 = 100 olurdu.
@@ -280,9 +285,17 @@ describe("K2: sahiplik", () => {
       await reddedilir(db, "update public.docentlik_faaliyetleri set organization_id = $1 where id = $2", [AM2, R.faaliyet], /kurumu değiştirilemez|foreign key|check constraint/);
     }));
 
+  /*
+    F6 PR8: sahip belge_yolu'nu hiç yazamıyor (sütun yetkisi kaldırıldı); yazım
+    yalnızca service_role işleviyle. CHECK kısıtı ikinci kat olarak duruyor:
+    RLS'i aşan service_role bile kuruma/sahibe/faaliyete bağlı olmayan yolu yazamaz.
+  */
   test("belge yolu kurum + sahip + faaliyet kimliğine bağlı; başka bir yol yazılamaz", () =>
     islem(db, async () => {
       await aktorOl(db, "sahip");
+      await reddedilir(db, "update public.docentlik_faaliyetleri set belge_yolu = $1 where id = $2",
+        [`${AM}/faaliyet/${K.sahip}/${R.faaliyet}/b.pdf`, R.faaliyet], /permission denied/);
+      await rol(db, "service_role");
       for (const yol of [
         `${AM2}/faaliyet/${K.sahip}/${R.faaliyet}/b.pdf`,
         `${AM}/faaliyet/${K.uye}/${R.faaliyet}/b.pdf`,

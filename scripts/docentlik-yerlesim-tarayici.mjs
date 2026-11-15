@@ -110,7 +110,8 @@ const kisiler = bos ? [] : [
   { kisi: "11111111-0000-4000-8000-000000000002", ad: "Üye 11111111", temelAlan: null, altAlan: null, doktoraTarihiGirildi: false, faaliyet: 3 },
   { kisi: "11111111-0000-4000-8000-000000000003", ad: "Dr. Mehmet Demir", temelAlan: "Sağlık Bilimleri", altAlan: null, doktoraTarihiGirildi: true, faaliyet: 0 },
 ];
-export async function gozetimListesi() { if (yetkiYok) throw new Error("yetkisiz okuma"); return kisiler; }
+/* PR8: gözetim sunucuda sayfalı; şerit özet işlevinden. Taklit 3 satır, toplam 120 → sayfalama gezinmesi de çizilir. */
+export async function gozetimListesi() { if (yetkiYok) throw new Error("yetkisiz okuma"); return { satirlar: kisiler, toplam: bos ? 0 : 120, ozet: { kisi: bos ? 0 : 120, faaliyet: bos ? 0 : 15, tarihsiz: bos ? 0 : 1 }, sayfaBoyu: 50, aralikDisi: false }; }
 export async function kisiAdi() { if (yetkiYok) throw new Error("yetkisiz okuma"); return kisiler[0]?.ad ?? "Üye 11111111"; }
 export async function kisiOzeti() { if (yetkiYok) throw new Error("yetkisiz okuma"); return docentlikOzetim(); }
 export async function kurumFaaliyetleri() { if (yetkiYok) throw new Error("yetkisiz okuma"); return { satirlar: satirlar.map((f, i) => ({ ...f, belge_yolu: i % 3 === 0 ? "k/o/f.pdf" : null })), toplam: satirlar.length, sayfaBoyu: 50, aralikDisi: false }; }
@@ -167,7 +168,7 @@ import { FlashToast } from ${a("app/panel/flash-toast.tsx")};
 const ekran = new URLSearchParams(location.search).get("ekran") || "ana";
 const sayfalar = {
   faaliyetler: () => Faaliyetler({ searchParams: Promise.resolve({}) }), profil: () => Profil(), ana: () => Ana(),
-  kurum: () => Kurum(), kriterler: () => Kriterler(), uak: () => Uak(),
+  kurum: () => Kurum({ searchParams: Promise.resolve({}) }), kriterler: () => Kriterler(), uak: () => Uak(),
   kisi: () => Kisi({ params: Promise.resolve({ kisi: "11111111-0000-4000-8000-000000000001" }), searchParams: Promise.resolve({}) }),
 };
 const sayfa = await sayfalar[ekran]();

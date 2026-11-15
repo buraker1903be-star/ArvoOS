@@ -366,25 +366,88 @@ describe("5b. Açık riskler: sahipsiz nesne ve RPC dışı belge yolu (ölçüm
   });
 
   /*
-    RİSK ÖLÇÜMÜ: belge_yolu sütunu istemciye açık (sütun yetkisi). Sunucu işlemi
-    "%PDF-" imzasını denetliyor; doğrudan PostgREST ile yol yazan kişi bu
-    denetimi atlayabilir. Sınır: yol kendi faaliyetinin klasöründe olmalı
-    (CHECK) ve kova yalnızca application/pdf türünü kabul ediyor; nesne
-    gözetime application/pdf olarak sunuluyor (tarayıcı HTML diye çalıştırmaz).
+    F6 PR8 — KAPATILDI. PR7'de belge_yolu doğrudan PostgREST ile yazılabiliyordu
+    ("%PDF-" denetimi atlanabiliyordu). Artık sütun istemciye kapalı ve bağlama
+    işlevleri yalnızca service_role'e açık: kullanıcı oturumuyla HİÇBİR yoldan
+    bağlanamıyor. Nesne yine application/pdf olarak sunuluyor.
   */
-  test("RPC dışı belge_yolu: içerik PDF olmayan nesne bağlanabiliyor ama application/pdf olarak sunuluyor", async () => {
+  test("RPC dışı belge_yolu: doğrudan UPDATE ve bağlama işlevi kullanıcı oturumuyla reddedilir; önceki bağlantı korunur", async () => {
     const c = await oturum("sahip");
+    const once = psql(`select coalesce(belge_yolu,'') from public.docentlik_faaliyetleri where id='${R.faaliyet}'`);
     const yol = `${AM}/faaliyet/${K.sahip}/${R.faaliyet}/${crypto.randomUUID()}.pdf`;
     hataVarsa((await c.storage.from(KOVA).upload(yol, new Blob(["<html><script>alert(1)</script></html>"], { type: "application/pdf" }), { contentType: "application/pdf" })).error);
     const r = await c.from("docentlik_faaliyetleri").update({ belge_yolu: yol }).eq("id", R.faaliyet).select("belge_yolu");
-    const baglandi = !r.error && r.data?.[0]?.belge_yolu === yol;
+    assert.equal(r.error?.code, "42501", `doğrudan yazım reddedilmedi: ${JSON.stringify(r.error ?? r.data)}`);
+    const rpc = await c.rpc("docentlik_belge_bagla", { p_kullanici: K.sahip, p_org: AM, p_faaliyet: R.faaliyet, p_yol: yol, p_eski: null });
+    assert.ok(rpc.error, "kullanıcı oturumu bağlama işlevini çalıştırabildi");
+    assert.match(rpc.error.code ?? "", /42501|PGRST202/);
+    const rpcKaldir = await c.rpc("docentlik_belge_kaldir", { p_kullanici: K.sahip, p_org: AM, p_faaliyet: R.faaliyet, p_eski: null });
+    assert.ok(rpcKaldir.error, "kullanıcı oturumu kaldırma işlevini çalıştırabildi");
+    // Başka kullanıcı adına bağlama da (kimliği parametreyle vermek) aynı kapıda düşer.
+    const baskasi = await (await oturum("uye")).rpc("docentlik_belge_bagla", { p_kullanici: K.sahip, p_org: AM, p_faaliyet: R.faaliyet, p_yol: yol, p_eski: null });
+    assert.ok(baskasi.error);
+    assert.equal(psql(`select coalesce(belge_yolu,'') from public.docentlik_faaliyetleri where id='${R.faaliyet}'`), once, "kayıt değişti");
     const imza = await (await oturum("gozetim")).storage.from(KOVA).createSignedUrl(yol, 60);
-    const yanit = await fetch(imza.data.signedUrl);
-    assert.equal(yanit.headers.get("content-type"), "application/pdf", "nesne application/pdf dışında sunuldu");
-    psql(`update public.docentlik_faaliyetleri set belge_yolu=null where id='${R.faaliyet}'`);
+    if (!imza.error) assert.equal((await fetch(imza.data.signedUrl)).headers.get("content-type"), "application/pdf");
     await c.storage.from(KOVA).remove([yol]);
-    // Ölçülen durum rapora: bağlanabiliyorsa bu bir AÇIK RİSK (düşük), test onu belgelemek için yeşil.
-    console.log(`[risk-olcumu] RPC dışı belge_yolu bağlanabildi: ${baglandi}`);
+  });
+
+  test("service_role bağlama işlevi gerçek Storage nesnesini doğrular: başkasının nesnesi ve PDF olmayan reddedilir", async () => {
+    const admin = createClient(GECIT[1000], SERVIS, { auth: { persistSession: false } });
+    const c = await oturum("sahip");
+    const yol = `${AM}/faaliyet/${K.sahip}/${R.faaliyet}/${crypto.randomUUID()}.pdf`;
+    hataVarsa((await c.storage.from(KOVA).upload(yol, PDF("bagla"), { contentType: "application/pdf" })).error);
+    const once = psql(`select coalesce(belge_yolu,'') from public.docentlik_faaliyetleri where id='${R.faaliyet}'`) || null;
+    // Başka kullanıcı adına bağlama: nesnenin sahibi sahip, iddia edilen kullanıcı üye → yol üyeye ait değil.
+    const yanlis = await admin.rpc("docentlik_belge_bagla", { p_kullanici: K.uye, p_org: AM, p_faaliyet: R.faaliyet, p_yol: yol, p_eski: once });
+    assert.equal(yanlis.error?.code, "DB403");
+    // Başka kurum.
+    const kurum = await admin.rpc("docentlik_belge_bagla", { p_kullanici: K.sahip, p_org: AM2, p_faaliyet: R.faaliyet, p_yol: yol, p_eski: once });
+    assert.equal(kurum.error?.code, "DB403");
+    // Meşru bağlama gerçek storage.objects kaydıyla geçer; eski yol iyimser kilitle.
+    const ok = await admin.rpc("docentlik_belge_bagla", { p_kullanici: K.sahip, p_org: AM, p_faaliyet: R.faaliyet, p_yol: yol, p_eski: once });
+    hataVarsa(ok.error);
+    assert.equal(psql(`select belge_yolu from public.docentlik_faaliyetleri where id='${R.faaliyet}'`), yol);
+    const ikinci = await admin.rpc("docentlik_belge_bagla", { p_kullanici: K.sahip, p_org: AM, p_faaliyet: R.faaliyet, p_yol: yol, p_eski: null });
+    assert.equal(ikinci.error?.code, "DB409", "eski yol beklenmeden yazıldı");
+    hataVarsa((await admin.rpc("docentlik_belge_kaldir", { p_kullanici: K.sahip, p_org: AM, p_faaliyet: R.faaliyet, p_eski: yol })).error);
+    await c.storage.from(KOVA).remove([yol]);
+  });
+});
+
+describe("5c. Gözetim adları ve sayfalı liste (gerçek PostgREST)", () => {
+  test("gözetim: 1100+ kişi 50'lik sayfalarla eksiksiz, tekrar yok, toplam özetle aynı; adlar dar işlevden", async () => {
+    const c = await oturum("gozetim", 300);
+    const ozet = (await c.rpc("docentlik_gozetim_ozeti", { p_org: AM })).data[0];
+    const toplam = Number(ozet.kisi_sayisi);
+    assert.ok(toplam >= 1101, String(toplam));
+    const gorulen = new Set();
+    for (let atla = 0; atla < toplam; atla += 50) {
+      const { data, error } = await c.rpc("docentlik_gozetim_listesi", { p_org: AM, p_sinir: 50, p_atla: atla });
+      hataVarsa(error);
+      assert.equal(data.length, Math.min(50, toplam - atla));
+      for (const s of data) { assert.ok(!gorulen.has(s.kisi)); gorulen.add(s.kisi); assert.ok(!("doktora_tarihi" in s)); }
+    }
+    assert.equal(gorulen.size, toplam);
+    const ilk = (await c.rpc("docentlik_gozetim_listesi", { p_org: AM, p_sinir: 50, p_atla: 0 })).data.map((s) => s.kisi);
+    const adlar = await c.rpc("docentlik_kisi_adlari", { p_org: AM, p_kisiler: ilk });
+    hataVarsa(adlar.error);
+    assert.equal(adlar.data.length, 50);
+    assert.ok(adlar.data.every((a) => a.ad && Object.keys(a).sort().join() === "ad,kisi"), "yalnızca kişi ve ad");
+    assert.ok(adlar.data.some((a) => a.ad === "Ayşe Sentetik"));
+  });
+
+  test("ad işlevi: üye, kapalı gözetim, yabancı boş; anon reddedilir; profiles hâlâ kapalı", async () => {
+    for (const aktor of ["uye", "gozetimKapali", "yabanci"]) {
+      const r = await (await oturum(aktor)).rpc("docentlik_kisi_adlari", { p_org: AM, p_kisiler: [K.sahip, K.uye] });
+      assert.equal((r.data ?? []).length, 0, aktor);
+      const l = await (await oturum(aktor)).rpc("docentlik_gozetim_listesi", { p_org: AM, p_sinir: 50, p_atla: 0 });
+      assert.equal((l.data ?? []).length, 0, aktor);
+    }
+    const anon = createClient(GECIT[1000], ANON, { auth: { persistSession: false } });
+    assert.ok((await anon.rpc("docentlik_kisi_adlari", { p_org: AM, p_kisiler: [K.sahip] })).error);
+    const p = await (await oturum("gozetim")).from("profiles").select("full_name").eq("id", K.sahip);
+    assert.equal((p.data ?? []).length, 0, "profiles RLS gevşemiş");
   });
 });
 

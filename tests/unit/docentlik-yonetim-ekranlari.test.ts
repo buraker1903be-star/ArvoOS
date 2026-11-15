@@ -35,7 +35,7 @@ const kod = (k: string) => k.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s
 describe("yetki kapısı", () => {
   test("her yönetim ekranı yetkiyi okur ve yoksa veri okumadan YetkiYok çizer", () => {
     const kapilar: [string, string, RegExp][] = [
-      ["KURUM", "tumunuGor", /yetkiler\.tumunuGor \? await gozetimListesi\(\) : \[\]/],
+      ["KURUM", "tumunuGor", /yetkiler\.tumunuGor \? await gozetimListesi\(sayfa\) : null/],
       ["KRITER", "kriterYonet", /yetkiler\.kriterYonet \? await Promise\.all\(\[kriterleriOku\(\), hedefleriOku\(\)\]\) : \[\[\], \[\]\]/],
       ["UAK", "uakYonet", /yetkiler\.uakYonet \? await uakTablolari\(\) : \[\]/],
     ];
@@ -43,7 +43,7 @@ describe("yetki kapısı", () => {
       const k = kod(SAYFALAR[ad as keyof typeof SAYFALAR]);
       assert.match(k, /const yetkiler = await yetkilerim\(\);/, ad);
       assert.match(k, okuma, `${ad}: okuma yetkiye bağlı değil`);
-      assert.match(k, new RegExp(`!yetkiler\\.${anahtar} \\? <YetkiYok`), ad);
+      assert.match(k, ad === "KURUM" ? /!veri \? <YetkiYok/ : new RegExp(`!yetkiler\\.${anahtar} \\? <YetkiYok`), ad);
     }
   });
 
@@ -99,8 +99,25 @@ describe("gözetim salt okunur", () => {
     const kisi = k.slice(k.indexOf("export async function kisiOzeti"), k.indexOf("export async function profilim"));
     assert.match(kisi, /profilOzetleri\(b, kisi\)/);
     assert.match(kisi, /faaliyetDonemleri\(b, kisi\)/, "kişi özeti kurumun bütün dönemlerini okumamalı");
-    const g = k.slice(k.indexOf("export async function gozetimListesi"), k.indexOf("export async function kisiAdi"));
-    assert.match(g, /Promise\.all\(\[profilOzetleri\(b, null\), faaliyetDonemleri\(b, null\)\]\)/);
+  });
+
+  /*
+    F6 PR8: gözetim listesi SUNUCUDA sayfalı. Eskiden kurumun bütün profil
+    özetleri ve dönemleri okunup 1102 kişi tek sayfada çiziliyordu.
+  */
+  test("gözetim listesi veritabanında sayfalanıyor; şerit sayıları özet işlevinden; adlar dar işlevden", () => {
+    const k = kod(VERI);
+    const g = k.slice(k.indexOf("export async function gozetimListesi"), k.indexOf("const yedekAd"));
+    assert.match(g, /rpc\("docentlik_gozetim_listesi", \{ p_org: b\.kurum, p_sinir: GOZETIM_SAYFA_BOYU, p_atla: bas \}\)/);
+    assert.match(g, /rpc\("docentlik_gozetim_ozeti", \{ p_org: b\.kurum \}\)/);
+    assert.ok(!/profilOzetleri|faaliyetDonemleri|hepsiniOku|\.reduce\(/.test(g), "liste bütün kurumu okumamalı ya da sayfadan toplamamalı");
+    assert.match(k, /rpc\("docentlik_kisi_adlari", \{ p_org: b\.kurum, p_kisiler: kisiler\.slice\(0, 200\) \}\)/);
+    assert.ok(!/kisiAdlari\(b\.supabase/.test(k), "gözetim adları profiles'tan doğrudan okunmamalı (RLS)");
+    const sayfa = kod(KURUM);
+    assert.match(sayfa, /if \(veri\?\.aralikDisi\) redirect\("\/panel\/docentlik\/kurum"\)/);
+    assert.match(sayfa, /veri\.ozet\.kisi[\s\S]*veri\.ozet\.faaliyet[\s\S]*veri\.ozet\.tarihsiz/);
+    assert.ok(!/\.reduce\(|\.filter\(/.test(sayfa), "şerit sayıları sayfadan hesaplanmamalı");
+    assert.ok(!/"use client"/.test(KURUM), "sayfa istemci bileşeni olmamalı");
   });
 });
 

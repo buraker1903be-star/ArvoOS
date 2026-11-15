@@ -49,5 +49,6 @@ NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54400
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(cat "$D/anon.key")
 SUPABASE_SERVICE_ROLE_KEY=$(cat "$D/service.key")
 NEXT_PUBLIC_SITE_URL=http://localhost:3100
+CRON_SECRET=pr7-yerel-cron-gizli-degil
 ENV
 echo "PR7 yığını hazır. Anahtarlar: $D/anon.key, $D/service.key; Next ortamı: $D/next.env"

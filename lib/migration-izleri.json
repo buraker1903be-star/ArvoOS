@@ -618,5 +618,50 @@
         "sutun": "istek_ozeti"
       }
     ]
+  },
+  {
+    "migration": "20261115145234_docentlik_belge_guvenligi_ve_gozetim",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "private.docentlik_belge_temizligi"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_belge_bagla"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_belge_kaldir"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_temizlik_al"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_temizlik_onayla"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_temizlik_sonuc"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_temizlik_durumu"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_kisi_adlari"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_gozetim_listesi"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.docentlik_gozetim_ozeti"
+      }
+    ]
   }
 ]

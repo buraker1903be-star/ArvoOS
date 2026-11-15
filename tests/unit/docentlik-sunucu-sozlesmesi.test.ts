@@ -123,7 +123,8 @@ describe("işlem dosyası", () => {
       const g = GOVDELER.get(ad)!;
       // HER çağrı kayıttan sonra: yalnızca ilkine bakan sürüm, öne eklenen
       // ikinci bir silmeyi görmüyordu (mutasyon denemesi M11).
-      const kayit = g.search(/\.(delete|update)\(/);
+      // belgeKaldir'da kayıt yazımı service_role işleviyle (belgeyiKaldir, F6 PR8).
+      const kayit = g.search(/\.(delete|update)\(|belgeyiKaldir\(/);
       assert.ok(kayit > 0, `${ad}: kayıt yazımı yok`);
       const cagrilar = [...g.matchAll(/nesneyiSil\(/g)].map((m) => m.index!);
       assert.ok(cagrilar.length > 0, `${ad}: nesne silinmiyor`);
