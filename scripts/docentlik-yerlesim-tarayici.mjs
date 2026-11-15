@@ -58,7 +58,7 @@ fs.writeFileSync(path.join(shim, "navigation.ts"), `export const usePathname = (
    window.__yukleme === "hata" ise kova hatası döndürür. */
 fs.writeFileSync(path.join(shim, "supabase-client.ts"), `export function createClient() { return { storage: { from(kova) { return { async upload(yol, dosya, secenek) {
   window.__cagrilar.push({ ad: "upload", alanlar: { kova, yol, tur: secenek?.contentType, upsert: String(secenek?.upsert), boyut: String(dosya?.size) } });
-  await new Promise((r) => setTimeout(r, 50));
+  await new Promise((r) => setTimeout(r, window.__yuklemeMs ?? 50));
   return window.__yukleme === "hata" ? { data: null, error: { message: "new row violates row-level security policy" } } : { data: { path: yol }, error: null };
 } }; } } }; }`);
 fs.writeFileSync(path.join(shim, "bos.ts"), `export {}; export const revalidatePath = () => {};`);
@@ -128,7 +128,9 @@ fs.writeFileSync(path.join(shim, "actions.ts"), `
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
 window.__cagrilar = [];
 const kaydet = (ad, fd) => window.__cagrilar.push({ ad, alanlar: Object.fromEntries(fd ? fd.entries() : []) });
-const sonuc = (deger) => (window.__sonuc === "hata" ? undefined : deger);
+/* runPanelAction gibi: hata mesajı çereze (iki kez kodlanmış), işlem undefined döner. */
+const hataCerezi = (mesaj) => { document.cookie = "arvo_flash=" + encodeURIComponent(encodeURIComponent(mesaj)) + "; path=/"; };
+const sonuc = (deger) => { if (window.__sonuc === "hata") { hataCerezi("Sentetik sunucu hatası"); return undefined; } return deger; };
 export async function faaliyetEkle(fd) { kaydet("ekle", fd); await bekle(250); return sonuc({ id: "x", tekrar: false }); }
 export async function faaliyetDuzenle(fd) { kaydet("duzenle", fd); await bekle(250); return sonuc({ id: "x", tekrar: false }); }
 export async function faaliyetSil(fd) { kaydet("sil", fd); await bekle(50); return sonuc({ silindi: true }); }
@@ -138,7 +140,7 @@ export const kriterEkle = genel("kriterEkle"), kriterDuzenle = genel("kriterDuze
 export const hedefKaydet = genel("hedefKaydet"), hedefSil = genel("hedefSil"), belgeKaldir = genel("belgeKaldir"), uakSil = genel("uakSil"), uakOnayla = genel("uakOnayla");
 export async function belgeYuklemeHazirla(id) { kaydet("belgeHazirla", null); await bekle(30); return sonuc({ kova: "docentlik", yol: "kurum/sahip/" + id + "/sunucu-uretti.pdf" }); }
 export async function uakYuklemeHazirla() { kaydet("uakHazirla", null); await bekle(30); return sonuc({ kova: "docentlik", yol: "kurum/uak/sunucu-uretti.pdf" }); }
-export async function belgeKaydet(fd) { kaydet("belgeKaydet", fd); await bekle(50); return window.__kayit === "hata" ? undefined : { yol: fd.get("yol") }; }
+export async function belgeKaydet(fd) { kaydet("belgeKaydet", fd); await bekle(50); if (window.__kayit === "hata") { hataCerezi("Dosya PDF değil. Belgenin PDF'ini yükleyin."); return undefined; } return { yol: fd.get("yol") }; }
 export async function uakKaydet(fd) { kaydet("uakKaydet", fd); await bekle(50); return window.__kayit === "hata" ? undefined : { id: "u" }; }
 export async function belgeAdresi() { kaydet("belgeAdresi", null); return { adres: "about:blank#imzali", saniye: 60 }; }
 export async function uakAdresi() { kaydet("uakAdresi", null); return { adres: "about:blank#imzali", saniye: 60 }; }
@@ -154,6 +156,12 @@ import Kurum from ${a("app/panel/docentlik/kurum/page.tsx")};
 import Kisi from ${a("app/panel/docentlik/kurum/[kisi]/page.tsx")};
 import Kriterler from ${a("app/panel/docentlik/kriterler/page.tsx")};
 import Uak from ${a("app/panel/docentlik/uak/page.tsx")};
+import { FlashToast } from ${a("app/panel/flash-toast.tsx")};
+/* file:// altında çerez yok; panel bildirimi çerezle çalıştığı için düzenekte basit bir kap. */
+{ const kap = new Map(); Object.defineProperty(document, "cookie", { configurable: true,
+  get: () => [...kap].map(([k, v]) => k + "=" + v).join("; "),
+  set: (satir) => { const [ilk, ...oz] = String(satir).split(";"); const i = ilk.indexOf("="); const ad = ilk.slice(0, i).trim();
+    if (oz.some((o) => /max-age=0/i.test(o.trim()))) kap.delete(ad); else kap.set(ad, ilk.slice(i + 1)); } }); }
 /* file:// altında modül betiği yüklenmiyor (CORS); paket iife, üst düzey await yerine async işlev. */
 (async () => {
 const ekran = new URLSearchParams(location.search).get("ekran") || "ana";
@@ -166,7 +174,7 @@ const sayfa = await sayfalar[ekran]();
 createRoot(document.getElementById("kok")).render(
   <div className="panel-root os-root"><main className="panel-frame os-frame">
     <header className="os-bar"><a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a></header>
-    <section className="os-workspace"><div className="panel-content">{sayfa}</div></section>
+    <section className="os-workspace"><div className="panel-content">{sayfa}</div></section><FlashToast />
   </main></div>);
 window.__hazir = true;
 })().catch((e) => { window.__hata = String(e && e.stack || e); console.error(e); });
@@ -323,6 +331,16 @@ async function yonetimDurumlari(sayfa, ekran) {
     c = await cagrilar();
     s["belge: sıra hazırla → yükle → kaydet"] = c.map((x) => x.ad).join(",") === "belgeHazirla,upload,belgeKaydet" || c;
     s["belge: yükleme sunucunun yoluna, upsert yok, PDF türü"] = c[1]?.yol === c[2]?.yol && /sunucu-uretti\.pdf$/.test(c[1]?.yol ?? "") && c[1]?.upsert === "false" && c[1]?.tur === "application/pdf" || c;
+    /* Yavaş yükleme (15 sn'lik "submit" yoklamasını aşan) + sunucunun kayıt hatası: mesaj yine bildirimde. */
+    await sayfa.waitForTimeout(4200); // önceki başarı bildirimi kapansın
+    await sifirla();
+    await sayfa.evaluate(() => { window.__yuklemeMs = 16500; window.__kayit = "hata"; });
+    await form.locator("input[type=file]").setInputFiles(PDF);
+    await form.locator("button[type=submit]").click();
+    await sayfa.waitForTimeout(17800);
+    s["belge: 15 sn'yi aşan yüklemede sunucu hatası bildirime ulaşıyor"] = /PDF değil/.test(await sayfa.locator('.panel-toast[role="alert"]').textContent({ timeout: 500 }).catch(() => "")) || "bildirim yok";
+    s["belge: sunucu hatasında seçilen dosya korunuyor"] = await form.locator("input[type=file]").evaluate((e) => e.files.length === 1);
+    await sayfa.evaluate(() => { window.__yuklemeMs = 50; });
     await sayfa.keyboard.press("Escape"); await sayfa.waitForTimeout(150);
   }
   if (ekran === "uak") {
@@ -350,6 +368,8 @@ async function yonetimDurumlari(sayfa, ekran) {
     await sayfa.evaluate(() => { window.__sonuc = "hata"; });
     await form.locator("button[type=submit]").click(); await sayfa.waitForTimeout(300);
     s["kriter: hata alanları korur"] = (await form.locator("input[name=etiket]").inputValue()) === "Sentetik kriter";
+    await sayfa.waitForTimeout(500);
+    s["kriter: sunucu hatası bildirimde görünüyor"] = /Sentetik sunucu hatası/.test(await sayfa.locator('.panel-toast[role="alert"]').textContent({ timeout: 500 }).catch(() => "")) || "bildirim yok";
     await sayfa.evaluate(() => { window.__sonuc = "basari"; });
     await form.locator("button[type=submit]").click(); await sayfa.waitForTimeout(300);
     const c = await cagrilar();
@@ -450,11 +470,13 @@ for (const [w, h] of BOYUTLAR) for (const tema of ["light", "dark"]) for (const 
   if (ekran === "faaliyetler" && veri === "dolu" && w === BOYUTLAR[0][0] && tema === "light") o.formDurumlari = await formDurumlari(sayfa);
   if (veri === "dolu" && ["faaliyetler", "uak", "kriterler", "kurum", "kisi"].includes(ekran) && w === BOYUTLAR[0][0] && tema === "light") o.yonetimDurumlari = await yonetimDurumlari(sayfa, ekran);
   /* Yetkisiz: veri okunmadan YetkiYok (taklit okuma yetkisizken fırlatır → __hata). */
-  if (veri === "yetkisiz") o.yetkiYok = await sayfa.evaluate(() => ({ kapali: /yetkiniz yok/.test(document.querySelector(".docentlik-sayfa [role=status]")?.textContent ?? ""), tablo: document.querySelectorAll(".docentlik-sayfa table").length, sekmeler: [...document.querySelectorAll(".docentlik-sekmeler a")].map((a) => a.textContent.trim()) }));
+  if (veri === "yetkisiz") o.yetkiYok = await sayfa.evaluate(() => ({ kapali: /yetkiniz yok/.test(document.querySelector(".docentlik-sayfa [role=status]")?.textContent ?? ""), tablo: document.querySelectorAll(".docentlik-sayfa table").length, sekmeler: [...document.querySelectorAll(".docentlik-sekmeler a")].map((a) => a.textContent.trim()),
+    /* Taklit verinin ayırt edici parçaları (kişi adı, kriter kodu, ÜAK dosyası, faaliyet başlığı) ekranda OLMAMALI. */
+    sizinti: (document.querySelector(".docentlik-sayfa").textContent.match(/Karaosmanoğlu|Mehmet Demir|A1 ·|saglik\.pdf|Faaliyet 2\b|Uluslararası makale/g) ?? []) }));
   sonuc[anahtar] = o;
   if (o.silRengi && o.silRengi.renk !== o.silRengi.beklenen) sorunlar.push(`${anahtar}: Sil düğmesi tehlike renginde değil ${JSON.stringify(o.silRengi)}`);
   if (o.yonetimDurumlari) for (const [ad, gecti] of Object.entries(o.yonetimDurumlari)) if (gecti !== true) sorunlar.push(`${anahtar}: "${ad}" ${JSON.stringify(gecti)}`);
-  if (o.yetkiYok && (!o.yetkiYok.kapali || o.yetkiYok.tablo || o.yetkiYok.sekmeler.length !== 3)) sorunlar.push(`${anahtar}: yetkisiz görünüm ${JSON.stringify(o.yetkiYok)}`);
+  if (o.yetkiYok && (!o.yetkiYok.kapali || o.yetkiYok.tablo || o.yetkiYok.sekmeler.length !== 3 || o.yetkiYok.sizinti.length)) sorunlar.push(`${anahtar}: yetkisiz görünüm ${JSON.stringify(o.yetkiYok)}`);
   if (o.formDurumlari) for (const [ad, gecti] of Object.entries(o.formDurumlari)) if (gecti !== true) sorunlar.push(`${anahtar}: form durumu "${ad}" ${JSON.stringify(gecti)}`);
   if (o.icTasma.length) sorunlar.push(`${anahtar}: kart/tablo içinde yatay taşma ${o.icTasma.join(", ")}`);
   if (o.yatayTasma || o.tasan.length) sorunlar.push(`${anahtar}: yatay taşma ${o.yatay} ${o.tasan.join(", ")}`);

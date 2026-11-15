@@ -4,6 +4,7 @@ import { docentlikOzeti, kendiDonemi, type OzetFaaliyeti } from "@/lib/docentlik
 import type { Hedef } from "@/lib/docentlik/ozet";
 import { gozetimKisileri, type DocentlikYetkileri } from "@/lib/docentlik-gorunum";
 import { kisiAdlari } from "@/lib/kisi-adlari";
+import { hepsiniOku } from "@/lib/docentlik-sayfalama";
 import { docentlikBaglami, okunamadiysaFirlat, yetkiGerekli, type DocentlikBaglami } from "./baglam";
 
 /*
@@ -58,20 +59,54 @@ export async function kurumFaaliyetleri(sayfa = 1, kisi: string | null = null) {
   ÖZET İÇİN BÜTÜN FAALİYETLER, SAYFA SAYFA. Toplam puan bir SONUÇ:
   PostgREST'in satır tavanına (varsayılan 1000) çarpan tek bir okuma,
   toplamı sessizce eksik gösterirdi (AGENTS.md: rakam denetimi). Bu yüzden
-  sınırsız okuma bilerek ve tavanı aşan durumda sayfa sayfa.
+  sınırsız okuma bilerek ve sayfa sayfa; bitişi ve eksiksizliği TOPLAM
+  söylüyor, sayfanın kısalığı değil (lib/docentlik-sayfalama → hepsiniOku).
+  Eskiden "kısa sayfa = son sayfa" varsayılıyordu: sunucunun satır tavanı
+  1000'den küçük ayarlansa ilk sayfada duruyordu. Sıralama benzersiz
+  anahtarla (id), yoksa aralıklar arasında satır kayabilir.
 */
-const SAYFA = 1000;
+type DonemSatiri = { faaliyet_id: string; owner_id: string; donem: OzetFaaliyeti["donem"] };
+type ProfilOzeti = { owner_id: string; temel_alan: string | null; alt_alan: string | null; doktora_tarihi_girildi: boolean };
+const hataVarsa = (ne: string) => (error: unknown) => okunamadiysaFirlat(error as { message: string } | null, ne);
+
 async function butunFaaliyetler(b: DocentlikBaglami, sahip: string) {
-  const satirlar: { id: string; criteria_id: string; computed_points: number | string; faaliyet_tarihi: string | null }[] = [];
-  for (let bas = 0; ; bas += SAYFA) {
-    const { data, error } = await b.supabase.from("docentlik_faaliyetleri")
-      .select("id, criteria_id, computed_points, faaliyet_tarihi")
+  return hepsiniOku<{ id: string; criteria_id: string; computed_points: number | string; faaliyet_tarihi: string | null }>(
+    (bas, son) => b.supabase.from("docentlik_faaliyetleri")
+      .select("id, criteria_id, computed_points, faaliyet_tarihi", { count: "exact" })
       .eq("organization_id", b.kurum).eq("owner_id", sahip)
-      .order("id").range(bas, bas + SAYFA - 1);
-    okunamadiysaFirlat(error, "Faaliyetler");
-    satirlar.push(...(data ?? []));
-    if ((data?.length ?? 0) < SAYFA) return satirlar;
-  }
+      .order("id").range(bas, son),
+    { ad: "Faaliyetler", anahtar: (f) => f.id, hataVarsa: hataVarsa("Faaliyetler") },
+  );
+}
+
+/*
+  Faaliyet dönemleri (doktora tarihi DÖNMEDEN). sahip verilirse yalnızca o
+  kişinin satırları: kişi sayfası kurumun bütün dönemlerini okumaz.
+  Eskiden kisiOzeti kurumun tamamını TEK çağrıyla okuyordu — 1000'i aşan
+  kurumda kişinin faaliyetleri "bilinmiyor" dönemine düşüp doktora sonrası
+  puan eksik çıkıyordu.
+*/
+async function faaliyetDonemleri(b: DocentlikBaglami, sahip: string | null) {
+  return hepsiniOku<DonemSatiri>(
+    (bas, son) => {
+      let q = b.supabase.rpc("docentlik_faaliyet_donemleri", { p_org: b.kurum }, { count: "exact" });
+      if (sahip) q = q.eq("owner_id", sahip);
+      return q.order("faaliyet_id").range(bas, son);
+    },
+    { ad: "Dönemler", anahtar: (d) => d.faaliyet_id, hataVarsa: hataVarsa("Dönemler") },
+  );
+}
+
+/* Profil özetleri: kurumda kişi başına bir satır (organization_id, owner_id benzersiz). */
+async function profilOzetleri(b: DocentlikBaglami, sahip: string | null) {
+  return hepsiniOku<ProfilOzeti>(
+    (bas, son) => {
+      let q = b.supabase.rpc("docentlik_profil_ozetleri", { p_org: b.kurum }, { count: "exact" });
+      if (sahip) q = q.eq("owner_id", sahip);
+      return q.order("owner_id").range(bas, son);
+    },
+    { ad: "Profil özetleri", anahtar: (p) => p.owner_id, hataVarsa: hataVarsa("Profil özetleri") },
+  );
 }
 
 async function kriterVeHedefler(b: DocentlikBaglami) {
@@ -119,16 +154,13 @@ export async function kisiOzeti(kisi: string) {
   const b = await docentlikBaglami();
   yetkiGerekli(b, "docentlik.tumunu_gor", "Bu kişinin faaliyetlerini görme yetkiniz yok.");
   const [profiller, donemler, faaliyetler, kh] = await Promise.all([
-    b.supabase.rpc("docentlik_profil_ozetleri", { p_org: b.kurum }),
-    b.supabase.rpc("docentlik_faaliyet_donemleri", { p_org: b.kurum }),
+    profilOzetleri(b, kisi),
+    faaliyetDonemleri(b, kisi),
     butunFaaliyetler(b, kisi),
     kriterVeHedefler(b),
   ]);
-  okunamadiysaFirlat(profiller.error, "Profil özetleri");
-  okunamadiysaFirlat(donemler.error, "Dönemler");
-  const profil = ((profiller.data ?? []) as { owner_id: string; temel_alan: string | null; alt_alan: string | null; doktora_tarihi_girildi: boolean }[])
-    .find((p) => p.owner_id === kisi) ?? null;
-  const donemHaritasi = new Map(((donemler.data ?? []) as { faaliyet_id: string; donem: OzetFaaliyeti["donem"] }[]).map((d) => [d.faaliyet_id, d.donem]));
+  const profil = profiller.find((p) => p.owner_id === kisi) ?? null;
+  const donemHaritasi = new Map(donemler.filter((d) => d.owner_id === kisi).map((d) => [d.faaliyet_id, d.donem]));
   const ozetFaaliyetleri: OzetFaaliyeti[] = faaliyetler.map((f) => ({ ...f, donem: donemHaritasi.get(f.id) ?? "bilinmiyor" }));
   return docentlikOzeti({
     faaliyetler: ozetFaaliyetleri, ...kh, kurum: b.kurum,
@@ -219,17 +251,9 @@ export async function yetkilerim(): Promise<DocentlikYetkileri> {
 export async function gozetimListesi() {
   const b = await docentlikBaglami();
   yetkiGerekli(b, "docentlik.tumunu_gor", "Kurumun faaliyetlerini görme yetkiniz yok.");
-  const { data: profiller, error } = await b.supabase.rpc("docentlik_profil_ozetleri", { p_org: b.kurum });
-  okunamadiysaFirlat(error, "Profil özetleri");
+  const [profilListesi, donemler] = await Promise.all([profilOzetleri(b, null), faaliyetDonemleri(b, null)]);
   const sayilar = new Map<string, number>();
-  for (let bas = 0; ; bas += SAYFA) {
-    const { data, error: donemHatasi } = await b.supabase.rpc("docentlik_faaliyet_donemleri", { p_org: b.kurum })
-      .order("faaliyet_id").range(bas, bas + SAYFA - 1);
-    okunamadiysaFirlat(donemHatasi, "Faaliyetler");
-    for (const d of (data ?? []) as { owner_id: string }[]) sayilar.set(d.owner_id, (sayilar.get(d.owner_id) ?? 0) + 1);
-    if ((data?.length ?? 0) < SAYFA) break;
-  }
-  const profilListesi = (profiller ?? []) as { owner_id: string; temel_alan: string | null; alt_alan: string | null; doktora_tarihi_girildi: boolean }[];
+  for (const d of donemler) sayilar.set(d.owner_id, (sayilar.get(d.owner_id) ?? 0) + 1);
   const adlar = await kisiAdlari(b.supabase, b.kurum, [...profilListesi.map((p) => p.owner_id), ...sayilar.keys()]);
   return gozetimKisileri(profilListesi, sayilar, adlar);
 }

@@ -86,11 +86,21 @@ describe("gözetim salt okunur", () => {
     assert.ok(!/doktora_tarihi\b(?!_girildi)/.test(VERI.slice(VERI.indexOf("export async function gozetimListesi"))));
   });
 
-  test("gözetim sayıları sayfa sayfa okunuyor (satır tavanı sayıyı eksiltmesin)", () => {
-    const g = VERI.slice(VERI.indexOf("export async function gozetimListesi"), VERI.indexOf("export async function kisiAdi"));
-    assert.match(g, /for \(let bas = 0; ; bas \+= SAYFA\)/);
-    assert.match(g, /\.range\(bas, bas \+ SAYFA - 1\)/);
-    assert.match(g, /if \(\(data\?\.length \?\? 0\) < SAYFA\) break;/);
+  test("gözetim ve kişi özeti okumaları eksiksiz (hepsiniOku); tek çağrılık RPC okuması yok", () => {
+    const k = kod(VERI);
+    // Her RPC okuması hepsiniOku içinde, sayımlı ve benzersiz anahtarla sıralı.
+    for (const [rpc, anahtar] of [["docentlik_faaliyet_donemleri", "faaliyet_id"], ["docentlik_profil_ozetleri", "owner_id"]]) {
+      const cagrilar = [...k.matchAll(new RegExp(`rpc\\("${rpc}", \\{ p_org: b\\.kurum \\}(, \\{ count: "exact" \\})?\\)`, "g"))];
+      assert.equal(cagrilar.length, 1, `${rpc}: tek yerde okunmalı`);
+      assert.ok(cagrilar.every((c) => c[1]), `${rpc}: count: "exact" yok`);
+      assert.match(k, new RegExp(`rpc\\("${rpc}"[\\s\\S]{0,200}\\.order\\("${anahtar}"\\)\\.range\\(bas, son\\)`), `${rpc}: kararlı sıralama`);
+    }
+    assert.ok(!/<\s*SAYFA\)\s*(break|return)/.test(k), "kısa sayfa = son sayfa varsayımı geri geldi");
+    const kisi = k.slice(k.indexOf("export async function kisiOzeti"), k.indexOf("export async function profilim"));
+    assert.match(kisi, /profilOzetleri\(b, kisi\)/);
+    assert.match(kisi, /faaliyetDonemleri\(b, kisi\)/, "kişi özeti kurumun bütün dönemlerini okumamalı");
+    const g = k.slice(k.indexOf("export async function gozetimListesi"), k.indexOf("export async function kisiAdi"));
+    assert.match(g, /Promise\.all\(\[profilOzetleri\(b, null\), faaliyetDonemleri\(b, null\)\]\)/);
   });
 });
 
@@ -129,6 +139,22 @@ describe("belge akışı", () => {
     assert.match(FAALIYETLER, /<FaaliyetBelgesiYukle faaliyetId=\{f\.id\} degistir=\{Boolean\(f\.belge_yolu\)\}/);
     assert.match(FAALIYETLER, /<FaaliyetBelgesiKaldir/);
     assert.match(BELGE, /<OnayliIslem islem=\{belgeKaldir\}/);
+  });
+});
+
+describe("sunucu hatası kullanıcıya ulaşıyor", () => {
+  test("her sunucu işleminin yanıtından sonra bildirim HEMEN yoklatılıyor (15 sn'lik submit yoklaması büyük yüklemede yetmiyordu)", () => {
+    const k = kod(BELGE);
+    for (const cagri of ["await adresAl()", "await belgeYuklemeHazirla(faaliyetId)", "await belgeKaydet(fd)", "await uakYuklemeHazirla()", "await uakKaydet(fd)"]) {
+      assert.match(k, new RegExp(`${cagri.replace(/[()]/g, "\\$&")};\\s*panelBildiriminiYokla\\(\\);`), cagri);
+    }
+    assert.match(kod(ISLEM), /await islem\(new FormData\(form\)\);\s*panelBildiriminiYokla\(\);/);
+    assert.match(kod(ISLEM), /await islem\(fd\); panelBildiriminiYokla\(\);/);
+    const TOAST = oku("app/panel/flash-toast.tsx");
+    assert.match(TOAST, /window\.addEventListener\("arvo:flash-check", yokla\)/);
+    assert.match(TOAST, /window\.removeEventListener\("arvo:flash-check", yokla\)/);
+    assert.match(TOAST, /document\.addEventListener\("submit", handleSubmit\)/, "mevcut submit yoklaması korunmalı");
+    assert.match(oku("lib/panel-bildirim-yokla.ts"), /window\.dispatchEvent\(new Event\("arvo:flash-check"\)\)/);
   });
 });
 

@@ -176,7 +176,14 @@ describe("okuma ve bağlam dosyaları", () => {
     assert.ok(!/docentlik_profilleri|doktora_tarihi[^_]/.test(kisi), "gözetim yolu profil tablosunu/doktora tarihini okuyor");
   });
 
-  test("özet okuması satır tavanına çarpmıyor: sayfa sayfa bütün faaliyetler", () => {
-    assert.match(VERI, /for \(let bas = 0; ; bas \+= SAYFA\)[\s\S]*if \(\(data\?\.length \?\? 0\) < SAYFA\) return satirlar;/);
+  /*
+    PR6b son kabulde sıkılaştı: eskiden "kısa sayfa = son sayfa" döngüsü
+    aranıyordu; o döngü sunucunun satır tavanı 1000'den küçükse ilk sayfada
+    duruyordu. Artık bitişi ve eksiksizliği toplam (count: "exact") söylüyor
+    (lib/docentlik-sayfalama, kendi testi docentlik-sayfalama.test.ts).
+  */
+  test("özet okuması satır tavanına çarpmıyor: bütün faaliyetler sayımla doğrulanan sayfalarla", () => {
+    assert.match(VERI, /async function butunFaaliyetler[\s\S]*?hepsiniOku<[\s\S]*?\{ count: "exact" \}[\s\S]*?\.order\("id"\)\.range\(bas, son\)/);
+    assert.ok(!/< SAYFA\)\s*(return|break)/.test(VERI), "kısa sayfa = son sayfa varsayımı");
   });
 });

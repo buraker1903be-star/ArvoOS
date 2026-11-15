@@ -2,6 +2,7 @@
 
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { OnayPenceresi } from "../components/onay-penceresi";
+import { panelBildiriminiYokla } from "@/lib/panel-bildirim-yokla";
 import "../components/gonder-dugmesi.css";
 import "../components/kayit-formu.css";
 
@@ -44,6 +45,7 @@ export function IslemFormu({ islem, children, dugme, basaridaSifirla = false, cl
     setBekliyor(true);
     try {
       const sonuc = await islem(new FormData(form));
+      panelBildiriminiYokla();
       if (basaridaSifirla && sonuc !== undefined) form.reset();
     } finally {
       gonderiliyor.current = false;
@@ -90,7 +92,7 @@ export function OnayliIslem({ islem, alanlar, etiket, ariaLabel, baslik, metin, 
   const [soruluyor, setSoruluyor] = useState(false);
   return (
     <>
-      <form ref={form} action={async (fd) => { await islem(fd); }} className="docentlik-sil">
+      <form ref={form} action={async (fd) => { await islem(fd); panelBildiriminiYokla(); }} className="docentlik-sil">
         {Object.entries(alanlar).map(([ad, deger]) => <input key={ad} type="hidden" name={ad} value={deger} />)}
         <button type="button" className={`panel-secondary${tehlike ? " docentlik-tehlike" : ""}`} onClick={() => setSoruluyor(true)} aria-label={ariaLabel}>
           {etiket}

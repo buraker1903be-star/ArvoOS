@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { boyutMetni, pdfOnDenetimi } from "@/lib/docentlik-gorunum";
+import { panelBildiriminiYokla } from "@/lib/panel-bildirim-yokla";
 import { belgeAdresi, belgeKaldir, belgeKaydet, belgeYuklemeHazirla, uakAdresi, uakKaydet, uakYuklemeHazirla } from "./actions";
 import { OnayliIslem } from "./islem-formu";
 import "../components/gonder-dugmesi.css";
@@ -29,8 +30,10 @@ import "../components/kayit-formu.css";
 
   Hata mesajları iki kaynaktan: tarayıcıdaki ön eleme ve yükleme hatası
   formun içinde (role="alert"); sunucu işleminin hatası panelin
-  bildiriminde (runPanelAction). Bildirim "submit" olayıyla yoklandığı için
-  her işlem bir form gönderimi.
+  bildiriminde (runPanelAction). Her işlem bir form gönderimi ve her sunucu
+  yanıtından sonra bildirim HEMEN yoklatılıyor (panelBildiriminiYokla):
+  "submit"in 15 saniyelik yoklaması büyük dosyanın yüklemesini aşınca
+  kayıt hatası ekrana çıkmıyordu.
 
   İmzalı adres kısa ömürlü (60 sn, IMZALI_ADRES_SANIYE). Pencere TIK ANINDA
   açılıyor, adres sonra yazılıyor: adres bir await'ten sonra gelince
@@ -72,6 +75,7 @@ export function BelgeGoruntule({ adresAl, etiket = "Görüntüle", ariaLabel }: 
     if (pencere) pencere.opener = null;
     void calistir(async () => {
       const sonuc = await adresAl();
+      panelBildiriminiYokla();
       if (sonuc?.adres && pencere) pencere.location.href = sonuc.adres;
       else if (sonuc?.adres) window.location.href = sonuc.adres;
       else pencere?.close();
@@ -120,6 +124,7 @@ export function FaaliyetBelgesiYukle({ faaliyetId, degistir }: { faaliyetId: str
       const on = pdfOnDenetimi(dosya);
       if (!on.ok) { setHata(on.hata); return; }
       const hazir = await belgeYuklemeHazirla(faaliyetId);
+      panelBildiriminiYokla();
       if (!hazir) return; // sunucu hatası bildirimde
       const yuklemeHatasi = await kovayaYukle(hazir.kova, hazir.yol, dosya!);
       if (yuklemeHatasi) { setHata(yuklemeHatasi); return; }
@@ -127,6 +132,7 @@ export function FaaliyetBelgesiYukle({ faaliyetId, degistir }: { faaliyetId: str
       fd.set("faaliyet_id", faaliyetId);
       fd.set("yol", hazir.yol);
       const kayit = await belgeKaydet(fd);
+      panelBildiriminiYokla();
       if (kayit) { form.reset(); setDosya(null); }
     });
   }
@@ -171,6 +177,7 @@ export function UakYukle() {
       const on = pdfOnDenetimi(dosya);
       if (!on.ok) { setHata(on.hata); return; }
       const hazir = await uakYuklemeHazirla();
+      panelBildiriminiYokla();
       if (!hazir) return;
       const yuklemeHatasi = await kovayaYukle(hazir.kova, hazir.yol, dosya!);
       if (yuklemeHatasi) { setHata(yuklemeHatasi); return; }
@@ -180,6 +187,7 @@ export function UakYukle() {
       fd.set("donem", String(alanlar.get("donem") ?? ""));
       fd.set("dosya_adi", dosya!.name.slice(0, 300));
       const kayit = await uakKaydet(fd);
+      panelBildiriminiYokla();
       if (kayit) { form.reset(); setDosya(null); }
     });
   }
