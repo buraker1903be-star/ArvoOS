@@ -5,6 +5,7 @@ import { TarihSecici } from "../components/tarih-secici";
 import "../components/gonder-dugmesi.css";
 import type { KriterSecenegi } from "@/lib/docentlik-gorunum";
 import { faaliyetDuzenle, faaliyetEkle } from "./actions";
+import { BAGLANTI_KOPTU, baglantiHatasiMi } from "@/lib/baglanti-hatasi";
 
 /*
   FAALİYET FORMU (F6 PR6a). Ekleme ve düzenleme aynı form; sunucu işlemleri
@@ -77,6 +78,7 @@ export function FaaliyetFormu({ secenekler, mevcut, bugun }: {
   */
   const gonderiliyor = useRef(false);
   const [bekliyor, setBekliyor] = useState(false);
+  const [agHatasi, setAgHatasi] = useState<string | null>(null);
 
   async function gonder(olay: FormEvent<HTMLFormElement>) {
     olay.preventDefault();
@@ -85,6 +87,7 @@ export function FaaliyetFormu({ secenekler, mevcut, bugun }: {
     const formData = new FormData(form);
     gonderiliyor.current = true;
     setBekliyor(true);
+    setAgHatasi(null);
     try {
       if (mevcut) {
         await faaliyetDuzenle(formData);
@@ -99,6 +102,10 @@ export function FaaliyetFormu({ secenekler, mevcut, bugun }: {
         form.reset();
         setYazar("1");
       }
+    } catch (hata) {
+      // İstek koptu: anahtar ve alanlar KORUNUR (yeniden gönderim ikinci kayıt açmaz). Başka hata yukarı gider.
+      if (!baglantiHatasiMi(hata)) throw hata;
+      setAgHatasi(BAGLANTI_KOPTU);
     } finally {
       gonderiliyor.current = false;
       setBekliyor(false);
@@ -175,6 +182,7 @@ export function FaaliyetFormu({ secenekler, mevcut, bugun }: {
         <textarea name="notlar" maxLength={2000} rows={3} defaultValue={mevcut?.notes ?? ""} placeholder="Dergi, cilt/sayı, proje kodu gibi ayrıntılar" />
       </label>
 
+      {agHatasi ? <p className="wide docentlik-hata" role="alert">{agHatasi}</p> : null}
       <div className="wide panel-form-actions kayit-formu-eylem">
         <p id={`${onek}-not`}>
           <b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu. Puanı sistem hesaplar; tarihi boş bırakılan faaliyet doktora sonrası şartlarına sayılmaz.

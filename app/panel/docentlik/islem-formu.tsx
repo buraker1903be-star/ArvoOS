@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { OnayPenceresi } from "../components/onay-penceresi";
 import { panelBildiriminiYokla } from "@/lib/panel-bildirim-yokla";
+import { BAGLANTI_KOPTU_GENEL, baglantiHatasiMi } from "@/lib/baglanti-hatasi";
 import "../components/gonder-dugmesi.css";
 import "../components/kayit-formu.css";
 
@@ -36,6 +37,7 @@ export function IslemFormu({ islem, children, dugme, basaridaSifirla = false, cl
 }) {
   const gonderiliyor = useRef(false);
   const [bekliyor, setBekliyor] = useState(false);
+  const [agHatasi, setAgHatasi] = useState<string | null>(null);
 
   async function gonder(olay: FormEvent<HTMLFormElement>) {
     olay.preventDefault();
@@ -43,10 +45,14 @@ export function IslemFormu({ islem, children, dugme, basaridaSifirla = false, cl
     const form = olay.currentTarget;
     gonderiliyor.current = true;
     setBekliyor(true);
+    setAgHatasi(null);
     try {
       const sonuc = await islem(new FormData(form));
       panelBildiriminiYokla();
       if (basaridaSifirla && sonuc !== undefined) form.reset();
+    } catch (hata) {
+      if (!baglantiHatasiMi(hata)) throw hata;
+      setAgHatasi(BAGLANTI_KOPTU_GENEL);
     } finally {
       gonderiliyor.current = false;
       setBekliyor(false);
@@ -56,6 +62,7 @@ export function IslemFormu({ islem, children, dugme, basaridaSifirla = false, cl
   return (
     <form onSubmit={gonder} className={`panel-form kayit-formu docentlik-form ${className}`.trim()} id={id}>
       {children}
+      {agHatasi ? <p className="wide docentlik-hata" role="alert">{agHatasi}</p> : null}
       <div className="wide panel-form-actions kayit-formu-eylem">
         <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
         <button type="submit" className="panel-primary" disabled={bekliyor} aria-busy={bekliyor || undefined}>

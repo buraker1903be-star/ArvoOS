@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { boyutMetni, pdfOnDenetimi } from "@/lib/docentlik-gorunum";
 import { panelBildiriminiYokla } from "@/lib/panel-bildirim-yokla";
+import { BAGLANTI_KOPTU_GENEL, baglantiHatasiMi } from "@/lib/baglanti-hatasi";
 import { belgeAdresi, belgeKaldir, belgeKaydet, belgeYuklemeHazirla, uakAdresi, uakKaydet, uakYuklemeHazirla } from "./actions";
 import { OnayliIslem } from "./islem-formu";
 import "../components/gonder-dugmesi.css";
@@ -44,11 +45,14 @@ import "../components/kayit-formu.css";
 function useKilit() {
   const kilit = useRef(false);
   const [bekliyor, setBekliyor] = useState(false);
-  async function calistir(is: () => Promise<void>) {
+  /* Sunucu işleminin isteği koparsa ("Failed to fetch") sessiz kalmasın: çağıran mesajı gösterir. */
+  async function calistir(is: () => Promise<void>, kopunca?: (mesaj: string) => void) {
     if (kilit.current) return;
     kilit.current = true;
     setBekliyor(true);
-    try { await is(); } finally { kilit.current = false; setBekliyor(false); }
+    try { await is(); }
+    catch (hata) { if (!baglantiHatasiMi(hata) || !kopunca) throw hata; kopunca(BAGLANTI_KOPTU_GENEL); }
+    finally { kilit.current = false; setBekliyor(false); }
   }
   return { bekliyor, calistir };
 }
@@ -79,7 +83,7 @@ export function BelgeGoruntule({ adresAl, etiket = "Görüntüle", ariaLabel }: 
       if (sonuc?.adres && pencere) pencere.location.href = sonuc.adres;
       else if (sonuc?.adres) window.location.href = sonuc.adres;
       else pencere?.close();
-    });
+    }, () => pencere?.close());
   }
   return (
     <form onSubmit={gonder} className="docentlik-sil">
@@ -134,7 +138,7 @@ export function FaaliyetBelgesiYukle({ faaliyetId, degistir }: { faaliyetId: str
       const kayit = await belgeKaydet(fd);
       panelBildiriminiYokla();
       if (kayit) { form.reset(); setDosya(null); }
-    });
+    }, setHata);
   }
 
   return (
@@ -189,7 +193,7 @@ export function UakYukle() {
       const kayit = await uakKaydet(fd);
       panelBildiriminiYokla();
       if (kayit) { form.reset(); setDosya(null); }
-    });
+    }, setHata);
   }
 
   return (
