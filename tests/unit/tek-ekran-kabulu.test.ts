@@ -46,7 +46,7 @@ test("taşması sıfır olan ama kaydına erişilemeyen ekran KABUL EDİLMEZ", (
 
 test("düzeltmeden sonraki ölçüm geçer", () => {
   assert.deepEqual(tekEkranHukmu("768x600 acik konsol", SONRA_768x600), {
-    ad: "768x600 acik konsol", gecti: true, eksik: [],
+    ad: "768x600 acik konsol", gecti: true, eksik: [], borc: [], dusmeyenBorc: [],
   });
 });
 
@@ -266,4 +266,41 @@ test("seçici açıkken seçilen sekmenin kartı da denetlenir", () => {
   });
   assert.equal(h.gecti, false);
   assert.ok(h.eksik.some((m: string) => m.includes("Sistem sağlığı: uyarı varken saglik kartının gövdesi 0 px")), h.eksik.join(" | "));
+});
+
+test("bilinen borç hükmü düşürmez ama sessiz de kalmaz", () => {
+  /* 901×641 kabul setine girince kiracı CRM'inde iki kartın son kaydına
+     erişilemediği görüldü; ölçüm bunun konsol değişikliklerinden ÖNCE de
+     olduğunu gösterdi. Kapsam dışı olduğu için düşürmüyor, ama koşuda
+     adıyla yazılıyor. */
+  const h = tekEkranHukmu("901x641 acik crm", {
+    sayfaDikey: "641/641", sayfaYatay: "901/901", dockOrtuyor: false, icerikAlt: 500, dockUstu: 565,
+    kartlar: [
+      { panel: "yeni", govde: { h: 120 }, kayit: 8, sonKayitErisilir: false },
+      { panel: "imzali", govde: { h: 120 }, kayit: 8, sonKayitErisilir: false },
+    ],
+  });
+  assert.equal(h.gecti, true);
+  assert.deepEqual(h.eksik, []);
+  assert.equal(h.borc.length, 2);
+  assert.deepEqual(h.dusmeyenBorc, []);
+});
+
+test("borç düzelince liste eskimiş sayılır", () => {
+  const h = tekEkranHukmu("901x641 acik crm", {
+    sayfaDikey: "641/641", sayfaYatay: "901/901", dockOrtuyor: false, icerikAlt: 500, dockUstu: 565,
+    kartlar: [{ panel: "yeni", govde: { h: 200 }, kayit: 8, sonKayitErisilir: true },
+      { panel: "imzali", govde: { h: 200 }, kayit: 8, sonKayitErisilir: true }],
+  });
+  assert.equal(h.dusmeyenBorc.length, 2, "düzelen borç bildirilmeli");
+});
+
+test("borç listesi başka bir kusuru örtmez", () => {
+  const h = tekEkranHukmu("901x641 acik crm", {
+    sayfaDikey: "700/641", sayfaYatay: "901/901", dockOrtuyor: false, icerikAlt: 500, dockUstu: 565,
+    kartlar: [{ panel: "yeni", govde: { h: 120 }, kayit: 8, sonKayitErisilir: false },
+      { panel: "imzali", govde: { h: 120 }, kayit: 8, sonKayitErisilir: false }],
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("sayfa dikey kayıyor")), h.eksik.join(" | "));
 });

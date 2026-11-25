@@ -17,6 +17,23 @@
     null artık düşüren bir sonuç.
 */
 
+/*
+  BİLİNEN BORÇ — muafiyet değil, yazılı gerekçe (check:css'teki kalıp).
+
+  Kabul setine 901×641 eklenince kiracı panelinin CRM genel bakışında iki
+  kartın son kaydına kart içinden erişilemediği görüldü. Ölçüldü: kusur bu
+  dalın CSS'i geri alındığında da duruyor, yani KONSOL değişikliklerinden
+  gelmiyor; kiracının kendi ızgarasında, ortak eşiğin (900/640) hemen
+  dışındaki dar bantta. Bu PR'ın kapsamı konsol yerleşimi olduğu için
+  düzeltilmedi, gizlenmedi de: koşu bunu "bilinen borç" diye yazıyor.
+  Borçtaki bir satır artık düşmüyorsa koşu "listeden çıkar" diyor —
+  liste, düzelen bir şeyi sessizce örtmesin.
+*/
+export const BILINEN_BORC = {
+  "901x641 acik crm": ["yeni kartının son kaydına kart içinden erişilemiyor", "imzali kartının son kaydına kart içinden erişilemiyor"],
+  "901x641 koyu crm": ["yeni kartının son kaydına kart içinden erişilemiyor", "imzali kartının son kaydına kart içinden erişilemiyor"],
+};
+
 /** "453/141" → içerik görünenden büyükse kayıyor. */
 const kayiyor = (olcu) => {
   const [icerik, gorunen] = String(olcu).split("/");
@@ -123,5 +140,8 @@ export function tekEkranHukmu(ad, o) {
     kartlariDenetle(m.kartlar, `${sekme}: `);
   }
 
-  return { ad, gecti: eksik.length === 0, eksik };
+  const borc = BILINEN_BORC[ad] ?? [];
+  const kalan = eksik.filter((m) => !borc.includes(m));
+  const dusmeyenBorc = borc.filter((m) => !eksik.includes(m));
+  return { ad, gecti: kalan.length === 0, eksik: kalan, borc: eksik.filter((m) => borc.includes(m)), dusmeyenBorc };
 }

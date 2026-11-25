@@ -381,7 +381,18 @@ const olc = () => {
 
 const sonuc = {};
 const tarayici = await chromium.launch();
-for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1440x600,768x600,390x844").split(",").map((b) => b.split("x").map(Number))) {
+/*
+  KABUL BOYUTLARI. İlk beşi gerçek oturum ve yaygın pencere boyları.
+  Son dördü 25.11.2026'da eklendi:
+    901×641 — ortak seçici eşiğinin (900/640) hemen dışı. Konsolun nabız
+      sütunu burada ızgarada kalıyordu ve Sistem sağlığı kartı panelini
+      5 px aşıyordu; sayfa sabit ve dock açık olduğu için yalnızca
+      taşmaya bakan bir kabul bunu görmüyordu.
+    1099×900, 1100×899 — konsolun kendi eşiğinin (1100×900) hemen altı,
+      iki eksende ayrı ayrı: seçici açılmalı.
+    1100×900 — eşiğin tam üstü: ızgara düzeni ve üç kart birden.
+*/
+for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1100x900,1100x899,1099x900,1440x600,901x641,768x600,390x844").split(",").map((b) => b.split("x").map(Number))) {
   for (const tema of (process.env.TEMALAR ?? "acik,koyu").split(",")) {
     for (const s of SENARYOLAR) {
       /* EKRAN=<dizin>: ölçümün yanında görüntü de alınır (PR kabulü için).
@@ -601,7 +612,12 @@ fs.rmSync(dizin, { recursive: true, force: true });
 const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
-if (dusen.length) {
+for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);
+/* Borçtaki bir satır artık düşmüyorsa liste eskimiştir: düzelen bir şeyi
+   örtmeye devam etmesin. */
+const eskiyenBorc = hukumler.filter((x) => x.dusmeyenBorc?.length);
+for (const h of eskiyenBorc) console.error(`! ${h.ad}: bilinen borçtan çıkar — artık düşmüyor: ${h.dusmeyenBorc.join(" · ")}`);
+if (dusen.length || eskiyenBorc.length) {
   for (const h of dusen) console.error(`✗ ${h.ad}: ${h.eksik.join(" · ")}`);
   process.exitCode = 1;
 }
