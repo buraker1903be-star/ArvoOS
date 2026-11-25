@@ -243,7 +243,10 @@ const olc = () => {
   });
   const dock = document.querySelector(".os-dock")?.getBoundingClientRect();
   const icerikAlt = Math.max(...[...document.querySelectorAll(".dash-card")].filter((e) => e.offsetParent !== null).map((e) => e.getBoundingClientRect().bottom));
-  return { sayfaYatay: `${s.scrollWidth}/${s.clientWidth}`, sayfaDikey: `${s.scrollHeight}/${s.clientHeight}`, dockUstu: Math.round(dock?.top ?? 0), icerikAlt: Math.round(icerikAlt), dockOrtuyor: icerikAlt > (dock?.top ?? Infinity) + 1, kartlar };
+  /* Konsol zinciri: hangi halkanın çöktüğünü ölçmek için (null = o senaryoda yok). */
+  const z = (sec) => { const e = document.querySelector(sec); return e ? Math.round(e.getBoundingClientRect().height) : null; };
+  const zincir = { panelContent: z(".panel-content"), dashSabit: z(".dash-sabit"), serit: z(".konsol-serit"), gorunum: z(".dash-gorunum"), cols: z(".dash-cols--sabit"), islerPanel: z("#gorunum-isler"), kap: z(".konsol-isler-kap"), kart: z(".konsol-isler"), sekmeler: z(".talep-akis-sekmeler"), akisPanel: z(".talep-akis-panel"), yigin: z(".dash-gorunum-yigin") };
+  return { sayfaYatay: `${s.scrollWidth}/${s.clientWidth}`, sayfaDikey: `${s.scrollHeight}/${s.clientHeight}`, dockUstu: Math.round(dock?.top ?? 0), icerikAlt: Math.round(icerikAlt), dockOrtuyor: icerikAlt > (dock?.top ?? Infinity) + 1, zincir, kartlar };
 };
 
 const sonuc = {};
