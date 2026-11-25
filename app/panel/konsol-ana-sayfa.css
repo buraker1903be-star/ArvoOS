@@ -110,3 +110,110 @@
 
 /* Takip edilecekler: satırın yanındaki "Tamamlandı" düğmesi (konsol-ana-sayfa.tsx). */
 .panel-root .konsol-takip-kapat{min-height:30px;padding:4px 10px;font-size:12px;white-space:nowrap}
+
+/* ============================================================
+   KISA VE DAR EKRANDA KABUK PAYI (25.11.2026, ölçümle)
+
+   Ölçüm (bileşen düzeyi tarayıcı, gerçek derlenmiş CSS):
+
+     1440×600 · .dash 426 px → başlık 32 + uyarı 65 + uyarı 65 +
+       şerit 84 + boşluklar 64 = 310; içeriğe 101 px kalıyor,
+       kuyruk kartı 25 px'e iniyor ve sekme panelinin yüksekliği
+       SIFIR oluyor (taşma 453 px, overflow:hidden ile kırpılı) —
+       kayıtlara ne fareyle ne klavyeyle erişilebiliyordu.
+     390×844 · şerit TEK BAŞINA 250 px (iki sütun × üç satır),
+       içeriğe 154 px, panel yine 0.
+
+   Üç tüketici de konsola özgü; ortak kiracı kurallarına
+   dokunulmuyor (dashboard.css ve .dash-cols--sabit değişmedi).
+   ============================================================ */
+
+/* 1) Şerit: dar ekranda üç sütun, tek satır değer, alt açıklama yok.
+      Ölçülen hedef 250 px → ~96 px. Sayı KALDIRILMIYOR: beşi de
+      kurucunun ilk baktığı şey. */
+@media (max-width:760px){
+  .konsol-ana .konsol-serit{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .konsol-ana .konsol-serit>div{padding:var(--sp-2) var(--sp-3);gap:0;border-top:0}
+  .konsol-ana .konsol-serit>div:nth-child(n+4){border-top:1px solid var(--line-soft)}
+  .konsol-ana .konsol-serit>div:nth-child(3n+1){border-left:0}
+  .konsol-ana .konsol-serit>div:not(:nth-child(3n+1)){border-left:1px solid var(--line-soft)}
+  .konsol-ana .konsol-serit>div:last-child:nth-child(5){grid-column:2/4}
+  .konsol-ana .konsol-serit dd{font-size:var(--fs-base)}
+  .konsol-ana .konsol-serit small{display:none}
+}
+
+/* 2) Kısa pencerede dikey pay: dört blok arasındaki 16 px'lik boşluk
+      600 px'lik bir pencerede 64 px tutuyor. */
+@media (max-height:700px){
+  .konsol-ana.dash-v2{gap:var(--sp-2)}
+  .konsol-ana .konsol-serit>div{padding-block:var(--sp-2)}
+  .konsol-ana .konsol-uyari{padding-block:var(--sp-2)}
+  .konsol-ana .konsol-uyari small{display:none}
+}
+
+/*
+  3) Kuyruk paneline TABAN KONMADI. İlk düzeltme .konsol-isler'e
+  min-height veriyordu (45px + 7rem): panel 0 px'e düşmesin diye. Taban
+  ölçümde hiçbir boyutta bağlayıcı çıkmadı (en dar hâl 1440×600'de 141 px)
+  ama kendisi taşma ÜRETİYORDU — 157 px'lik taban 1440×600'de sayfayı 6,
+  768×600'de 75 px taşırıyordu. Kuyruğun 0 px'e düşmesinin sebebi tabanın
+  yokluğu değil, kabuğun (iki uyarı bloğu + iki satırlık şerit) kalan
+  yüksekliği yemesiydi; sebep düzelince belirti de kalmadı. Korumak için
+  konan bir taban, koruduğu sözleşmeyi kırıyorsa koruma değildir.
+*/
+
+/* Kısa pencerede şerit dar ekrandaki biçimde. */
+@media (max-height:700px){
+  /* KISA PENCEREDE ŞERİT TEK SATIR. İlk denemede üç sütuna alınmıştı ve
+     ters tepti: 1440×600'de beş kutu iki satıra çıkıp şeridi 84 → 112
+     px'e ÇIKARDI (ölçüldü). Beş eşit sütun her genişlikte tek satır
+     bırakıyor; 768 px'de hücre 153 px, değer sığıyor. */
+  .konsol-ana .konsol-serit{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .konsol-ana .konsol-serit>div{padding:var(--sp-2) var(--sp-3);gap:0;border-top:0}
+  .konsol-ana .konsol-serit>div:not(:first-child){border-left:1px solid var(--line-soft)}
+  .konsol-ana .konsol-serit small{display:none}
+  .konsol-ana .konsol-serit dd{font-size:var(--fs-base)}
+}
+/* Dar VE kısa ekranda genişlik kuralı kazanır: 390 px'de beş sütun okunmaz. */
+@media (max-width:760px) and (max-height:700px){
+  .konsol-ana .konsol-serit{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .konsol-ana .konsol-serit>div:nth-child(3n+1){border-left:0}
+}
+
+/*
+  GRAFİK KARTI SEÇİLİYKEN SAYFAYI TAŞIRMIYOR (25.11.2026, ölçümle).
+
+  Görünüm seçici açıkken (dashboard.css: max-width:900px ya da
+  max-height:640px) seçili panel kalan yüksekliği alıyor ve liste kartları
+  gövdelerinde (.dash-col-govde) kayıyor. Tahsilat paneli bir SeriKarti:
+  kendi kaydırma alanı yok, bu yüzden paneli aşıyordu — 768×600'de kart
+  196 px, panel 49 px; sayfa 657/600 taşıyor, 390×844'te 872/844 ve her
+  iki boyutta dock içeriği örtüyordu. Varsayılan sekmede ölçüm temiz
+  çıktığı için bu, yalnızca taşmaya bakan bir kabulde görünmüyordu.
+  Çözüm is-ust panellerinde zaten var (dashboard.css .is-ust.is-secili):
+  kartın kendi kaydırma alanı yoksa panelin kendisi kayar. İç içe
+  kaydırma olmasın diye kural yalnızca gövdesi olmayan panele uygulanır.
+*/
+@media (max-width:900px),(max-height:640px){
+  .konsol-ana .dash-cols--sabit>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)),
+  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)){
+    min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  }
+}
+
+/*
+  SEÇİLİ KART ALANI DOLDURUR (25.11.2026, ekran görüntüsüyle).
+
+  .dash-cols--sabit masaüstünde IZGARA ve oradaki align-items:start bilerek
+  konmuş: kart içeriği kadar büyür, boş kart kardeşleri kadar uzamaz
+  (dashboard.css FX-02/FX-03). Görünüm seçici açıldığında aynı kap
+  flex-direction:column oluyor ve o değer bu kez ÇAPRAZ ekseni, yani
+  GENİŞLİĞİ yönetiyor: 1440×600'de 1392 px'lik alanda kart 631 px kalıyor,
+  ekranın sağı boş; 390×844'te tersine kart 401 px olup 366 px'lik kabı
+  aşıyor ve satırların sağ kenarı kırpılıyor. Ölçüm sayıları temiz
+  gösteriyordu — taşma sıfır, dock açık; kusur yalnızca görüntüde.
+  Kural konsola özgü: kiracı panelinin ızgara davranışı değişmiyor.
+*/
+@media (max-width:900px),(max-height:640px){
+  .konsol-ana .dash-cols--sabit{align-items:stretch}
+}

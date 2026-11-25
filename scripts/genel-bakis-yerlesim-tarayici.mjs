@@ -15,6 +15,7 @@
   çizilir — "önce" ölçümü için (8fa62a3).
 */
 import { build } from "esbuild";
+import { tekEkranHukmu } from "./tek-ekran-kabulu.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -197,11 +198,19 @@ function Konsol() {
           )) },
         ]} /> },
   ];
+  /*
+    ÜRETİMLE AYNI UYARI SAYISI (25.11.2026). Senaryo iki ayrı blok
+    çiziyordu (GenelBakis'in uyari prop'u + köprü satırı); konsolun kendisi
+    25.11'de ikisini tek satırda birleştirdi. Betik eski hâli çizmeye devam
+    edince ölçüm, var olmayan bir sayfanın yüksekliğini veriyordu — betik
+    kendi kopyasını doğrular. En yüksek gerçek hâl alınıyor: danger tonu,
+    iki olgunun birden yazıldığı en uzun metin.
+  */
   return (
-    <GenelBakis baslik="İyi günler, Burak" sinif="dash-sabit konsol-ana" uyari={["Bireysel abone ödemeleri"]}>
-      <p className="dash-uyari" data-tone="danger" role="alert">
+    <GenelBakis baslik="İyi günler, Burak" sinif="dash-sabit konsol-ana">
+      <p className="dash-uyari konsol-uyari" data-tone="danger" role="alert">
         <span aria-hidden="true" />
-        <span><b>ArvoCal köprüsü yanıt vermiyor</b><small>Gerekçeler Nabız → Sistem sağlığı kartında.</small></span>
+        <span><b>3 ürün köprüsü yanıt vermiyor · 2 veri kaynağı okunamadı</b><small>Ayrıntı: Sistem sağlığı kartı.</small></span>
       </p>
       <dl className="konsol-serit" aria-label="Konsolun sayıları">
         {konsolSerit.map(([ad, deger, ton, href]) => (
@@ -242,11 +251,60 @@ const olc = () => {
     return { panel: p.id.replace("gorunum-", ""), kart: r(kart), kartKaydirma: kart ? `${kart.scrollHeight}/${kart.clientHeight}` : null, govde: r(govde), tamGorunenKayit: tam, kayit: govde ? govde.querySelectorAll("li").length : null, yatayTasma: kart ? kart.scrollWidth > kart.clientWidth + 1 : null };
   });
   const dock = document.querySelector(".os-dock")?.getBoundingClientRect();
-  const icerikAlt = Math.max(...[...document.querySelectorAll(".dash-card")].filter((e) => e.offsetParent !== null).map((e) => e.getBoundingClientRect().bottom));
-  /* Konsol zinciri: hangi halkanın çöktüğünü ölçmek için (null = o senaryoda yok). */
-  const z = (sec) => { const e = document.querySelector(sec); return e ? Math.round(e.getBoundingClientRect().height) : null; };
-  const zincir = { panelContent: z(".panel-content"), dashSabit: z(".dash-sabit"), serit: z(".konsol-serit"), gorunum: z(".dash-gorunum"), cols: z(".dash-cols--sabit"), islerPanel: z("#gorunum-isler"), kap: z(".konsol-isler-kap"), kart: z(".konsol-isler"), sekmeler: z(".talep-akis-sekmeler"), akisPanel: z(".talep-akis-panel"), yigin: z(".dash-gorunum-yigin") };
-  return { sayfaYatay: `${s.scrollWidth}/${s.clientWidth}`, sayfaDikey: `${s.scrollHeight}/${s.clientHeight}`, dockUstu: Math.round(dock?.top ?? 0), icerikAlt: Math.round(icerikAlt), dockOrtuyor: icerikAlt > (dock?.top ?? Infinity) + 1, zincir, kartlar };
+  /*
+    İÇERİĞİN ALTI: yalnızca .dash-card'a bakmak yetmiyor. Görünüm seçici
+    açıkken konsolda görünen tek kart .konsol-isler ve o .dash-card DEĞİL;
+    liste boş kalınca Math.max(...[]) -Infinity dönüyor ve "dock örtmüyor"
+    hükmü hiçbir şey ölçmeden geçiyordu (25.11.2026). Kart bulunamazsa
+    sonuç null kalır ve kabul bunu geçerli saymaz.
+  */
+  const altlar = [...document.querySelectorAll(".dash-card,.konsol-isler,.dash-gorunum-panel.is-secili")]
+    .filter((e) => e.offsetParent !== null).map((e) => e.getBoundingClientRect().bottom);
+  const icerikAlt = altlar.length ? Math.max(...altlar) : null;
+  /*
+    ZİNCİR TEŞHİSİ. Yalnızca yükseklik yetmiyor: kalan yüksekliğin HANGİ
+    kapsayıcıda kaybolduğunu görmek için her halkanın kutusu, akış
+    özellikleri ve kabuğun boşluk değişkenleri birlikte okunuyor.
+  */
+  const kutu = (sec) => {
+    const e = document.querySelector(sec);
+    if (!e) return null;
+    const r = e.getBoundingClientRect(), c = getComputedStyle(e);
+    return {
+      h: Math.round(r.height), icerik: e.scrollHeight, gorunen: e.clientHeight,
+      tasma: e.scrollHeight - e.clientHeight,
+      display: c.display, flex: c.flex, minH: c.minHeight, maxH: c.maxHeight,
+      pb: c.paddingBottom, of: c.overflowY,
+    };
+  };
+  const kokStil = getComputedStyle(document.querySelector(".os-root") ?? document.body);
+  const dockK = document.querySelector(".os-dock")?.getBoundingClientRect();
+  const zincir = {
+    degiskenler: { dockSpace: kokStil.getPropertyValue("--os-dock-space").trim(), barH: kokStil.getPropertyValue("--os-bar-h").trim(), ustH: kokStil.getPropertyValue("--os-ust-h").trim() },
+    dock: dockK ? { ust: Math.round(dockK.top), h: Math.round(dockK.height), konum: getComputedStyle(document.querySelector(".os-dock")).position } : null,
+    osFrame: kutu(".os-frame"), osWorkspace: kutu(".os-workspace"), panelContent: kutu(".panel-content"),
+    dash: kutu(".dash"), serit: kutu(".konsol-serit"), hero: kutu(".dash-hero"), uyari: kutu(".dash-uyari"),
+    gorunum: kutu(".dash-gorunum"), cols: kutu(".dash-cols--sabit"), yigin: kutu(".dash-gorunum-yigin"),
+    islerPanel: kutu("#gorunum-isler"), kap: kutu(".konsol-isler-kap"), kart: kutu(".konsol-isler"),
+    sekmeler: kutu(".talep-akis-sekmeler"), akisPanel: kutu(".talep-akis-panel"),
+    /* .dash'in kalan yüksekliği nerede: her çocuk adıyla ve payıyla. */
+    dashCocuklari: [...(document.querySelector(".dash")?.children ?? [])].map((e) => ({
+      ad: (e.className || e.tagName).toString().split(" ").slice(0, 2).join("."),
+      h: Math.round(e.getBoundingClientRect().height),
+      mt: getComputedStyle(e).marginTop, mb: getComputedStyle(e).marginBottom,
+    })),
+    dashGap: getComputedStyle(document.querySelector(".dash") ?? document.body).rowGap,
+    /* Genişlik de tek ekranın parçası: seçili kart boşluğu doldurmalı. */
+    genislik: (() => {
+      const c = document.querySelector(".dash-cols--sabit");
+      const p2 = document.querySelector(".dash-gorunum-panel.is-secili");
+      if (!c) return null;
+      const cs = getComputedStyle(c);
+      return { cols: Math.round(c.getBoundingClientRect().width), secili: p2 ? Math.round(p2.getBoundingClientRect().width) : null,
+        display: cs.display, alignItems: cs.alignItems };
+    })(),
+  };
+  return { sayfaYatay: `${s.scrollWidth}/${s.clientWidth}`, sayfaDikey: `${s.scrollHeight}/${s.clientHeight}`, dockUstu: Math.round(dock?.top ?? 0), icerikAlt: icerikAlt === null ? null : Math.round(icerikAlt), dockOrtuyor: icerikAlt === null ? null : icerikAlt > (dock?.top ?? Infinity) + 1, zincir, kartlar };
 };
 
 const sonuc = {};
@@ -254,10 +312,19 @@ const tarayici = await chromium.launch();
 for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1440x600,768x600,390x844").split(",").map((b) => b.split("x").map(Number))) {
   for (const tema of (process.env.TEMALAR ?? "acik,koyu").split(",")) {
     for (const s of SENARYOLAR) {
-      const sayfa = await tarayici.newPage({ viewport: { width: w, height: h } });
+      /* EKRAN=<dizin>: ölçümün yanında görüntü de alınır (PR kabulü için).
+         deviceScaleFactor 2, çünkü görüntüye insan bakıyor. */
+      const sayfa = await tarayici.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: process.env.EKRAN ? 2 : 1 });
       await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}`);
       await sayfa.waitForTimeout(300);
       const o = await sayfa.evaluate(olc);
+      /* EKRAN=<dizin>: görüntü ölçümün hemen ardında, sekme döngüsünden ÖNCE
+         alınır — sonrasında son seçilen sekme ve sona kaydırılmış liste
+         görünür, kullanıcının açılışta gördüğü ekran değil. */
+      if (process.env.EKRAN) {
+        fs.mkdirSync(process.env.EKRAN, { recursive: true });
+        await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}.png`) });
+      }
       // Kurulum: eski kartta başlık kaydırmayla kayıyor mu; yenide pencere ve odak dönüşü.
       if (s === "ana") {
         if (!yeniKurulum) {
@@ -273,6 +340,60 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1440x600,768x60
         // Son kayda erişim: Operasyon gövdesini sona kaydır.
         o.sonKayit = await sayfa.evaluate(() => { const g = document.querySelector("#gorunum-operasyon .dash-col-govde"); if (!g || g.offsetParent === null) return null; g.scrollTop = g.scrollHeight; const li = [...g.querySelectorAll("li")].pop(); const a = li.getBoundingClientRect(), b = g.getBoundingClientRect(); return a.bottom <= b.bottom + 1 && a.top >= b.top - 1; });
       }
+      /*
+        KONSOL ERİŞİM KABULÜ (25.11.2026). Taşmanın sıfır olması yetmiyor:
+        kurucunun günde defalarca yaptığı iş kuyruğun SON satırındaki
+        "Onayla". Ölçülen: panel sonuna kaydırıldığında son kayıt panelin
+        içinde mi, satırın düğmesi o noktada GERÇEKTEN tıklanabilir mi
+        (elementFromPoint, yani üstünü başka bir şey örtmüyor), dock'un
+        üstünde mi ve klavyeyle odaklanabiliyor mu.
+      */
+      if (s === "konsol") {
+        o.erisim = await sayfa.evaluate(() => {
+          const panel = document.querySelector(".talep-akis-panel:not([hidden])");
+          if (!panel) return { hata: "panel yok" };
+          panel.scrollTop = panel.scrollHeight;
+          const satirlar = [...panel.querySelectorAll("li")];
+          const son = satirlar[satirlar.length - 1];
+          if (!son) return { hata: "kayıt yok" };
+          const pr = panel.getBoundingClientRect(), sr = son.getBoundingClientRect();
+          const dock = document.querySelector(".os-dock")?.getBoundingClientRect();
+          const dugme = son.querySelector("button");
+          let dokunma = null, dockUstunde = null, klavye = null;
+          if (dugme) {
+            const dr = dugme.getBoundingClientRect();
+            const hedef = document.elementFromPoint(Math.round(dr.left + dr.width / 2), Math.round(dr.top + dr.height / 2));
+            dokunma = Boolean(hedef && (hedef === dugme || dugme.contains(hedef)));
+            dockUstunde = dock ? dr.bottom <= dock.top + 1 : true;
+            dugme.focus();
+            klavye = document.activeElement === dugme && dugme.tabIndex >= 0;
+          }
+          /*
+            İç sekme şeridi (Ödeme/Sözleşme/Kurulum/Dönem/Sorun) 390 px'e
+            sığmıyor. Kesilmesi ancak YATAY KAYIYORSA kabul: son sekme
+            kaydırmayla görünür olmalı, yoksa "Sorun" kuyruğuna telefonda
+            hiç ulaşılamaz.
+          */
+          const serit = document.querySelector(".talep-akis-sekmeler");
+          let icSekme = null;
+          if (serit) {
+            const son = [...serit.querySelectorAll("button,a")].pop();
+            const tasiyor = serit.scrollWidth > serit.clientWidth + 1;
+            serit.scrollLeft = serit.scrollWidth;
+            const srr = serit.getBoundingClientRect(), snr = son?.getBoundingClientRect();
+            icSekme = { tasiyor, kayabiliyor: getComputedStyle(serit).overflowX, sayi: serit.querySelectorAll("button,a").length,
+              sonGorunur: snr ? snr.right <= srr.right + 1 && snr.left >= srr.left - 1 : null };
+          }
+          return {
+            kayit: satirlar.length, icSekme,
+            panelH: Math.round(pr.height), kaydirildi: panel.scrollTop,
+            sonLiYuk: Math.round(sr.height), sonLiAltFark: Math.round(sr.bottom - pr.bottom),
+            sonKayitPanelde: sr.bottom <= pr.bottom + 1 && sr.top >= pr.top - 1,
+            panelKayiyor: panel.scrollHeight > panel.clientHeight,
+            dugmeVar: Boolean(dugme), dokunma, dockUstunde, klavye,
+          };
+        });
+      }
       // Görünüm seçici açıksa (dar/kısa ekran) her paneli sırayla seçip ölç:
       // varsayılan seçim yalnızca ilk paneli gösteriyor, listeler görünmüyor.
       const secici = sayfa.locator(".dash-gorunum-sec");
@@ -283,6 +404,29 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1440x600,768x60
           await d.click();
           await sayfa.waitForTimeout(50);
           const m = await sayfa.evaluate(olc);
+          /* Sekmenin GÖVDESİ görünüyor mu: seçili panelin içinde yükseklik
+             taşıyan bir içerik kutusu olmalı. Yalnızca başlık çizilmesi
+             (gövde 0 px) kabul değil. */
+          m.govde = await sayfa.evaluate(() => {
+            const p = [...document.querySelectorAll(".dash-gorunum-panel.is-secili")].find((e) => e.offsetParent !== null);
+            if (!p) return { hata: "seçili panel görünmüyor" };
+            const kart = p.firstElementChild;
+            const g = p.querySelector(".dash-col-govde") ?? p.querySelector(".talep-akis-panel");
+            const say = (e) => (e ? { h: Math.round(e.getBoundingClientRect().height), ic: e.scrollHeight } : null);
+            /*
+              KABUL: kartın gövdesi görünüyor mu? Ölçüt "gövde yüksekliği > 0"
+              DEĞİL: Tahsilat bir grafik kartı, kendi kaydırma alanı
+              (.dash-col-govde) hiç yok ve o ölçüt onu haksız yere düşürüyordu.
+              Doğru ölçüt: kart panelin içinde duruyor (ya da panel kendi
+              içinde kayıyor) ve kaydırma alanı varsa yüksekliği var.
+            */
+            const pr = p.getBoundingClientRect(), kr = kart?.getBoundingClientRect();
+            const kayiyor = p.scrollHeight > p.clientHeight && getComputedStyle(p).overflowY === "auto";
+            return { panel: say(p), kart: say(kart), govde: say(g), tur: g?.className.split(" ")[0] ?? null,
+              kayit: g ? g.querySelectorAll("li").length : 0,
+              kartPanelde: kr ? kr.bottom <= pr.bottom + 1 : null, panelKayiyor: kayiyor,
+              kabul: Boolean(kr && (kr.bottom <= pr.bottom + 1 || kayiyor) && (!g || Math.round(g.getBoundingClientRect().height) > 0)) };
+          });
           m.sonKayit = await sayfa.evaluate(() => { const g = [...document.querySelectorAll(".dash-gorunum-panel.is-secili .dash-col-govde")].find((e) => e.offsetParent !== null); if (!g || !g.querySelector("li")) return null; g.scrollTop = g.scrollHeight; const li = [...g.querySelectorAll("li")].pop(); const a = li.getBoundingClientRect(), b = g.getBoundingClientRect(); return a.bottom <= b.bottom + 1 && a.top >= b.top - 1; });
           o.secimler[(await d.textContent()).trim()] = m;
         }
@@ -294,4 +438,12 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1440x600,768x60
 }
 await tarayici.close();
 fs.rmSync(dizin, { recursive: true, force: true });
-console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", sonuc }, null, 1));
+
+/* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, o));
+const dusen = hukumler.filter((h) => !h.gecti);
+console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
+if (dusen.length) {
+  for (const h of dusen) console.error(`✗ ${h.ad}: ${h.eksik.join(" · ")}`);
+  process.exitCode = 1;
+}

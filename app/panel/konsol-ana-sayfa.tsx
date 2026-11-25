@@ -1173,19 +1173,36 @@ export async function KonsolAnaSayfa() {
   return (
     <GenelBakis
       baslik={`${selam}${ad ? `, ${ad}` : ""}`}
-      uyari={okunamayan.map(([ad2]) => ad2)}
       sinif="dash-sabit konsol-ana"
     >
-      {/* Köprü kopması ilk ekranda görünmeye devam ediyor, ama TEK
-          satırda: gerekçeler Sistem sağlığı kartında. Eskiden her köprü
-          için ayrı bir uyarı bloğu vardı ve üçü birden düşerse şeridi
-          ekranın dışına itiyordu. */}
-      {kopruler.length ? (
-        <p className="dash-uyari" data-tone="danger" role="alert">
+      {/*
+        TEK UYARI SATIRI (25.11.2026, ölçümle).
+
+        İki ayrı blok çiziliyordu: GenelBakis'in `uyari` prop'u
+        (okunamayan kaynaklar) ve köprü satırı. 1440×600'de ikisi
+        birlikte 130 px, yani .dash'in 426 px'inin üçte biri; başlık,
+        şerit ve boşluklarla birlikte kabuk 325 px tutuyor ve içeriğe
+        101 px kalıyordu — kuyruk paneli 0 px'e düşüp kayıtlara
+        erişilemiyordu. İkisi tek satırda birleşti; ayrıntı zaten
+        Sistem sağlığı kartında kayıt kayıt duruyor.
+      */}
+      {kopruler.length || okunamayan.length ? (
+        <p className="dash-uyari konsol-uyari" data-tone={kopruler.length ? "danger" : "warning"} role="alert">
           <span aria-hidden="true"><StgIcon name="shield" size={16} /></span>
           <span>
-            <b>{kopruler.length === 1 ? `${kopruler[0].ad} yanıt vermiyor` : `${kopruler.length} ürün köprüsü yanıt vermiyor`}</b>
-            <small>Gerekçeler Nabız → Sistem sağlığı kartında.</small>
+            {/* İKİSİ BİRDEN olabilir ve ikisi AYRI şey: köprü sessiz kalmış
+                olabilir ve ayrıca bir sorgu düşmüş olabilir. Yalnızca
+                köprüyü yazmak "okunamadı" olgusunu bannerdan siliyordu;
+                tek satır olması ikisinden birini atmak demek değil. */}
+            <b>
+              {[
+                kopruler.length
+                  ? kopruler.length === 1 ? `${kopruler[0].ad} yanıt vermiyor` : `${kopruler.length} ürün köprüsü yanıt vermiyor`
+                  : null,
+                okunamayan.length ? `${okunamayan.length} veri kaynağı okunamadı` : null,
+              ].filter(Boolean).join(" · ")}
+            </b>
+            <small>Ayrıntı: Sistem sağlığı kartı.</small>
           </span>
         </p>
       ) : null}
