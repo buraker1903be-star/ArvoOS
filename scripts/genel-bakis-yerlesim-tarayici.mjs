@@ -34,7 +34,10 @@ function rotaCss(rota) {
   const m = Object.values(kum.self.__RSC_MANIFEST)[0];
   return (m.entryCSSFiles[`[project]/app/${rota}/page`] ?? []).map((x) => path.join(KOK, ".next", x.path ?? x));
 }
-const cssler = { ana: rotaCss("panel"), crm: rotaCss("panel/crm/genel-bakis") };
+/* Kurucu konsolunun ana sayfası da "panel" rotasından çiziliyor
+   (konsol-ana-sayfa.tsx, yalnızca yonetim.arvo-os.com): CSS kümesi aynı. */
+const cssler = { ana: rotaCss("panel"), crm: rotaCss("panel/crm/genel-bakis"), konsol: rotaCss("panel") };
+const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol").split(",");
 
 const dizin = fs.mkdtempSync(path.join(os.tmpdir(), "yerlesim-"));
 const shim = path.join(dizin, "shim");
@@ -49,6 +52,8 @@ import { createRoot } from "react-dom/client";
 import { GenelBakis, ListeKarti, ListeSatiri, SeriKarti } from ${a("app/panel/os/genel-bakis.tsx")};
 import { GorunumSecici } from ${a("app/panel/os/gorunum-secici.tsx")};
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
+import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
+import { konsolUygulamalari } from ${a("app/panel/os/konsol-apps.ts")};
 ${yeniKurulum ? `import { KurulumOzeti } from ${a("app/panel/os/kurulum-ozeti.tsx")};` : ""}
 const sayfa = new URLSearchParams(location.search).get("sayfa") || "ana";
 window.__yol = sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel";
@@ -106,11 +111,112 @@ function Crm() {
   ];
   return <GenelBakis gizliBaslik="CRM genel bakış" sinif="dash-sabit"><GorunumSecici etiket="CRM görünümü" paneller={paneller} /></GenelBakis>;
 }
+/*
+  KURUCU KONSOLU ANA EKRANI (25.11.2026).
+
+  konsol-ana-sayfa.tsx'in ürettiği bileşimin AYNISI, sentetik veriyle:
+  köprü satırı + sayı şeridi + GorunumSecici(Bugünün İşleri | Tahsilat ·
+  Sistem sağlığı · Son hareketler). Ölçülen şey düzen; veri sunucuda
+  okunuyor ve burada yok.
+
+  İKİ BİLİNÇLİ TAKLİT: (1) HizliOnay bir sunucu işlemi çağırıyor, burada
+  koşamaz — satırın GEOMETRİSİ aynı kalsın diye aynı sınıflarla
+  (form.hizli-onay > button.panel-ghost) düz bir düğme çiziliyor.
+  (2) Dock, konsolUygulamalari()'nın GERÇEK listesi (rozetli).
+*/
+const konsolSerit = [
+  ["Ödeme onayı", "3", "gold", "/panel/platform/payments"],
+  ["Sözleşme onayı", "1", "gold", "/panel/platform/sozlesmeler"],
+  ["Bu ay tahsilat", "182.400,00 ₺", "info", "/panel/platform/tahsilat"],
+  ["Aktif kurum", "24", "info", "/panel/platform/musteriler"],
+  ["Dönemi dolan", "2", "danger", "/panel/platform/yenilemeler"],
+];
+const odemeSatiri = (ad, tutar, ayrinti, uyari, i) => (
+  <li key={i} className="pu-eylemli">
+    <a href="/panel/platform/payments">
+      <span className="pu-govde"><b>{ad}</b><small>{uyari ? "Beklenenle uyuşmuyor · incelenmeli" : ayrinti}</small></span>
+      <span className="konsol-tutar" data-uyari={uyari ? "evet" : undefined}>{tutar}</span>
+    </a>
+    {uyari ? null : <form className="hizli-onay"><button className="panel-ghost" type="button">Onayla</button></form>}
+  </li>
+);
+const KURUMLAR = [
+  ["Akademik Merkez Danışmanlık A.Ş.", "24.900,00 ₺", "ArvoLab · Havale/EFT · 2 saat önce", false],
+  ["Yıldız Eğitim Kurumları", "149.000,00 ₺", "ArvoOS · Kart (PayTR) · 5 saat önce", true],
+  ["Boğaziçi Araştırma ve Yayın Ltd.", "14.900,00 ₺", "ArvoLab · Havale/EFT · dün", false],
+  ["Ege Akademi Yayıncılık", "39.900,00 ₺", "ArvoARC · Havale/EFT · dün", false],
+  ["Marmara Tez Danışmanlık", "9.900,00 ₺", "ArvoCal · Havale/EFT · 2 gün önce", false],
+  ["Anadolu Bilim Merkezi", "74.500,00 ₺", "ArvoOS · Havale/EFT · 3 gün önce", false],
+];
+function Konsol() {
+  const islerPaneli = (
+    <div id="bugunun-isleri" className="konsol-isler-kap">
+      <h2 className="konsol-isler-baslik">Bugünün işleri</h2>
+      <TalepAkis kimlik="konsol-is" etiket="Bugünün işleri" sinif="konsol-isler" baslangic={0}
+        sekmeler={["Ödeme · 6", "Sözleşme · 1", "Kurulum", "Dönem · 2", "Sorun"]}>
+        <section>
+          <div className="phr-bas"><b>Ödeme onayları</b><small>Kurumların gönderdiği dekontlar ve kart ödemeleri; onaylanınca lisans açılır.</small></div>
+          <ul className="pu-liste">{KURUMLAR.map((k, i) => odemeSatiri(k[0], k[1], k[2], k[3], i))}</ul>
+        </section>
+        <section><div className="phr-bas"><b>Sözleşme onayları</b></div><ul className="pu-liste">{KURUMLAR.slice(0, 1).map((k, i) => odemeSatiri(k[0], k[1], k[2], false, i))}</ul></section>
+        <section><p className="pu-bos">Bekleyen kurulum yok.</p></section>
+        <section><ul className="pu-liste">{KURUMLAR.slice(0, 2).map((k, i) => odemeSatiri(k[0], k[1], "Dönem bitti", false, i))}</ul></section>
+        <section><p className="pu-bos">Her kiracı yolunda.</p></section>
+      </TalepAkis>
+    </div>
+  );
+  const saglik = (
+    <article className="dash-card dash-col">
+      <header className="dash-card-head"><div><h2>Sistem sağlığı</h2><p>Ürün köprüleri, kurulumlar ve okunabilirlik</p></div></header>
+      <div className="dash-col-govde">
+        <ul className="konsol-saglik">
+          <li><span className="status-pill" data-tone="danger">yanıt yok</span><span><b>ArvoCal köprüsü</b><small>Bağlanılamadı: fetch failed</small></span></li>
+          <li><span className="status-pill" data-tone="danger">2</span><span><b>Kurulumda hatada kalan kurum</b><small><a href="/panel/platform/kurulumlar">Kurulumlar</a> ekranından sürdürülebilir.</small></span></li>
+          <li><span className="status-pill" data-tone="neutral">1</span><span><b>Okunamayan veri kaynağı</b><small>Bireysel abone ödemeleri — bu alanlar ölçülemedi.</small></span></li>
+        </ul>
+      </div>
+      <a className="dash-card-link" href="/panel/platform/saglik">Sistem sağlığı <span aria-hidden="true">›</span></a>
+    </article>
+  );
+  const hareketSatiri = ([ad, tutar, alt], i) => (
+    <ListeSatiri key={i} href="/panel/platform/tahsilat" baslik={ad} alt={alt}
+      sag={<span className="konsol-tutar">{tutar}</span>} zaman="2 saat önce" />
+  );
+  const paneller = [
+    { anahtar: "isler", etiket: "Bugünün İşleri", yer: "liste", icerik: islerPaneli },
+    { anahtar: "tahsilat", etiket: "Tahsilat", yer: "liste", grup: "nabiz",
+      icerik: <SeriKarti baslik="Tahsilat" alt="Son 14 gün" seri={seri} adet="tahsilat" href="/panel/platform/tahsilat" bos="Son 14 günde tahsilat yok." /> },
+    { anahtar: "saglik", etiket: "Sistem sağlığı", yer: "liste", grup: "nabiz", icerik: saglik },
+    { anahtar: "hareketler", etiket: "Son hareketler", yer: "liste", grup: "nabiz",
+      icerik: <ListeKarti baslik="Son hareketler" alt="Tahsilatlar ve kurulum adımları" bos="Son dört haftada hareket yok."
+        sayi={12} href="/panel/platform/tahsilat" hrefEtiket="Tahsilatlar"
+        gruplar={[
+          { anahtar: "tahsilat", baslik: "Tahsilat", satirlar: KURUMLAR.map(hareketSatiri) },
+          { anahtar: "kurulum", baslik: "Kurulum", satirlar: KURUMLAR.slice(0, 6).map((k, i) => (
+            <ListeSatiri key={"k" + i} href="/panel/platform/kurulumlar" baslik={k[0]} alt="Kurum açma · tamamlandı" zaman="dün" />
+          )) },
+        ]} /> },
+  ];
+  return (
+    <GenelBakis baslik="İyi günler, Burak" sinif="dash-sabit konsol-ana" uyari={["Bireysel abone ödemeleri"]}>
+      <p className="dash-uyari" data-tone="danger" role="alert">
+        <span aria-hidden="true" />
+        <span><b>ArvoCal köprüsü yanıt vermiyor</b><small>Gerekçeler Nabız → Sistem sağlığı kartında.</small></span>
+      </p>
+      <dl className="konsol-serit" aria-label="Konsolun sayıları">
+        {konsolSerit.map(([ad, deger, ton, href]) => (
+          <div key={ad} data-tone={ton}><dt>{ad}</dt><dd><a href={href}>{deger}</a></dd></div>
+        ))}
+      </dl>
+      <GorunumSecici etiket="Konsol görünümü" paneller={paneller} />
+    </GenelBakis>
+  );
+}
 function Kabuk() {
   return <div className="panel-root os-root"><main className="panel-frame os-frame">
     <header className="os-bar"><a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a></header>
-    <section className="os-workspace">${'{'}/* bölüm menüsü CRM'de layout'ta; burada yükseklik payı CSS tahmininden */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : <Ana />}</div></section>
-    <OsNavigasyon uygulamalar={uygulamalar} digerUygulamalar={[]} />
+    <section className="os-workspace">${'{'}/* bölüm menüsü CRM'de layout'ta; burada yükseklik payı CSS tahmininden */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <Konsol /> : <Ana />}</div></section>
+    <OsNavigasyon uygulamalar={sayfa === "konsol" ? konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 }) : uygulamalar} digerUygulamalar={[]} />
   </main></div>;
 }
 createRoot(document.getElementById("kok")).render(<Kabuk />);
@@ -123,7 +229,7 @@ await build({
   loader: { ".css": "empty" },
 });
 const html = (tema, s) => `<!doctype html><html lang="tr" data-theme="${tema}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${cssler[s].map((d) => `<link rel="stylesheet" href="file://${d}">`).join("")}</head><body><div id="kok"></div><script src="paket.js"></script></body></html>`;
-for (const tema of ["acik", "koyu"]) for (const s of ["ana", "crm"]) fs.writeFileSync(path.join(dizin, `${tema}-${s}.html`), html(tema === "acik" ? "light" : "dark", s));
+for (const tema of ["acik", "koyu"]) for (const s of SENARYOLAR) fs.writeFileSync(path.join(dizin, `${tema}-${s}.html`), html(tema === "acik" ? "light" : "dark", s));
 
 const olc = () => {
   const r = (e) => e ? Math.round(e.getBoundingClientRect().height) : null;
@@ -144,7 +250,7 @@ const sonuc = {};
 const tarayici = await chromium.launch();
 for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1440x600,768x600,390x844").split(",").map((b) => b.split("x").map(Number))) {
   for (const tema of (process.env.TEMALAR ?? "acik,koyu").split(",")) {
-    for (const s of ["ana", "crm"]) {
+    for (const s of SENARYOLAR) {
       const sayfa = await tarayici.newPage({ viewport: { width: w, height: h } });
       await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}`);
       await sayfa.waitForTimeout(300);

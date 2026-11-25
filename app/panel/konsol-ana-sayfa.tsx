@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { sureOlcer } from "@/lib/sure-olcumu";
 import { kopruSagliklari } from "@/lib/kopru-sagliklari";
 import { askidakiKurumlar, type AskiSatiri } from "@/lib/askidakiler";
@@ -34,6 +35,7 @@ import { KONSOL_ALANLARI, uygulamalariSuz, type KonsolKapsami } from "@/lib/kons
 import { konsolUygulamalari } from "./os/konsol-apps";
 import { donemDegisimi } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
+import { GorunumSecici, type GorunumPaneli } from "./os/gorunum-secici";
 import { TalepAkis } from "./crm/kayit-detay/kayit-akis";
 import { StgIcon } from "./settings/settings-ui";
 import { KURULUM_ADI, KURULUM_ISLEMI, para, tarih } from "./platform/bicim";
@@ -763,29 +765,14 @@ export async function KonsolAnaSayfa() {
   );
 
   sure.bitir();
-  return (
-    <GenelBakis baslik={`${selam}${ad ? `, ${ad}` : ""}`} uyari={okunamayan.map(([ad2]) => ad2)} sinif="konsol-ana">
-      {/* Köprüler sessizce kopuyor: hata yalnızca karşı taraftaki günlükte
-          kalıyor ve kurucu aylar sonra fark ediyordu. Konsolun ilk ekranı
-          bunu söylemeli. */}
-      {kopruler.map((kopru) => (
-        <p className="dash-uyari" data-tone="danger" role="alert" key={kopru.ad}>
-          <span aria-hidden="true"><StgIcon name="shield" size={16} /></span>
-          <span><b>{kopru.ad} yanıt vermiyor</b><small>{kopru.not}</small></span>
-        </p>
-      ))}
-
-      <dl className="konsol-serit" aria-label="Konsolun sayıları">
-        {serit.map((oge) => (
-          <div key={oge.ad} data-tone={oge.ton}>
-            <dt>{oge.ad}</dt>
-            <dd><Link href={oge.href}>{oge.deger}</Link></dd>
-            {oge.alt ? <small>{oge.alt}</small> : null}
-          </div>
-        ))}
-      </dl>
-
-      <div id="bugunun-isleri" className="konsol-isler-kap">
+  /*
+    BUGÜNÜN İŞLERİ artık görünüm panelinin içeriği (25.11.2026). Kuyruğun
+    kendisi, sekmeleri ve tek tıkla onay satırı DEĞİŞMEDİ: aynı
+    TalepAkis, aynı sunucu işlemi, aynı yetki davranışı. Değişen tek şey
+    nerede durduğu — sayfa boyunca yığılmak yerine kendi kartında.
+  */
+  const islerPaneli = (
+    <div id="bugunun-isleri" className="konsol-isler-kap">
         <h2 className="konsol-isler-baslik">Bugünün işleri</h2>
         <TalepAkis
           kimlik="konsol-is"
@@ -1038,67 +1025,185 @@ export async function KonsolAnaSayfa() {
             ) : bos("Her kiracı yolunda.")}
           </section>
         </TalepAkis>
-      </div>
+    </div>
+  );
 
-      <SeriKarti
-        baslik="Tahsilat"
-        alt="Son 14 gün"
-        seri={tahsilatSerisi}
-        birim={(deger) => para(deger)}
-        adet="tahsilat"
-        href="/panel/platform/tahsilat"
-        bos="Son 14 günde tahsilat yok. İlk ödeme alındığında günlük dağılım burada çizilir."
-      />
+  /*
+    NABIZ: tahsilat, sistem sağlığı ve son hareketler.
 
-      <ListeIzgarasi etiket="Son hareketler">
+    Üçü de ZATEN OKUNAN veriden kuruluyor; tek yeni sorgu yok. Abonelik
+    kademelerine ait bir blok BİLEREK yok: ArvoOS'ta kademe kavramı
+    henüz yok (product_plans ürün başına tek ücret), ve olmayan veriyi
+    örnekle doldurmak kurucuya satılmayan bir şeyi satılıyormuş gibi
+    gösterirdi. Kademe verisi geldiği gün buraya kendi paneli eklenir.
+  */
+  const saglikSatirlari: ReactNode[] = [];
+  /* Köprüler: hangi ürün yanıt vermiyor ve neden. Eskiden sayfanın
+     başında her köprü için bir uyarı bloğu vardı; üçü birden düşerse
+     şeridi ve kuyruğu ekranın dışına itiyordu. Sayı başta, gerekçe
+     burada. */
+  if (kopruler.length) {
+    for (const kopru of kopruler) {
+      saglikSatirlari.push(
+        <li key={`kopru-${kopru.ad}`}>
+          <span className="status-pill" data-tone="danger">yanıt yok</span>
+          <span><b>{kopru.ad}</b><small>{kopru.not}</small></span>
+        </li>,
+      );
+    }
+  }
+  if (hatadaKalanlar.size) {
+    saglikSatirlari.push(
+      <li key="kurulum-hata">
+        <span className="status-pill" data-tone="danger">{hatadaKalanlar.size}</span>
+        <span>
+          <b>Kurulumda hatada kalan kurum</b>
+          <small><Link href="/panel/platform/kurulumlar">Kurulumlar</Link> ekranından sürdürülebilir.</small>
+        </span>
+      </li>,
+    );
+  }
+  /* Okunamayan kaynak bir SORUN DEĞİL, bir bilinmezlik: "yolunda" demek
+     onu sessizce yeşile boyardı. */
+  if (okunamayan.length) {
+    saglikSatirlari.push(
+      <li key="okunamayan">
+        <span className="status-pill" data-tone="neutral">{okunamayan.length}</span>
+        <span>
+          <b>Okunamayan veri kaynağı</b>
+          <small>{okunamayan.map(([ad2]) => ad2).join(", ")} — bu alanlar ölçülemedi.</small>
+        </span>
+      </li>,
+    );
+  }
+
+  const nabizPanelleri: GorunumPaneli[] = [
+    {
+      anahtar: "tahsilat", etiket: "Tahsilat", yer: "liste", grup: "nabiz",
+      icerik: (
+        <SeriKarti
+          baslik="Tahsilat"
+          alt="Son 14 gün"
+          seri={tahsilatSerisi}
+          birim={(deger) => para(deger)}
+          adet="tahsilat"
+          href="/panel/platform/tahsilat"
+          bos="Son 14 günde tahsilat yok. İlk ödeme alındığında günlük dağılım burada çizilir."
+        />
+      ),
+    },
+    {
+      anahtar: "saglik", etiket: "Sistem sağlığı", yer: "liste", grup: "nabiz",
+      icerik: (
+        <article className="dash-card dash-col">
+          <header className="dash-card-head"><div><h2>Sistem sağlığı</h2><p>Ürün köprüleri, kurulumlar ve okunabilirlik</p></div></header>
+          <div className="dash-col-govde">
+            {saglikSatirlari.length ? (
+              <ul className="konsol-saglik">{saglikSatirlari}</ul>
+            ) : (
+              <p className="dash-empty">Köprüler yanıt veriyor, kurulumda hatada kalan kurum yok ve bütün kaynaklar okundu.</p>
+            )}
+          </div>
+          <Link className="dash-card-link" href="/panel/platform/saglik">Sistem sağlığı <span aria-hidden="true">›</span></Link>
+        </article>
+      ),
+    },
+    {
+      anahtar: "hareketler", etiket: "Son hareketler", yer: "liste", grup: "nabiz",
+      icerik: (
         <ListeKarti
-          baslik="Son tahsilatlar" alt="Onaylanan kurum ödemeleri ve bireysel abone ödemeleri"
-          bos="Son dört haftada tahsilat yok." sayi={sonTahsilatlar.length}
+          baslik="Son hareketler" alt="Tahsilatlar ve kurulum adımları"
+          bos="Son dört haftada hareket yok."
+          sayi={sonTahsilatlar.length + kurulumlar.length}
           href="/panel/platform/tahsilat" hrefEtiket="Tahsilatlar"
-        >
-          {sonTahsilatlar.map((kayit) => (
-            <ListeSatiri
-              key={kayit.id}
-              href={kayit.href}
-              baslik={kayit.ad}
-              alt={kayit.alt}
-              sag={<span className="konsol-tutar">{para(kayit.tutar)}</span>}
-              zaman={relativeTime(kayit.tarih as string)}
-            />
-          ))}
-        </ListeKarti>
+          gruplar={[
+            {
+              anahtar: "tahsilat", baslik: "Tahsilat",
+              satirlar: sonTahsilatlar.map((kayit) => (
+                <ListeSatiri
+                  key={kayit.id}
+                  href={kayit.href}
+                  baslik={kayit.ad}
+                  alt={kayit.alt}
+                  sag={<span className="konsol-tutar">{para(kayit.tutar)}</span>}
+                  zaman={relativeTime(kayit.tarih as string)}
+                />
+              )),
+            },
+            {
+              anahtar: "kurulum", baslik: "Kurulum",
+              satirlar: kurulumlar.map((kayit) => (
+                <ListeSatiri
+                  key={kayit.id}
+                  href={`/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`}
+                  baslik={kurumAdi.get(kayit.organization_id) ?? "Kurum"}
+                  /* Aşama da yazılıyor (14.10.2026): aynı eylemin iki aşaması
+                     yoksa birbirinin aynısı iki satır gibi görünüyordu. */
+                  alt={[KURULUM_ISLEMI[kayit.action] ?? kayit.action, kayit.state ? KURULUM_ADI[kayit.state] ?? kayit.state : null]
+                    .filter(Boolean).join(" · ")}
+                  /* 'failed', 'error' değil (sütunun kısıtı). Ton kiracının
+                     BUGÜNKÜ durumuna göre: sonradan tamamlanmış bir kurulumun
+                     eski hatası her gün kırmızı yanmasın. */
+                  sag={kayit.result === "failed" ? (
+                    <span className="status-pill" data-tone={hatadaKalanlar.has(kayit.organization_id) ? "danger" : "neutral"}>
+                      {hatadaKalanlar.has(kayit.organization_id) ? "hata" : "hata · çözüldü"}
+                    </span>
+                  ) : null}
+                  /* Göreli zaman (15.10.2026): tam tarih rozetli satırlarda adı kırpıyordu. */
+                  zaman={relativeTime(kayit.created_at)}
+                />
+              )),
+            },
+          ]}
+        />
+      ),
+    },
+  ];
 
-        <ListeKarti
-          baslik="Son kurulum hareketleri" alt="Kurum açma ve giriş bağlantısı"
-          bos={admin
-            ? "Henüz kurulum kaydı yok. Yeni bir müşteri kurulduğunda adımları burada görürsünüz."
-            : "Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor."}
-          sayi={kurulumlar.length}
-          href="/panel/platform/kurulumlar" hrefEtiket="Kurulumlar"
-        >
-          {kurulumlar.map((kayit) => (
-            <ListeSatiri
-              key={kayit.id}
-              href={`/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`}
-              baslik={kurumAdi.get(kayit.organization_id) ?? "Kurum"}
-              /* Aşama da yazılıyor (14.10.2026): aynı eylemin iki aşaması
-                 yoksa birbirinin aynısı iki satır gibi görünüyordu. */
-              alt={[KURULUM_ISLEMI[kayit.action] ?? kayit.action, kayit.state ? KURULUM_ADI[kayit.state] ?? kayit.state : null]
-                .filter(Boolean).join(" · ")}
-              /* 'failed', 'error' değil (sütunun kısıtı). Ton kiracının
-                 BUGÜNKÜ durumuna göre: sonradan tamamlanmış bir kurulumun
-                 eski hatası her gün kırmızı yanmasın. */
-              sag={kayit.result === "failed" ? (
-                <span className="status-pill" data-tone={hatadaKalanlar.has(kayit.organization_id) ? "danger" : "neutral"}>
-                  {hatadaKalanlar.has(kayit.organization_id) ? "hata" : "hata · çözüldü"}
-                </span>
-              ) : null}
-              /* Göreli zaman (15.10.2026): tam tarih rozetli satırlarda adı kırpıyordu. */
-              zaman={relativeTime(kayit.created_at)}
-            />
-          ))}
-        </ListeKarti>
-      </ListeIzgarasi>
+  /*
+    TEK EKRAN (25.11.2026). sinif="dash-sabit": sayfa hiçbir boyutta
+    kaymaz, uzun içerik yalnızca kendi kartında kayar
+    (dashboard.css · .dash-sabit, os/gorunum-secici.tsx). Kiracı
+    genel bakışlarının 10.11.2026'da geçtiği sözleşme bu; konsol onu
+    hiç benimsememişti ve beş bloğu dikey diziyordu.
+
+    Dock, navigasyon hedefleri ve rozetler değişmedi: düzen kabuğun
+    İÇİNDE kuruluyor, kabuğa dokunulmuyor.
+  */
+  return (
+    <GenelBakis
+      baslik={`${selam}${ad ? `, ${ad}` : ""}`}
+      uyari={okunamayan.map(([ad2]) => ad2)}
+      sinif="dash-sabit konsol-ana"
+    >
+      {/* Köprü kopması ilk ekranda görünmeye devam ediyor, ama TEK
+          satırda: gerekçeler Sistem sağlığı kartında. Eskiden her köprü
+          için ayrı bir uyarı bloğu vardı ve üçü birden düşerse şeridi
+          ekranın dışına itiyordu. */}
+      {kopruler.length ? (
+        <p className="dash-uyari" data-tone="danger" role="alert">
+          <span aria-hidden="true"><StgIcon name="shield" size={16} /></span>
+          <span>
+            <b>{kopruler.length === 1 ? `${kopruler[0].ad} yanıt vermiyor` : `${kopruler.length} ürün köprüsü yanıt vermiyor`}</b>
+            <small>Gerekçeler Nabız → Sistem sağlığı kartında.</small>
+          </span>
+        </p>
+      ) : null}
+
+      <dl className="konsol-serit" aria-label="Konsolun sayıları">
+        {serit.map((oge) => (
+          <div key={oge.ad} data-tone={oge.ton}>
+            <dt>{oge.ad}</dt>
+            <dd><Link href={oge.href}>{oge.deger}</Link></dd>
+            {oge.alt ? <small>{oge.alt}</small> : null}
+          </div>
+        ))}
+      </dl>
+
+      <GorunumSecici
+        etiket="Konsol görünümü"
+        paneller={[{ anahtar: "isler", etiket: "Bugünün İşleri", yer: "liste", icerik: islerPaneli }, ...nabizPanelleri]}
+      />
     </GenelBakis>
   );
 }

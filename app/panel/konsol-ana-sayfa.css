@@ -18,9 +18,60 @@
 .konsol-isler-kap{display:flex;flex-direction:column;gap:var(--sp-2);scroll-margin-top:var(--sp-12)}
 .konsol-isler-baslik{margin:0 0 0 var(--sp-1);color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold)}
 .os-root .konsol-isler{margin:0;border-radius:22px;box-shadow:var(--shadow-sm)}
-/* Kuyruk sayfanın ortası: TalepAkis'in kayıt detayına göre konan boy
-   tavanı burada ekranı ikiye bölüyordu. Liste uzarsa sayfa kayar. */
-.os-root .konsol-isler .talep-akis-panel{max-height:none;min-height:0}
+
+/* ============================================================
+   KONSOL TEK EKRAN (25.11.2026)
+
+   Eskiden bu dosyada şu yazılıydı: "Kuyruk sayfanın ortası … Liste
+   uzarsa SAYFA KAYAR." Kurucunun ana ekranı beş bloğu dikey diziyordu
+   (şerit + kuyruk + grafik + iki liste) ve kuyruğun kendi boy tavanı
+   bilerek kaldırılmıştı, yani kaydırma sayfaya düşüyordu: dock ekranın
+   altında kalıyor, "bugün neye bakmam gerek" sorusu tek ekranda
+   bitmiyordu.
+
+   Düzen artık kiracı genel bakışlarının 10.11.2026'da geçtiği SABİT
+   sözleşmeye bağlı (dashboard.css · .dash-sabit, os/gorunum-secici.tsx):
+   sayfa hiçbir boyutta kaymaz, uzun içerik yalnızca KENDİ kartında
+   dikey kayar, kart başlığı ve sekmeleri yerinde durur. Yeni bir
+   düzen mekanizması yazılmadı — konsol o sözleşmeyi hiç benimsememişti.
+
+   Yükseklik zinciri dash-sabit'ten geliyor; buradaki iş yalnızca
+   kuyruk kartının İÇİNİ o zincire bağlamak: sekmeler doğal boyunda,
+   panel kalanı alıp kendi içinde kayıyor. Sihirli sayı (eskiden
+   kayit-detay.css'teki 100dvh − 370px) kalktı: üst çubuk ya da dock
+   değişirse ölçü kendiliğinden uyar.
+   ============================================================ */
+/* Zincirin HER halkası: panel → kap → kart → sekmeler/panel. Kap
+   (konsol-isler-kap) ilk sürümde atlanmıştı; min-height:0 olmayan tek bir
+   halka yüzünden kuyruk içeriği kadar uzuyor ve sayfa kayıyordu
+   (ölçüm: 1440×900'de sayfaDikey 965/900). */
+.dash-sabit .konsol-isler-kap{flex:1 1 auto;min-height:0;max-height:100%}
+.dash-sabit .konsol-isler-baslik{flex:0 0 auto}
+.dash-sabit .konsol-isler{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;max-height:100%}
+.dash-sabit .konsol-isler .talep-akis-sekmeler{flex:0 0 auto}
+.dash-sabit .konsol-isler .talep-akis-panel{
+  flex:1 1 auto;min-height:0;max-height:none;
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+}
+/* Şerit ve köprü satırı doğal boyunda; yalnızca paneller esner. */
+.dash-sabit.konsol-ana>:not(.dash-gorunum-kap):not(.dash-gorunum){flex:0 0 auto}
+/*
+   İŞLER GENİŞ, NABIZ DAR. İkisi eşit sütun olunca kuyruk satırındaki
+   kurum adı + tutar + "Onayla" düğmesi 1440'ta sarıyordu; nabız
+   kartları ise üç satırlık içerikle o genişliğe ihtiyaç duymuyor.
+*/
+@media (min-width:901px){
+  .dash-sabit.konsol-ana .dash-cols--sabit{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+}
+
+/* Sistem sağlığı: üç gerçek sinyal (köprüler, okunamayan kaynaklar,
+   kurulumda hatada kalan kurum). Uydurma gösterge yok; sinyal yoksa
+   satır "sorun görünmüyor" der. */
+.konsol-saglik{display:flex;flex-direction:column;gap:var(--sp-2);margin:0;padding:0;list-style:none}
+.konsol-saglik>li{display:flex;align-items:flex-start;gap:var(--sp-2);min-width:0}
+.konsol-saglik b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.konsol-saglik small{display:block;color:var(--muted);font-size:var(--fs-micro)}
+.konsol-saglik .status-pill{flex:none}
 .os-root .konsol-isler .talep-akis-panel>section{display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4) var(--sp-5)}
 .os-root .konsol-isler .phr-bas>small{color:var(--muted);font-size:var(--fs-sm)}
 .os-root .konsol-isler .pu-bos[data-tone="danger"]{border-color:var(--danger);color:var(--danger)}
