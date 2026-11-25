@@ -41,8 +41,56 @@ export function tekEkranHukmu(ad, o) {
     if (!e.dokunma) eksik.push("son satırın eylemi tıklanamıyor");
     if (!e.klavye) eksik.push("son satırın eylemi klavyeyle odaklanamıyor");
     if (!e.dockUstunde) eksik.push("son satırın eylemi dock'un altında");
-    if (e.icSekme && e.icSekme.sonGorunur === false) eksik.push("iç sekme şeridinin sonuna ulaşılamıyor");
+    const ic = e.icSekme;
+    if (ic) {
+      /* Kaydırmayla ulaşmak yeterli sayılmıyor: şerit taşmayacak ve her
+         sekme kutusunun içinde, tıklanabilir ve odaklanabilir olacak. */
+      if (ic.yatayTasiyor) eksik.push("kuyruk sekmeleri yatay kayıyor");
+      if (ic.erisilemeyen?.length) eksik.push(`dokunmayla açılamayan kuyruk sekmesi: ${ic.erisilemeyen.join(", ")}`);
+      else if (ic.sonGorunur === false) eksik.push("iç sekme şeridinin sonuna ulaşılamıyor");
+      /* Tablist'te Tab ile tek durak olur (gezici odak); sıfır durak şeridin
+         klavyeye hiç açılmadığı, birden çoğu kalıbın bozulduğu anlamına gelir. */
+      if (ic.tabDurakSayisi !== undefined && ic.tabDurakSayisi !== 1) {
+        eksik.push(`sekme şeridinde ${ic.tabDurakSayisi} Tab durağı var (gezici odakta tam 1 olmalı)`);
+      }
+    }
+    const gez = e.klavyeGezinti;
+    if (gez) {
+      if (ic && gez.length !== ic.sayi) eksik.push(`klavyeyle ${gez.length}/${ic.sayi} sekmeye ulaşıldı`);
+      const takilan = gez.filter((g) => !(g.odakSeritte && g.secili && g.panelGorunur)).map((g) => g.ad ?? "?");
+      if (takilan.length) eksik.push(`klavyeyle açılamayan kuyruk sekmesi: ${takilan.join(", ")}`);
+    }
   }
+
+  /*
+    KART KENDİ PANELİNİ AŞMAZ. Kaydıracak alanı olmayan bir kart (Tahsilat
+    grafiği) daralan panelin içinde küçülmüyor ve alttaki kartın ÜSTÜNE
+    çiziliyordu: 1440×900'de panel 70, kart 187 px. Sayfa taşması sıfır ve
+    dock açık olduğu için yalnızca taşmaya bakan kabul bunu görmüyordu.
+  */
+  for (const k of o.kartPanelde ?? []) {
+    if (k.panelAsiyor > 1 && !k.panelKayiyor) {
+      eksik.push(`${k.panel}: kart panelini ${k.panelAsiyor} px aşıyor (kart ${k.kartH}, panel ${k.panelH})`);
+    }
+  }
+
+  /*
+    Son kuyruk sekmesi (Sorun) AÇILDIĞINDA da tek ekran sözleşmesi
+    sürmeli: sekmeye ulaşmak, açıldığında sayfanın kaymaması demek değil.
+  */
+  const sonSekmeDenetle = (olcum, etiket) => {
+    if (!olcum) return;
+    if (kayiyor(olcum.sayfaDikey)) eksik.push(`${etiket} sayfa kayıyor (${olcum.sayfaDikey})`);
+    if (kayiyor(olcum.sayfaYatay)) eksik.push(`${etiket} sayfa yatay kayıyor (${olcum.sayfaYatay})`);
+    if (olcum.dockOrtuyor) eksik.push(`${etiket} dock içeriği örtüyor`);
+    for (const k of olcum.zincir?.kartPanelde ?? []) {
+      if (k.panelAsiyor > 1 && !k.panelKayiyor) eksik.push(`${etiket} ${k.panel} kartı panelini ${k.panelAsiyor} px aşıyor`);
+    }
+  };
+  const sonAd = o.sonSekme?.ad ?? "son sekme";
+  sonSekmeDenetle(o.sonSekme, `${sonAd} açıkken`);
+  /* Telefonda görünüm sekmesine dönüş: kuyruk hâlâ son sekmede. */
+  sonSekmeDenetle(o.sonSekmeDonus, `${sonAd} açıkken görünüme dönünce`);
 
   for (const [sekme, m] of Object.entries(o.secimler ?? {})) {
     if (kayiyor(m.sayfaDikey)) eksik.push(`${sekme}: sayfa kayıyor (${m.sayfaDikey})`);

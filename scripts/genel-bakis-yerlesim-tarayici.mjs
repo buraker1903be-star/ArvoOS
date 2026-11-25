@@ -294,6 +294,43 @@ const olc = () => {
       mt: getComputedStyle(e).marginTop, mb: getComputedStyle(e).marginBottom,
     })),
     dashGap: getComputedStyle(document.querySelector(".dash") ?? document.body).rowGap,
+    /*
+      KART ÇAKIŞMASI: kart kendi PANELİNİ aşıyor mu ve kardeşinin üstüne
+      biniyor mu. Kartın çocuklarına bakmak yetmiyor — grafik kartının
+      çocukları kendi kutusunda, kutunun kendisi paneli aşıyor.
+    */
+    kartPanelde: [...document.querySelectorAll(".dash-gorunum-panel")].filter((e) => e.offsetParent !== null).map((p2) => {
+      const kart = p2.firstElementChild;
+      if (!kart) return null;
+      const pr = p2.getBoundingClientRect(), kr = kart.getBoundingClientRect();
+      const kardes = p2.nextElementSibling?.getBoundingClientRect();
+      return { panel: p2.id.replace("gorunum-", ""), panelH: Math.round(pr.height), kartH: Math.round(kr.height),
+        panelAsiyor: Math.round(kr.bottom - pr.bottom), panelKayiyor: p2.scrollHeight > p2.clientHeight && getComputedStyle(p2).overflowY === "auto",
+        kardeseBiniyor: kardes ? Math.round(kr.bottom - kardes.top) : null };
+    }).filter(Boolean),
+    /* Kart sınırı: her görünür kartın içeriği kendi kutusunda kalıyor mu. */
+    kartTasmasi: [...document.querySelectorAll(".dash-card,.konsol-isler")].filter((e) => e.offsetParent !== null).map((e) => {
+      const r = e.getBoundingClientRect(), c = getComputedStyle(e);
+      const cocuk = [...e.querySelectorAll("*")].map((x) => x.getBoundingClientRect())
+        .filter((b) => b.width || b.height);
+      const altTasan = cocuk.filter((b) => b.bottom > r.bottom + 1).length;
+      const sagTasan = cocuk.filter((b) => b.right > r.right + 1).length;
+      return { ad: e.className.split(" ").slice(0, 2).join("."), h: Math.round(r.height),
+        icerik: e.scrollHeight, gorunen: e.clientHeight, of: c.overflowY,
+        altTasan, sagTasan,
+        enAlt: cocuk.length ? Math.round(Math.max(...cocuk.map((b) => b.bottom)) - r.bottom) : null };
+    }),
+    /* Kuyruk sekme şeridi: yatay kaydırma olmadan hepsi sığıyor mu. */
+    sekmeSeridi: (() => {
+      const e = document.querySelector(".talep-akis-sekmeler");
+      if (!e) return null;
+      const r = e.getBoundingClientRect(), c = getComputedStyle(e);
+      const d = [...e.querySelectorAll("button,a")];
+      const disarida = d.filter((x) => { const b = x.getBoundingClientRect(); return b.right > r.right + 1 || b.left < r.left - 1; });
+      return { w: Math.round(r.width), icerik: e.scrollWidth, overflowX: c.overflowX, sarma: c.flexWrap,
+        sayi: d.length, disarida: disarida.map((x) => x.textContent.trim().slice(0, 12)),
+        yukseklik: Math.round(r.height) };
+    })(),
     /* Genişlik de tek ekranın parçası: seçili kart boşluğu doldurmalı. */
     genislik: (() => {
       const c = document.querySelector(".dash-cols--sabit");
@@ -374,15 +411,38 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1440x600,768x60
             kaydırmayla görünür olmalı, yoksa "Sorun" kuyruğuna telefonda
             hiç ulaşılamaz.
           */
+          /*
+            Kuyruk sekmelerinin HEPSİ (Sorun dahil) yatay kaydırma olmadan
+            erişilebilir olmalı: şerit taşmayacak, her düğme kutusunun
+            içinde duracak, o noktada gerçekten tıklanabilecek
+            (elementFromPoint) ve klavyeyle odaklanabilecek. Eskiden şerit
+            nowrap + gizli kaydırma çubuğuyla kayıyordu: "Dönem" ve "Sorun"
+            kutunun dışındaydı, varlıkları ekranda hiç belli olmuyordu.
+          */
           const serit = document.querySelector(".talep-akis-sekmeler");
           let icSekme = null;
           if (serit) {
-            const son = [...serit.querySelectorAll("button,a")].pop();
-            const tasiyor = serit.scrollWidth > serit.clientWidth + 1;
-            serit.scrollLeft = serit.scrollWidth;
-            const srr = serit.getBoundingClientRect(), snr = son?.getBoundingClientRect();
-            icSekme = { tasiyor, kayabiliyor: getComputedStyle(serit).overflowX, sayi: serit.querySelectorAll("button,a").length,
-              sonGorunur: snr ? snr.right <= srr.right + 1 && snr.left >= srr.left - 1 : null };
+            const d = [...serit.querySelectorAll("button,a")];
+            const srr = serit.getBoundingClientRect();
+            const sorun = d.map((x) => {
+              const b = x.getBoundingClientRect();
+              const icinde = b.right <= srr.right + 1 && b.left >= srr.left - 1 && b.bottom <= srr.bottom + 1;
+              const hedef = document.elementFromPoint(Math.round(b.left + b.width / 2), Math.round(b.top + b.height / 2));
+              return { ad: x.textContent.trim().slice(0, 14), icinde,
+                dokunma: Boolean(hedef && (hedef === x || x.contains(hedef))) };
+            });
+            icSekme = {
+              sayi: d.length, yatayTasiyor: serit.scrollWidth > serit.clientWidth + 1,
+              overflowX: getComputedStyle(serit).overflowX, yukseklik: Math.round(srr.height),
+              /* Şerit role="tablist": GEZİCİ ODAK doğru kalıp, yani yalnızca
+                 seçili sekme tabIndex 0 olur ve ötekilere ok tuşuyla
+                 gidilir. "Her düğme tabIndex>=0 olmalı" demek bu kalıbı
+                 kusur sayardı; klavye erişimi aşağıda gerçekten tuşa
+                 basılarak ölçülüyor. */
+              tabDurakSayisi: d.filter((x) => x.tabIndex >= 0).length,
+              erisilemeyen: sorun.filter((x) => !(x.icinde && x.dokunma)).map((x) => x.ad),
+              sonGorunur: sorun.length ? sorun[sorun.length - 1].icinde : null,
+            };
           }
           return {
             kayit: satirlar.length, icSekme,
@@ -393,6 +453,69 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1363x936,1440x900,1440x600,768x60
             dugmeVar: Boolean(dugme), dokunma, dockUstunde, klavye,
           };
         });
+      }
+      /*
+        KLAVYE GEZİNTİSİ (25.11.2026). "Sorun sekmesi klavyeyle açılabiliyor
+        mu" sorusunun cevabı öznitelikten okunamaz: tablist'te seçili sekme
+        Tab ile alınır, ötekilere ok tuşuyla gidilir. Burada tuşa gerçekten
+        basılıyor ve her durakta odağın hangi sekmede olduğu, sekmenin
+        seçildiği ve PANELİNİN görünür olduğu okunuyor.
+      */
+      if (s === "konsol" && o.erisim?.icSekme?.sayi) {
+        await sayfa.evaluate(() => {
+          document.querySelector('.talep-akis-sekmeler [tabindex="0"]')?.focus();
+        });
+        const gezilen = [];
+        for (let i = 0; i < o.erisim.icSekme.sayi; i++) {
+          gezilen.push(await sayfa.evaluate(() => {
+            const a = document.activeElement;
+            const kimlik = a?.getAttribute("aria-controls");
+            const panel = kimlik ? document.getElementById(kimlik) : null;
+            return {
+              ad: a?.textContent?.trim().slice(0, 14) ?? null,
+              odakSeritte: Boolean(a?.closest(".talep-akis-sekmeler")),
+              secili: a?.getAttribute("aria-selected") === "true",
+              panelGorunur: panel ? panel.offsetParent !== null && panel.getBoundingClientRect().height > 0 : null,
+            };
+          }));
+          await sayfa.keyboard.press("ArrowRight");
+        }
+        o.erisim.klavyeGezinti = gezilen;
+        /*
+          SON SEKME (Sorun) SEÇİLİYKEN DE TEK EKRAN. Sekmeyi açabilmek
+          yetmiyor: açıldığında sayfa kaymamalı, dock örtmemeli, kart
+          paneline sığmalı. Gezinti başa döndüğü için bir sola basmak son
+          sekmeyi seçer — yani bu ölçüm klavye yolunun sonucunu ölçüyor.
+          Ölçümden sonra ilk sekmeye dönülüyor: görünüm seçici döngüsü
+          varsayılan hâli ölçmeli, bu adımın bıraktığı durumu değil.
+        */
+        await sayfa.keyboard.press("ArrowLeft");
+        await sayfa.waitForTimeout(60);
+        o.sonSekme = await sayfa.evaluate(olc);
+        o.sonSekme.ad = gezilen[gezilen.length - 1]?.ad ?? null;
+        if (process.env.EKRAN) {
+          fs.mkdirSync(process.env.EKRAN, { recursive: true });
+          await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}-son-sekme.png`) });
+        }
+        /*
+          Sorun seçiliyken görünüm sekmesine dönmek GERÇEK bir yol: telefonda
+          kullanıcı Tahsilat'a bakıp "Bugünün İşleri"ne dönüyor ve kuyruk
+          hâlâ Sorun'da. İlk ölçümde burası düşmüştü, o yüzden durumu
+          gizlemek yerine ölçüyoruz.
+        */
+        const gorunumDugmeleri = sayfa.locator(".dash-gorunum-sec button");
+        if (await gorunumDugmeleri.first().isVisible().catch(() => false)) {
+          const say = await gorunumDugmeleri.count();
+          await gorunumDugmeleri.nth(Math.min(1, say - 1)).click();
+          await sayfa.waitForTimeout(60);
+          await gorunumDugmeleri.first().click();
+          await sayfa.waitForTimeout(60);
+          o.sonSekmeDonus = await sayfa.evaluate(olc);
+        }
+        await sayfa.evaluate(() => {
+          document.querySelector(".talep-akis-sekmeler button")?.click();
+        });
+        await sayfa.waitForTimeout(60);
       }
       // Görünüm seçici açıksa (dar/kısa ekran) her paneli sırayla seçip ölç:
       // varsayılan seçim yalnızca ilk paneli gösteriyor, listeler görünmüyor.
@@ -440,7 +563,7 @@ await tarayici.close();
 fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, o));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 if (dusen.length) {

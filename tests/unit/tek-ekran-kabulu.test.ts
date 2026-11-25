@@ -81,3 +81,133 @@ test("iç sekme şeridinin sonuna ulaşılamıyorsa düşer", () => {
   assert.equal(h.gecti, false);
   assert.ok(h.eksik.some((m: string) => m.includes("iç sekme")), h.eksik.join(" | "));
 });
+
+/*
+  25.11.2026, ikinci tur: iki kusur daha yalnızca göz ve ayrı bir ölçümle
+  görüldü, çünkü sayfa taşması ikisinde de SIFIRDI.
+*/
+
+/** 1440×900: nabız sütununda Tahsilat grafiği panelini aşıp alttaki kartın üstüne biniyordu. */
+const KART_CAKISMASI = {
+  sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 810, dockUstu: 824,
+  kartPanelde: [
+    { panel: "isler", panelH: 474, kartH: 474, panelAsiyor: 0, panelKayiyor: false },
+    { panel: "tahsilat", panelH: 70, kartH: 187, panelAsiyor: 117, panelKayiyor: false },
+    { panel: "saglik", panelH: 93, kartH: 93, panelAsiyor: 0, panelKayiyor: false },
+  ],
+};
+
+test("kart panelini aşıp kardeşinin üstüne biniyorsa KABUL EDİLMEZ", () => {
+  const h = tekEkranHukmu("1440x900 acik konsol", KART_CAKISMASI);
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("tahsilat: kart panelini 117 px aşıyor")), h.eksik.join(" | "));
+  // Paneli kendi içinde kayan kart kusur değil: grafik kartının seçici
+  // açıkken çözümü budur ve iki kez işaretlenmemeli.
+  const kayan = tekEkranHukmu("390x844", {
+    ...KART_CAKISMASI,
+    kartPanelde: [{ panel: "tahsilat", panelH: 70, kartH: 187, panelAsiyor: 117, panelKayiyor: true }],
+  });
+  assert.deepEqual(kayan.eksik, []);
+});
+
+/** 390×844: şerit 364 px, içeriği 453 px; iki sekme kutunun dışındaydı. */
+const SEKME_KAYIYOR = {
+  sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 774, dockUstu: 781,
+  erisim: {
+    panelH: 216, sonLiYuk: 129, sonKayitPanelde: true, dokunma: true, klavye: true, dockUstunde: true,
+    icSekme: { sayi: 5, yatayTasiyor: true, yukseklik: 45, tabDurakSayisi: 1,
+      erisilemeyen: ["Dönem · 2", "Sorun"], sonGorunur: false },
+  },
+};
+
+test("kuyruk sekmesine yalnızca yatay kaydırmayla ulaşılıyorsa KABUL EDİLMEZ", () => {
+  const h = tekEkranHukmu("390x844 acik konsol", SEKME_KAYIYOR);
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("yatay kayıyor")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("Sorun")), h.eksik.join(" | "));
+});
+
+test("sarmış şerit geçer: taşma yok, her sekme erişilebilir", () => {
+  const h = tekEkranHukmu("390x844 acik konsol", {
+    ...SEKME_KAYIYOR,
+    erisim: { ...SEKME_KAYIYOR.erisim,
+      icSekme: { sayi: 5, yatayTasiyor: false, yukseklik: 89, tabDurakSayisi: 1, erisilemeyen: [], sonGorunur: true },
+      klavyeGezinti: ["Ödeme · 6", "Sözleşme · 1", "Kurulum", "Dönem · 2", "Sorun"].map((ad) => ({
+        ad, odakSeritte: true, secili: true, panelGorunur: true,
+      })) },
+  });
+  assert.deepEqual(h.eksik, []);
+});
+
+test("şerit taşmasa da tıklanamayan sekme düşürür", () => {
+  /* Kutunun içinde görünüp üstünü başka bir şeyin örtmesi de erişilmezlik:
+     ölçüm elementFromPoint ile bakıyor, yalnızca koordinata değil. */
+  const h = tekEkranHukmu("390x844", {
+    ...SEKME_KAYIYOR,
+    erisim: { ...SEKME_KAYIYOR.erisim,
+      icSekme: { sayi: 5, yatayTasiyor: false, yukseklik: 89, tabDurakSayisi: 1, erisilemeyen: ["Sorun"], sonGorunur: true } },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("dokunmayla açılamayan kuyruk sekmesi: Sorun")), h.eksik.join(" | "));
+});
+
+test("ok tuşuyla ulaşılamayan sekme düşürür", () => {
+  /* Şerit sarmış ve her düğme görünür olabilir; sekme yine de KLAVYEYLE
+     açılmıyor olabilir (ok tuşu bağlanmamış, odak şeritten çıkmış,
+     panel çizilmemiş). Ölçüm tuşa gerçekten basıyor. */
+  const temel = {
+    sayfaDikey: "390/390".replace("390/390", "844/844"), sayfaYatay: "390/390",
+    dockOrtuyor: false, icerikAlt: 774, dockUstu: 781,
+    erisim: {
+      panelH: 172, sonLiYuk: 129, sonKayitPanelde: true, dokunma: true, klavye: true, dockUstunde: true,
+      icSekme: { sayi: 5, yatayTasiyor: false, yukseklik: 89, tabDurakSayisi: 1, erisilemeyen: [], sonGorunur: true },
+      klavyeGezinti: [
+        { ad: "Ödeme · 6", odakSeritte: true, secili: true, panelGorunur: true },
+        { ad: "Sorun", odakSeritte: true, secili: true, panelGorunur: false },
+      ],
+    },
+  };
+  const h = tekEkranHukmu("390x844", temel);
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("klavyeyle 2/5 sekmeye ulaşıldı")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("klavyeyle açılamayan kuyruk sekmesi: Sorun")), h.eksik.join(" | "));
+});
+
+test("gezici odak kalıbı bozulursa düşer", () => {
+  /* tablist'te Tab ile tek durak olmalı. Sıfır durak şeridin klavyeye hiç
+     açılmadığı, beş durak her sekmenin ayrı Tab durağı olduğu (kalıp
+     bozulmuş) anlamına gelir. */
+  for (const durak of [0, 5]) {
+    const h = tekEkranHukmu("390x844", {
+      sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 774, dockUstu: 781,
+      erisim: { sonKayitPanelde: true, dokunma: true, klavye: true, dockUstunde: true,
+        icSekme: { sayi: 1, yatayTasiyor: false, yukseklik: 45, tabDurakSayisi: durak, erisilemeyen: [], sonGorunur: true } },
+    });
+    assert.equal(h.gecti, false);
+    assert.ok(h.eksik.some((m: string) => m.includes(`${durak} Tab durağı`)), h.eksik.join(" | "));
+  }
+});
+
+test("son sekme açıkken sayfa kayarsa düşer; dönüş yolu da ölçülür", () => {
+  const temel = {
+    sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 774, dockUstu: 781,
+  };
+  const h = tekEkranHukmu("390x844", {
+    ...temel,
+    sonSekme: { ad: "Sorun", sayfaDikey: "903/844", sayfaYatay: "390/390", dockOrtuyor: true, zincir: { kartPanelde: [] } },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("Sorun açıkken sayfa kayıyor (903/844)")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("Sorun açıkken dock içeriği örtüyor")), h.eksik.join(" | "));
+
+  /* Sorun seçiliyken görünüm sekmesine dönmek ayrı bir yol ve ayrı ölçülür:
+     ilk ölçümde burası düşmüştü. */
+  const d = tekEkranHukmu("390x844", {
+    ...temel,
+    sonSekme: { ad: "Sorun", sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, zincir: { kartPanelde: [] } },
+    sonSekmeDonus: { sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false,
+      zincir: { kartPanelde: [{ panel: "isler", panelH: 179, kartH: 268, panelAsiyor: 89, panelKayiyor: false }] } },
+  });
+  assert.equal(d.gecti, false);
+  assert.ok(d.eksik.some((m: string) => m.includes("görünüme dönünce isler kartı panelini 89 px aşıyor")), d.eksik.join(" | "));
+});
