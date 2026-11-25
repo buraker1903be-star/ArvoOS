@@ -243,3 +243,60 @@
 */
 .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:not(:has(.dash-col-govde)){flex:0 0 auto}
 
+/*
+  NABIZ SÜTUNUNDA PAY EŞİT BÖLÜNÜR (25.11.2026, ölçümle).
+
+  Grafik kendi boyunu koruyunca kalan yükseklik iki liste kartına
+  kalıyor; varsayılan flex:0 1 auto daralmayı İÇERİK BOYUYLA ORANTILI
+  dağıtıyor, yani küçük kart aç kalıyor. 1440×900'de (uyarı satırı
+  varken, yani en dar hâl) Sistem sağlığı üç kaydıyla 64 px'e, yani
+  yalnızca başlığa iniyordu: gövde 0 px, hiçbir kayıt görünmüyor ve
+  karttan erişilemiyor. Son hareketler 12 kaydıyla 191 px alıyordu.
+  Kullanıcı açısından boş bir kart, grafiğin altında kalmakla aynı şey.
+
+  Eşit pay, tabandan (min-height) farklı olarak kalan yüksekliğe göre
+  ölçekleniyor; taban kalanı bilmediği için sayfayı taşırabiliyordu.
+  flex-basis:0 tek başına yetmez: yığının yüksekliği içeriğinden
+  türüyor ve basis sıfırlanınca yığın da sıfıra iniyordu (ölçüldü:
+  kartlar 34 px). align-self:stretch yüksekliği ızgara satırından
+  alıyor, paylaşılacak bir "kalan" ancak o zaman var oluyor.
+
+  Kural yalnızca pencere üç kartı taşıyacak kadar uzunken: 660 px ve
+  altında kalan pay başlığa bile yetmiyor (901×641'de kart başına 45
+  px) ve eşit pay orada kartı panelinden taşırıyor. O boyutlarda
+  bugünkü davranış korunuyor; üç kartı kısa pencerede bölmek görünüm
+  seçicisinin eşiğini değiştirmek demek ve bu PR'ın kapsamı değil.
+*/
+/* Yalnızca IZGARA düzeni: görünüm seçici max-width:900 / max-height:640'ta
+   açılıyor ve orada kap flex sütunu oluyor — eşit pay oraya sızınca kart
+   panelini aşıyordu (390×844'te ölçüldü). */
+@media (min-width:901px) and (min-height:761px){
+  .konsol-ana .dash-cols--sabit>.dash-gorunum-yigin{align-self:stretch}
+  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde){flex:1 1 0}
+  /*
+    Eşit pay tek başına yetmedi: 1440×900'de kart 128 px'e çıktı ama
+    gövdeye 11 px kaldı, yani yine tek kayıt görünmüyordu (satır 40 px).
+    Kartın 128 px'inin 46'sı başlık, 21'i alt bağlantı, gerisi iç boşluk
+    ve aradaki boşluklar. Nabız sütununda kart dar olduğu için iç boşluk
+    ve kutular arası boşluk kısılıyor; kayıt, başlığın süsünden önce
+    gelir. Grafik kartına dokunulmuyor — kabul edilen hâli o.
+  */
+  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde) .dash-card{padding:12px;gap:8px}
+  /*
+    Başlığın altındaki açıklama satırı ("Ürün köprüleri, kurulumlar ve
+    okunabilirlik" / "Tahsilatlar ve kurulum adımları") nabız sütununda
+    çizilmiyor: 20 px tutuyor ve kartın adı zaten ne olduğunu söylüyor.
+    Üç kaydı olup hiçbirini göstermeyen bir kartta süs, içeriğin önüne
+    geçemez. Sütunun dışında (tam genişlikte, görünüm seçicide) açıklama
+    duruyor.
+  */
+  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde) .dash-card-head p{display:none}
+  /*
+    Grafiğin çubukları 7dvh yerine 5dvh: 1440×900'de 63 → 45 px. Grafik
+    kartının sınırında kalmaya devam ediyor (kabul edilen davranış), ama
+    sütunun yüksekliğinin %42'sini tek başına tutmuyor; serbest kalan
+    yükseklik iki liste kartının gövdesine gidiyor.
+  */
+  .konsol-ana .dash-gorunum-yigin .dash-bars{height:clamp(36px,5dvh,56px)}
+}
+

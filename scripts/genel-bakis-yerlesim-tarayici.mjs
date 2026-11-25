@@ -248,7 +248,21 @@ const olc = () => {
     const govde = kart?.querySelector(".dash-col-govde");
     const gr = govde?.getBoundingClientRect();
     const tam = govde ? [...govde.querySelectorAll("li")].filter((li) => { const l = li.getBoundingClientRect(); return l.top >= gr.top - 1 && l.bottom <= gr.bottom + 1; }).length : null;
-    return { panel: p.id.replace("gorunum-", ""), kart: r(kart), kartKaydirma: kart ? `${kart.scrollHeight}/${kart.clientHeight}` : null, govde: r(govde), tamGorunenKayit: tam, kayit: govde ? govde.querySelectorAll("li").length : null, yatayTasma: kart ? kart.scrollWidth > kart.clientWidth + 1 : null };
+    /*
+      KAYDA KARTIN İÇİNDEN ERİŞİLEBİLİYOR MU: gövde sonuna kaydırılıp son
+      kayıt kutunun içinde mi diye bakılıyor. "Gövde 0 px değil" yetmez —
+      11 px'lik bir gövdede 40 px'lik satır hiçbir zaman okunmaz.
+    */
+    let sonKayitErisilir = null;
+    if (govde && govde.querySelector("li")) {
+      const onceki = govde.scrollTop;
+      govde.scrollTop = govde.scrollHeight;
+      const son = [...govde.querySelectorAll("li")].pop().getBoundingClientRect();
+      const kutu = govde.getBoundingClientRect();
+      sonKayitErisilir = son.bottom <= kutu.bottom + 1 && son.top >= kutu.top - 1;
+      govde.scrollTop = onceki;
+    }
+    return { panel: p.id.replace("gorunum-", ""), kart: r(kart), kartKaydirma: kart ? `${kart.scrollHeight}/${kart.clientHeight}` : null, govde: r(govde), tamGorunenKayit: tam, kayit: govde ? govde.querySelectorAll("li").length : null, sonKayitErisilir, yatayTasma: kart ? kart.scrollWidth > kart.clientWidth + 1 : null };
   });
   const dock = document.querySelector(".os-dock")?.getBoundingClientRect();
   /*
@@ -319,6 +333,27 @@ const olc = () => {
         icerik: e.scrollHeight, gorunen: e.clientHeight, of: c.overflowY,
         altTasan, sagTasan,
         enAlt: cocuk.length ? Math.round(Math.max(...cocuk.map((b) => b.bottom)) - r.bottom) : null };
+    }),
+    /* Nabız sütunu: yığının yüksekliği belirli mi, kartlar payı nasıl bölüyor. */
+    yiginPayi: (() => {
+      const y = document.querySelector(".dash-gorunum-yigin");
+      if (!y || y.offsetParent === null) return null;
+      const c = getComputedStyle(y), r = y.getBoundingClientRect();
+      const kap = y.parentElement ? y.parentElement.getBoundingClientRect() : null;
+      return { h: Math.round(r.height), kapH: kap ? Math.round(kap.height) : null,
+        alignSelf: c.alignSelf, flex: c.flex, maxH: c.maxHeight,
+        cocuklar: [...y.children].map((e) => ({ ad: e.id.replace("gorunum-", ""),
+          h: Math.round(e.getBoundingClientRect().height), flex: getComputedStyle(e).flex })) };
+    })(),
+    uyariVar: Boolean(document.querySelector(".dash-uyari")),
+    /* Kartın içinde yüksekliği ne yiyor: başlık, açıklama, gövde, alt bağlantı. */
+    kartIci: [...document.querySelectorAll(".dash-gorunum-yigin>.dash-gorunum-panel")].filter((e) => e.offsetParent !== null).map((p2) => {
+      const k = p2.firstElementChild;
+      const h = (sec) => { const e = k?.querySelector(sec); return e ? Math.round(e.getBoundingClientRect().height) : null; };
+      const satir = k?.querySelector(".dash-col-govde li, .dash-col-list li");
+      return { ad: p2.id.replace("gorunum-", ""), kart: k ? Math.round(k.getBoundingClientRect().height) : null,
+        bas: h(".dash-card-head"), basAciklama: h(".dash-card-head p"), govde: h(".dash-col-govde"),
+        altBag: h(".dash-card-link"), cubuklar: h(".dash-bars"), satirYuk: satir ? Math.round(satir.getBoundingClientRect().height) : null };
     }),
     /* Kuyruk sekme şeridi: yatay kaydırma olmadan hepsi sığıyor mu. */
     sekmeSeridi: (() => {
@@ -563,7 +598,7 @@ await tarayici.close();
 fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde }));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 if (dusen.length) {

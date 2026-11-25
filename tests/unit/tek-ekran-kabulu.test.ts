@@ -211,3 +211,59 @@ test("son sekme açıkken sayfa kayarsa düşer; dönüş yolu da ölçülür", 
   assert.equal(d.gecti, false);
   assert.ok(d.eksik.some((m: string) => m.includes("görünüme dönünce isler kartı panelini 89 px aşıyor")), d.eksik.join(" | "));
 });
+
+/*
+  25.11.2026, üçüncü tur: uyarı satırı varken 0 px gövde artık başarısız.
+  Sayılar nabız sütununda gerçekten ölçülenler.
+*/
+const SAGLIK_BOS = {
+  sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 810, dockUstu: 824,
+  uyariVar: true,
+  kartlar: [
+    { panel: "saglik", govde: { h: 0 }, kayit: 3, sonKayitErisilir: null },
+    { panel: "hareketler", govde: { h: 75 }, kayit: 12, sonKayitErisilir: true },
+  ],
+};
+
+test("uyarı varken 0 px gövde KABUL EDİLMEZ", () => {
+  const h = tekEkranHukmu("1440x900 acik konsol", SAGLIK_BOS);
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("uyarı varken saglik kartının gövdesi 0 px (3 kayıt görünmüyor)")), h.eksik.join(" | "));
+});
+
+test("gövde 0 değil ama son kayda erişilemiyorsa düşer", () => {
+  /* 11 px'lik bir gövdede 40 px'lik satır hiçbir zaman okunmaz: "0 değil"
+     tek başına ölçüt olsaydı o hâli geçirirdi. */
+  const h = tekEkranHukmu("1440x900", {
+    ...SAGLIK_BOS,
+    kartlar: [{ panel: "saglik", govde: { h: 11 }, kayit: 3, sonKayitErisilir: false }],
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("saglik kartının son kaydına kart içinden erişilemiyor")), h.eksik.join(" | "));
+});
+
+test("düzeltmeden sonraki nabız sütunu geçer", () => {
+  const h = tekEkranHukmu("1440x900", {
+    ...SAGLIK_BOS,
+    kartlar: [
+      { panel: "saglik", govde: { h: 50 }, kayit: 3, sonKayitErisilir: true },
+      { panel: "hareketler", govde: { h: 50 }, kayit: 12, sonKayitErisilir: true },
+    ],
+  });
+  assert.deepEqual(h.eksik, []);
+});
+
+test("seçici açıkken seçilen sekmenin kartı da denetlenir", () => {
+  /* İlk turda 0 px gövde tam burada çıkmıştı: sekme seçiliyor, kart
+     çiziliyor, içindeki kayıt görünmüyordu. */
+  const h = tekEkranHukmu("1440x600", {
+    sayfaDikey: "600/600", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 510, dockUstu: 524,
+    uyariVar: true, kartlar: [],
+    secimler: {
+      "Sistem sağlığı": { sayfaDikey: "600/600", dockOrtuyor: false, govde: { kabul: true },
+        kartlar: [{ panel: "saglik", govde: { h: 0 }, kayit: 3, sonKayitErisilir: null }] },
+    },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("Sistem sağlığı: uyarı varken saglik kartının gövdesi 0 px")), h.eksik.join(" | "));
+});
