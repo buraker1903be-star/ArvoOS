@@ -16,6 +16,11 @@ import { YAYIN_KODU } from "@/lib/paket-ucreti";
 import { MobilSatir } from "../../../crm/table-cells";
 import { SatirTiklama } from "../../../crm/satir-tiklama";
 import { TalepAkis } from "../../../crm/kayit-detay/kayit-akis";
+import { sayfaliSonuc } from "@/lib/rapor-okuma";
+import { donem as donemiCoz, donemKodu } from "@/lib/konsol/donem";
+import { urunPerformansi, type Okuma } from "@/lib/konsol/urun-performansi";
+import { UrunGenelBakis, type IslemBekleyen } from "./urun-genel-bakis";
+import { DonemSecici } from "../../../konsol-donem-secici";
 import { IstatistikKarti } from "../../../crm/istatistik-karti";
 import "../../platform.css";
 import "../../konsol-ui.css";
@@ -53,7 +58,10 @@ const ACIK = new Set(["active", "trialing", "past_due"]);
 const SON_ABONE = 50;
 const ODEYEN = new Set(["active", "past_due"]);
 
-export default async function UrunPage({ params }: { params: Promise<{ urun: string }> }) {
+export default async function UrunPage({ params, searchParams }: {
+  params: Promise<{ urun: string }>;
+  searchParams?: Promise<{ donem?: string }>;
+}) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "urunler");
@@ -62,6 +70,8 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
   if (!urunTanimi) notFound();
   const cekirdek = urun === "arvoos";
   const bireyselVar = SUBSCRIBER_PRODUCTS.some((p) => p.code === urun);
+  /* Dönem adreste; Genel Bakış'taki tabloyla aynı çözümleyici. */
+  const secilenDonem = donemiCoz(donemKodu((await searchParams)?.donem));
 
   const [{ data: kiraciSatirlari, error: kiraciHatasi }, { data: urunSatirlari, error: urunHatasi }, { data: aboneSatirlari }, fiyatlar, sonAboneSonucu, kopru] = await Promise.all([
     supabase.from("platform_kiraci_liste")
@@ -119,6 +129,57 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
   const grupDegeri = odeyen.filter((s) => grupKurumu.has(s.id)).reduce((t, s) => t + Number(s.ucret ?? 0), 0);
   const aboneler = (aboneSatirlari ?? []) as { status: string }[];
   const acikAbone = aboneler.filter((a) => ACIK.has(a.status)).length;
+
+  /*
+    DÖNEM ÖLÇÜMLERİ (26.11.2026). Sayılar Genel Bakış'taki tabloyla AYNI
+    çekirdekten geliyor (lib/konsol/urun-performansi): iki ekranda iki
+    farklı sayı çıkmasın. Okumalar SAYFALI — bir yılın ödemeleri
+    PostgREST'in satır tavanını aşar ve toplam sessizce eksilir.
+  */
+  const [donemKurumOdemeleri, donemAboneOdemeleri, tumAboneler] = await Promise.all([
+    sayfaliSonuc<{ organization_id: string; product: string | null; amount: number | null; reviewed_at: string | null }>(
+      "dönem kurum ödemeleri",
+      (bas, son) => supabase.from("organization_payment_requests").select("organization_id,product,amount,reviewed_at")
+        .eq("status", "approved").eq("product", urun)
+        .gte("reviewed_at", secilenDonem.baslangic).lt("reviewed_at", secilenDonem.bitis)
+        .order("reviewed_at").range(bas, son)),
+    bireyselVar
+      ? sayfaliSonuc<{ subscriber_id: string; amount: number | null; paid_at: string | null }>(
+          "dönem abone ödemeleri",
+          (bas, son) => supabase.from("subscriber_payments").select("subscriber_id,amount,paid_at")
+            .gte("paid_at", secilenDonem.baslangic).lt("paid_at", secilenDonem.bitis)
+            .order("paid_at").range(bas, son))
+      : Promise.resolve({ data: [], error: null }),
+    bireyselVar
+      ? sayfaliSonuc<{ id: string; product: string; status: string; trial_ends_at: string | null; created_at: string }>(
+          "bireysel aboneler",
+          (bas, son) => supabase.from("product_subscribers").select("id,product,status,trial_ends_at,created_at")
+            .eq("product", urun).order("id").range(bas, son))
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const okumaOlarak = <T,>(sonuc: { data: T[] | null; error: { message: string } | null }): Okuma<T[]> =>
+    sonuc.error || !sonuc.data ? { hata: true } : { veri: sonuc.data };
+  /* Tahsilata yalnızca müşteri kurumlar girer (iç ekip ve grup markası hariç). */
+  const musteriKurumKumesi = new Set(kiracilar.filter((k) => !k.grup_markasi).map((k) => k.id));
+  const performansSatiri = urunPerformansi({
+    donem: secilenDonem,
+    cekirdek: { veri: kiracilar.map((k) => ({ organization_id: k.id, license_status: k.license_status })) },
+    urunLisanslari: { veri: (urunSatirlari ?? []).map((u) => ({ organization_id: (u as { organization_id: string }).organization_id, product: urun, status: (u as { status: string }).status })) },
+    aboneler: okumaOlarak(tumAboneler),
+    aboneOdemeleri: okumaOlarak(donemAboneOdemeleri),
+    kurumOdemeleri: okumaOlarak(donemKurumOdemeleri),
+    musteriKurumlar: { veri: musteriKurumKumesi },
+    urunler: [{ code: urun, name: urunTanimi.name }],
+    aboneliUrunler: bireyselVar ? [urun] : [],
+  })[0];
+
+  /* İşlem bekleyenler: bu ürünün ekranlarına açılan kısayollar. Sayı
+     üretilmiyor — kuyruğun kendisi konsolun ana ekranında. */
+  const bekleyenler: IslemBekleyen[] = [
+    { anahtar: "odeme", baslik: "Ödeme bildirimleri", alt: "Onay bekleyenler konsolun kuyruğunda", href: "/panel/platform/payments", eylem: "İncele" },
+    { anahtar: "yenileme", baslik: "Yaklaşan yenilemeler", alt: "Dönemi dolan lisanslar", href: "/panel/platform/musteriler", eylem: "Görüntüle" },
+    { anahtar: "destek", baslik: "Yanıt bekleyen talepler", alt: "Destek ekranında", href: "/panel/platform/destek", eylem: "Görüntüle" },
+  ];
   const basamaklar = planlar(urun as PricedProduct);
   /* Liste düşerse sekme "abone yok" demesin: hata kendi satırında yazılıyor. */
   const aboneListesiHatasi = (sonAboneSonucu as { error: { message: string } | null }).error?.message ?? null;
@@ -147,9 +208,12 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
   */
   const uygulama = urun === "arc" ? ARC_APP : (PRODUCT_APPS as Record<string, { url: string; host: string } | undefined>)[urun];
   const sekmeler = [
-    `Kiracılar · ${sayi(satirlar.length)}`,
+    "Genel Bakış",
+    `Müşteriler · ${sayi(satirlar.length)}`,
     "Fiyat basamakları",
-    ...(bireyselVar ? [`Bireysel aboneler · ${sayi(acikAbone)}`] : []),
+    ...(bireyselVar ? [`Abonelikler · ${sayi(acikAbone)}`] : []),
+    "Tahsilat",
+    "Destek",
   ];
   const bos = (baslik: string, aciklama: string) => (
     <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
@@ -163,6 +227,8 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
         <p className="ek-alt">{[urunTanimi.description, uygulama?.host].filter(Boolean).join(" · ")}</p>
       </div>
       <div className="talep-bas-eylem">
+        {/* Dönem seçici başlığın sağında (onaylı mockup); seçim adreste. */}
+        <DonemSecici secili={secilenDonem.kod} taban={`/panel/platform/urunler/${urun}`} />
         <Link className="panel-primary" href={`/panel/platform/fiyatlar?urun=${urun}`}>Fiyatları düzenle</Link>
         <details className="os-menu talep-menu">
           <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
@@ -195,6 +261,15 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
 
     <div className="talep-izgara personel-iki ekip-izgara">
       <TalepAkis kimlik="urun-kart" sinif="sy-kart" etiket={`${urunTanimi.name} kartı`} sekmeler={sekmeler}>
+        {/*
+          Sekmeler onaylı mockup'a göre: Genel Bakış · Müşteriler ·
+          Fiyat basamakları · Abonelikler · Tahsilat · Destek. Mockup'ta
+          olmayan "Fiyat basamakları" duruyor — mevcut içerik silinmedi.
+        */}
+        <section>
+          <UrunGenelBakis satir={performansSatiri} donem={secilenDonem} para={para} sayi={sayi} bekleyenler={bekleyenler} />
+        </section>
+
         <section>
           {satirlar.length ? (
             <div className="talep-tablo fn-ic-tablo">
@@ -297,6 +372,28 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
             ) : bos("Bireysel abone yok", `Bir kişi ${urunTanimi.name}'a kendi adına abone olduğunda burada listelenir.`)}
           </section>
         ) : null}
+        <section>
+          <header className="phr-bas fn-alt-bas"><h2>Tahsilat</h2><small>{secilenDonem.etiket} · onaylı kurum ödemeleri ve bireysel abone ödemeleri</small></header>
+          <p className="ugb-bos">
+            {performansSatiri.tahsilat.durum === "var"
+              ? <>Bu dönemde <b>{para(performansSatiri.tahsilat.deger)}</b> tahsil edildi.</>
+              : performansSatiri.tahsilat.durum === "okunamadi"
+                ? <><b>Veri okunamadı.</b> Ödeme kayıtları bu açılışta okunamadı.</>
+                : <><b>Veri bağlı değil.</b></>}
+          </p>
+          <p className="ugb-bos"><Link className="panel-secondary" href="/panel/platform/tahsilat">Tahsilat ekranı</Link></p>
+        </section>
+
+        <section>
+          <header className="phr-bas fn-alt-bas"><h2>Destek</h2><small>Ürün kırılımı yok</small></header>
+          {/*
+            Destek talepleri KURUMA bağlı, ürüne değil (support_tickets'ta
+            product sütunu yok). Ürün başına sayı üretmek, ölçülmemiş bir
+            şeyi ölçülmüş göstermek olurdu.
+          */}
+          <p className="ugb-bos"><b>Veri bağlı değil.</b> Destek talepleri kuruma bağlı; ürün kırılımı tutulmuyor.</p>
+          <p className="ugb-bos"><Link className="panel-secondary" href="/panel/platform/destek">Destek ekranı</Link></p>
+        </section>
       </TalepAkis>
 
       <div className="liste-sag">

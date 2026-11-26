@@ -1,0 +1,4 @@
+/* Dönem seçici: kart başlığının ya da sayfa başlığının sağında. */
+.kds-donem{flex:none}
+.kds-donem>summary{white-space:nowrap}
+.kds-donem .os-menu-item[aria-current="true"]{font-weight:var(--fw-semibold);color:var(--ink)}

@@ -1,0 +1,76 @@
+/*
+  ÜRÜN PERFORMANSI TABLOSU VE ÖNCELİKLİ İŞLER (26.11.2026, onaylı mockup).
+
+  Kart gövdesi tek kaydırma alanı (.dash-col-govde, dashboard.css):
+  tablo uzadığında sayfa değil kart kayar — konsolun tek ekran kuralı.
+  Renkler token'dan; TSX'te satır içi stil ve ham hex yok (check:css).
+*/
+/*
+  KART KENDİ GENİŞLİĞİNE GÖRE DÜZEN DEĞİŞTİRİR (26.11.2026, ölçümle).
+
+  Tablo mockup'ta tam genişlikte; konsolun üç sütunlu ızgarasında aynı
+  kart 415 px'e düşüyor ve dört veri sütunu üst üste biniyordu
+  ("Veri bağlı değil₺612.400"). Medya sorgusu burada işe yaramaz:
+  kart dar, EKRAN değil. Container sorgusu kartın kendi genişliğini
+  ölçüyor; dar kartta satır yığılıyor, geniş kartta tablo kalıyor.
+*/
+.kup-kart{container-type:inline-size}
+.kup-kart .dash-card-head{align-items:flex-start;gap:var(--sp-3)}
+.kup-govde{padding-bottom:var(--sp-1)}
+
+/* Tablo: başlık satırı kaydırmada yerinde dursun; kurucu hangi sütuna
+   baktığını kaybetmesin. */
+.kup-tablo thead th{position:sticky;top:0;z-index:1;background:var(--surface)}
+/*
+  TABLO DARALABİLİR OLMALI (26.11.2026, ölçümle). Hücrelerde
+  white-space:nowrap varken sütunun min-content genişliği 846 px'e
+  çıkıyor; ızgara (.dash-cols--sabit, auto-fit) o genişliğe yer açmak
+  için sütun sayısını İKİYE düşürüyor ve üç panel iki satıra sarıyor —
+  satır yüksekliği yarılanınca nabız sütunundaki kartlar 14 px'e iniyor
+  ve kayıtları görünmüyordu. table-layout:fixed sütunu içeriğe değil
+  kutuya göre böler; uzun ad sarar, sayı satırı bölünmez.
+*/
+.kup-tablo{table-layout:fixed;width:100%}
+.kup-tablo th,.kup-tablo td{overflow-wrap:anywhere}
+.kup-tablo td:last-child,.kup-tablo .kup-oran,.kup-tablo .kup-yok{white-space:nowrap}
+.kup-tablo tbody th{font-weight:var(--fw-semibold);color:var(--ink)}
+/* Satır yüksekliği kısıldı: dört ürün kaydırmadan görünsün. */
+.kup-tablo tbody th,.kup-tablo tbody td{padding-block:var(--sp-2)}
+.kup-tablo td{font-variant-numeric:tabular-nums}
+.kup-tablo td:not(:first-child){white-space:nowrap}
+.kup-ac{text-align:right}
+.kup-ac a{color:var(--accent);font-weight:var(--fw-semibold);text-decoration:none}
+.kup-ac a:hover{text-decoration:underline}
+.kup-gizli{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* Kaynağı olmayan ya da okunamayan ölçüm: sayı YOK, sebep var. Sıfır
+   basmak "satış yok" diye okunurdu (AGENTS.md, okunamayan sorgu). */
+.kup-yok{color:var(--muted);font-size:var(--fs-sm);font-style:italic}
+.kup-yok[data-tone="danger"]{color:var(--danger);font-style:normal}
+.kup-oran{display:inline-flex;align-items:baseline;gap:var(--sp-2)}
+
+
+.koi-liste .koi-urun{color:var(--muted);font-weight:var(--fw-medium)}
+.koi-eylem{flex:none;color:var(--accent);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+
+@media (max-width:760px){
+  .kup-kart .dash-card-head{flex-wrap:wrap}
+  /* Telefonda "Aç" sütunu satırın kendisi: ürün adına dokunmak yeter. */
+  .kup-tablo th:nth-child(3),.kup-tablo td:nth-child(3){display:none}
+}
+
+/* Dar kartta tablo satırı bloğa dönüşüyor: etiket + değer alt alta. */
+@container (max-width:470px){
+  .kup-tablo thead{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%)}
+  .kup-tablo,.kup-tablo tbody,.kup-tablo tr,.kup-tablo th,.kup-tablo td{display:block;width:auto}
+  .kup-tablo tr{display:grid;grid-template-columns:1fr auto;gap:2px var(--sp-2);align-items:baseline;
+    padding:var(--sp-2) 0;border-bottom:1px solid var(--line-soft)}
+  .kup-tablo tr:last-child{border-bottom:0}
+  .kup-tablo tbody th{grid-column:1;font-size:var(--fs-sm)}
+  .kup-tablo .kup-ac{grid-column:2;grid-row:1;text-align:right}
+  .kup-tablo td:not(.kup-ac){grid-column:1/-1;display:flex;justify-content:space-between;gap:var(--sp-2);
+    color:var(--muted);font-size:var(--fs-sm)}
+  /* Etiket data-label'dan: başlık satırı gizlendiği için değer tek
+     başına "892" diye kalırdı, neyin 892'si olduğu kaybolurdu. */
+  .kup-tablo td:not(.kup-ac)::before{content:attr(data-label);color:var(--muted)}
+}

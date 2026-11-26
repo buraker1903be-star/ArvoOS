@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { getPanelContext } from "@/lib/panel-context";
 import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
 import { KonsolAnaSayfa } from "./konsol-ana-sayfa";
+import { donemKodu } from "@/lib/konsol/donem";
 import { formatPersonName } from "@/lib/format-name";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { formatSubject } from "@/lib/table-format";
@@ -77,12 +78,17 @@ type AsamaSatiri = { id: string; title: string; due_date: string; workflow_id: s
 type MesajSatiri = { id: string; workflow_id: string; sender_name: string | null; body: string; created_at: string; read_at: string | null; operation_workflows: { title: string; customer_name: string | null } | null };
 type PostaSatiri = { thread_id: string; konu: string | null; son_gonderen_ad: string | null; son_gonderen_adres: string | null; son_mesaj_at: string | null; okunmamis: boolean };
 
-export default async function PanelPage() {
+export default async function PanelPage({ searchParams }: { searchParams?: Promise<{ donem?: string }> }) {
   /*
     Kurucu konsolunun (yonetim.arvo-os.com) ana sayfası ayrı: buradaki
     özet TEK BİR KURUMUN günü ve konsolda o kurum Arvo'nun kendisi olurdu.
   */
-  if (isManagementHost(hostFromHeaders(await headers()))) return <KonsolAnaSayfa />;
+  /* Dönem adreste (?donem=30g): konsolun ürün performansı tablosu ve
+     "seçili dönemde tahsilat" bunu okuyor. Tanınmayan değer varsayılana
+     düşüyor, ekran boş kalmıyor (lib/konsol/donem). */
+  if (isManagementHost(hostFromHeaders(await headers()))) {
+    return <KonsolAnaSayfa donem={donemKodu((await searchParams)?.donem)} />;
+  }
 
   /* Okuma başına süre (lib/sure-olcumu): kurum panelinin ana sayfası
      app.akademikmerkez.com'da p75 ~0,7 sn; eşiği aşan açılış günlüğe yazılıyor. */

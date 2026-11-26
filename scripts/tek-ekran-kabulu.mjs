@@ -46,9 +46,16 @@ const kayiyor = (olcu) => {
  */
 export function tekEkranHukmu(ad, o) {
   const eksik = [];
-  if (kayiyor(o.sayfaDikey)) eksik.push(`sayfa dikey kayıyor (${o.sayfaDikey})`);
+  /* Dikey kayma yalnızca TEK EKRAN sayfalarında kusur: kayıt sayfası
+     (ürün detayı) tasarımı gereği kayar. Yatay kayma her yerde kusur. */
+  if (o.tekEkran !== false && kayiyor(o.sayfaDikey)) eksik.push(`sayfa dikey kayıyor (${o.sayfaDikey})`);
   if (kayiyor(o.sayfaYatay)) eksik.push(`sayfa yatay kayıyor (${o.sayfaYatay})`);
-  if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
+  if (o.tekEkran === false) {
+    /* Kayıt sayfası: dock güvencesi sayfanın dibindeki PAY. Pay dock
+       yüksekliğinden küçükse son kart kalıcı olarak altında kalır. */
+    if (o.dockPayi === null || o.dockYuksekligi === null) eksik.push("dock payı ölçülemedi");
+    else if (o.dockPayi < o.dockYuksekligi) eksik.push(`sayfanın dibinde dock payı yetersiz (${o.dockPayi} < ${o.dockYuksekligi})`);
+  } else if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
   else if (o.dockOrtuyor) eksik.push(`dock içeriği örtüyor (içerik ${o.icerikAlt} > dock ${o.dockUstu})`);
 
   const e = o.erisim;

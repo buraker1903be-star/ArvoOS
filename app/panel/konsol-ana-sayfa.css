@@ -63,6 +63,38 @@
 @media (min-width:901px){
   .dash-sabit.konsol-ana .dash-cols--sabit{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 }
+/*
+  ÜÇÜNCÜ SÜTUN: ÜRÜNLER (26.11.2026, onaylı mockup).
+
+  Ürün performansı + Öncelikli işler üçüncü bir grup olarak geldi. İki
+  sütunlu şablonda üç grup İKİ SATIRA sarıyor ve satır yüksekliği
+  yarılanıyordu: 1440×900'de nabız sütunundaki kartlar 14 px'e iniyor,
+  üç kaydın hiçbiri görünmüyordu (ölçüldü). Sütun eklenmesi şablonda
+  yazılı olmalı — auto-fit'e bırakılırsa kuyruk sütunu daralıp satırdaki
+  "Onayla" düğmesi yine sarardı, ki 1.6fr tam bunun için konmuştu.
+
+  1400 px altında üç sütun kuyruğu okunmaz hâle getiriyor (ölçüm: 1100'de
+  sütun başına 340 px); orada konsol görünüm seçicisine düşüyor ve her
+  kart tam yükseklikte tek tek açılıyor.
+*/
+/*
+  ÜÇ SÜTUN ANCAK YETERLİ ALANDA (26.11.2026, taramayla).
+
+  Ürünler sütunu en geniş: tablonun değeri dört ürünü YAN YANA
+  görmekte. 415 px'e düştüğünde kart yığılmış satıra geçiyor ve
+  karşılaştırma kayboluyordu (container sorgusu,
+  konsol-urun-performansi.css).
+
+  Üçüncü sütun dar kalınca "Son hareketler" satırı iki satıra sarıyor:
+  1440×900'de satır 82 px, kart gövdesi 40 px — son kayda kaydırarak
+  bile ulaşılamıyor. Ölçülen sınır: 1500×900 ve 1440×920 geçiyor
+  (gövde 50 px, satır sarmıyor), 1440×900 geçmiyor. Eşik ikisinin
+  birleşimi; altında konsol görünüm seçicisine düşüyor ve her kart tam
+  yükseklikte açılıyor (gövde 135–153 px).
+*/
+@media (min-width:1500px) and (min-height:900px),(min-width:1400px) and (min-height:940px){
+  .dash-sabit.konsol-ana .dash-cols--sabit{grid-template-columns:minmax(0,1.5fr) minmax(0,1.4fr) minmax(0,1fr)}
+}
 
 /* Sistem sağlığı: üç gerçek sinyal (köprüler, okunamayan kaynaklar,
    kurulumda hatada kalan kurum). Uydurma gösterge yok; sinyal yoksa
@@ -203,7 +235,7 @@
   kartın kendi kaydırma alanı yoksa panelin kendisi kayar. İç içe
   kaydırma olmasın diye kural yalnızca gövdesi olmayan panele uygulanır.
 */
-@media (max-width:1099px),(max-height:899px){
+@media (max-width:1499px) and (max-height:939px),(max-width:1399px),(max-height:899px){
   .konsol-ana .dash-cols--sabit>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)),
   .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)){
     min-height:0;overflow-y:auto;overscroll-behavior:contain;
@@ -223,7 +255,7 @@
   gösteriyordu — taşma sıfır, dock açık; kusur yalnızca görüntüde.
   Kural konsola özgü: kiracı panelinin ızgara davranışı değişmiyor.
 */
-@media (max-width:1099px),(max-height:899px){
+@media (max-width:1499px) and (max-height:939px),(max-width:1399px),(max-height:899px){
   .konsol-ana .dash-cols--sabit{align-items:stretch}
 }
 
@@ -269,7 +301,7 @@
 */
 /* Yalnızca IZGARA düzeni, yani seçicinin kapalı olduğu aralık: eşit pay
    seçicili düzene sızınca kart panelini aşıyordu (390×844'te ölçüldü). */
-@media (min-width:1100px) and (min-height:900px){
+@media (min-width:1500px) and (min-height:900px),(min-width:1400px) and (min-height:940px){
   .konsol-ana .dash-cols--sabit>.dash-gorunum-yigin{align-self:stretch}
   .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde){flex:1 1 0}
   /*
@@ -297,6 +329,15 @@
     yükseklik iki liste kartının gövdesine gidiyor.
   */
   .konsol-ana .dash-gorunum-yigin .dash-bars{height:clamp(36px,5dvh,56px)}
+  /*
+    Çubukların ÜSTÜNDEKİ değerler nabız sütununda çizilmiyor: 20 px
+    tutuyorlar ve aynı sayılar kartın başlığındaki toplamda zaten var.
+    Serbest kalan yükseklik liste kartlarının gövdesine gidiyor —
+    ölçüm: Son hareketler'in 47 px'lik satırı ancak bundan sonra
+    kartın içinde tamamen görünüyor. Alttaki gün numaraları duruyor;
+    onlar eksen, süs değil.
+  */
+  .konsol-ana .dash-gorunum-yigin .dash-bar-value{display:none}
 }
 
 
@@ -317,8 +358,11 @@
     - 901×641'de kart panelini 5 px aşıyordu (sayfa sabit, dock açık —
       yani yalnızca taşmaya bakan bir kabul bunu da görmüyordu).
 
-  Eşik buradan: ızgara yalnızca 1100×900 ve üstünde. Altında konsol
-  mevcut görünüm seçicisine düşüyor — kartlar tek tek, tam yükseklikte
+  Eşik 26.11.2026'da 1400×900'e çıktı: ürün performansı ve öncelikli
+  işler ÜÇÜNCÜ bir sütun getirdi, iki sütunlu şablonda üç grup iki
+  satıra sarıyor ve satır yüksekliği yarılanıyordu (1363×936'da nabız
+  kartları 22 px). Üç sütun ancak 1400 px'den sonra okunur genişlik
+  bırakıyor. Altında konsol mevcut görünüm seçicisine düşüyor — kartlar tek tek, tam yükseklikte
   ve kayıtlar kendi gövdelerinde kayarak erişilebilir. Kural konsola
   özgü; kiracı panelinin eşiği değişmedi.
 
@@ -326,7 +370,7 @@
   bağlı. Düğme biçimi orada medya sorgusunun dışına alındı ki iki yerde
   ayrı ayrı sapmasın.
 */
-@media (max-width:1099px),(max-height:899px){
+@media (max-width:1499px) and (max-height:939px),(max-width:1399px),(max-height:899px){
   .konsol-ana .dash-gorunum-sec{display:flex;flex-wrap:wrap;gap:6px;flex:none}
   .konsol-ana.dash-sabit .dash-gorunum-panel:not(.is-secili){display:none}
   .konsol-ana.dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
