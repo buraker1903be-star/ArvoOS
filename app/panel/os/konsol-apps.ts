@@ -101,7 +101,7 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
       yollar: ["/panel/platform/destek"],
     },
     {
-      key: "urunler", label: "Ürünler ve Fiyatlar", href: "/panel/platform/urunler", ikon: "box",
+      key: "urunler", label: "Ürünler ve Fiyatlar", kisaEtiket: "Ürünler", href: "/panel/platform/urunler", ikon: "box",
       yollar: ["/panel/platform/urunler", "/panel/platform/moduller", "/panel/platform/fiyatlar"],
       /* Dört ürünün kendi sayfası Ürünler özetinin kartlarından açılıyor;
          şeritte yer kaplamıyorlar (14.10.2026'da yedi bölüm kalabalıktı). */

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { TEMA_BETIGI } from "@/lib/konsol-giris/tema";
+import { YANMENU_BETIGI } from "@/lib/konsol/gezinme";
 import "./globals.css";
 // Pazarlama sitesinin stilleri ve hareketleri app/(site)/layout.tsx'te;
 // kök yerleşim yalnızca uygulama geneli temeli yükler.
@@ -72,4 +73,4 @@ export const viewport: Viewport = {
 // aldığı davranışın aynısı. Betik <html>'e data-theme ile birlikte
 // data-theme-tercih de yazar: tema seçicisi onu okur.
 
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:TEMA_BETIGI}}/></head><body className={inter.variable}>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:TEMA_BETIGI}}/><script dangerouslySetInnerHTML={{__html:YANMENU_BETIGI}}/></head><body className={inter.variable}>{children}</body></html>}

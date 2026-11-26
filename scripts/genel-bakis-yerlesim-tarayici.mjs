@@ -40,12 +40,26 @@ function rotaCss(rota) {
 const cssler = { ana: rotaCss("panel"), crm: rotaCss("panel/crm/genel-bakis"), konsol: rotaCss("panel"), urundetay: rotaCss("panel/platform/urunler/[urun]") };
 const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol,urundetay").split(",");
 
-const dizin = fs.mkdtempSync(path.join(os.tmpdir(), "yerlesim-"));
+/*
+  Üretilen sayfalar geçici bir dizinde ve koşu sonunda siliniyor.
+  SAKLA=<dizin> verilirse orada bırakılır: gezinmenin tıklamalı
+  davranışını (menüyü daralt, "Daha fazla" penceresi, klavye odağı)
+  aynı sayfalar üzerinde ayrıca ölçebilmek için.
+*/
+const dizin = process.env.SAKLA ?? fs.mkdtempSync(path.join(os.tmpdir(), "yerlesim-"));
+if (process.env.SAKLA) fs.mkdirSync(dizin, { recursive: true });
 const shim = path.join(dizin, "shim");
 fs.mkdirSync(shim);
 fs.writeFileSync(path.join(shim, "link.tsx"), `export default function Link({ href, children, prefetch, scroll, replace, ...p }) { return <a href={typeof href === "string" ? href : "#"} {...p}>{children}</a>; }`);
 fs.writeFileSync(path.join(shim, "navigation.ts"), `export const usePathname = () => window.__yol || "/panel"; export const useSearchParams = () => new URLSearchParams(); export const useRouter = () => ({ push(){}, replace(){}, refresh(){} });`);
-fs.writeFileSync(path.join(shim, "image.tsx"), `export default function Image({ src, alt, width, height, className }) { return <img src={src} alt={alt} width={width} height={height} className={className} />; }`);
+/* Sayfa file:// ile açılıyor; "/brand/..." gibi kök yollar dosya
+   sisteminin köküne düşüyor ve logo kırık çıkıyordu. Şim, kök yolları
+   deponun public/ dizinine çeviriyor. */
+fs.writeFileSync(path.join(shim, "image.tsx"), `const KAMU = ${JSON.stringify(path.join(KOK, "public"))};
+export default function Image({ src, alt, width, height, className }) {
+  const yol = typeof src === "string" && src.startsWith("/") ? "file://" + KAMU + src : src;
+  return <img src={yol} alt={alt} width={width} height={height} className={className} />;
+}`);
 
 const a = (p) => JSON.stringify(path.join(KOK, p));
 fs.writeFileSync(path.join(dizin, "giris.tsx"), `
@@ -324,11 +338,28 @@ function UrunDetay() {
     </main>
   );
 }
+/*
+  Adres senaryoya göre: ürün detayına DOĞRUDAN girildiğinde sol menüde
+  "Ürünler" etkin görünmeli (etkinUygulama en uzun eşleşen yolu seçer).
+  Şim usePathname'i window.__yol'dan okuyor.
+*/
+window.__yol = sayfa === "urundetay" ? "/panel/platform/urunler/arvolab" : sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel";
+
 function Kabuk() {
-  return <div className="panel-root os-root"><main className="panel-frame os-frame">
+  /* Konsol senaryoları yeni kabuğu kullanıyor (.os-konsol): masaüstü ve
+     tablette sol menü, telefonda alt çubuk. Kiracı senaryoları (ana,
+     crm) dock'ta kalıyor — üretimdeki ayrımın aynısı. */
+  const konsolMu = sayfa === "konsol" || sayfa === "urundetay";
+  return <div className={konsolMu ? "panel-root os-root os-konsol" : "panel-root os-root"}><main className="panel-frame os-frame">
     <header className="os-bar"><a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a></header>
     <section className="os-workspace">${'{'}/* bölüm menüsü CRM'de layout'ta; burada yükseklik payı CSS tahmininden */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <Konsol /> : sayfa === "urundetay" ? <UrunDetay /> : <Ana />}</div></section>
-    <OsNavigasyon uygulamalar={sayfa === "konsol" || sayfa === "urundetay" ? konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 }) : uygulamalar} digerUygulamalar={[]} />
+    <OsNavigasyon
+      uygulamalar={konsolMu ? konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 }) : uygulamalar}
+      digerUygulamalar={[]}
+      yanMenu={konsolMu}
+      yanMenuSirasi={konsolMu ? ["home", "urunler", "musteriler", "finans", "destek"] : undefined}
+      marka={konsolMu ? { kod: "yonetim", ad: "ArvoOS" } : undefined}
+    />
   </main></div>;
 }
 createRoot(document.getElementById("kok")).render(<Kabuk />);
@@ -367,7 +398,23 @@ const olc = () => {
     }
     return { panel: p.id.replace("gorunum-", ""), kart: r(kart), kartKaydirma: kart ? `${kart.scrollHeight}/${kart.clientHeight}` : null, govde: r(govde), tamGorunenKayit: tam, kayit: govde ? govde.querySelectorAll("li").length : null, sonKayitErisilir, yatayTasma: kart ? kart.scrollWidth > kart.clientWidth + 1 : null };
   });
-  const dock = document.querySelector(".os-dock")?.getBoundingClientRect();
+  /*
+    GÖRÜNÜRLÜK: offsetParent KULLANILMAZ — position:fixed öğelerde her
+    zaman null döner (26.11.2026'da ölçüldü: dock ve sol menü ekranda
+    dururken "gizli" sayılıyordu, dock örtme ölçütü boşa çıkmıştı).
+    Ölçü: hesaplanmış display + gerçek kutu.
+  */
+  const gorunurMu = (el) => {
+    if (!el) return false;
+    const s2 = getComputedStyle(el);
+    if (s2.display === "none" || s2.visibility === "hidden") return false;
+    const r2 = el.getBoundingClientRect();
+    return r2.width > 0 && r2.height > 0;
+  };
+  /* Dock yalnızca telefonda çiziliyor; konsolun masaüstü/tablet
+     görünümünde yerini sol menü alıyor. */
+  const dockOge = document.querySelector(".os-dock");
+  const dock = gorunurMu(dockOge) ? dockOge.getBoundingClientRect() : undefined;
   /*
     İÇERİĞİN ALTI: yalnızca .dash-card'a bakmak yetmiyor. Görünüm seçici
     açıkken konsolda görünen tek kart .konsol-isler ve o .dash-card DEĞİL;
@@ -393,10 +440,11 @@ const olc = () => {
     };
   };
   const kokStil = getComputedStyle(document.querySelector(".os-root") ?? document.body);
-  const dockK = document.querySelector(".os-dock")?.getBoundingClientRect();
+  const dockOgesi = document.querySelector(".os-dock");
+  const dockK = gorunurMu(dockOgesi) ? dockOgesi.getBoundingClientRect() : undefined;
   const zincir = {
     degiskenler: { dockSpace: kokStil.getPropertyValue("--os-dock-space").trim(), barH: kokStil.getPropertyValue("--os-bar-h").trim(), ustH: kokStil.getPropertyValue("--os-ust-h").trim() },
-    dock: dockK ? { ust: Math.round(dockK.top), h: Math.round(dockK.height), konum: getComputedStyle(document.querySelector(".os-dock")).position } : null,
+    dock: dockK ? { ust: Math.round(dockK.top), h: Math.round(dockK.height), konum: getComputedStyle(dockOgesi).position } : null,
     osFrame: kutu(".os-frame"), osWorkspace: kutu(".os-workspace"), panelContent: kutu(".panel-content"),
     anaSayfa: kutu("main.liste-sayfa"),
     dash: kutu(".dash"), serit: kutu(".konsol-serit"), hero: kutu(".dash-hero"), uyari: kutu(".dash-uyari"),
@@ -476,6 +524,48 @@ const olc = () => {
       const satirlar = kap === t ? [...t.querySelectorAll("tbody tr")] : [...liste.children];
       const tam = satirlar.filter((r) => { const b = r.getBoundingClientRect(); return b.top >= g.top - 1 && b.bottom <= g.bottom + 1; }).length;
       return { bicim: kap === t ? "tablo" : "liste", satir: satirlar.length, tamGorunen: tam, govdeH: Math.round(g.height) };
+    })(),
+    /*
+      SOL MENÜ (26.11.2026, onaylı mockup). Masaüstü ve tablette
+      içerik menünün SAĞINDA başlamalı: sabit konumlu menü içeriğin
+      üstüne binerse ilk sütun okunmaz olur. Dar modda (ray) adların
+      görsel olarak gizlenmesi serbest, ama erişilebilir ad ve araç
+      ipucu KALMALI — ikon tek başına ne olduğunu söylemiyor.
+    */
+    yanMenu: (() => {
+      const m = document.querySelector(".os-yan");
+      if (!gorunurMu(m)) return null;
+      const r = m.getBoundingClientRect();
+      const icerik = document.querySelector(".panel-content")?.getBoundingClientRect();
+      const ogeler = [...m.querySelectorAll(".os-yan-oge")];
+      const adsiz = ogeler.filter((o) => {
+        const ad = (o.getAttribute("aria-label") || o.textContent || "").trim();
+        return !ad;
+      }).length;
+      const ipucusuz = ogeler.filter((o) => !o.getAttribute("title")).length;
+      const etiket = m.querySelector(".os-yan-etiket");
+      const etiketGorunur = etiket ? getComputedStyle(etiket).display !== "none" : null;
+      /* Klavye: her girdi odaklanabilmeli ve odakta menünün içinde kalmalı. */
+      let odaklanamayan = 0;
+      for (const o of ogeler) {
+        o.focus();
+        if (document.activeElement !== o) odaklanamayan += 1;
+      }
+      const daralt = m.querySelector(".os-yan-daralt");
+      return {
+        genislik: Math.round(r.width),
+        sag: Math.round(r.right),
+        icerikSol: icerik ? Math.round(icerik.left) : null,
+        ortuyor: icerik ? r.right > icerik.left + 1 : null,
+        oge: ogeler.length,
+        adsiz,
+        ipucusuz,
+        etiketGorunur,
+        odaklanamayan,
+        daraltVar: Boolean(daralt),
+        rozet: [...m.querySelectorAll(".os-yan-rozet")].map((b) => b.textContent),
+        etkin: m.querySelector(".os-yan-oge.is-active")?.getAttribute("aria-label") ?? null,
+      };
     })(),
     /*
       SON ÜRÜNE KART İÇİNDEN ERİŞİM (26.11.2026, ürün kararı).
@@ -715,7 +805,15 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
       */
       if (s === "konsol") {
         o.erisim = await sayfa.evaluate(() => {
-          const dock = document.querySelector(".os-dock")?.getBoundingClientRect();
+          const gorunur2 = (el) => {
+            if (!el) return false;
+            const s3 = getComputedStyle(el);
+            if (s3.display === "none" || s3.visibility === "hidden") return false;
+            const r3 = el.getBoundingClientRect();
+            return r3.width > 0 && r3.height > 0;
+          };
+          const dockE = document.querySelector(".os-dock");
+          const dock = gorunur2(dockE) ? dockE.getBoundingClientRect() : undefined;
           const erisilir = (el) => {
             if (!el) return null;
             /* Kullanıcı ne yapıyorsa o: öğeyi KENDİ kartının içinde
@@ -799,10 +897,10 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
   }
 }
 await tarayici.close();
-fs.rmSync(dizin, { recursive: true, force: true });
+if (!process.env.SAKLA) fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik }));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, yanMenu: o.zincir?.yanMenu, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);

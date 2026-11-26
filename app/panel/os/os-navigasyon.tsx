@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { MarkaLogosu, type DigerUygulama } from "../panel-navigation";
+import { MarkaLogosu, type DigerUygulama, type MarkaKodu } from "../panel-navigation";
 import { aramaAnahtari, etkinUygulama, mobilAltCubuk, type OsUygulama } from "./os-apps";
 import { OsSimge } from "./os-icons";
+import { masaustuAbone, masaustuMu, yanMenuAbone, yanMenuDarMi, yanMenuTercihiniUygula } from "./gezinme-istemci";
 import "./os-navigasyon.css";
+import "./os-yanmenu.css";
 
 /*
   ETİKETLİ DOCK + UYGULAMALAR PANELİ (10.11.2026, ürün kararı).
@@ -32,9 +34,29 @@ import "./os-navigasyon.css";
   Liste tek kaynaktan (osUygulamalari) geliyor; burada yetki hesaplanmıyor.
 */
 
-export function OsNavigasyon({ uygulamalar, digerUygulamalar }: {
+/*
+  Sunucuda tercih ve ekran genişliği bilinmiyor; ilk çizim "açık" ve
+  "masaüstü değil" der, istemci hemen gerçeğine geçer. Görünümü CSS
+  belirlediği için bu fark ekranda görünmez — yalnızca daralt
+  düğmesinin etiketi ve varlığı buna bakar.
+*/
+const sunucuDar = () => false;
+const sunucuMasaustu = () => false;
+
+export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, yanMenuSirasi, marka }: {
   uygulamalar: OsUygulama[];
   digerUygulamalar: DigerUygulama[];
+  /**
+   * Masaüstü/tablette altta dock yerine SOL MENÜ (kurucu konsolu).
+   * Telefon her iki durumda da alt çubuk kullanır; liste, rota, yetki
+   * ve rozetler tek kaynaktan — üç biçim aynı `uygulamalar` dizisini
+   * okur (26.11.2026, onaylı mockup).
+   */
+  yanMenu?: boolean;
+  /** Sol menüdeki birincil sıra (anahtarlar); verilmezse liste sırası. */
+  yanMenuSirasi?: string[];
+  /** Sol menünün tepesindeki marka: resmî işaret + ad. */
+  marka?: { kod: MarkaKodu; ad: string };
 }) {
   const yol = usePathname();
   const pencere = useRef<HTMLDialogElement>(null);
@@ -64,6 +86,18 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar }: {
 
   return (
     <>
+      {yanMenu ? (
+        <YanMenu
+          uygulamalar={uygulamalar}
+          sira={yanMenuSirasi}
+          etkinKey={etkin?.key}
+          panelEtkin={panelEtkin}
+          panelRozeti={panelRozeti}
+          ac={ac}
+          marka={marka}
+          rozetMetni={rozetMetni}
+        />
+      ) : null}
       <nav className="os-dock" aria-label="Ana menü">
         {birincil.map((u) => {
           const acik = etkin?.key === u.key;
@@ -165,5 +199,104 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar }: {
         </div>
       </dialog>
     </>
+  );
+}
+
+/*
+  SOL MENÜ (masaüstü 240 px · tablet 64 px ray), onaylı mockup.
+
+  Kaynak yapı ArvoLab'ın çalışan kabuğundan (app/dashboard/_components/os-gezinme.tsx
+  + app/styles/os-shell.css, canlı commit b3fab7a4): üstte marka, ortada
+  liste, altta ikincil bölüm ve daralt düğmesi. Liste, rota, yetki ve
+  rozet verisi DOCK İLE AYNI diziden gelir — üç ekran boyutu tek
+  kaynaktan beslenir.
+
+  Ray (tablet) ve dar masaüstü aynı görünümü kullanır: yalnızca ikon,
+  ad `title` ve `aria-label` olarak kalır. Erişilebilir ad hiçbir
+  biçimde kaybolmaz; rozetler görünür durur.
+*/
+function YanMenu({ uygulamalar, sira, etkinKey, panelEtkin, panelRozeti, ac, marka, rozetMetni }: {
+  uygulamalar: OsUygulama[];
+  sira?: string[];
+  etkinKey?: string;
+  panelEtkin: boolean;
+  panelRozeti: number;
+  ac: () => void;
+  marka?: { kod: MarkaKodu; ad: string };
+  rozetMetni: (n: number) => string;
+}) {
+  const dar = useSyncExternalStore(yanMenuAbone, yanMenuDarMi, sunucuDar);
+  const masaustu = useSyncExternalStore(masaustuAbone, masaustuMu, sunucuMasaustu);
+
+  /* Birincil sıra mockup'tan; listede olmayan anahtar atlanır, sırada
+     olmayan uygulama "Uygulamalar" penceresinde kalır (yetki süzgeci
+     zaten listeyi kısaltmış olabilir). */
+  const birincilMenu = sira
+    ? sira.map((k) => uygulamalar.find((u) => u.key === k)).filter((u): u is OsUygulama => Boolean(u))
+    : uygulamalar.filter((u) => !u.yalnizBaslatici);
+
+  return (
+    <nav className="os-yan" aria-label="Konsol menüsü" data-dar={dar ? "evet" : undefined}>
+      {marka ? (
+        <Link className="os-yan-marka" href="/panel" aria-label={`${marka.ad} ana ekran`}>
+          <span className="os-yan-isaret"><MarkaLogosu marka={marka.kod} ad="" /></span>
+          <span className="os-yan-ad">{marka.ad}</span>
+        </Link>
+      ) : null}
+
+      <ul className="os-yan-liste">
+        {birincilMenu.map((u) => {
+          const acik = etkinKey === u.key;
+          const etiket = u.rozet ? `${u.label}, ${u.rozet} bekleyen` : u.label;
+          return (
+            <li key={u.key}>
+              <Link
+                href={u.href}
+                className={acik ? "os-yan-oge is-active" : "os-yan-oge"}
+                aria-current={acik ? "page" : undefined}
+                aria-label={etiket}
+                title={u.kisaEtiket ?? u.label}
+              >
+                <span className="os-yan-simge"><OsSimge ad={u.ikon} boyut={20} /></span>
+                <span className="os-yan-etiket">{u.kisaEtiket ?? u.label}</span>
+                {u.rozet ? <b className="os-yan-rozet" aria-hidden="true">{rozetMetni(u.rozet)}</b> : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="os-yan-alt">
+        {/* İkincil bölüm: bütün uygulamalar ve diğer Arvo ürünleri aynı
+            pencereden (dock'takiyle tek bileşen, tek liste). */}
+        <button
+          type="button"
+          className={panelEtkin ? "os-yan-oge is-active" : "os-yan-oge"}
+          aria-haspopup="dialog"
+          onClick={ac}
+          aria-label={panelRozeti ? `Uygulamalar, ${panelRozeti} bekleyen` : "Uygulamalar"}
+          title="Uygulamalar"
+        >
+          <span className="os-yan-simge"><OsSimge ad="apps" boyut={20} /></span>
+          <span className="os-yan-etiket">Uygulamalar</span>
+          {panelRozeti ? <b className="os-yan-rozet" aria-hidden="true">{rozetMetni(panelRozeti)}</b> : null}
+        </button>
+
+        {/* Daralt/genişlet yalnızca masaüstünde: tablette ray zaten dar,
+            orada düğme tercihi değiştirir ama ekranda hiçbir şey olmaz. */}
+        {masaustu ? (
+          <button
+            type="button"
+            className="os-yan-daralt"
+            onClick={() => yanMenuTercihiniUygula(!dar)}
+            aria-pressed={dar}
+            title={dar ? "Menüyü genişlet" : "Menüyü daralt"}
+          >
+            <span className="os-yan-simge" aria-hidden="true"><OsSimge ad={dar ? "chevron-right" : "chevron-left"} boyut={18} /></span>
+            <span className="os-yan-etiket">{dar ? "Menüyü genişlet" : "Menüyü daralt"}</span>
+          </button>
+        ) : null}
+      </div>
+    </nav>
   );
 }

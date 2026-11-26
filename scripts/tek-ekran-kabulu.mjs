@@ -145,6 +145,21 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    SOL MENÜ İÇERİĞİN ÜSTÜNE BİNMEZ (26.11.2026, onaylı mockup).
+    Menü sabit konumlu; içerik onun sağında başlamazsa ilk sütun
+    okunmaz olur. Dar modda ad gizlenebilir ama erişilebilir ad ve
+    araç ipucu kalmalı, her girdi klavyeyle odaklanabilmeli.
+  */
+  if (o.yanMenu) {
+    const m = o.yanMenu;
+    if (m.ortuyor) eksik.push(`sol menü içeriğin üstüne biniyor (menü ${m.sag}px, içerik ${m.icerikSol}px)`);
+    if (!m.oge) eksik.push("sol menüde girdi yok");
+    if (m.adsiz) eksik.push(`${m.adsiz} menü girdisinin erişilebilir adı yok`);
+    if (m.ipucusuz) eksik.push(`${m.ipucusuz} menü girdisinin araç ipucu yok`);
+    if (m.odaklanamayan) eksik.push(`${m.odaklanamayan} menü girdisi klavyeyle odaklanamıyor`);
+  }
+
+  /*
     SON ÜRÜNE KART İÇİNDEN ULAŞILMALI (26.11.2026, ürün kararı).
     Dört satır sığmadığında kaydırma kartın içinde olacak ve kartı
     sonuna kaydırınca son ürün TAM görünecek; eylemi de tıklanabilir ve

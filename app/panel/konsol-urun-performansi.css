@@ -31,8 +31,25 @@
   kutuya göre böler; uzun ad sarar, sayı satırı bölünmez.
 */
 .kup-tablo{table-layout:fixed;width:100%}
+/*
+  min-width:0 ŞART ve seçici KART ÜZERİNDEN (26.11.2026, ölçümle).
+
+  panel-premium.css'te `@media(max-width:900px){.panel-content table{min-width:680px}}`
+  var — liste sayfalarının geniş tabloları dar ekranda yatay kayması
+  için. Bu kart öyle bir tablo değil: 680 px'lik taban, sol menüden
+  sonra 654 px kalan gövdeyi 42 px aşırıyor ve son satırın "Aç"
+  bağlantısı kartın DIŞINDA kalıyordu — kutusu görünüyor ama üstünde
+  kart olduğu için tıklanamıyordu (768×600'de ölçüldü).
+
+  `.kup-tablo` tek başına (0,1,0) o kurala (0,1,1) yeniliyor; kartla
+  birlikte yazılınca (0,2,0) kazanıyor. Yalnızca bu kartı etkiler.
+*/
+.kup-kart .kup-tablo{min-width:0}
 .kup-tablo th,.kup-tablo td{overflow-wrap:anywhere}
-.kup-tablo td:last-child,.kup-tablo .kup-oran,.kup-tablo .kup-yok{white-space:nowrap}
+.kup-tablo td:last-child,.kup-tablo .kup-oran{white-space:nowrap}
+/* "Veri bağlı değil" / "Veri okunamadı" dar sütunda sarabilir: nowrap
+   kalsaydı tablo yine min-content'ine şişerdi. */
+.kup-tablo .kup-yok{white-space:normal}
 /*
   HİZA: ad sola, ölçüm sağa. Varsayılan th ortalı geldiği için ürün
   adları ile sayılar farklı eksenlere oturuyordu — dört ürünü

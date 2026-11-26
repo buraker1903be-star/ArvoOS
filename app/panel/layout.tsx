@@ -576,9 +576,19 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     </section>
     {/* "Diğer uygulamalar": konsoldan kiracı paneline dönüş (dock'taki
         Uygulamalar panelinde). */}
+    {/*
+      Masaüstü ve tablette SOL MENÜ, telefonda alt çubuk (26.11.2026,
+      onaylı mockup). Tek bileşen, tek liste: üç biçim de aynı
+      `uygulamalar` dizisinden besleniyor — rota, yetki ve rozetler
+      ayrışamaz. Sıra mockup'tan; listede olmayan uygulama (yetki
+      süzgeci) atlanır, sırada olmayan "Uygulamalar" penceresinde kalır.
+    */}
     {sozlesmeGerekli ? null : <OsNavigasyon
       uygulamalar={konsolUygulamalariListesi}
       digerUygulamalar={[{ kod: "panel", ad: "Kiracı Paneli", href: `https://${DEFAULT_APP_HOST}/panel`, ayniSekme: false, marka: "arvoos" as const }]}
+      yanMenu
+      yanMenuSirasi={["home", "urunler", "musteriler", "finans", "destek"]}
+      marka={{ kod: "yonetim", ad: "ArvoOS" }}
     />}
     <OsUygulamaKabugu />
     {/* Ctrl+K kiracı adıyla da arıyor: konsolda en çok tekrarlanan
