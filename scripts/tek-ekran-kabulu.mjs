@@ -145,6 +145,20 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    SON ÜRÜNE KART İÇİNDEN ULAŞILMALI (26.11.2026, ürün kararı).
+    Dört satır sığmadığında kaydırma kartın içinde olacak ve kartı
+    sonuna kaydırınca son ürün TAM görünecek; eylemi de tıklanabilir ve
+    klavyeyle odaklanabilir olacak. "Satır DOM'da var" yetmez: kart
+    kaymıyorsa son ürüne hiçbir yoldan ulaşılamaz.
+  */
+  if (o.sonUrun) {
+    const u = o.sonUrun;
+    if (!u.tam) eksik.push(`son ürüne kart içinden ulaşılamıyor (${u.metin})`);
+    if (u.dokunma === false) eksik.push(`son ürünün eylemi tıklanamıyor (${u.metin})`);
+    if (u.klavye === false) eksik.push(`son ürünün eylemi klavyeyle odaklanamıyor (${u.metin})`);
+  }
+
+  /*
     ÖNCELİKLİ İŞLERİN İLK KAYDI VE EYLEMİ TAM GÖRÜNMELİ (26.11.2026,
     ürün kararı). Kartın gövdesi kaysa bile ilk satır kesilmemeli:
     1440×600'de gövde 38 px kalıyordu ve 56 px'lik kayıt yarım

@@ -431,3 +431,29 @@ test("ürün detayı da tek ekran: dikey kayma muafiyeti kalktı", () => {
   assert.equal(h.gecti, false);
   assert.ok(h.eksik.some((m: string) => m.includes("sayfa dikey kayıyor (1254/844)")), h.eksik.join(" | "));
 });
+
+test("son ürüne kart içinden ulaşılamıyorsa düşer", () => {
+  /* 1440×600'de dört satır sığmıyor; kabul, kartın kaymasına ve
+     kaydırınca son ürünün TAM görünmesine bağlı. */
+  const temel = { sayfaDikey: "600/600", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 500, dockUstu: 530 };
+  const h = tekEkranHukmu("1440x600 acik konsol", {
+    ...temel, sonUrun: { kartKayabilir: true, tam: false, dokunma: true, klavye: true, metin: "ArvoCal" },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("son ürüne kart içinden ulaşılamıyor")), h.eksik.join(" | "));
+
+  const iyi = tekEkranHukmu("1440x600 acik konsol", {
+    ...temel, sonUrun: { kartKayabilir: true, tam: true, dokunma: true, klavye: true, metin: "ArvoCal" },
+  });
+  assert.deepEqual(iyi.eksik, []);
+});
+
+test("son ürünün eylemi tıklanamıyor ya da odaklanamıyorsa düşer", () => {
+  const h = tekEkranHukmu("1440x600 koyu konsol", {
+    sayfaDikey: "600/600", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 500, dockUstu: 530,
+    sonUrun: { kartKayabilir: true, tam: true, dokunma: false, klavye: false, metin: "ArvoCal" },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("tıklanamıyor")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("klavyeyle odaklanamıyor")), h.eksik.join(" | "));
+});

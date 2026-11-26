@@ -478,6 +478,44 @@ const olc = () => {
       return { bicim: kap === t ? "tablo" : "liste", satir: satirlar.length, tamGorunen: tam, govdeH: Math.round(g.height) };
     })(),
     /*
+      SON ÜRÜNE KART İÇİNDEN ERİŞİM (26.11.2026, ürün kararı).
+      Dört satır sığmadığında kaydırma SAYFADA değil KARTTA olmalı ve
+      kartı sonuna kaydırınca son ürün tam görünmeli. "Satır DOM'da var"
+      yetmez: 1440×600'de gövde 85 px ve dört satır 4×40 px — kart
+      kaymıyorsa son ürüne hiçbir yoldan ulaşılamaz.
+    */
+    sonUrun: (() => {
+      const gorunur = (el) => Boolean(el && el.offsetParent !== null);
+      const t = document.querySelector(".kup-tablo");
+      const liste = document.querySelector(".kup-mobil");
+      const kap = gorunur(t) ? t : gorunur(liste) ? liste : null;
+      if (!kap) return null;
+      const govde = kap.closest(".dash-col-govde");
+      if (!govde) return null;
+      const satirlar = kap === t ? [...t.querySelectorAll("tbody tr")] : [...liste.children];
+      const son = satirlar[satirlar.length - 1];
+      if (!son) return null;
+      const oncekiKaydirma = govde.scrollTop;
+      const kartKayabilir = govde.scrollHeight > govde.clientHeight + 1;
+      govde.scrollTop = govde.scrollHeight;
+      const g = govde.getBoundingClientRect();
+      const b = son.getBoundingClientRect();
+      const tam = b.top >= g.top - 1 && b.bottom <= g.bottom + 1;
+      /* Eylem de erişilebilir olmalı: bağlantı satırın kendisi (liste)
+         ya da son hücredeki "Aç" (tablo). */
+      const bag = son.querySelector(".kup-ac a") ?? (son.tagName === "LI" ? son.querySelector("a") : null);
+      let dokunma = null, klavye = null;
+      if (bag) {
+        const r = bag.getBoundingClientRect();
+        const hedef = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+        dokunma = Boolean(hedef && (hedef === bag || bag.contains(hedef)));
+        bag.focus();
+        klavye = document.activeElement === bag;
+      }
+      govde.scrollTop = oncekiKaydirma;
+      return { kartKayabilir, hepsiSigiyor: !kartKayabilir, tam, dokunma, klavye, metin: (son.textContent ?? "").trim().slice(0, 14) };
+    })(),
+    /*
       Öncelikli işlerin İLK kaydı ve eylemi tam görünmeli: kartın
       gövdesi kaysa bile ilk satır kesilmemeli (1440×600'de ölçüldü).
     */
@@ -764,7 +802,7 @@ await tarayici.close();
 fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik }));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);
