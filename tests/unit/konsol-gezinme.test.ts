@@ -240,3 +240,44 @@ test("bağlamlı gezinme: rota → modül + alt bölüm", async () => {
   assert.equal(etkin?.key, "urunler");
   assert.equal(uygulamalar.filter((u) => etkinUygulama(uygulamalar, "/panel/platform/urunler/arvolab")?.key === u.key).length, 1);
 });
+
+test("iki katlı menü: geri dönüş düğme, bölümler bağlantı", () => {
+  /*
+    26.11.2026, onaylı mockup: modüle girince ana listenin yeri o
+    modülün bölümlerine bırakılıyor. İki kural kodda yapısal:
+
+    - "Ana menüye dön" bir DÜĞME. Bağlantı olsaydı tıklamak adresi
+      değiştirir, açık sayfayı, süzgeçleri ve tarayıcı geçmişini
+      kaybettirirdi — oysa yapılan iş yalnızca menüyü değiştirmek.
+    - Bölümler BAĞLANTI: adres paylaşılabilsin, geri/ileri çalışsın.
+      Seçim bileşenin durumunda tutulsaydı yenileme modülün girişine
+      düşerdi (aynı hata ürün sekmelerinde bir kez yaşandı).
+  */
+  const tsx = oku("app/panel/os/os-navigasyon.tsx");
+  const yan = tsx.slice(tsx.indexOf("function YanMenu"));
+  assert.match(yan, /<button[\s\S]{0,200}className="os-yan-geri"/);
+  assert.match(yan, /Ana menüye dön/);
+  /* Bölüm satırı Link; alt kat bloğunda <button> ile çizilmiyor. */
+  const altKat = yan.slice(yan.indexOf('className="os-yan-kat"'), yan.indexOf(") : ("));
+  assert.match(altKat, /bolumler\.map/);
+  assert.doesNotMatch(altKat.slice(altKat.indexOf("bolumler.map")), /<button/);
+
+  /*
+    Alt menü yalnızca 240 px'lik panelde: rayda yalnızca ikon çiziliyor
+    ve bölümlerin ikonu yok. Şerit de tam o genişlikte gizleniyor,
+    yoksa aynı bağlantı iki yerde "seçili" görünür.
+  */
+  assert.match(yan, /const genis = masaustu && !dar;/);
+  const css = oku("app/panel/os/os-yanmenu.css");
+  assert.match(css, /html:not\(\[data-konsol-menu="dar"\]\) \.os-konsol \.os-bolumler \{ display: none; \}/);
+});
+
+test("üst çubuk 56 px ve komut paleti ortada", () => {
+  /* Onaylı mockup: konsolda çubuk kiracı panelinden ince (60 → 56) ve
+     arama kutusu 500×36. Ortalama mutlak konumla: sol marka ile sağdaki
+     düğmelerin genişliği eşit olmadığı için akışta ortalanmıyordu. */
+  const css = oku("app/panel/os/os-yanmenu.css");
+  assert.match(css, /\.panel-root\.os-root\.os-konsol \{ --os-bar-h: 56px; \}/);
+  assert.match(css, /\.os-konsol \.os-search \{ height: 36px; max-width: 500px; \}/);
+  assert.match(css, /\.os-konsol \.os-search \{[\s\S]{0,200}translate: -50% 0;/);
+});

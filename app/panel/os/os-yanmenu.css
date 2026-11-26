@@ -30,6 +30,30 @@
 .os-konsol .os-brand-isaret img { grid-area: 1 / 1; width: 34px; height: auto; }
 
 /*
+  ÜST ÇUBUK 56 px VE KOMUT PALETİ ORTADA (26.11.2026, onaylı mockup).
+  Kiracı panelinde çubuk 60 px ve arama kutusu 40 px; konsolda satır
+  daha ince ve kutu 36 px — ekranın ağırlığı içerikte olsun diye.
+
+  Ortalama GERÇEKTEN ortaya alıyor: kutu akışta dururken sol marka ile
+  sağdaki düğmelerin genişliği eşit olmadığı için göz kaymasını
+  görüyordu (markanın yanında "Yönetim Merkezi" de var). Yalnızca
+  240 px'lik menünün bulunduğu genişlikte mutlak konum veriliyor; daha
+  darda kutu akışta kalır, yoksa marka ya da düğmelerin üstüne binerdi.
+*/
+.panel-root.os-root.os-konsol { --os-bar-h: 56px; }
+.os-konsol .os-search { height: 36px; max-width: 500px; }
+@media (min-width: 1200px) {
+  .os-konsol .os-search {
+    position: absolute;
+    left: 50%;
+    translate: -50% 0;
+    width: 500px;
+    max-width: calc(100% - 640px);
+    margin-inline: 0;
+  }
+}
+
+/*
   ÜST ÇUBUKTAKİ MARKA (26.11.2026, onaylı mockup): resmî tam logo +
   ince dikey ayırıcı + "Yönetim Merkezi". Telefonda yer yok: orada
   logo gizlenip resmî İŞARET çiziliyor, ad kalıyor.
@@ -234,6 +258,63 @@ html[data-theme="dark"] .os-konsol .os-brand .marka-koyu { display: block; }
     font-size: 11px;
     line-height: 17px;
   }
+}
+
+/* ---------- İkinci kat: modülün bölümleri ---------- */
+/*
+  26.11.2026, onaylı mockup. Alt menü YALNIZCA 240 px'lik panelde
+  çiziliyor (bileşen rayda hiç açmıyor): bölümlerin ikonu yok, ad
+  gizlenince satırlar ayırt edilemezdi.
+
+  Bölümler içeriğin üstündeki şeritte de duruyor; aynı bağlantıyı iki
+  yerde "seçili" göstermemek için şerit tam o genişlikte gizleniyor
+  (dar menüde ve tablette geri geliyor). Şeridin yüksekliği
+  --os-bolum-h olarak kabuğa yazılıyor ve gizlenince 0'a düşüyor, yani
+  sabit yükseklikli sayfalar boşluğu geri kazanıyor.
+*/
+@media (min-width: 1200px) {
+  html:not([data-konsol-menu="dar"]) .os-konsol .os-bolumler { display: none; }
+
+  .os-konsol .os-yan-kat { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+
+  .os-konsol .os-yan-geri {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    width: 100%;
+    min-height: 36px;
+    padding: 0 var(--sp-2);
+    box-sizing: border-box;
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    text-align: left;
+    cursor: pointer;
+  }
+  .os-konsol .os-yan-geri:hover { background: var(--os-yan-vurgu); color: var(--ink); }
+  .os-konsol .os-yan-geri:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+  /* Modül adı bir BAŞLIK, tıklanabilir değil: bulunduğumuz yeri
+     söylüyor ve altındaki listenin erişilebilir adı oluyor. */
+  .os-konsol .os-yan-modul {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin: 0;
+    padding: 0 var(--sp-2) var(--sp-2);
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--ink);
+    font-size: var(--fs-base);
+    font-weight: var(--fw-semibold);
+  }
+
+  /* Bölüm satırında ikon yok: metin, modül adının yazısıyla aynı
+     hatta başlasın diye ikon genişliği kadar içeriden. */
+  .os-konsol .os-yan-kat .os-yan-oge { padding-left: calc(var(--sp-2) + 24px + var(--sp-3)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

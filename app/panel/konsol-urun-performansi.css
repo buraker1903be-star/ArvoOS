@@ -241,8 +241,11 @@
   Masaüstünde (≥1200 px) kural değişmedi: ne sayfa ne içerik kayar,
   gerekirse kart kendi gövdesinde kayar.
 */
+/* Ana Sayfa'nın kaydırma kuralı artık HER genişlikte geçerli ve kendi
+   dosyasında (konsol-ana-kartlar.css): 26.11.2026'da ekran içerik
+   boyuna geçince 1440×600'de sayfa 669 px'e çıktı ve son ürün satırına
+   hiçbir yoldan ulaşılamıyordu. */
 @media (max-width:1199px){
-  .os-root .panel-content:has(> .dash-sabit.konsol-ana){overflow-y:auto;overscroll-behavior:contain}
   /*
     BÖLÜM KÜÇÜLMEMELİ, YOKSA KAYDIRMA HİÇ BAŞLAMAZ. .dash-sabit
     varsayılanı flex:1 1 auto: sabit yükseklikli kapta içeriği kadar

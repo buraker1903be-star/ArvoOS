@@ -206,6 +206,84 @@ export function tekEkranHukmu(ad, o) {
     if (m.pencereAcik === false && m.secili && m.secili.length > 1) {
       eksik.push(`sol menüde ${m.secili.length} girdi birden seçili (${m.secili.join(", ")})`);
     }
+    /*
+      İKİNCİ KAT (26.11.2026, onaylı mockup): modüle girince ana
+      listenin yerini bölümler alıyor. Dört koşul birlikte aranıyor,
+      çünkü üçü tek başına yanıltıcı:
+        - Geri dönüş DÜĞME olmalı; bağlantı olsaydı tıklamak adresi
+          değiştirir, açık sayfayı ve süzgeçleri kaybettirirdi.
+        - Bölümler BAĞLANTI olmalı: adres paylaşılabilsin, geri/ileri
+          çalışsın.
+        - Tam BİR bölüm seçili olmalı.
+        - Ana liste ile bölümler aynı anda durmamalı (panel taşar) ve
+          yatay bölüm şeridi aynı bağlantıları İKİNCİ kez
+          göstermemeli — aynı sayfa iki yerde "seçili" görünür.
+    */
+    if (m.altKat) {
+      const k = m.altKat;
+      if (!k.geriDugme) eksik.push("alt menüde 'Ana menüye dön' düğme değil (adres değişir)");
+      if (!k.baglantili) eksik.push("alt menüdeki bölümler bağlantı değil (adres paylaşılamaz)");
+      if (k.secili?.length !== 1) eksik.push(`alt menüde ${k.secili?.length ?? 0} bölüm seçili (tam biri olmalı)`);
+      if (!k.anaListeGizli) eksik.push("ana liste ile alt menü aynı anda çiziliyor");
+      if (m.seritGorunur) eksik.push("bölüm şeridi alt menüyle birlikte çiziliyor (aynı bağlantı iki yerde)");
+    }
+  }
+
+  /*
+    KAPLAMALAR (26.11.2026). Üç soru, üçü de klavye kullanıcısı için:
+    açılınca odak İÇERİ girdi mi, Esc kapattı mı, odak açılmadan
+    önceki yere DÖNDÜ mü. Üçüncüsü en çok unutulanı: kapanan bir
+    pencereden sonra odak <body>'de kalırsa kullanıcı sayfanın başına
+    düşer ve menüyü baştan gezer.
+  */
+  if (o.kaplamalar) {
+    for (const [ad, k] of Object.entries(o.kaplamalar)) {
+      if (!k.acik) eksik.push(`${ad} açılmıyor`);
+      if (!k.odakIcinde) eksik.push(`${ad} açılınca odak içeri girmiyor (${k.acikkenOdak || "yok"})`);
+      if (!k.kapandi) eksik.push(`${ad} Esc ile kapanmıyor`);
+      if (k.kapandi && k.odakDondu !== k.beklenenOdak) eksik.push(`${ad} kapanınca odak dönmüyor (${k.beklenenOdak || "yok"} beklenirken ${k.odakDondu || "yok"})`);
+    }
+  }
+
+  /*
+    ÜST İKİ KART (26.11.2026, onaylı mockup). Yan yanayken 58/42, aynı
+    üst hatta ve 16–18 px boşlukla; sağ kenarı alttaki ürün kartıyla
+    hizalı. Hiza kabulü PR #330'da bir kez düştü: tek çocuklu bir
+    ızgara kartı yarım genişlikte bırakmış, sağda 296 px boşluk
+    kalmıştı ve hiçbir ölçüt bunu görmüyordu.
+  */
+  if (o.ustKartlar) {
+    const u = o.ustKartlar;
+    if (u.yanYana) {
+      if (u.ustFarki > 1) eksik.push(`üst iki kartın üst kenarı ${u.ustFarki} px kaymış`);
+      if (u.bosluk < 16 || u.bosluk > 18) eksik.push(`üst iki kartın arası ${u.bosluk} px (16–18 olmalı)`);
+      if (u.oran < 55 || u.oran > 61) eksik.push(`üst ızgara oranı %${u.oran} (58 olmalı)`);
+    }
+    if (u.sagFarki !== null && u.sagFarki > 1) eksik.push(`üst kartların sağ kenarı ürün kartıyla hizalı değil (${u.sagFarki} px)`);
+    if (u.solFarki !== null && u.solFarki > 1) eksik.push(`üst kartların sol kenarı ürün kartıyla hizalı değil (${u.solFarki} px)`);
+  }
+
+  /*
+    İKİ KATLI GEZİNME TIKLAMAYLA (26.11.2026, onaylı mockup). Yukarıdaki
+    altKat ölçütü "panel doğru çizilmiş mi" diye soruyor; buradaki
+    kurucunun yaptığı YOLU sınıyor. En önemlisi ortadaki iki satır:
+    "Ana menüye dön" ADRESİ DEĞİŞTİRMEMELİ (bağlantıya dönüştüğü gün
+    açık sayfa, süzgeçler ve geçmiş sessizce kaybolur) ve tarayıcının
+    geri tuşu bölüm değişikliğini geri almalı.
+  */
+  if (o.katGezinme) {
+    const k = o.katGezinme;
+    if (k.modulAcildi?.kat !== "alt") eksik.push("modüle girince alt menü açılmıyor");
+    if (k.modulAcildi?.odak !== "Ana menüye dön") eksik.push(`modüle girince odak "Ana menüye dön"e taşınmıyor (${k.modulAcildi?.odak ?? "yok"})`);
+    if (k.bolumSecildi && k.bolumSecildi.adres === k.modulAcildi?.adres) eksik.push("alt menüden bölüm seçmek adresi değiştirmiyor");
+    if (k.anaMenuyeDonuldu?.kat !== "ana") eksik.push("'Ana menüye dön' ana listeyi getirmiyor");
+    if (k.anaMenuyeDonuldu && k.anaMenuyeDonuldu.adres !== k.bolumSecildi?.adres) eksik.push(`ana menüye dönmek adresi değiştiriyor (${k.bolumSecildi?.adres} → ${k.anaMenuyeDonuldu.adres})`);
+    /* Odak girilen modülün satırına dönmeli: tam o satır seçili olduğu
+       için ikisi aynı metni taşır. */
+    if (k.anaMenuyeDonuldu && k.anaMenuyeDonuldu.odak !== k.anaMenuyeDonuldu.secili?.[0]) {
+      eksik.push(`ana menüye dönünce odak modül satırına dönmüyor (${k.anaMenuyeDonuldu.odak ?? "yok"})`);
+    }
+    if (k.tarayiciGeri && k.tarayiciGeri.adres !== k.modulAcildi?.adres) eksik.push(`tarayıcı geri tuşu bölüm değişikliğini geri almıyor (${k.tarayiciGeri.adres})`);
   }
 
   /*

@@ -203,3 +203,19 @@ a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 4
   .kak-govde small { white-space: normal; }
   .kak-eylem { align-self: center; }
 }
+
+/*
+  KAYDIRMA ANA İÇERİKTE, HER GENİŞLİKTE (26.11.2026).
+
+  Sayfanın kendisi kaydırılamıyor: html ve body'de overflow-x:clip var
+  (panel.css, yatay taşmayı kesmek için) ve Chromium o durumda dikey
+  kaydırmayı da kapatıyor — taşan içerik kaydırılamadan KIRPILIYOR.
+  Kural 1200 px altında zaten vardı; Ana Sayfa içerik boyuna geçince
+  KISA masaüstü penceresinde de gerekti: 1440×600'de sayfa 669 px'e
+  çıkıyor, 69 px kırpık kalıyor ve ürün tablosunun son satırına
+  (ArvoCal) ne fareyle ne klavyeyle ulaşılabiliyordu.
+
+  Kaydırmayı içeriğe vermek üst çubuğu ve sol menüyü de yerinde tutuyor.
+*/
+.os-root .panel-content:has(> .dash-sabit.konsol-ana){overflow-y:auto;overscroll-behavior:contain}
+.konsol-ana.dash-sabit{flex:0 0 auto}
