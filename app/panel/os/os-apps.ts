@@ -37,6 +37,13 @@ export type OsUygulama = {
   bolumler?: Bolum[];
   /** Yalnızca "Tüm uygulamalar"da (ve Ctrl+K'da); dock'ta yer kaplamaz. */
   yalnizBaslatici?: boolean;
+  /**
+   * Sol menüde kullanılacak KISA ad (26.11.2026, onaylı mockup).
+   * Verilmezse `label` yazılır. Menüde yer dar ve mockup "Ürünler"
+   * diyor; `label` ("Ürünler ve Fiyatlar") başlatıcıda, Ctrl+K'da ve
+   * durum çubuğunda aynen kalıyor — iki ad tek kayıttan.
+   */
+  kisaEtiket?: string;
 };
 
 export type OsSayfa = { label: string; href: string; uygulama: string };
