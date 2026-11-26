@@ -450,15 +450,24 @@ a.dash-setup-step:active{transform:scale(.985)}
 /* ---------- Dar YA DA KISA ekran: kartlar yığılmaz, görünüm seçici ----------
    Karar yalnız genişliğe bağlı değil (FX-02): kısa ekranda (≤640px yükseklik)
    liste gövdesi bir tam kaydın altına düşüyordu; orada da tek panel. */
+/*
+  Seçicinin DÜĞME BİÇİMİ medya sorgusunun dışında (25.11.2026). Şeridin
+  kendisi varsayılan olarak display:none; bu kurallar yalnızca şerit
+  gösterildiğinde iş yapıyor, yani buraya taşınmaları hiçbir ekranı
+  değiştirmiyor. Taşındı, çünkü kurucu konsolu seçiciyi kendi eşiğinde
+  (daha geniş/uzun pencerelerde) açıyor ve biçimi kopyalamak iki yerde
+  ayrı ayrı sapan bir düğme demekti.
+*/
+.dash-gorunum-sec button{
+  display:inline-flex;align-items:center;min-height:var(--ctl-h-sm);padding:0 12px;
+  border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);
+  color:var(--ink-soft);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer;
+}
+.dash-gorunum-sec button[aria-pressed="true"]{border-color:transparent;background:var(--primary);color:var(--primary-on);font-weight:var(--fw-semibold)}
+.dash-gorunum-sec button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
 @media (max-width:900px), (max-height:640px){
   .dash-gorunum-sec{display:flex;flex-wrap:wrap;gap:6px;flex:none}
-  .dash-gorunum-sec button{
-    display:inline-flex;align-items:center;min-height:var(--ctl-h-sm);padding:0 12px;
-    border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);
-    color:var(--ink-soft);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer;
-  }
-  .dash-gorunum-sec button[aria-pressed="true"]{border-color:transparent;background:var(--primary);color:var(--primary-on);font-weight:var(--fw-semibold)}
-  .dash-gorunum-sec button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
   .dash-sabit .dash-gorunum-panel:not(.is-secili){display:none}
   /* Seçili üst panel (Bugün, grafik, kurulum) içeriği kadar; uzunsa kendi içinde kayar. */
   .dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
