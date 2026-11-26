@@ -42,19 +42,29 @@ describe("tema kalıcılığı", () => {
     assert.match(kaynak, /useSyncExternalStore/);
   });
 
+  /*
+    26.11.2026: ön boyama betiği kök yerleşimin içinden lib/konsol-giris/tema.ts'e
+    TAŞINDI (üç tercihli modele geçerken). Kural değişmedi, yeri değişti:
+    testler betiği yeni kaynağından okuyor ve yerleşimin onu gömdüğünü
+    ayrıca doğruluyor. Betik yerleşime gömülmezse kayıtlı tema geri
+    okunmaz ve hata ilk hâliyle geri gelir.
+  */
   test("kök yerleşim kayıtlı temayı geri okuyor", () => {
-    const kaynak = oku("app/layout.tsx");
-    assert.match(kaynak, /localStorage\.getItem\("arvoos\.theme"\)/);
-    assert.match(kaynak, /setAttribute\("data-theme"/);
+    const yerlesim = oku("app/layout.tsx");
+    assert.match(yerlesim, /TEMA_BETIGI/, "kök yerleşim ön boyama betiğini gömmüyor");
+    const betik = oku("lib/konsol-giris/tema.ts");
+    assert.match(betik, /localStorage\.getItem\(K\)/);
+    assert.match(betik, /TEMA_ANAHTARI = "arvoos\.theme"/);
+    assert.match(betik, /setAttribute\("data-theme"/);
   });
 
   test("düğme ve yerleşim aynı anahtarı kullanıyor", () => {
     /* Anahtar iki dosyada ayrı yazılı; biri değişip öteki kalırsa seçim
        yazılır ama hiç geri okunmaz — hatanın ilk hâli tam buydu. */
     const dugme = oku("app/panel/theme-toggle.tsx");
-    const yerlesim = oku("app/layout.tsx");
+    const betik = oku("lib/konsol-giris/tema.ts");
     const anahtar = dugme.match(/const THEME_KEY = "([^"]+)"/)?.[1];
     assert.equal(anahtar, "arvoos.theme");
-    assert.ok(yerlesim.includes(`"${anahtar}"`));
+    assert.ok(betik.includes(`TEMA_ANAHTARI = "${anahtar}"`));
   });
 });
