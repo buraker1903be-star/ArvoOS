@@ -216,6 +216,18 @@ export function tekEkranHukmu(ad, o) {
     if (u.gorunen !== u.istenen) eksik.push(`adres "${u.istenen}" diyor, görünen panel "${u.gorunen}"`);
     if (u.seciliSekme.length !== 1) eksik.push(`ürün kartında ${u.seciliSekme.length} sekme seçili (tam 1 olmalı)`);
     if (!u.baslik) eksik.push("ürün başlığı yok");
+    /*
+      Panelin BAŞLIĞI değil, ALANLARI da okunmalı: 390 px'te abonelik
+      tablosunun paket, dönem ve ücret hücreleri ekranın dışında
+      kalıyordu ve yatay kaydırma olmadığı için hiçbir yoldan
+      görünmüyordu (26.11.2026, inceleme bulgusu).
+    */
+    if (u.alanlar) {
+      const a = u.alanlar;
+      if (a.yatayKayiyor) eksik.push("panel yatay kayıyor");
+      if (a.tasanOge) eksik.push(`${a.tasanOge} hücre ekranın dışında (${a.bicim})`);
+      if (a.okunan < a.beklenen) eksik.push(`panelde ${a.okunan}/${a.beklenen} alan okunuyor (${a.metin})`);
+    }
   }
 
   /*

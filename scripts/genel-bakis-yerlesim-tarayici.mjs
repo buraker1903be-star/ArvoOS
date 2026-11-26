@@ -118,6 +118,7 @@ import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-b
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
 import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
 import { useSearchParams } from "next/navigation";
+import { MobilSatir } from "@/app/panel/crm/table-cells";
 import Link from "next/link";
 import { konsolUygulamalari } from ${a("app/panel/os/konsol-apps.ts")};
 ${yeniKurulum ? `import { KurulumOzeti } from ${a("app/panel/os/kurulum-ozeti.tsx")};` : ""}
@@ -423,14 +424,35 @@ function UrunDetay() {
             <p className="ugb-bos">Standart ₺790 · Plus ₺1.190 · Pro ₺1.490</p>
           ))}
           {basitPanel("abonelikler", "ArvoLab abonelikleri", (
-            <table className="crm-data-table">
-              <thead><tr><th scope="col">Abone</th><th scope="col">Paket</th><th scope="col">Dönem</th><th scope="col">Ücret</th></tr></thead>
-              <tbody>
-                {aboneler.map(([ad, paket, don, ucret]) => (
-                  <tr key={ad}><th scope="row">{ad}</th><td>{paket}</td><td>{don}</td><td>{ucret}</td></tr>
-                ))}
-              </tbody>
-            </table>
+            /*
+              ÜRETİMDEKİ TABLO KALIBI (26.11.2026, ölçümle düzeltildi).
+              Burada önce çıplak bir <table> vardı ve 390 px'te tablo
+              364 px'lik panelin içinde 680 px çiziliyordu: paket, dönem
+              ve ücret hücreleri ekranın dışında kalıyor, yatay kaydırma
+              da olmadığı için (html/body overflow-x:clip) hiçbir yoldan
+              okunamıyordu. 680 px panel-premium.css'ten geliyor
+              (dar ekranda .panel-content table icin min-width:680px)
+              ve üretimdeki tablolar bu yüzden .talep-tablo sarmalayıcısı
+              + data-label + MobilSatir ile çiziliyor: telefonda hücreler
+              gizlenir, aynı veri tek satırda okunur. Düzenek artık o
+              kalıbı kullanıyor — ölçülen şey üretimdeki davranış.
+            */
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="ur-abone">
+                <thead><tr><th scope="col">Abone</th><th scope="col">Paket</th><th className="crm-col-date" scope="col">Dönem</th><th className="crm-col-amount" scope="col">Ücret</th></tr></thead>
+                <tbody>
+                  {aboneler.map(([ad, paket, don, ucret]) => (
+                    <tr key={ad}>
+                      <td data-label="Abone"><span className="crm-table-title">{ad}</span></td>
+                      <td data-label="Paket"><span className="crm-table-title">{paket}</span></td>
+                      <td className="crm-col-date" data-label="Dönem">{don}</td>
+                      <td className="crm-col-amount" data-label="Ücret"><span className="crm-table-title">{ucret}</span></td>
+                      <MobilSatir baslik={ad} alt={[paket, don, ucret]} />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ))}
           {basitPanel("tahsilat", "ArvoLab tahsilatı", (
             <p className="ugb-bos">Son 30 günde ₺128.450 tahsil edildi.</p>
@@ -901,6 +923,51 @@ const olc = () => {
         baslik: document.querySelector("main.urun-sayfa h1")?.textContent.trim() ?? null,
         /* Sekmeler bağlantı mı: adres paylaşılabilir olmalı. */
         baglantili: Boolean(kart.querySelector(".talep-akis-sekmeler a[href]")),
+        /*
+          PANEL BAŞLIĞININ YANINDA ALANLAR DA OKUNMALI (26.11.2026,
+          inceleme bulgusu). 390 px'te abonelik tablosu 364 px'lik
+          panelde 680 px çiziliyordu: paket, dönem ve ücret ekranın
+          dışında kalıyor ve yatay kaydırma da olmadığı için
+          (html/body overflow-x:clip) hiçbir yoldan okunamıyordu.
+          "Panel görünüyor" yetmez; sütun başlığı kadar DEĞER de
+          ekranda olmalı. Telefonda değerler tek satırda (MobilSatir),
+          masaüstünde hücrelerde — ölçüm ikisini de sayar.
+        */
+        alanlar: (() => {
+          if (!panel) return null;
+          const ekranG = document.documentElement.clientWidth;
+          const gorunurMu = (el) => {
+            const c = getComputedStyle(el);
+            if (c.display === "none" || c.visibility === "hidden") return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && r.left >= -1 && r.right <= ekranG + 1;
+          };
+          const tablo = panel.querySelector("table");
+          if (!tablo) return null;
+          const baslikSayisi = tablo.querySelectorAll("thead th").length;
+          const ilkSatir = tablo.querySelector("tbody tr");
+          if (!ilkSatir) return null;
+          const mobil = ilkSatir.querySelector(".mobil-satir");
+          const parcalar = mobil && gorunurMu(mobil)
+            ? [...mobil.querySelectorAll(".ms-baslik-metin, .ms-alt, .status-pill")]
+            : [...ilkSatir.children].filter((c) => !c.classList.contains("mobil-satir"));
+          const okunan = parcalar.filter((e) => gorunurMu(e) && e.textContent.trim());
+          /* Mobil satırda alt bilgiler tek metinde "·" ile birleşiyor. */
+          const alanSayisi = mobil && gorunurMu(mobil)
+            ? okunan.reduce((t2, e) => t2 + (e.classList.contains("ms-alt") ? e.textContent.split("·").filter((x) => x.trim()).length : 1), 0)
+            : okunan.length;
+          return {
+            bicim: mobil && gorunurMu(mobil) ? "mobil-satir" : "tablo",
+            beklenen: baslikSayisi,
+            okunan: alanSayisi,
+            metin: okunan.map((e) => e.textContent.trim()).join(" · ").slice(0, 70),
+            yatayKayiyor: panel.scrollWidth > panel.clientWidth + 1,
+            tasanOge: [...panel.querySelectorAll("td,th,.ms-baslik-metin,.ms-alt")].filter((e) => {
+              const r = e.getBoundingClientRect();
+              return r.width > 0 && getComputedStyle(e).display !== "none" && r.right > ekranG + 1;
+            }).length,
+          };
+        })(),
       };
     })(),
     bolumSeridi: (() => {
@@ -1047,7 +1114,12 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          görüntü kümesi. Tercih üretimde localStorage'dan geliyor; burada
          adresle veriliyor (sayfanın başındaki not). */
       const menuEki = process.env.MENU === "dar" ? "&menu=dar" : "";
-      await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}${menuEki}`);
+      /* BOLUM=<anahtar>: ürün detayı o bölümle AÇILIR (adres hash'te,
+         üretimde ?bolum=). Abonelikler gibi tablo taşıyan bölümlerin
+         ölçülmesi için gerekli — varsayılan açılış Genel Bakış. */
+      const bolumEki = process.env.BOLUM && s === "urundetay"
+        ? `#/panel/platform/urunler/arvolab?bolum=${process.env.BOLUM}` : "";
+      await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}${menuEki}${bolumEki}`);
       await sayfa.waitForTimeout(300);
       const o = await sayfa.evaluate(olc);
       if (sayfaHatalari.length) o.sayfaHatasi = sayfaHatalari;
@@ -1064,7 +1136,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          görünür, kullanıcının açılışta gördüğü ekran değil. */
       if (process.env.EKRAN) {
         fs.mkdirSync(process.env.EKRAN, { recursive: true });
-        await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}${process.env.MENU === "dar" ? "-menu-dar" : ""}.png`) });
+        await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}${process.env.MENU === "dar" ? "-menu-dar" : ""}${process.env.BOLUM && s === "urundetay" ? `-${process.env.BOLUM}` : ""}.png`) });
       }
       // Kurulum: eski kartta başlık kaydırmayla kayıyor mu; yenide pencere ve odak dönüşü.
       if (s === "ana") {
