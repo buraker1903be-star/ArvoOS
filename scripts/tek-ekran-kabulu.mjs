@@ -137,11 +137,38 @@ export function tekEkranHukmu(ad, o) {
     Dar ekranda tablo kompakt satıra düşüyor ve kaydırma doğal; masaüstü
     genişliğinde ürünlerin hepsi kaydırmadan okunmalı.
   */
-  if (o.urunTablosu && o.masaustu) {
+  if (o.urunTablosu && (o.masaustu || o.mobil)) {
     const u = o.urunTablosu;
     if (u.tamGorunen < u.satir) {
-      eksik.push(`ürün tablosunda ${u.tamGorunen}/${u.satir} satır görünüyor (gövde ${u.govdeH} px)`);
+      eksik.push(`ürün satırlarının ${u.tamGorunen}/${u.satir}'i görünüyor (${u.bicim}, gövde ${u.govdeH} px)`);
     }
+  }
+
+  /*
+    ÖNCELİKLİ İŞLERİN İLK KAYDI VE EYLEMİ TAM GÖRÜNMELİ (26.11.2026,
+    ürün kararı). Kartın gövdesi kaysa bile ilk satır kesilmemeli:
+    1440×600'de gövde 38 px kalıyordu ve 56 px'lik kayıt yarım
+    görünüyordu — "bekleyen iş var" diyen kart işin kendisini
+    göstermiyordu. Bu her boyutta geçerli; kart duruyorsa ilk kayıt
+    okunur olmalı.
+  */
+  if (o.ilkIs) {
+    if (!o.ilkIs.tam) eksik.push(`ilk öncelikli iş kesiliyor (satır ${o.ilkIs.h} px, gövde ${o.ilkIs.govdeH} px)`);
+    else if (o.ilkIs.eylemTam === false) eksik.push("ilk öncelikli işin eylemi kesiliyor");
+  }
+
+  /*
+    ÜRÜN DETAYINDA ALTI BÖLÜM YATAY KAYDIRMA OLMADAN SEÇİLEBİLMELİ
+    (26.11.2026, ürün kararı). Dar pencerede şerit yerine tek seçici
+    çiziliyor; hangisi görünüyorsa o ölçülüyor. Şerit kaydırılarak
+    "sığdırılmış" sayılmaz: kaydırılan şerit sekmenin varlığını gizler.
+  */
+  if (o.bolumSecimi) {
+    const b = o.bolumSecimi;
+    if (b.sayi !== 6) eksik.push(`ürün detayında ${b.sayi} bölüm var (6 bekleniyor)`);
+    if (!b.icerde) eksik.push(`bölüm seçimi ekrana sığmıyor${b.disarida?.length ? `: ${b.disarida.join(", ")}` : ""}`);
+    if (b.kaydirma) eksik.push("bölüm şeridi yatay kayıyor");
+    if (!b.klavye) eksik.push("bölüm seçimi klavyeyle odaklanamıyor");
   }
 
   /*

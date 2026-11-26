@@ -57,9 +57,15 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
   return (
     <article className="dash-card dash-col kup-kart">
       <header className="dash-card-head">
+        {/*
+          Açıklama satırı KALDIRILDI (26.11.2026): "Son 30 gün · aktif
+          müşteri, deneme dönüşümü ve tahsilat" dönemi seçicinin,
+          ölçütleri de sütun başlıklarının zaten yazdığını tekrar
+          ediyordu. Mobilde üç satıra sarıp kartın gövdesinden 60 px
+          yiyordu — dört ürün o yüzden sığmıyordu.
+        */}
         <div>
           <h2>Ürün performansı</h2>
-          <p>{donem.etiket} · aktif müşteri, deneme dönüşümü ve tahsilat</p>
         </div>
         <div className="kup-secici">{olcutSecici}{secici}</div>
       </header>
@@ -68,9 +74,15 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
           <thead>
             <tr>
               <th scope="col">Ürün</th>
-              <th scope="col" data-olcut="musteri">Aktif müşteri</th>
+              {/*
+                Aktif müşteri ANLIK bir ölçüm: dönem seçicisi onu
+                değiştirmiyor, bu yüzden başlığında "bugün" yazıyor.
+                Öteki iki sütun dönemsel; dönemi üstteki seçici söylüyor,
+                başlıkta tekrar edilmiyor.
+              */}
+              <th scope="col" data-olcut="musteri">Aktif müşteri <small>bugün</small></th>
               <th scope="col" data-olcut="donusum">Denemeden ücretliye</th>
-              <th scope="col" data-olcut="tahsilat">{donem.etiket} tahsilat</th>
+              <th scope="col" data-olcut="tahsilat">Tahsilat</th>
               <th scope="col"><span className="kup-gizli">Aç</span></th>
             </tr>
           </thead>

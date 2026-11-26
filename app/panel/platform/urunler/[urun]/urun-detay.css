@@ -48,3 +48,31 @@
   .os-root main.urun-sayfa.liste-sayfa>.talep-izgara{min-height:0}
   .os-root main.urun-sayfa.liste-sayfa>.talep-izgara>.talep-bilgi{display:flex;overflow:hidden}
 }
+
+/*
+  DAR PENCEREDE TEK BÖLÜM SEÇİCİSİ (26.11.2026, ölçümle).
+
+  Altı bölüm sekmesi 1099 px'e kadar tek satırda duruyor; 901 ve
+  768'de iki, 390'da ÜÇ satıra sarıyor ve kartın gövdesinden 133 px
+  yiyordu. Yatay kaydırma çözüm değil: şeridi kaydırmak sekmenin
+  varlığını gizler (kuyruk sekmelerinde yaşandı). Dar pencerede aynı
+  seçim tek bir açılır listeden yapılıyor — altı bölümün hepsi tek
+  dokunuşla ve klavyeyle seçilebiliyor, kaydırma yok.
+
+  Eşik ölçümle: 1000 px. Şerit 1099'da tek satır, 901'de iki satır.
+*/
+@media (max-width:1000px){
+  .os-root .urun-sayfa .sy-kart>.talep-akis-sekmeler{display:none}
+  .os-root .urun-sayfa .talep-akis-sec{
+    display:block;flex:0 0 auto;padding:var(--sp-3) var(--sp-4) 0;
+  }
+  .os-root .urun-sayfa .talep-akis-sec select{
+    width:100%;min-height:44px;padding:0 var(--sp-3);
+    border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--surface);color:var(--ink);
+    font-size:var(--fs-sm);font-weight:var(--fw-semibold);
+  }
+  .os-root .urun-sayfa .talep-akis-sec select:focus-visible{
+    outline:none;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary);
+  }
+}

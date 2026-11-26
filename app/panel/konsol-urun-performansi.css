@@ -196,8 +196,49 @@
     iş listesi kendi ekranında da var. 3:2 payla 1440×600'de tek ürün
     satırı görünüyordu.
   */
-  .konsol-genel>:first-child{flex:2 2 0}
-  .konsol-genel>:last-child{flex:1 1 0}
+  /*
+    Öncelikli işler kartına BİR TAM SATIRLIK taban veriliyor; kalanı
+    ürün kartının. Oranla bölüşümde (2:1) 1440×600'de öncelikli kartın
+    gövdesi 38 px kalıyordu ve 56 px'lik ilk kayıt kesiliyordu —
+    "bekleyen iş var" diyen kart işin kendisini göstermiyordu. Ürün
+    satırlarına kart içinden erişiliyor; ilk kayıt kesilmiyor.
+    130 px = kart süsü (ölçülen 66: iç boşluk, başlık, aralık) + satır
+    (48) + pay. 118 px denendi ve 768×600'de gövde 52 px kaldı: süs o
+    genişlikte 66 px, 56 px değil. Satır da burada kısılıyor —
+    iki satırlık iş kaydı 48 px'te okunuyor.
+  */
+  .konsol-genel>:first-child{flex:1 1 auto}
+  .konsol-genel>:last-child{flex:0 0 130px}
+  .koi-liste>li>a{min-height:48px;padding-block:var(--sp-1)}
   .kup-tablo tbody th,.kup-tablo tbody td{padding-block:var(--sp-1)}
   .kup-tablo thead th{padding-block:var(--sp-1)}
+}
+
+/*
+  MOBİLDE DÖRT ÜRÜN İLK GÖRÜNÜMDE (26.11.2026, ölçümle).
+
+  Oranla bölüşümde 390×844'te ürün kartının gövdesi 57 px kalıyordu:
+  dört satırdan biri görünüyordu, oysa ekranın işi dördünü
+  karşılaştırmak. Ürün kartı artık DOĞAL boyunda (dört satır sabit ve
+  az), kalan yükseklik öncelikli işlerin. Kart süsü de kısılıyor:
+  alt bağlantı mobilde Dock'taki "Ürünler" ile aynı yere gidiyor.
+*/
+@media (max-width:560px){
+  .konsol-genel>:first-child{flex:0 0 auto;max-height:none}
+  .konsol-genel>:last-child{flex:1 1 auto;min-height:0}
+  .konsol-genel>:first-child .dash-col-govde{overflow:visible}
+  .konsol-genel>:first-child .dash-card-link{display:none}
+  /*
+    Kart açıklamaları mobilde çizilmiyor: öncelikli işler kartının
+    "Bekleyen kalemler; satır ilgili kayda açılır" satırı iki satıra
+    sarıp gövdeyi 24 px'e düşürüyordu — ilk kayıt kesiliyordu. Satırın
+    kendisi zaten ürün, iş adı ve eylemi yazıyor.
+  */
+  .konsol-genel .dash-card-head p{display:none}
+  /* Kartlar arası boşluk ve iş satırı kısılıyor: açıklamalar
+     gizlendikten sonra bile öncelikli kartın gövdesi 46 px kalıyordu,
+     satır ise 56. İki satırlık iş kaydı 48 px'te hâlâ okunuyor. */
+  .konsol-genel{gap:var(--sp-3)}
+  .koi-liste>li>a{min-height:48px;padding-block:var(--sp-1)}
+  .kup-mobil>li>a{min-height:48px;padding:var(--sp-1) 0}
 }

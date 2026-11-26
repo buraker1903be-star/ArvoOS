@@ -1,6 +1,7 @@
 "use client";
 
 import { Children, useState, type ReactNode } from "react";
+import "./kayit-akis.css";
 
 /*
   Kayıt detaylarının (talep, teklif) sağ sütunu: yorumlar, postalar ve
@@ -17,11 +18,20 @@ export function TalepAkis({
   baslangic = 0,
   tembel = [],
   kimlik = "talep",
+  darSecici = false,
   sinif,
   etiket = "Talep akışı",
   children,
 }: {
   sekmeler: string[];
+  /**
+   * Dar ve kısa pencerede sekme şeridi yerine TEK BİR seçici çizilir.
+   * Bilerek opt-in: şerit panelin her yerinde kullanılıyor, seçiciyi
+   * hepsine açmak bu teslimin kapsamı dışında. Açan sayfa seçicinin
+   * CSS'ini de kendi dosyasında tanımlar (hangi genişlikte geçileceği
+   * sayfanın düzenine bağlı).
+   */
+  darSecici?: boolean;
   /*
     Sekme ve panel kimliklerinin öneki. Personel detayında iki sekmeli
     kart yan yana duruyor (29.10.2026); önek sabitken iki kartın
@@ -51,6 +61,25 @@ export function TalepAkis({
   const paneller = Children.toArray(children);
   return (
     <section className={sinif ? `talep-akis panel-card ${sinif}` : "talep-akis panel-card"}>
+      {/*
+        Dar pencerede aynı seçim tek bir açılır listeden yapılıyor:
+        altı sekme 390 px'de üç satıra sarıyor ve kartın gövdesinden
+        133 px yiyordu. İkisi birden çiziliyor, hangisinin görüneceğine
+        CSS karar veriyor — seçim durumu tek ve ortak.
+      */}
+      {darSecici ? (
+        <label className="talep-akis-sec">
+          <select
+            aria-label={etiket}
+            value={secili}
+            onChange={(olay) => sec(Number(olay.target.value))}
+          >
+            {sekmeler.map((ad, sira) => (
+              <option key={ad} value={sira}>{ad}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <div className="talep-akis-sekmeler" role="tablist" aria-label={etiket}>
         {sekmeler.map((ad, sira) => (
           <button

@@ -266,7 +266,7 @@ export default async function UrunPage({ params, searchParams }: {
     </nav>
 
     <div className="talep-izgara personel-iki ekip-izgara">
-      <TalepAkis kimlik="urun-kart" sinif="sy-kart" etiket={`${urunTanimi.name} kartı`} sekmeler={sekmeler}>
+      <TalepAkis kimlik="urun-kart" sinif="sy-kart" darSecici etiket={`${urunTanimi.name} kartı`} sekmeler={sekmeler}>
         {/*
           Sekmeler onaylı mockup'a göre: Genel Bakış · Müşteriler ·
           Fiyat basamakları · Abonelikler · Tahsilat · Destek. Mockup'ta

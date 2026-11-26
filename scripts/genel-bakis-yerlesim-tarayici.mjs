@@ -296,6 +296,15 @@ function UrunDetay() {
       </header>
       <div className="talep-izgara personel-iki ekip-izgara">
         <section className="talep-akis panel-card sy-kart">
+          {/* Üretimdeki TalepAkis gibi: dar pencere seçicisi ve şerit
+              birlikte çiziliyor, hangisinin görüneceğine CSS karar veriyor. */}
+          <label className="talep-akis-sec">
+            <select aria-label="ArvoLab kartı" defaultValue={0}>
+              {["Genel Bakış", "Müşteriler · 42", "Fiyat basamakları", "Abonelikler · 248", "Tahsilat", "Destek"].map((ad, i) => (
+                <option key={ad} value={i}>{ad}</option>
+              ))}
+            </select>
+          </label>
           <div className="talep-akis-sekmeler" role="tablist" aria-label="ArvoLab kartı">
             {["Genel Bakış", "Müşteriler · 42", "Fiyat basamakları", "Abonelikler · 248", "Tahsilat", "Destek"].map((ad, i) => (
               <button key={ad} type="button" role="tab" aria-selected={i === 0} tabIndex={i === 0 ? 0 : -1} className={i === 0 ? "is-active" : undefined}>{ad}</button>
@@ -450,14 +459,41 @@ const olc = () => {
       ÜRÜN TABLOSU: kaç satır TAM görünüyor. Kurucunun ilk sorusu dört
       ürünü birlikte görmek; kaydırarak ulaşmak masaüstünde kabul değil.
     */
+    /*
+      Ürün satırı iki biçimde çiziliyor: geniş kartta tablo, dar kartta
+      kompakt liste. Ölçüm GÖRÜNEN biçime bakmalı — gizli tabloyu ölçmek
+      mobilde "bir satır görünüyor" diyordu, oysa listede dördü de
+      görünüyordu (26.11.2026).
+    */
     urunTablosu: (() => {
+      const gorunur = (el) => Boolean(el && el.offsetParent !== null);
       const t = document.querySelector(".kup-tablo");
-      if (!t || t.offsetParent === null) return null;
-      const govde = t.closest(".dash-col-govde") ?? t.parentElement;
+      const liste = document.querySelector(".kup-mobil");
+      const kap = gorunur(t) ? t : gorunur(liste) ? liste : null;
+      if (!kap) return null;
+      const govde = kap.closest(".dash-col-govde") ?? kap.parentElement;
       const g = govde.getBoundingClientRect();
-      const satirlar = [...t.querySelectorAll("tbody tr")];
+      const satirlar = kap === t ? [...t.querySelectorAll("tbody tr")] : [...liste.children];
       const tam = satirlar.filter((r) => { const b = r.getBoundingClientRect(); return b.top >= g.top - 1 && b.bottom <= g.bottom + 1; }).length;
-      return { satir: satirlar.length, tamGorunen: tam, govdeH: Math.round(g.height) };
+      return { bicim: kap === t ? "tablo" : "liste", satir: satirlar.length, tamGorunen: tam, govdeH: Math.round(g.height) };
+    })(),
+    /*
+      Öncelikli işlerin İLK kaydı ve eylemi tam görünmeli: kartın
+      gövdesi kaysa bile ilk satır kesilmemeli (1440×600'de ölçüldü).
+    */
+    ilkIs: (() => {
+      const liste = document.querySelector(".koi-liste");
+      if (!liste || liste.offsetParent === null) return null;
+      const govde = liste.closest(".dash-col-govde") ?? liste.parentElement;
+      const g = govde.getBoundingClientRect();
+      const ilk = liste.querySelector("li");
+      if (!ilk) return null;
+      const b = ilk.getBoundingClientRect();
+      const eylem = ilk.querySelector("a span:last-child, a");
+      const e = eylem?.getBoundingClientRect();
+      return { tam: b.top >= g.top - 1 && b.bottom <= g.bottom + 1,
+        eylemTam: e ? e.top >= g.top - 1 && e.bottom <= g.bottom + 1 : null,
+        h: Math.round(b.height), govdeH: Math.round(g.height) };
     })(),
     /* Kartın içinde yüksekliği ne yiyor: başlık, açıklama, gövde, alt bağlantı. */
     kartIci: [...document.querySelectorAll(".dash-gorunum-yigin>.dash-gorunum-panel")].filter((e) => e.offsetParent !== null).map((p2) => {
@@ -468,6 +504,32 @@ const olc = () => {
         bas: h(".dash-card-head"), basAciklama: h(".dash-card-head p"), govde: h(".dash-col-govde"),
         altBag: h(".dash-card-link"), cubuklar: h(".dash-bars"), satirYuk: satir ? Math.round(satir.getBoundingClientRect().height) : null };
     }),
+    /*
+      BÖLÜM SEÇİMİ: dar pencerede tek seçici, geniş pencerede şerit.
+      Altı bölümün hepsi YATAY KAYDIRMA OLMADAN seçilebilmeli. Hangisi
+      görünüyorsa o ölçülüyor; ikisini birden saymak gizli olanı da
+      "erişilebilir" gösterirdi.
+    */
+    bolumSecimi: (() => {
+      const gorunur = (el) => Boolean(el && el.offsetParent !== null);
+      const secici = document.querySelector(".talep-akis-sec select");
+      const serit = document.querySelector(".urun-sayfa .sy-kart>.talep-akis-sekmeler");
+      if (gorunur(secici)) {
+        const r = secici.getBoundingClientRect();
+        secici.focus();
+        return { bicim: "secici", sayi: secici.options.length,
+          icerde: r.left >= -1 && r.right <= document.documentElement.clientWidth + 1,
+          klavye: document.activeElement === secici, yukseklik: Math.round(r.height) };
+      }
+      if (!gorunur(serit)) return null;
+      const dugmeler = [...serit.querySelectorAll('[role="tab"]')];
+      const g = serit.getBoundingClientRect();
+      const disarida = dugmeler.filter((d) => { const b = d.getBoundingClientRect(); return b.left < g.left - 1 || b.right > g.right + 1; }).map((d) => d.textContent.trim());
+      dugmeler[0]?.focus();
+      return { bicim: "serit", sayi: dugmeler.length, icerde: disarida.length === 0, disarida,
+        klavye: document.activeElement === dugmeler[0], yukseklik: Math.round(g.height),
+        kaydirma: serit.scrollWidth > serit.clientWidth + 1 };
+    })(),
     /* Kuyruk sekme şeridi: yatay kaydırma olmadan hepsi sığıyor mu. */
     sekmeSeridi: (() => {
       const e = document.querySelector(".talep-akis-sekmeler");
@@ -571,6 +633,10 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
       /* Masaüstü sayılan boyut: dört ürünün kaydırmasız okunması bu
          boyutlarda bekleniyor. */
       o.masaustu = w >= 1200 && h >= 800;
+      /* Mobil: kompakt satır düzeninin geçerli olduğu genişlik
+         (CSS eşiğiyle aynı — 560 px). Dört ürün orada da ilk
+         görünümde karşılaştırılabilmeli. */
+      o.mobil = w <= 560;
       /* EKRAN=<dizin>: görüntü ölçümün hemen ardında, sekme döngüsünden ÖNCE
          alınır — sonrasında son seçilen sekme ve sona kaydırılmış liste
          görünür, kullanıcının açılışta gördüğü ekran değil. */
@@ -698,7 +764,7 @@ await tarayici.close();
 fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, genislik: o.zincir?.genislik }));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);

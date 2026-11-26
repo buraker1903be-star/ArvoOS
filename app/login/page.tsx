@@ -10,6 +10,7 @@ import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 import { hatirlananEposta } from "@/lib/eposta-hatirla";
 import { headers } from "next/headers";
 import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
+import { SifreAlani } from "./sifre-alani";
 
 /*
   Giriş hatasının METNİ koda göre değişir. Eskiden `error` ne olursa olsun
@@ -79,9 +80,9 @@ export default async function LoginPage({
           </Link>
         )}
         <div>
-          <span>{orgBrand ? "KURUM PANELİ" : "KURUMSAL İŞLETİM SİSTEMİ"}</span>
-          <h1>{orgBrand ? `${orgBrand.name} panelinize hoş geldiniz.` : "Ekibinizin tüm süreçleri, tek ve güvenli çalışma alanında."}</h1>
-          <p>{orgBrand ? "Size tanımlanan kurumsal e-posta adresiyle panelinize erişin." : "Kurumunuza tanımlanan modüllere ve yetkilerinize göre kişiselleştirilmiş ArvoOS paneline erişin."}</p>
+          <span>{yonetim ? "ARVO YÖNETİM" : orgBrand ? "KURUM PANELİ" : "KURUMSAL İŞLETİM SİSTEMİ"}</span>
+          <h1>{yonetim ? "Arvo ürünlerini tek yerden yönetin." : orgBrand ? `${orgBrand.name} panelinize hoş geldiniz.` : "Ekibinizin tüm süreçleri, tek ve güvenli çalışma alanında."}</h1>
+          <p>{yonetim ? "Lisans, abonelik, tahsilat ve destek dört üründe tek konsolda." : orgBrand ? "Size tanımlanan kurumsal e-posta adresiyle panelinize erişin." : "Kurumunuza tanımlanan modüllere ve yetkilerinize göre kişiselleştirilmiş ArvoOS paneline erişin."}</p>
         </div>
         {!orgBrand ? <small>ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ.</small> : null}
       </section>
@@ -90,14 +91,19 @@ export default async function LoginPage({
           <div className="login-card-brand">
             {orgBrand?.logo_url ? <img src={orgBrand.logo_url} alt={orgBrand.name} className="login-card-logo" /> : <small>{orgBrand ? orgBrand.name : "ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ."}</small>}
           </div>
-          <span>GÜVENLİ PANEL GİRİŞİ</span>
-          <h2>Panele hoş geldiniz</h2>
-          <p>Size tanımlanan kurumsal e-posta adresiyle giriş yapın.</p>
+          {/* "GÜVENLİ PANEL GİRİŞİ" şeridi yönetim girişinde yok: ekranın
+              kendisi zaten yönetim konağında ve şerit başlıkla yarışıyordu. */}
+          {yonetim ? null : <span>GÜVENLİ PANEL GİRİŞİ</span>}
+          <h2>{yonetim ? "ArvoOS Yönetim'e giriş yapın" : "Panele hoş geldiniz"}</h2>
+          <p>{yonetim ? "E-posta adresiniz ve şifrenizle devam edin." : "Size tanımlanan kurumsal e-posta adresiyle giriş yapın."}</p>
           {error && <div className="login-error" role="alert">{LOGIN_HATASI[error] ?? LOGIN_HATASI.invalid}</div>}
-          <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" defaultValue={eposta} /></label>
-          <label>Parola<input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" /></label>
+          <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder={yonetim ? "adiniz@arvo-os.com" : "adiniz@kurum.com"} defaultValue={eposta} aria-invalid={yonetim && error ? true : undefined} /></label>
+          {/* Şifre göster/gizle yalnızca yönetim girişinde: kiracı ekranının
+              işaretlemesi ve davranışı aynen duruyor. */}
+          {yonetim ? <SifreAlani hataVar={Boolean(error)} /> : <label>Parola<input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" /></label>}
+          {yonetim ? <Link className="kg-unuttum" href="/auth/forgot-password">Şifremi unuttum</Link> : null}
           <button type="submit">Giriş Yap <b>→</b></button>
-          <Link href="/auth/forgot-password">Şifremi unuttum</Link>
+          {yonetim ? null : <Link href="/auth/forgot-password">Şifremi unuttum</Link>}
           <a href="mailto:info@arvo-os.com?subject=ArvoOS%20erişim%20desteği">Erişim desteği alın</a>
           <small>Hesaplar kurum yöneticisi tarafından oluşturulur. Açık üyelik bulunmaz.</small>
         </form>
