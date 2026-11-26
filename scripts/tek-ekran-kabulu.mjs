@@ -73,7 +73,12 @@ export function tekEkranHukmu(ad, o) {
      sorusu anlamsız: içerik zaten görünür alanın dışına taşıyor ve
      ölçü yukarıda, sona kaydırılmış hâlde alınıyor. */
   if (!o.sonaKaydir?.kayiyor) {
-    if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
+    /*
+      ANA SAYFA DIŞINDAKİ ROTADA ölçülmez: YOL=<rota> ile açılan
+      gezinme provasında Ana Sayfa kartları yok, "görünür kart yok"
+      demek orada bir kusur değil — ölçülen şey menü (26.11.2026).
+    */
+    if (o.dockOrtuyor === null && o.anaSayfa !== false) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
     else if (o.dockOrtuyor) eksik.push(`dock içeriği örtüyor (içerik ${o.icerikAlt} > dock ${o.dockUstu})`);
   }
 
@@ -87,7 +92,7 @@ export function tekEkranHukmu(ad, o) {
   if (e) {
     /* Ürün tablosu ölçülmüşse (Genel Bakış). */
     if (e.urunSayisi !== undefined) {
-      if (!e.urunSayisi) eksik.push("ürün satırı bulunamadı");
+      if (!e.urunSayisi && o.anaSayfa !== false) eksik.push("ürün satırı bulunamadı");
       if (e.erisilemeyenUrun?.length) eksik.push(`açılamayan ürün satırı: ${e.erisilemeyenUrun.join(", ")}`);
     }
     if (e.sonIs && !(e.sonIs.dokunma && e.sonIs.klavye && e.sonIs.dockUstunde)) {
@@ -284,6 +289,63 @@ export function tekEkranHukmu(ad, o) {
       eksik.push(`ana menüye dönünce odak modül satırına dönmüyor (${k.anaMenuyeDonuldu.odak ?? "yok"})`);
     }
     if (k.tarayiciGeri && k.tarayiciGeri.adres !== k.modulAcildi?.adres) eksik.push(`tarayıcı geri tuşu bölüm değişikliğini geri almıyor (${k.tarayiciGeri.adres})`);
+    /*
+      MENÜ, ADRES VE İÇERİK AYNI AKIŞI GÖSTERMELİ (26.11.2026,
+      inceleme bulgusu). Paylaşılan bir karede Finans alt menüsü
+      açıkken sayfa başlığı hâlâ "Ana Sayfa" idi: düzenek rotadan
+      bağımsız tek bir ekran çiziyordu ve kanıt aslında hiçbir şeyi
+      kanıtlamıyordu.
+    */
+    for (const [ad, adim] of Object.entries(k)) {
+      if (!adim || adim.baslik === undefined) continue;
+      const anaSayfada = adim.adres === "/panel";
+      if (anaSayfada && adim.baslik !== "Ana Sayfa") eksik.push(`${ad}: adres /panel ama içerik "${adim.baslik}"`);
+      if (!anaSayfada && adim.baslik === "Ana Sayfa") eksik.push(`${ad}: adres ${adim.adres} ama içerikte hâlâ Ana Sayfa`);
+    }
+  }
+
+  /*
+    RAY ÇEKMECESİ (26.11.2026, inceleme talebi). 64 px'lik rayda ikinci
+    kat menüye sığmıyor (ad gizli, bölümlerin ikonu yok), o yüzden
+    pencereye taşındı. Çekmece aynı sözleşmeyi taşımalı: başında
+    "Ana menüye dön", başlıkta modül adı, bölümler METİN etiketiyle ve
+    BAĞLANTI olarak. Aynı bağlantıları gösteren içerik üstü şerit
+    aynı anda çizilmemeli; Esc kapatınca odak ray düğmesine dönmeli.
+  */
+  if (o.rayCekmece) {
+    const c = o.rayCekmece;
+    if (!c.acik) eksik.push("ray ikonu çekmeceyi açmıyor");
+    else {
+      if (c.geriMetin !== "Ana menüye dön") eksik.push(`çekmecede "Ana menüye dön" yok (${c.geriMetin ?? "yok"})`);
+      if (!c.kapatVar) eksik.push("çekmecede Kapat yok (geri ve kapat ayrı denetim olmalı)");
+      if (!c.baslik) eksik.push("çekmecede modül başlığı yok");
+      if (!c.adlar?.length) eksik.push("çekmecede bölüm yok");
+      if (!c.baglantili) eksik.push("çekmecedeki bölümler bağlantı değil (adres paylaşılamaz)");
+      if (!c.odakIcinde) eksik.push(`çekmece açılınca odak içeri girmiyor (${c.odak || "yok"})`);
+      if (c.seritGorunur) eksik.push("çekmece açıkken içerik üstü şerit de çiziliyor (aynı bağlantı iki yerde)");
+      if (!c.kapandi) eksik.push("çekmece Esc ile kapanmıyor");
+      if (c.kapandi && !(c.odakDondu || "").startsWith("Finans")) eksik.push(`çekmece kapanınca odak ray düğmesine dönmüyor (${c.odakDondu || "yok"})`);
+    }
+  }
+
+  /*
+    TELEFON PANELİ (26.11.2026, inceleme talebi). "Daha fazla" önce ana
+    modülleri gösteriyor; bölümü olan modül açılınca AYNI panelin
+    içeriği alt menüyle değişiyor. İki denetim AYRI çalışmalı:
+    "Ana menüye dön" bir üst kata çıkar (panel açık kalır), "Kapat"
+    paneli kapatır. Tek düğmeye indirmek, modül listesine dönmek
+    isteyeni paneli kapatıp yeniden açmaya zorluyordu.
+  */
+  if (o.telefonPanel) {
+    const t = o.telefonPanel;
+    if (t.anaKat?.kat !== "ana") eksik.push("telefon paneli ana modül listesiyle açılmıyor");
+    if (t.anaKat?.geriVar) eksik.push("ana katta 'Ana menüye dön' çiziliyor (çıkılacak kat yok)");
+    if (t.altKat?.kat !== "alt") eksik.push("telefon panelinde modül açılınca içerik alt menüyle değişmiyor");
+    if (!t.altKat?.geriVar || !t.altKat?.kapatVar) eksik.push("alt katta geri ve kapat birlikte yok");
+    if (t.altKat?.odak !== "Ana menüye dön") eksik.push(`alt kata inince odak geri düğmesine gelmiyor (${t.altKat?.odak || "yok"})`);
+    if (t.geriDonuldu?.kat !== "ana" || t.geriDonuldu?.acik !== true) eksik.push("'Ana menüye dön' paneli kapatıyor (bir üst kata çıkmalı)");
+    if (t.geriDonuldu?.acik && !(t.geriDonuldu.odak || "").startsWith("Finans")) eksik.push(`üst kata çıkınca odak modül satırına dönmüyor (${t.geriDonuldu.odak || "yok"})`);
+    if (t.kapatildi?.acik) eksik.push("'Kapat' paneli kapatmıyor");
   }
 
   /*

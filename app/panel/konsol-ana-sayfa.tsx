@@ -17,6 +17,7 @@ import { UrunPerformansiKarti } from "./konsol-urun-performansi";
 import { KararBekleyenlerKarti, OtomasyonlarKarti, type KararKalemi } from "./konsol-ana-kartlar";
 import { cronDurumlari, type CronKaydi } from "@/lib/cron-isleri";
 import { otomasyonlar, sonOtomatikKontrol, type KopruDurumu } from "@/lib/konsol/otomasyonlar";
+import { AZAMI_DENEME } from "@/lib/otomatik-yenileme";
 import { DonemSecici, OlcutSecici } from "./konsol-donem-secici";
 import { getPaymentIncidents } from "@/lib/payment-incidents";
 import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
@@ -288,6 +289,23 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
       .then(({ data, error }) => (error ? [] : ((data ?? []) as unknown as CronKaydi[])), () => []),
     supabase.from("platform_cron_kayitlari").select("basladi_at").order("basladi_at", { ascending: true }).limit(1)
       .then(({ data, error }) => (error || !data?.length ? null : new Date((data[0] as { basladi_at: string }).basladi_at)), () => null),
+    /*
+      DENEME KUYRUĞU: "Yeniden deneniyor" etiketinin TEK kaynağı
+      (26.11.2026, inceleme kararı). Çekimi düşen abonelik günde bir,
+      en çok AZAMI_DENEME kez yeniden deneniyor (lib/otomatik-yenileme);
+      deneme hakkı tükenmişse artık denenmiyor, o yüzden üst sınır da
+      süzgeçte.
+
+      head sayımı: satırlar değil SAYI isteniyor, yani okuma
+      .limit() ile kesilen bir listeden türetilmiyor.
+
+      hata-tamam: okunamazsa kuyruk yok sayılır ve satır kendi cron
+      kaydına göre yazılır; var olmayan bir denemeyi yazmaktansa
+      yazmamak doğru.
+    */
+    supabase.from("paytr_otomatik_yenileme").select("id", { count: "exact", head: true })
+      .eq("aktif", true).gte("deneme_sayisi", 1).lt("deneme_sayisi", AZAMI_DENEME)
+      .then(({ count, error }) => (error ? null : count ?? 0), () => null),
   ]);
 
   const grafikIstegi = Promise.all([
@@ -715,14 +733,15 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
     iniyor (lib/konsol/otomasyonlar); köprü durumu yalnızca
     "Veri senkronizasyonu" satırını etkiliyor.
   */
-  const [cronSatirlari, cronBaslangici] = await cronIstegi;
+  const [cronSatirlari, cronBaslangici, denemeKuyrugu] = await cronIstegi;
   const cronDurumu = cronDurumlari(cronSatirlari, new Date(), cronBaslangici);
   const kopruDurumlari: KopruDurumu[] = [
     { yapilandirilmamis: Boolean(arvolab?.broken && arvolab.permanent), kopuk: Boolean(arvolab?.broken) },
     { yapilandirilmamis: !arc.ok && arc.missing.length > 0, kopuk: !arc.ok },
     { yapilandirilmamis: !randevu.ok && randevu.missing.length > 0, kopuk: !randevu.ok },
   ];
-  const otomasyonSatirlari = otomasyonlar(cronDurumu, kopruDurumlari);
+  const otomasyonSatirlari = otomasyonlar(cronDurumu, kopruDurumlari,
+    denemeKuyrugu === null ? [] : [{ grup: "tahsilat", bekleyen: denemeKuyrugu }]);
   const sonKontrol = sonOtomatikKontrol(cronDurumu);
 
   /*

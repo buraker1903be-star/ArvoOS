@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import type { CronDurumu } from "../../lib/cron-isleri";
 import { OTOMASYON_GRUPLARI, otomasyonlar, sonOtomatikKontrol } from "../../lib/konsol/otomasyonlar";
 import { cronIsleri } from "../../lib/cron-isleri";
+import { readFileSync } from "node:fs";
+
+const oku = (p: string) => readFileSync(new URL(`../../${p}`, import.meta.url), "utf8");
 
 /*
   Otomasyon kartı yöneticiye "sistem neyi bitirdi" diyor; yanlış yeşil
@@ -81,11 +84,18 @@ test("kaydı olmayan iş 'kayıt yok' — başarısız değil", () => {
   assert.equal(tahsilat.sonCalisma, null);
 });
 
-test("köprü kopuksa eşitleme 'yeniden deneniyor', yapılandırılmamışsa 'bağlı değil'", () => {
+test("köprü kopuksa eşitleme 'bağlantı kesildi', yapılandırılmamışsa 'bağlı değil'", () => {
+  /*
+    26.11.2026 inceleme bulgusu: eskiden burada "Yeniden deneniyor"
+    yazıyordu ve gerekçesi "eşitleme on dakikada bir koşuyor" idi. Bu
+    bir ÇIKARIM — işin periyodik olması, o anda bir denemenin
+    yürüdüğünü göstermez. Eldeki kayıtlı bilgi: ürüne ulaşılamıyor.
+  */
   const kopuk = otomasyonlar(hepsiTamam(), [{ yapilandirilmamis: false, kopuk: true }])[2];
-  assert.equal(kopuk.durum, "yeniden");
-  assert.equal(kopuk.ton, "warning");
-  assert.match(kopuk.detay, /on dakikada bir/);
+  assert.equal(kopuk.durum, "baglanti_kesildi");
+  assert.equal(kopuk.etiket, "Bağlantı kesildi");
+  assert.equal(kopuk.ton, "danger");
+  assert.doesNotMatch(kopuk.detay, /yeniden|deniyor/i);
 
   const yok = otomasyonlar(hepsiTamam(), [{ yapilandirilmamis: true, kopuk: true }])[2];
   assert.equal(yok.durum, "bagli_degil");
@@ -112,4 +122,45 @@ test("son otomatik kontrol = en yeni BAŞARILI koşma", () => {
   ];
   assert.deepEqual(sonOtomatikKontrol(durumlar), new Date("2026-11-26T09:42:00Z"));
   assert.equal(sonOtomatikKontrol([is("/api/cron/arc-sync", { sonBasarili: null })]), null);
+});
+
+test("'Yeniden deneniyor' yalnızca kayıtlı deneme kuyruğundan çıkar", () => {
+  /*
+    26.11.2026, inceleme kararı. Etiketi hak eden tek kaynak otomatik
+    tahsilatın deneme kuyruğu (paytr_otomatik_yenileme.deneme_sayisi;
+    günde bir, en çok üç deneme — lib/otomatik-yenileme). Kuyruk boşsa
+    hiçbir satır bu etiketi almaz, cron'lar periyodik olsa bile.
+  */
+  const kuyruksuz = otomasyonlar(hepsiTamam(), [{ yapilandirilmamis: false, kopuk: true }]);
+  assert.equal(kuyruksuz.filter((o) => o.durum === "yeniden").length, 0);
+
+  const kuyruklu = otomasyonlar(hepsiTamam(), [{ yapilandirilmamis: false, kopuk: false }], [{ grup: "tahsilat", bekleyen: 2 }]);
+  assert.equal(kuyruklu[0].durum, "yeniden");
+  assert.equal(kuyruklu[0].etiket, "Yeniden deneniyor");
+  assert.match(kuyruklu[0].detay, /2 abonelikte/);
+  /* Kuyruk yalnızca kendi satırını etkiler. */
+  assert.equal(kuyruklu[1].durum, "gonderildi");
+  assert.equal(kuyruklu[2].durum, "tamamlandi");
+
+  /* Bekleyen sıfırsa satır yeşil kalır: boş kuyruk bir uyarı değil. */
+  assert.equal(otomasyonlar(hepsiTamam(), [], [{ grup: "tahsilat", bekleyen: 0 }])[0].durum, "tamamlandi");
+
+  /* Düşen cron kuyruğu bastırır: önce işin kendisi koşmalı. */
+  const durumlar = hepsiTamam().map((d) => (d.yol === "/api/cron/otomatik-yenileme" ? { ...d, durum: "dustu" as const } : d));
+  assert.equal(otomasyonlar(durumlar, [], [{ grup: "tahsilat", bekleyen: 2 }])[0].durum, "mudahale");
+});
+
+test("her durumun kendi ikonu var: yeni durum sessizce yeşil tik almaz", () => {
+  /*
+    26.11.2026: "Bağlantı kesildi" eklenirken ikon eşlemesi
+    güncellenmeseydi satır TAMAMLANDI ile aynı yeşil tiki çizecekti —
+    renk körlüğünde ve düşük kontrastlı ekranda iki durum ayırt
+    edilemez. Bu test, yeni bir durum eklenince ikonun da eklenmesini
+    zorunlu kılıyor.
+  */
+  const tsx = oku("app/panel/konsol-ana-kartlar.tsx");
+  const govde = tsx.slice(tsx.indexOf("function OtomasyonIkonu"));
+  for (const durum of ["yeniden", "mudahale", "baglanti_kesildi", "bagli_degil"]) {
+    assert.ok(govde.includes(`"${durum}"`), `${durum} için ikon dalı yok`);
+  }
 });

@@ -127,6 +127,17 @@ function OtomasyonIkonu({ durum }: { durum: Otomasyon["durum"] }) {
       </svg>
     );
   }
+  /* Bağlantı kesildi: kopuk halka. Şekil durumu tek başına taşımalı —
+     renk körlüğünde "Bağlantı kesildi" ile "Tamamlandı" aynı ikonla
+     çizilseydi ayırt edilemezdi (26.11.2026, yeni durum eklenirken
+     ikon eklemeyi unutmak sessizce YEŞİL TİK gösteriyordu). */
+  if (durum === "baglanti_kesildi") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+        <path d="M9.5 14.5 7 17a3.5 3.5 0 0 1-5-5l2.5-2.5" /><path d="M14.5 9.5 17 7a3.5 3.5 0 0 1 5 5l-2.5 2.5" /><path d="m3 3 18 18" />
+      </svg>
+    );
+  }
   if (durum === "bagli_degil" || durum === "kayit_yok") {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

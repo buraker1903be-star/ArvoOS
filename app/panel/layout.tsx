@@ -580,7 +580,15 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       </div>
     </header>
     <section className="os-workspace">
-      <OsBolumMenusu uygulamalar={konsolUygulamalariListesi} />
+      {/*
+        KONSOLDA İÇERİK ÜSTÜ BÖLÜM ŞERİDİ YOK (26.11.2026, inceleme
+        talebi). Aynı bağlantılar artık gezinmenin ikinci katında:
+        geniş masaüstünde sol menünün yerine geçen alt menüde, rayda ve
+        telefonda Uygulamalar penceresinin ikinci katında. Şerit de
+        çizilseydi aynı sayfa iki yerde "seçili" görünür ve kurucu
+        hangisine bakacağını bilemezdi. Kiracı panelinde şerit duruyor:
+        orada ikinci kat yok (os-bolum-menusu.tsx).
+      */}
       <div className="panel-content">{agreementBanner}{children}</div>
     </section>
     {/* "Diğer uygulamalar": konsoldan kiracı paneline dönüş (dock'taki

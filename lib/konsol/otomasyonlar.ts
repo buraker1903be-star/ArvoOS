@@ -17,10 +17,19 @@
   "Gönderildi" bir belge/e-posta için doğru kelime; ikisini tek kelimeye
   indirmek kartı tekdüze ve belirsiz yapıyordu.
 
-  "YENİDEN DENENİYOR" UYDURMA DEĞİL: köprü eşitlemesi on dakikada bir
-  koşuyor (vercel.json), yani kayıt başarılı ama köprü hâlâ kapalıysa
-  sistem gerçekten yeniden deniyor. Köprü hiç yapılandırılmamışsa
-  (anahtar yok) bu bir deneme değil, "Bağlı değil".
+  "YENİDEN DENENİYOR" YALNIZCA BİR KUYRUK KAYDI VARSA (26.11.2026,
+  inceleme bulgusu). İlk sürüm köprü kopuksa bunu yazıyordu, gerekçesi
+  "eşitleme on dakikada bir koşuyor" idi. Bu bir ÇIKARIM: bir işin
+  periyodik olması, o anda bir denemenin yürüdüğünü göstermez. Kopuk
+  köprünün elimizdeki doğru karşılığı "Bağlantı kesildi".
+
+  Etiketin gerçek kaynağı otomatik tahsilatın DENEME KUYRUĞU
+  (`paytr_otomatik_yenileme.deneme_sayisi`, lib/otomatik-yenileme):
+  çekimi düşen abonelik günde bir, en çok üç kez yeniden deneniyor ve
+  kaç denemede olduğu satırda yazılı. Kuyrukta bekleyen varsa "yeniden
+  deneniyor" bir tahmin değil, kayıtlı bir olgu. Köprü hiç
+  yapılandırılmamışsa (anahtar yok) bu da bir deneme değil,
+  "Bağlı değil".
 
   Birim testi: tests/unit/konsol-otomasyonlar.test.ts.
 */
@@ -30,6 +39,7 @@ export type OtomasyonDurumu =
   | "tamamlandi"
   | "gonderildi"
   | "yeniden"
+  | "baglanti_kesildi"
   | "mudahale"
   | "bagli_degil"
   | "kayit_yok";
@@ -47,6 +57,13 @@ export type Otomasyon = {
   sonCalisma: Date | null;
 };
 
+/**
+ * Kayıtlı deneme kuyrukları: "yeniden deneniyor" etiketinin TEK
+ * kaynağı. Anahtar grup anahtarıyla aynı; sayı kuyrukta bekleyen
+ * (denemesi kalan) kayıt adedi.
+ */
+export type DenemeKuyrugu = { grup: string; bekleyen: number };
+
 /** Köprülerin yapılandırma/erişim durumu (sayfanın zaten okuduğu bilgi). */
 export type KopruDurumu = {
   /** Anahtarı/ortam değişkeni eksik: bu bir arıza değil, kurulmamışlık. */
@@ -59,6 +76,7 @@ const ETIKET: Record<OtomasyonDurumu, { etiket: string; ton: OtomasyonTonu }> = 
   tamamlandi: { etiket: "Tamamlandı", ton: "success" },
   gonderildi: { etiket: "Gönderildi", ton: "success" },
   yeniden: { etiket: "Yeniden deneniyor", ton: "warning" },
+  baglanti_kesildi: { etiket: "Bağlantı kesildi", ton: "danger" },
   mudahale: { etiket: "Müdahale gerekiyor", ton: "danger" },
   bagli_degil: { etiket: "Bağlı değil", ton: "neutral" },
   kayit_yok: { etiket: "Kayıt yok", ton: "neutral" },
@@ -100,8 +118,11 @@ function enYeni(tarihler: (Date | null)[]): Date | null {
  * @param kopruler Ürün köprülerinin durumu; yalnızca "esitleme" satırını
  *   etkiler. Köprü kopuksa kayıt başarılı olsa bile satır yeşil olmaz:
  *   kopya eskiyor ve kurucunun bunu görmesi gerekiyor.
+ * @param kuyruklar Kayıtlı deneme kuyrukları. "Yeniden deneniyor"
+ *   etiketi YALNIZCA buradan çıkar; periyodik bir işin varlığı o
+ *   etiketi hak etmiyor.
  */
-export function otomasyonlar(durumlar: CronDurumu[], kopruler: KopruDurumu[] = []): Otomasyon[] {
+export function otomasyonlar(durumlar: CronDurumu[], kopruler: KopruDurumu[] = [], kuyruklar: DenemeKuyrugu[] = []): Otomasyon[] {
   const haritada = new Map(durumlar.map((d) => [d.yol, d]));
   return OTOMASYON_GRUPLARI.map((grup) => {
     const isler = grup.yollar.map((y) => haritada.get(y)).filter((d): d is CronDurumu => Boolean(d));
@@ -136,8 +157,19 @@ export function otomasyonlar(durumlar: CronDurumu[], kopruler: KopruDurumu[] = [
         return satir(grup.anahtar, grup.ad, "bagli_degil", "Bir ürün köprüsünün anahtarı tanımlı değil.", sonBasarili);
       }
       if (kopruler.some((k) => k.kopuk)) {
-        return satir(grup.anahtar, grup.ad, "yeniden", "Bir ürüne ulaşılamıyor; eşitleme on dakikada bir yeniden deniyor.", sonBasarili);
+        /* Eldeki bilgi bu: ürüne ulaşılamıyor. Bir sonraki koşmanın
+           ne yapacağı kayıtta yazmıyor. */
+        return satir(grup.anahtar, grup.ad, "baglanti_kesildi", "Bir ürüne ulaşılamıyor; kopya eskiyor.", sonBasarili);
       }
+    }
+
+    /* Kayıt temiz ama kuyrukta bekleyen deneme varsa satır yeşil
+       olmamalı: iş koştu, bir kısmı tamamlanmadı ve yarın yeniden
+       denenecek — bu bilgi kuyruğun kendisinde yazılı. */
+    const kuyruk = kuyruklar.find((k) => k.grup === grup.anahtar);
+    if (kuyruk && kuyruk.bekleyen > 0) {
+      return satir(grup.anahtar, grup.ad, "yeniden",
+        `${kuyruk.bekleyen} abonelikte çekim düştü; deneme hakkı sürüyor.`, sonCalisma);
     }
 
     return satir(grup.anahtar, grup.ad, grup.basarili, sonCalismaCumlesi(isler.length, kayitsiz.length), sonBasarili);

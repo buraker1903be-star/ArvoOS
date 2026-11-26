@@ -273,8 +273,6 @@ html[data-theme="dark"] .os-konsol .os-brand .marka-koyu { display: block; }
   sabit yükseklikli sayfalar boşluğu geri kazanıyor.
 */
 @media (min-width: 1200px) {
-  html:not([data-konsol-menu="dar"]) .os-konsol .os-bolumler { display: none; }
-
   .os-konsol .os-yan-kat { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
 
   .os-konsol .os-yan-geri {
@@ -321,3 +319,40 @@ html[data-theme="dark"] .os-konsol .os-brand .marka-koyu { display: block; }
   .os-konsol .os-yan-oge,
   .os-konsol .os-yan-daralt { transition: none; }
 }
+
+/* ---------- Uygulamalar penceresinin ikinci katı ---------- */
+/*
+  26.11.2026, inceleme talebi. Rayda (64 px) ve telefonda ikinci kat bu
+  pencerede: başlıkta "Ana menüye dön" ve "Kapat" AYRI iki denetim.
+  Bölüm satırında ikon yok (bölümlerin ikonu yok), metin modül adıyla
+  aynı hatta başlasın diye içeriden.
+*/
+/*
+  Başlık satırı: geri · modül adı solda, Kapat sağda. Geri düğmesi
+  BAŞLIKTAN ÖNCE aynı satırda duruyor; alt satıra alındığında
+  .os-uygulamalar-bas'ın space-between'i modül adını ortaya itiyor ve
+  kaplama ortalanmış bir başlıkla boş görünüyordu (26.11.2026).
+*/
+.os-uygulamalar-bas:has(.os-uygulamalar-geri) { justify-content: flex-start; }
+.os-uygulamalar-bas:has(.os-uygulamalar-geri) h2 { margin-right: auto; }
+.os-uygulamalar-geri {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 4px var(--sp-2) 4px 4px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+.os-uygulamalar-geri:hover { background: var(--surface-2); color: var(--ink); }
+.os-uygulamalar-geri:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+/* Bölüm satırında ikon yok: metin modül adıyla aynı hatta başlıyor. */
+.os-uygulamalar-bolum-listesi .os-uygulama { padding-left: var(--sp-3); }
+/* Çekmece bölüm listesindeyken içeriği kadar: üç satır için 88dvh'lik
+   bir kutu açmak kaplamayı boş gösteriyordu. */
+dialog.os-uygulamalar:has(.os-uygulamalar-bolum-listesi) { max-height: min(60dvh, 420px); }

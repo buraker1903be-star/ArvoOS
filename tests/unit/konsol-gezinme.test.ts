@@ -104,7 +104,7 @@ test("sol menüde 'Uygulamalar' vurgusu PENCEREYE bağlı, rotaya değil", () =>
   /* Durumun sıfırlanması: close(), Esc ve zemine tıklama aynı olayı
      veriyor, pencerenin kendisi dinliyor. Dinleyici düşerse düğme
      pencere kapandıktan sonra da vurgulu kalır. */
-  assert.match(tsx, /onClose=\{\(\) => setPencereAcik\(false\)\}/);
+  assert.match(tsx, /onClose=\{\(\) => \{ setPencereAcik\(false\); setPanelModul\(null\); \}\}/);
   /* Dock DEĞİŞMEDİ: telefonun alt çubuğu rotaya bakmaya devam ediyor. */
   assert.match(tsx, /className=\{panelEtkin \? "os-dock-oge is-active"/);
 });
@@ -263,13 +263,18 @@ test("iki katlı menü: geri dönüş düğme, bölümler bağlantı", () => {
   assert.doesNotMatch(altKat.slice(altKat.indexOf("bolumler.map")), /<button/);
 
   /*
-    Alt menü yalnızca 240 px'lik panelde: rayda yalnızca ikon çiziliyor
-    ve bölümlerin ikonu yok. Şerit de tam o genişlikte gizleniyor,
-    yoksa aynı bağlantı iki yerde "seçili" görünür.
+    Sol menünün ikinci katı yalnızca 240 px'lik panelde: rayda yalnızca
+    ikon çiziliyor ve bölümlerin ikonu yok. Rayda aynı iş çekmecede
+    (Uygulamalar penceresi).
   */
   assert.match(yan, /const genis = masaustu && !dar;/);
-  const css = oku("app/panel/os/os-yanmenu.css");
-  assert.match(css, /html:not\(\[data-konsol-menu="dar"\]\) \.os-konsol \.os-bolumler \{ display: none; \}/);
+  /* Konsolda içerik üstü şerit HİÇ çizilmiyor (26.11.2026): aynı
+     bağlantılar gezinmenin ikinci katında — geniş menüde alt menüde,
+     rayda ve telefonda Uygulamalar penceresinde. Kiracı panelinde
+     şerit duruyor, orada ikinci kat yok. */
+  const yerlesim = oku("app/panel/layout.tsx");
+  assert.equal((yerlesim.match(/<OsBolumMenusu/g) ?? []).length, 1);
+  assert.match(yerlesim.slice(yerlesim.indexOf("konsolUygulamalariListesi")), /KONSOLDA İÇERİK ÜSTÜ BÖLÜM ŞERİDİ YOK/);
 });
 
 test("üst çubuk 56 px ve komut paleti ortada", () => {
@@ -280,4 +285,50 @@ test("üst çubuk 56 px ve komut paleti ortada", () => {
   assert.match(css, /\.panel-root\.os-root\.os-konsol \{ --os-bar-h: 56px; \}/);
   assert.match(css, /\.os-konsol \.os-search \{ height: 36px; max-width: 500px; \}/);
   assert.match(css, /\.os-konsol \.os-search \{[\s\S]{0,200}translate: -50% 0;/);
+});
+
+test("pencere de iki katlı: ray ve telefon bölümleri oradan açar", () => {
+  /*
+    26.11.2026, inceleme talebi. 64 px'lik rayda ve telefonda ikinci
+    kat sol menüye sığmıyor (ad gizli, bölümlerin ikonu yok); o işi
+    Uygulamalar penceresi üstleniyor.
+
+    İki kural kodda yapısal:
+    - Rayda bölümü olan modül satırı BAĞLANTI DEĞİL DÜĞME. Bağlantı
+      olsaydı erişilebilirlik ağacı "sayfaya gider" derdi, oysa menü
+      açılıyor. Modülün giriş adresi zaten bölümlerin ilki.
+    - Penceredeki "Ana menüye dön" ile "Kapat" AYRI: biri bir üst
+      kata çıkar, öteki pencereyi kapatır.
+  */
+  const tsx = oku("app/panel/os/os-navigasyon.tsx");
+  assert.match(tsx, /if \(altiVar && !genis\) \{/);
+  const ray = tsx.slice(tsx.indexOf("if (altiVar && !genis) {"), tsx.indexOf("</li>", tsx.indexOf("if (altiVar && !genis) {")));
+  assert.match(ray, /<button/);
+  assert.match(ray, /aria-haspopup="dialog"/);
+  assert.match(ray, /onClick=\{\(\) => ac\(u\.key\)\}/);
+
+  /* Pencerenin başlığında iki ayrı denetim. */
+  assert.match(tsx, /className="os-uygulamalar-geri"[\s\S]{0,200}Ana menüye dön/);
+  assert.match(tsx, /aria-label="Kapat" onClick=\{kapat\}/);
+  /* Geri bir üst kata çıkar, pencereyi KAPATMAZ. */
+  assert.match(tsx, /const anaMenuyeDon = \(\) => \{[\s\S]{0,120}setPanelModul\(null\);/);
+  assert.doesNotMatch(tsx.slice(tsx.indexOf("const anaMenuyeDon"), tsx.indexOf("useEffect", tsx.indexOf("const anaMenuyeDon"))), /kapat\(\)/);
+});
+
+test("'Yeniden deneniyor' kaynağı kodda deneme kuyruğu", () => {
+  /*
+    26.11.2026 inceleme bulgusu: etiket köprünün kopuk olmasından ve
+    cron'un periyodikliğinden çıkarılıyordu. Artık tek kaynağı
+    paytr_otomatik_yenileme'nin deneme sayacı; ana sayfa da onu
+    sayarak okuyor (head count — sınırlı listeden türetilmiyor).
+  */
+  const kural = oku("lib/konsol/otomasyonlar.ts");
+  assert.match(kural, /baglanti_kesildi: \{ etiket: "Bağlantı kesildi"/);
+  /* Köprü kopuk dalı artık "yeniden" yazmıyor. */
+  const esitleme = kural.slice(kural.indexOf('if (kopruler.some((k) => k.kopuk))'));
+  assert.match(esitleme.slice(0, 300), /"baglanti_kesildi"/);
+
+  const sayfa = oku("app/panel/konsol-ana-sayfa.tsx");
+  assert.match(sayfa, /paytr_otomatik_yenileme[\s\S]{0,160}count: "exact", head: true/);
+  assert.match(sayfa, /lt\("deneme_sayisi", AZAMI_DENEME\)/);
 });
