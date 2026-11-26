@@ -71,6 +71,7 @@ import { ThemeToggle } from ${a("app/panel/theme-toggle.tsx")};
 import { OsSimge as OsSimgeDuz } from ${a("app/panel/os/os-icons.tsx")};
 import { UrunPerformansiKarti, OncelikliIslerKarti } from "@/app/panel/konsol-urun-performansi";
 import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
+import { ArvoOsIsareti } from "@/app/panel/os/arvoos-markasi";
 import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-bakis";
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
 import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
@@ -221,6 +222,17 @@ function Konsol() {
     { kod: "arc", ad: "ArvoARC", aktifMusteri: { durum: "var", deger: 316 }, donusum: { durum: "okunamadi" }, tahsilat: { durum: "var", deger: 184900 } },
     { kod: "randevu", ad: "ArvoCal", aktifMusteri: { durum: "var", deger: 427 }, donusum: { durum: "kaynak_yok" }, tahsilat: { durum: "var", deger: 160750 } },
   ];
+  /*
+    ?durum=bos: veri DURUMLARININ kanıtı. Dolu liste varsayılan;
+    bu değişkende öncelikli işler boş ("Bekleyen iş yok"), bir ürünün
+    dönüşümü "Dönemde deneme yok" (payda sıfır — yüzde YAZILMAZ) ve
+    kuyruğun bir kalemi okunamamış durumda. Üçü de üretimde tek tek
+    çizilebilen hâller ve ekranda farklı metinler üretiyor.
+  */
+  const bosDurum = new URLSearchParams(location.search).get("durum") === "bos";
+  /* Dönüşümün payda-sıfır hâli: oran null → "Dönemde deneme yok". */
+  const URUN_DURUMLARI = URUN_SATIRLARI.map((r) =>
+    r.kod === "arvolab" ? { ...r, donusum: { durum: "var", deger: { denemeye: 0, ucretliye: 0, oran: null } } } : r);
   const ONCELIKLI = [
     { anahtar: "o1", urun: "ArvoLab", baslik: "Ödeme bildirimi", alt: "Akademik Merkez Danışmanlık A.Ş. · ₺24.900", href: "/panel/platform/payments" },
     { anahtar: "o2", urun: "ArvoCal", baslik: "Yaklaşan yenileme", alt: "Yıldız Eğitim Kurumları · 3 gün kaldı", href: "/panel/platform/musteriler/1" },
@@ -233,12 +245,12 @@ function Konsol() {
     { anahtar: "genel", etiket: "Genel Bakış", yer: "liste",
       icerik: (
         <div className="konsol-genel">
-          <UrunPerformansiKarti satirlar={URUN_SATIRLARI} olcut="musteri"
+          <UrunPerformansiKarti satirlar={bosDurum ? URUN_DURUMLARI : URUN_SATIRLARI} olcut="musteri"
             donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
             para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
             secici={<DonemSecici secili="30g" taban="/panel" />}
             olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
-          <OncelikliIslerKarti isler={ONCELIKLI} okunamayan={[]} />
+          <OncelikliIslerKarti isler={bosDurum ? [] : ONCELIKLI} okunamayan={bosDurum ? ["Destek kuyruğu"] : []} />
         </div>
       ) },
     { anahtar: "isler", etiket: "Bugünün İşleri", yer: "liste", icerik: islerPaneli },
@@ -270,21 +282,19 @@ function Konsol() {
     ölçüm var olmayan bir sayfayı ölçer.
   */
   return (
-    <GenelBakis baslik="Genel Bakış" sinif="dash-sabit konsol-ana">
+    <GenelBakis baslik="Genel Bakış" sinif="dash-sabit konsol-ana"
+      eylem={<DonemSecici secili="30g" taban="/panel" />}>
       <p className="dash-uyari konsol-uyari" data-tone="danger" role="alert">
         <span aria-hidden="true" />
         <span><b>3 ürün köprüsü yanıt vermiyor · 2 veri kaynağı okunamadı</b></span>
         <a className="konsol-uyari-bag" href="/panel/platform/saglik">Sistem sağlığı</a>
       </p>
-      <div className="konsol-arac">
-        <DonemSecici secili="30g" taban="/panel" />
-      </div>
       <div className="konsol-genel">
-        <UrunPerformansiKarti satirlar={URUN_SATIRLARI} olcut="musteri"
+        <UrunPerformansiKarti satirlar={bosDurum ? URUN_DURUMLARI : URUN_SATIRLARI} olcut="musteri"
           donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
           para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
           olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
-        <OncelikliIslerKarti isler={ONCELIKLI} okunamayan={[]} />
+        <OncelikliIslerKarti isler={bosDurum ? [] : ONCELIKLI} okunamayan={bosDurum ? ["Destek kuyruğu"] : []} />
       </div>
     </GenelBakis>
   );
@@ -369,7 +379,9 @@ function Kabuk() {
     */}
     <header className="os-bar">
       {konsolMu ? null : <a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a>}
-      {konsolMu ? <a className="os-brand" href="/panel"><i>◇</i><span><b>Kurucu Konsolu</b></span></a> : null}
+      {/* Üretimdeki marka bloğunun aynısı: resmî işaret (app/panel/layout.tsx).
+          Masaüstü/tablette CSS gizliyor, telefonda görünen bu. */}
+      {konsolMu ? <a className="os-brand" href="/panel"><i className="os-brand-isaret" aria-hidden="true"><ArvoOsIsareti /></i><span><b>Kurucu Konsolu</b></span></a> : null}
       {konsolMu ? <OsAramaDugmesi /> : null}
       {konsolMu ? (
         <div className="os-bar-right">
@@ -392,11 +404,31 @@ function Kabuk() {
       digerUygulamalar={[]}
       yanMenu={konsolMu}
       yanMenuSirasi={konsolMu ? ["home", "urunler", "musteriler", "finans", "destek"] : undefined}
-      marka={konsolMu ? { kod: "yonetim", ad: "ArvoOS" } : undefined}
+      marka={konsolMu}
     />
   </main></div>;
 }
 createRoot(document.getElementById("kok")).render(<Kabuk />);
+/*
+  DÜZ <img> ETİKETLERİ İÇİN AYNI KÖK YOLU ŞİMİ. next/image şimi yalnızca
+  o bileşeni kapsıyor; marka dosyaları (srcset'li kelime logosu, SVG
+  işaret) düz <img> ile çiziliyor ve file:// sayfasında "/brand/..."
+  dosya sisteminin köküne düşüp KIRIK görünüyordu — ölçülmek istenen
+  şeyin ta kendisi. Kök yollar burada public/ dizinine çevriliyor.
+*/
+const KAMU_YOL = "file://" + ${JSON.stringify(path.join(KOK, "public"))};
+function kokYollariCevir() {
+  for (const g of document.querySelectorAll('img[src^="/"]')) {
+    const sr = g.getAttribute("srcset");
+    /* Düzenli ifade YOK: bu kaynak önce .mjs şablonuna, sonra üretilen
+       dosyaya giriyor ve ters bölü iki kez yutuluyor (bir kez yaşandı:
+       srcset hiç çevrilmedi, logo kırık kaldı). */
+    if (sr) g.setAttribute("srcset", sr.split(",").map((x) => x.trim()).map((x) => (x.startsWith("/") ? KAMU_YOL + x : x)).join(", "));
+    g.setAttribute("src", KAMU_YOL + g.getAttribute("src"));
+  }
+}
+kokYollariCevir();
+new MutationObserver(kokYollariCevir).observe(document.body, { childList: true, subtree: true });
 `);
 await build({
   entryPoints: [path.join(dizin, "giris.tsx")], bundle: true, outfile: path.join(dizin, "paket.js"), format: "iife",
@@ -604,6 +636,33 @@ const olc = () => {
            (26.11.2026 inceleme bulgusu): "Uygulamalar" bir sayfa değil
            pencere açıyor, vurgusu da pencereye bağlı. */
         secili: [...m.querySelectorAll(".os-yan-oge.is-active")].map((o) => (o.getAttribute("aria-label") || o.textContent || "").trim()),
+        /*
+          MARKA GÖRÜNTÜSÜ: görünen dosya gerçekten yüklendi mi ve kaç px
+          çiziliyor. Dar menüde kırık görsel simgesi çıkmıştı
+          (26.11.2026 inceleme bulgusu) — "öğe DOM'da" yetmez.
+        */
+        marka: (() => {
+          const g = [...m.querySelectorAll(".os-yan-marka img")].filter((x) => getComputedStyle(x).display !== "none" && getComputedStyle(x.parentElement).display !== "none");
+          if (!g.length) return null;
+          const r = g[0].getBoundingClientRect();
+          return {
+            biçim: g[0].closest(".os-yan-logo") ? "logo" : "isaret",
+            dosya: g[0].getAttribute("src").split("/").pop(),
+            yuklendi: g.every((x) => x.naturalWidth > 0),
+            genislik: Math.round(r.width),
+            yukseklik: Math.round(r.height),
+            /* Kaynağın kendi oranı ile çizilen oran: kutuya sıkıştırılmış
+               (ezik) bir logo buradan görünür. ORANSAL ölçülüyor —
+               görüntüleme dosyalarının yüksekliği tam sayıya yuvarlanıyor
+               (160×30, oysa tam değer 30,4) ve mutlak farkla ölçünce
+               sağlam bir logo da "bozuk" çıkıyordu. */
+            oranSapmasi: (() => {
+              const cizilen = r.width / r.height;
+              const kaynak = g[0].naturalWidth / g[0].naturalHeight;
+              return Math.abs(cizilen - kaynak) / kaynak;
+            })(),
+          };
+        })(),
         pencereAcik: document.querySelector("dialog.os-uygulamalar")?.open ?? false,
       };
     })(),

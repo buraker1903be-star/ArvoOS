@@ -463,7 +463,10 @@ test("sol menüde iki girdi birden seçiliyse düşer", () => {
      etkin, "Uygulamalar" da rotaya bakıp vurgulanıyordu. Pencere
      kapalıyken en çok bir girdi seçili olmalı. */
   const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
-  const menu = { ortuyor: false, oge: 7, adsiz: 0, ipucusuz: 0, odaklanamayan: 0, sag: 240, icerikSol: 264, pencereAcik: false };
+  const menu = {
+    ortuyor: false, oge: 7, adsiz: 0, ipucusuz: 0, odaklanamayan: 0, sag: 240, icerikSol: 264, pencereAcik: false,
+    marka: { dosya: "arvoos-320.png", yuklendi: true, genislik: 150, oranSapmasi: 0.014 },
+  };
   const h = tekEkranHukmu("1440x900 acik urundetay", {
     ...temel, yanMenu: { ...menu, secili: ["Ürünler ve Fiyatlar", "Uygulamalar"] },
   });
@@ -512,4 +515,33 @@ test("ürün kartı içerik genişliğini kullanmıyorsa düşer", () => {
   });
   assert.equal(g.gecti, false);
   assert.ok(g.eksik.some((m: string) => m.includes("metrikler tek sütunda")), g.eksik.join(" | "));
+});
+
+test("menüdeki marka kırıksa, ezikse ya da yoksa düşer", () => {
+  /* 26.11.2026 inceleme bulgusu: dar menüde logo yerine kırık görsel
+     simgesi vardı. "Öğe DOM'da" yetmez — dosya yüklenmiş olmalı. */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const menu = { ortuyor: false, oge: 7, adsiz: 0, ipucusuz: 0, odaklanamayan: 0, sag: 64, icerikSol: 88, pencereAcik: false, secili: ["Genel Bakış"] };
+
+  const kirik = tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, yanMenu: { ...menu, marka: { dosya: "arvoos-simge-68.png", yuklendi: false, genislik: 34, oranSapmasi: 0 } },
+  });
+  assert.equal(kirik.gecti, false);
+  assert.ok(kirik.eksik.some((m: string) => m.includes("yüklenmedi")), kirik.eksik.join(" | "));
+
+  /* 2:1 işaret 1:1 kutuya sıkıştırılırsa (eski 28×28 kuralı) oran %100 sapar. */
+  const ezik = tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, yanMenu: { ...menu, marka: { dosya: "arvoos-simge-68.png", yuklendi: true, genislik: 28, oranSapmasi: 1 } },
+  });
+  assert.ok(ezik.eksik.some((m: string) => m.includes("oranı bozuk")), ezik.eksik.join(" | "));
+
+  /* Marka hiç çizilmiyorsa da düşer. */
+  const yok = tekEkranHukmu("1440x900 acik konsol", { ...temel, yanMenu: { ...menu, marka: null } });
+  assert.ok(yok.eksik.some((m: string) => m.includes("marka çizilmiyor")), yok.eksik.join(" | "));
+
+  /* Sağlam: görüntüleme dosyalarının yuvarlanmasından gelen %1,4'lük
+     sapma geçer — mutlak farkla ölçülürken sağlam logo da düşüyordu. */
+  assert.deepEqual(tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, yanMenu: { ...menu, marka: { dosya: "arvoos-320.png", yuklendi: true, genislik: 150, oranSapmasi: 0.014 } },
+  }).eksik, []);
 });

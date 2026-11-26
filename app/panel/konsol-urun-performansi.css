@@ -130,55 +130,81 @@
 }
 
 /*
-  GENEL BAKIŞ BÖLÜMÜ: İKİ KART ALT ALTA, TAM GENİŞLİK (26.11.2026,
-  onaylı mockup). Üç sütunlu ızgaranın yerine geçti. İkisi kalan
-  yüksekliği paylaşıyor ve her biri KENDİ gövdesinde kayıyor; sayfa
-  kaymıyor (konsolun tek ekran kuralı).
+  GENEL BAKIŞ BÖLÜMÜ: KART YÜKSEKLİĞİ İÇERİĞE BAĞLI, GENİŞ MASAÜSTÜNDE
+  YAN YANA (26.11.2026, inceleme bulgusu).
+
+  Eskiden iki kart alt alta duruyor ve kalan yüksekliği 3:2 payla
+  BÖLÜŞÜYORDU: ürün tablosunun son satırı ile "Ürünler" bağlantısı
+  arasında, boş "Öncelikli işler" ile "Bugünün işleri" arasında kartın
+  payından artan boşluk kalıyordu (.dash-col .dash-card-link'in
+  margin-top:auto'su bağlantıyı kartın DİBİNE itiyordu). Artık kart
+  içeriği kadar: flex:0 1 auto — büyümez, yalnızca gerekirse küçülür.
+
+  TEK EKRAN KURALI DURUYOR: bölümün yüksekliği belirli (.dash-sabit),
+  kart onu aşamaz (max-height:100%) ve aşan içerik kartın KENDİ
+  gövdesinde kayar. Kartlar artık yer kaplamak için uzamıyor, ama
+  sayfa da kaymıyor.
 */
-.konsol-genel{display:flex;flex-direction:column;gap:var(--sp-4);min-height:0;max-height:100%;flex:1 1 auto}
+.konsol-genel{
+  display:flex;flex-direction:column;align-items:stretch;
+  gap:var(--sp-4);min-height:0;max-height:100%;flex:1 1 auto;
+}
+.konsol-genel>.dash-card{display:flex;flex-direction:column;min-width:0;min-height:0;flex:0 1 auto;max-height:100%}
 /*
-  ÜRÜN TABLOSU ÖNCE DOYAR, ÖNCELİKLİ İŞLER KALANI ALIR. İkisi eşit pay
-  aldığında (flex:1 1 0) tabloya 60 px kalıyor ve masaüstünde tek ürün
-  satırı görünüyordu; oysa kurucunun ilk sorusu dört ürünü YAN YANA
-  görmek. Tablo içeriği kadar büyüyor, alanı aşarsa kendi gövdesinde
-  kayıyor (max-height:100%).
-*/
-/*
-  PAY SABİT: tabloya 3, öncelikli işlere 2. İçerik boyuna bırakmak iki
-  uçta da kırıldı — tablo içeriği kadar alınca kısa pencerede öncelikli
-  işler 26 px'e eziliyor ve gövdesi 0 px kalıyordu; küçülme ağırlığıyla
-  denendiğinde bu kez tablo tek satıra düşüyordu (ikisinin de içeriği
-  bölümden uzun). Yüzdeyle sınırlamak çözülmedi: yüzde max-height,
-  yüksekliği tanımsız bir kapsayıcıda yok sayılıyor. 3:2 her boyutta
-  öngörülebilir: 1440×900'de tablo 313 px (dört ürün kaydırmasız),
-  1440×600'de 166 px (satırlar kart içinde kayar).
-*/
-.konsol-genel>:first-child{flex:3 3 0;min-height:0}
-.konsol-genel>:last-child{flex:2 2 0;min-height:0}
-/*
-  KAYDIRMA ZİNCİRİ. Kartlar daha önce ızgaranın içindeydi ve zinciri
-  dashboard.css kuruyordu (.dash-cols--sabit > panel). Artık doğrudan
-  burada duruyorlar: her halkada min-height:0 ve kartta max-height:100%
+  KAYDIRMA ZİNCİRİ. Her halkada min-height:0 ve kartta max-height:100%
   olmadan kart içeriği kadar uzuyor, sayfa kayıyordu (ölçüm: .dash 726
   px'ken içeriği 861). Kaydırma kart başına TEK alanda.
 */
-.konsol-genel>.dash-card{display:flex;flex-direction:column;min-width:0;min-height:0;max-height:100%}
 .konsol-genel .dash-col-govde{
-  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  flex:0 1 auto;min-height:0;display:flex;flex-direction:column;
   /* Liste satırının hover zemini kart kenarına uzanıyor
      (.dash-col-list margin-inline:-8px); gövde aynı payı kendisi
      almazsa satırlar SOLDAN kırpılıyor (ölçüldü: "rvoLab · Ödeme"). */
   margin-inline:calc(var(--sp-2) * -1);padding-inline:var(--sp-2);
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
 }
-.konsol-genel .dash-card-link{flex:none}
+/* Bağlantı içeriğin hemen altında: .dash-col'un margin-top:auto'su onu
+   kartın dibine itiyordu ve arada boşluk kalıyordu. */
+.konsol-genel .dash-card-link{flex:none;margin-top:0}
 
 /*
-  BAŞLIK ALTINDAKİ ARAÇ SATIRI (26.11.2026, onaylı mockup): dönem
-  seçici başlığın hemen altında, kartların üstünde. Doğal boyunda;
-  yalnızca kartlar esner.
+  GENİŞ MASAÜSTÜNDE YAN YANA, ÜRÜN TABLOSUNA DAHA ÇOK ALAN.
+
+  Eşik İÇERİK genişliğine göre (ölçüldü): ürün kartı 620 px'in altına
+  indiğinde "Denemeden ücretliye" başlığı iki satıra sarıyor ve
+  tutarlar sütun sınırına dayanıyor — orada kartlar alt alta kalır.
+  Bölüm ~1040 px'ten itibaren ikiye bölünebiliyor (62/38). Ekran
+  genişliği tek başına yetmiyor: aynı pencerede sol menü 240 px ya da
+  64 px olabiliyor, o yüzden eşik menü durumuna göre ayrı yazılı.
 */
-.konsol-arac{display:flex;flex-wrap:wrap;gap:var(--sp-2);flex:0 0 auto}
+@media (min-width:1328px){
+  .konsol-genel{flex-direction:row;align-items:flex-start;flex-wrap:wrap}
+  .konsol-genel>:first-child{flex:1 1 62%;min-width:0}
+  .konsol-genel>:last-child{flex:1 1 30%;min-width:0}
+}
+/* Dar menüde içerik 176 px daha geniş: eşik de o kadar aşağıda. */
+@media (min-width:1200px) and (max-width:1327px){
+  html[data-konsol-menu="dar"] .konsol-genel{flex-direction:row;align-items:flex-start;flex-wrap:wrap}
+  html[data-konsol-menu="dar"] .konsol-genel>:first-child{flex:1 1 62%;min-width:0}
+  html[data-konsol-menu="dar"] .konsol-genel>:last-child{flex:1 1 30%;min-width:0}
+}
+/* Tablet rayında (64 px) içerik yine geniş olabiliyor. */
+@media (min-width:1128px) and (max-width:1199px){
+  .konsol-genel{flex-direction:row;align-items:flex-start;flex-wrap:wrap}
+  .konsol-genel>:first-child{flex:1 1 62%;min-width:0}
+  .konsol-genel>:last-child{flex:1 1 30%;min-width:0}
+}
+
+/*
+  Dönem seçici başlık satırında: sayfa başlığından SAKİN dursun.
+  panel-secondary varsayılanı 40 px ve --fs-base; başlığın (28 px)
+  yanında ikinci bir başlık gibi duruyordu.
+*/
+.konsol-ana .dash-hero-eylem .kds-donem>summary{
+  min-height:34px;padding:0 var(--sp-3);
+  font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--ink-soft);
+}
+
 /* Uyarı satırındaki ayrıntı bağlantısı: metin kısa, ayrıntı tek tık. */
 .konsol-uyari-bag{flex:none;margin-left:auto;color:var(--accent);font-size:var(--fs-sm);font-weight:var(--fw-semibold);white-space:nowrap}
 /*
@@ -208,24 +234,21 @@
   .konsol-genel .dash-card-link{display:none}
   .konsol-genel .dash-card-head h2{font-size:var(--fs-base)}
   /*
-    Kısa pencerede pay ürün kartına kayar (3:2 yerine 2:1) ve satır
-    boşluğu kısılır: ekranın işi dört ürünü yan yana okutmak, bekleyen
-    iş listesi kendi ekranında da var. 3:2 payla 1440×600'de tek ürün
-    satırı görünüyordu.
-  */
-  /*
-    Öncelikli işler kartına BİR TAM SATIRLIK taban veriliyor; kalanı
-    ürün kartının. Oranla bölüşümde (2:1) 1440×600'de öncelikli kartın
-    gövdesi 38 px kalıyordu ve 56 px'lik ilk kayıt kesiliyordu —
-    "bekleyen iş var" diyen kart işin kendisini göstermiyordu. Ürün
-    satırlarına kart içinden erişiliyor; ilk kayıt kesilmiyor.
+    Öncelikli işler kartına BİR TAM SATIRLIK TABAN. Kartlar içerik
+    boyunda ve ikisinin içeriği de bölümden uzun olduğu için kısa
+    pencerede ikisi birden küçülüyor; tabansız bırakıldığında bu kartın
+    gövdesi 38 px'e iniyor ve 56 px'lik ilk kayıt kesiliyordu —
+    "bekleyen iş var" diyen kart işin kendisini göstermiyordu.
+    Küçülme payı da ürün kartına yontuluyor (0 4 auto): kısa pencerede
+    ekranın işi dört ürünü karşılaştırmak, bekleyen iş listesi kendi
+    ekranında da var. Eşit küçülmede 768×600'de ürün kartı iki satırda
+    kalıyordu.
     130 px = kart süsü (ölçülen 66: iç boşluk, başlık, aralık) + satır
     (48) + pay. 118 px denendi ve 768×600'de gövde 52 px kaldı: süs o
     genişlikte 66 px, 56 px değil. Satır da burada kısılıyor —
     iki satırlık iş kaydı 48 px'te okunuyor.
   */
-  .konsol-genel>:first-child{flex:1 1 auto}
-  .konsol-genel>:last-child{flex:0 0 130px}
+  .konsol-genel>:last-child{flex:0 4 auto;min-height:130px}
   .koi-liste>li>a{min-height:48px;padding-block:var(--sp-1)}
   .kup-tablo tbody th,.kup-tablo tbody td{padding-block:var(--sp-1)}
   .kup-tablo thead th{padding-block:var(--sp-1)}
