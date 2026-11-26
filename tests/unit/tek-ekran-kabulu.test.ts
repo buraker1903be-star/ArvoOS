@@ -457,3 +457,59 @@ test("son ürünün eylemi tıklanamıyor ya da odaklanamıyorsa düşer", () =>
   assert.ok(h.eksik.some((m: string) => m.includes("tıklanamıyor")), h.eksik.join(" | "));
   assert.ok(h.eksik.some((m: string) => m.includes("klavyeyle odaklanamıyor")), h.eksik.join(" | "));
 });
+
+test("sol menüde iki girdi birden seçiliyse düşer", () => {
+  /* 26.11.2026'da ürün detayında ÖLÇÜLEN durum: "Ürünler" sayfa olarak
+     etkin, "Uygulamalar" da rotaya bakıp vurgulanıyordu. Pencere
+     kapalıyken en çok bir girdi seçili olmalı. */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const menu = { ortuyor: false, oge: 7, adsiz: 0, ipucusuz: 0, odaklanamayan: 0, sag: 240, icerikSol: 264, pencereAcik: false };
+  const h = tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, yanMenu: { ...menu, secili: ["Ürünler ve Fiyatlar", "Uygulamalar"] },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("2 girdi birden seçili")), h.eksik.join(" | "));
+
+  /* Tek seçili: geçer. */
+  assert.deepEqual(tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, yanMenu: { ...menu, secili: ["Ürünler ve Fiyatlar"] },
+  }).eksik, []);
+
+  /* Pencere AÇIKKEN iki vurgu beklenen durum: düğme kendi penceresini
+     gösteriyor, sayfa vurgusu da yerinde kalıyor. */
+  assert.deepEqual(tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, yanMenu: { ...menu, pencereAcik: true, secili: ["Ürünler ve Fiyatlar", "Uygulamalar"] },
+  }).eksik, []);
+});
+
+test("ürün kartı içerik genişliğini kullanmıyorsa düşer", () => {
+  const temel = { sayfaDikey: "600/600", sayfaYatay: "768/768", dockOrtuyor: false, icerikAlt: 500, dockUstu: 540 };
+  /* 768×600, düzeltmeden önce GERÇEKTEN ölçülen değerler: 680 px'lik
+     ızgarada 384 px'lik kart, sağda 296 px boşluk, metrikler tek sütun. */
+  const h = tekEkranHukmu("768x600 acik urundetay", {
+    ...temel, kartHizasi: { tekSatir: true, kartG: 384, bosluk: 296, seciciyeFark: 296, seritSutun: 1, metrikSutun: 1 },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("sağda 296 px boşluk")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("hizalı değil")), h.eksik.join(" | "));
+
+  /* Düzeltmeden sonra ölçülen: kart ızgarayı bitiriyor, metrikler yan yana. */
+  assert.deepEqual(tekEkranHukmu("768x600 acik urundetay", {
+    ...temel, kartHizasi: { tekSatir: true, kartG: 680, bosluk: 0, seciciyeFark: 0, seritSutun: 2, metrikSutun: 2 },
+  }).eksik, []);
+
+  /* Telefon: eylem başlığın altında, hiza ölçülmüyor; geniş kart kuralı
+     da 366 px'te geçerli değil. */
+  assert.deepEqual(tekEkranHukmu("390x844 acik urundetay", {
+    sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 700, dockUstu: 781,
+    kartHizasi: { tekSatir: false, kartG: 366, bosluk: 0, seciciyeFark: -210, seritSutun: 1, metrikSutun: 1 },
+  }).eksik, []);
+
+  /* 700 px'den geniş kartta metrikler alt alta kalırsa düşer. */
+  const g = tekEkranHukmu("1440x900 acik urundetay", {
+    sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860,
+    kartHizasi: { tekSatir: true, kartG: 1152, bosluk: 0, seciciyeFark: 0, seritSutun: 3, metrikSutun: 1 },
+  });
+  assert.equal(g.gecti, false);
+  assert.ok(g.eksik.some((m: string) => m.includes("metrikler tek sütunda")), g.eksik.join(" | "));
+});

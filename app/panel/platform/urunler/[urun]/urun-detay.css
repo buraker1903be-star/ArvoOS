@@ -10,6 +10,23 @@
   içeriği kadar uzar ve sayfa yine kayar.
 */
 .os-root main.urun-sayfa.liste-sayfa>.talep-izgara{flex:1 1 auto;min-height:0}
+/*
+  KART İÇERİK GENİŞLİĞİNİ KULLANIR (26.11.2026, inceleme bulgusu).
+
+  Izgaranın TEK çocuğu var (ürün kartı), ama sınıfı iki sütun
+  kuruyordu (.talep-izgara.personel-iki: 1fr + 2fr) ve kart birinci
+  sütunda kalıyordu: 768x600'de 680 px'in 384'ünü kullanıp sağda 296 px
+  boşluk bırakıyordu, 1440'ta sağ kenarı dönem seçicisinden 350 px
+  geride bitiyordu. Dar kart metrik ızgaralarını da katlıyordu
+  (.ugb-serit üç sütun yerine bir, .ugb-izgara iki yerine bir).
+
+  Sınıf sayfadan kaldırıldı; buradaki kural .talep-izgara'nın ÜÇ
+  sütunluk varsayılanına (kayit-detay.css) karşı tek sütunu sabitliyor.
+  Kart artık rayın/menünün ardında kalan genişliği bitiriyor, yani sağ
+  kenarı başlıktaki dönem seçicisiyle aynı hatta.
+*/
+.os-root main.urun-sayfa>.talep-izgara{grid-template-columns:minmax(0,1fr)}
+
 .os-root .urun-sayfa .talep-akis.sy-kart{display:flex;flex-direction:column;min-height:0;max-height:100%}
 .os-root .urun-sayfa .talep-akis.sy-kart>.talep-akis-sekmeler{flex:0 0 auto}
 .os-root .urun-sayfa .talep-akis.sy-kart>div[role="tabpanel"],

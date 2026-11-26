@@ -145,6 +145,51 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    SOL MENÜ İÇERİĞİN ÜSTÜNE BİNMEZ (26.11.2026, onaylı mockup).
+    Menü sabit konumlu; içerik onun sağında başlamazsa ilk sütun
+    okunmaz olur. Dar modda ad gizlenebilir ama erişilebilir ad ve
+    araç ipucu kalmalı, her girdi klavyeyle odaklanabilmeli.
+  */
+  if (o.yanMenu) {
+    const m = o.yanMenu;
+    if (m.ortuyor) eksik.push(`sol menü içeriğin üstüne biniyor (menü ${m.sag}px, içerik ${m.icerikSol}px)`);
+    if (!m.oge) eksik.push("sol menüde girdi yok");
+    if (m.adsiz) eksik.push(`${m.adsiz} menü girdisinin erişilebilir adı yok`);
+    if (m.ipucusuz) eksik.push(`${m.ipucusuz} menü girdisinin araç ipucu yok`);
+    if (m.odaklanamayan) eksik.push(`${m.odaklanamayan} menü girdisi klavyeyle odaklanamıyor`);
+    /*
+      AYNI ANDA İKİ GİRDİ SEÇİLİ GÖRÜNMEZ (26.11.2026, inceleme
+      bulgusu). "Uygulamalar" rotaya göre vurgulanıyordu; ürün
+      detayında hem "Ürünler" hem "Uygulamalar" seçili görünüyor ve
+      kullanıcı hangi sayfada olduğunu menüden okuyamıyordu. Pencere
+      kapalıyken en çok BİR girdi seçili olacak.
+    */
+    if (m.pencereAcik === false && m.secili && m.secili.length > 1) {
+      eksik.push(`sol menüde ${m.secili.length} girdi birden seçili (${m.secili.join(", ")})`);
+    }
+  }
+
+  /*
+    ÜRÜN DETAYI KARTI İÇERİK GENİŞLİĞİNİ KULLANIR (26.11.2026,
+    inceleme bulgusu). Izgara sınıfı iki sütun kuruyordu ve tek çocuk
+    olan kart birinci sütunda kalıyordu: 768×600'de sağda 296 px
+    boşluk, 1440×900'de kartın sağ kenarı başlıktaki dönem
+    seçicisinden 350 px geride. Dar kart metrikleri de alt alta
+    diziyordu. Ölçü: kart ızgarayı bitirir (boşluk ≤ 1 px), sağ kenarı
+    seçiciyle aynı hatta (fark ≤ 2 px) ve 700 px'den geniş kartta
+    metrikler yan yana.
+  */
+  if (o.kartHizasi) {
+    const k = o.kartHizasi;
+    if (k.bosluk > 1) eksik.push(`ürün kartı içerik genişliğini kullanmıyor (sağda ${k.bosluk} px boşluk)`);
+    /* Hiza yalnızca eylem başlığın YANINDAYKEN anlamlı: telefonda
+       dönem seçicisi başlığın altına geçiyor ve sağ kenarı kartın
+       kenarıyla aynı hatta olmak zorunda değil. */
+    if (k.tekSatir && Math.abs(k.seciciyeFark) > 2) eksik.push(`ürün kartının sağ kenarı dönem seçicisiyle hizalı değil (${k.seciciyeFark} px)`);
+    if (k.kartG > 700 && k.metrikSutun === 1) eksik.push(`${k.kartG} px kartta metrikler tek sütunda`);
+  }
+
+  /*
     SON ÜRÜNE KART İÇİNDEN ULAŞILMALI (26.11.2026, ürün kararı).
     Dört satır sığmadığında kaydırma kartın içinde olacak ve kartı
     sonuna kaydırınca son ürün TAM görünecek; eylemi de tıklanabilir ve
