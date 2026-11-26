@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Children, useState, type ReactNode } from "react";
 import "./kayit-akis.css";
 
@@ -15,6 +17,7 @@ import "./kayit-akis.css";
 */
 export function TalepAkis({
   sekmeler,
+  adresler,
   baslangic = 0,
   tembel = [],
   kimlik = "talep",
@@ -41,8 +44,24 @@ export function TalepAkis({
   /** Karta eklenecek sınıf (sütuna özgü düzen için). */
   sinif?: string;
   etiket?: string;
-  /** Açılışta seçili sekme (adresten gelen derin bağlantı için). */
+  /**
+   * Açılışta seçili sekme (adresten gelen derin bağlantı için).
+   * `adresler` verildiğinde bu YALNIZCA bir başlangıç değil, seçimin
+   * KENDİSİ olur: durum adreste.
+   */
   baslangic?: number;
+  /**
+   * ADRESE BAĞLI SEKME (26.11.2026). Her sekmenin kendi adresi
+   * verildiğinde şerit düğme değil BAĞLANTI çiziyor ve seçimi
+   * `baslangic` söylüyor; bileşen kendi durumunu tutmuyor. Derin
+   * bağlantı, yenileme ve tarayıcı geri/ileri böyle çalışıyor
+   * (ürün detayı: ?bolum=abonelikler).
+   *
+   * Verilmezse eski davranış sürüyor: seçim bileşenin içinde, adres
+   * değişmiyor. Panelin öteki kartları (talep, teklif, personel) bunu
+   * kullanıyor; onların sekmeleri paylaşılabilir bir yer değil.
+   */
+  adresler?: string[];
   /**
    * Yalnızca İLK SEÇİLDİĞİNDE kurulan paneller. İş detayındaki müşteri
    * mesajları bunlardan: panel kurulunca mesajlar okundu sayılıyor ve
@@ -52,10 +71,15 @@ export function TalepAkis({
   tembel?: number[];
   children: ReactNode;
 }) {
-  const [secili, setSecili] = useState(baslangic);
+  const router = useRouter();
+  const adresli = Array.isArray(adresler) && adresler.length === sekmeler.length;
+  const [yerelSecili, setYerelSecili] = useState(baslangic);
+  /* Adresli modda seçim sunucudan geliyor; yerel durum okunmuyor. */
+  const secili = adresli ? baslangic : yerelSecili;
   const [acilanlar, setAcilanlar] = useState(() => new Set([baslangic]));
   const sec = (sira: number) => {
-    setSecili(sira);
+    if (adresli) { router.push(adresler[sira]); return; }
+    setYerelSecili(sira);
     setAcilanlar((onceki) => (onceki.has(sira) ? onceki : new Set(onceki).add(sira)));
   };
   const paneller = Children.toArray(children);
@@ -81,27 +105,31 @@ export function TalepAkis({
         </label>
       ) : null}
       <div className="talep-akis-sekmeler" role="tablist" aria-label={etiket}>
-        {sekmeler.map((ad, sira) => (
-          <button
-            key={ad}
-            type="button"
-            role="tab"
-            id={`${kimlik}-sekme-${sira}`}
-            aria-selected={sira === secili}
-            aria-controls={`${kimlik}-panel-${sira}`}
-            tabIndex={sira === secili ? 0 : -1}
-            className={sira === secili ? "is-active" : undefined}
-            onClick={() => sec(sira)}
-            onKeyDown={(olay) => {
+        {sekmeler.map((ad, sira) => {
+          const ortak = {
+            id: `${kimlik}-sekme-${sira}`,
+            role: "tab" as const,
+            "aria-selected": sira === secili,
+            "aria-controls": `${kimlik}-panel-${sira}`,
+            tabIndex: sira === secili ? 0 : -1,
+            className: sira === secili ? "is-active" : undefined,
+            /* Ok tuşları: odağı komşu sekmeye taşır. Düğme modunda
+               seçim de hemen değişir (tek Tab durağı kalıbı); adresli
+               modda SEÇİM DEĞİŞMEZ, çünkü her ok tuşu bir gezinme
+               demek olurdu — kullanıcı Enter ile açar. */
+            onKeyDown: (olay: React.KeyboardEvent) => {
               if (olay.key !== "ArrowRight" && olay.key !== "ArrowLeft") return;
-              const sonraki = (secili + (olay.key === "ArrowRight" ? 1 : -1) + sekmeler.length) % sekmeler.length;
-              sec(sonraki);
+              const sonraki = (sira + (olay.key === "ArrowRight" ? 1 : -1) + sekmeler.length) % sekmeler.length;
+              if (!adresli) sec(sonraki);
               document.getElementById(`${kimlik}-sekme-${sonraki}`)?.focus();
-            }}
-          >
-            {ad}
-          </button>
-        ))}
+            },
+          };
+          return adresli ? (
+            <Link key={ad} href={adresler[sira]} {...ortak} tabIndex={0}>{ad}</Link>
+          ) : (
+            <button key={ad} type="button" {...ortak} onClick={() => sec(sira)}>{ad}</button>
+          );
+        })}
       </div>
       {paneller.map((panel, sira) => (
         <div
@@ -112,7 +140,7 @@ export function TalepAkis({
           hidden={sira !== secili}
           className="talep-akis-panel"
         >
-          {tembel.includes(sira) && !acilanlar.has(sira) ? null : panel}
+          {!adresli && tembel.includes(sira) && !acilanlar.has(sira) ? null : panel}
         </div>
       ))}
     </section>

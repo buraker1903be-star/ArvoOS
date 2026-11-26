@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { MarkaLogosu, type DigerUygulama, type MarkaKodu } from "../panel-navigation";
+import { MarkaLogosu, type DigerUygulama } from "../panel-navigation";
 import { aramaAnahtari, etkinUygulama, mobilAltCubuk, type OsUygulama } from "./os-apps";
 import { OsSimge } from "./os-icons";
 import { masaustuAbone, masaustuMu, yanMenuAbone, yanMenuDarMi, yanMenuTercihiniUygula } from "./gezinme-istemci";
+import { ArvoOsIsareti, ArvoOsLogosu } from "./arvoos-markasi";
 import "./os-navigasyon.css";
 import "./os-yanmenu.css";
 
@@ -55,8 +56,8 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   yanMenu?: boolean;
   /** Sol menüdeki birincil sıra (anahtarlar); verilmezse liste sırası. */
   yanMenuSirasi?: string[];
-  /** Sol menünün tepesindeki marka: resmî işaret + ad. */
-  marka?: { kod: MarkaKodu; ad: string };
+  /** Sol menünün tepesinde resmî ArvoOS markası (logo/işaret). */
+  marka?: boolean;
 }) {
   const yol = usePathname();
   const pencere = useRef<HTMLDialogElement>(null);
@@ -240,7 +241,8 @@ function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, ma
   pencereAcik: boolean;
   panelRozeti: number;
   ac: () => void;
-  marka?: { kod: MarkaKodu; ad: string };
+  /** Menünün tepesinde resmî ArvoOS markası çizilsin mi. */
+  marka?: boolean;
   rozetMetni: (n: number) => string;
 }) {
   const dar = useSyncExternalStore(yanMenuAbone, yanMenuDarMi, sunucuDar);
@@ -256,9 +258,16 @@ function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, ma
   return (
     <nav className="os-yan" aria-label="Konsol menüsü" data-dar={dar ? "evet" : undefined}>
       {marka ? (
-        <Link className="os-yan-marka" href="/panel" aria-label={`${marka.ad} ana ekran`}>
-          <span className="os-yan-isaret"><MarkaLogosu marka={marka.kod} ad="" /></span>
-          <span className="os-yan-ad">{marka.ad}</span>
+        <Link className="os-yan-marka" href="/panel" aria-label="ArvoOS ana ekran">
+          {/*
+            İKİ BİÇİM BİRDEN ÇİZİLİR, HANGİSİNİN GÖRÜNECEĞİNE CSS KARAR
+            VERİR (26.11.2026). Açık menüde resmî KELİME LOGOSU, dar
+            menüde ve tablet rayında resmî İŞARET. JavaScript ile
+            seçmek menü daraltılırken bir kare yanlış logo demek; aynı
+            gerekçe açık/koyu varyantında da geçerli (panel-navigation).
+          */}
+          <span className="os-yan-logo"><ArvoOsLogosu /></span>
+          <span className="os-yan-isaret"><ArvoOsIsareti /></span>
         </Link>
       ) : null}
 
@@ -291,13 +300,15 @@ function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, ma
           VURGU PENCEREYE BAĞLI, ROTAYA DEĞİL. "Uygulamalar" bir sayfa
           değil, bir pencere açıyor: rotaya bağlanınca birincil listede
           duran bir uygulamada (ürün detayı → Ürünler) iki öğe birden
-          seçili görünüyordu. Pencere kapanınca düğme normale dönüyor.
-          Birincil listede HİÇ karşılığı olmayan bir rotada da vurgu yok;
+          seçili görünüyordu. Durum artık YALNIZCA aria-expanded'da ve
+          görünümü de oradan geliyor (os-yanmenu.css): is-active etkin
+          SAYFAYI işaretliyor, pencere durumu ondan ayrı okunmalı.
+          Birincil listede hiç karşılığı olmayan bir rotada da vurgu yok;
           yanlış yeri işaretlemek yerine hiçbir yeri işaretlemiyor.
         */}
         <button
           type="button"
-          className={pencereAcik ? "os-yan-oge is-active" : "os-yan-oge"}
+          className="os-yan-oge"
           aria-haspopup="dialog"
           aria-expanded={pencereAcik}
           onClick={ac}

@@ -19,8 +19,33 @@
 /* Telefonda sol menü yok: alt çubuk görevde. */
 .os-yan { display: none; }
 
+/*
+  TELEFONUN ÜST ÇUBUĞUNDAKİ MARKA (26.11.2026). .os-brand>i varsayılanı
+  34 px'lik DOLU bir karo (--primary zemin, beyaz harf) — baş harf için
+  yapılmış. Resmî işaret oraya konunca arkasında renkli bir kutu
+  kalıyordu; karo burada sıfırlanıyor ve ölçü işaretin genişliğinden
+  geliyor (dosya 1,54 : 1).
+*/
+.os-konsol .os-brand-isaret { display: grid; place-items: center; background: none; border-radius: 0; }
+.os-konsol .os-brand-isaret img { grid-area: 1 / 1; width: 34px; height: auto; }
+.os-konsol .os-brand-isaret .marka-koyu { display: none; }
+html[data-theme="dark"] .os-konsol .os-brand-isaret .marka-acik { display: none; }
+html[data-theme="dark"] .os-konsol .os-brand-isaret .marka-koyu { display: block; }
+
 @media (min-width: 761px) {
   .os-konsol .os-yan {
+    /*
+      ÜÇ DURUM ÜÇ FARKLI AĞIRLIKTA (26.11.2026, inceleme bulgusu).
+      Eskiden üzerine gelme zemini --surface-2 (#f9fafb), etkin zemin
+      --primary-soft (#eef1f6) idi: iki zemin neredeyse aynı açıklıkta,
+      üstelik hover yazısı --ink (#101828), etkin yazısı --primary
+      (#1b3050) — yani üzerine gelinen "Destek" seçili "Genel Bakış"tan
+      DAHA koyu görünüyordu. Sıra artık zeminden değil üç işaretin
+      birikmesinden geliyor: etkin girdi zemin + sol çubuk + kalın yazı
+      taşıyor, üzerine gelme yalnızca nötr bir yıkama.
+    */
+    --os-yan-vurgu: color-mix(in srgb, var(--ink) 5%, transparent);
+    --os-yan-etkin: color-mix(in srgb, var(--primary) 12%, transparent);
     position: fixed;
     z-index: 56;
     inset-block: 0;
@@ -50,31 +75,44 @@
   */
   .os-konsol .os-bar > .os-brand { display: none; }
 
+  /*
+    MARKA SATIRI. İki biçim de DOM'da: kelime logosu ve işaret; hangisi
+    görünecekse CSS seçiyor (os/arvoos-markasi.tsx). Ölçüler dosyaların
+    mürekkep kutusuna göre — kaynaklar kırpılı olduğu için CSS genişliği
+    = GÖRÜNEN logo genişliği.
+  */
   .os-konsol .os-yan-marka {
     display: flex;
     align-items: center;
-    gap: var(--sp-2);
     min-height: 44px;
     padding: 0 var(--sp-2);
     border-radius: var(--r-md);
     color: var(--ink);
     text-decoration: none;
   }
-  .os-konsol .os-yan-marka:hover { background: var(--surface-2); }
+  .os-konsol .os-yan-marka:hover { background: var(--os-yan-vurgu); }
   .os-konsol .os-yan-marka:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-  .os-konsol .os-yan-isaret { display: grid; place-items: center; flex: none; width: 28px; height: 28px; }
+
+  /* Varsayılan (ray ve dar menü): yalnızca işaret. */
+  .os-konsol .os-yan-logo { display: none; }
+  .os-konsol .os-yan-isaret { display: grid; place-items: center; flex: none; width: 100%; }
   /*
-    MarkaLogosu iki dosyayı birden çiziyor (açık/koyu zemin varyantı) ve
-    hangisinin görüneceğine CSS karar veriyor — JS ile seçmek tema
-    değişiminde bir kare yanlış logo demek. Kuralı burada yazmak
-    gerekiyor: panel.css'teki karşılığı yalnızca başlatıcı penceresini
-    kapsıyor ve menüde iki işaret alt alta çiziliyordu (ölçüldü).
+    İŞARETİN ÖLÇÜSÜ GENİŞLİKTEN. Resmî dosya 2 : 1 — yüksekliği kutuya
+    sabitlemek (28×28) onu ezer ya da daraltırdı. 34 px genişlik 17 px
+    yükseklik demek; yanındaki 24 px'lik menü ikonlarıyla optik olarak
+    aynı ağırlıkta duruyor (işaret yatay, ikonlar kare).
   */
-  .os-konsol .os-yan-isaret img { grid-area: 1 / 1; width: 28px; height: 28px; }
-  .os-konsol .os-yan-isaret .marka-koyu { display: none; }
-  html[data-theme="dark"] .os-konsol .os-yan-isaret .marka-acik { display: none; }
-  html[data-theme="dark"] .os-konsol .os-yan-isaret .marka-koyu { display: block; }
-  .os-konsol .os-yan-ad { font-size: var(--fs-base); font-weight: var(--fw-semibold); white-space: nowrap; }
+  .os-konsol .os-yan-isaret img { grid-area: 1 / 1; width: 34px; height: auto; }
+  .os-konsol .os-yan-logo img { display: block; width: 150px; height: auto; }
+  /*
+    Açık/koyu varyant seçimi CSS'te: JS ile seçmek tema değişiminde bir
+    kare yanlış logo demek. Kural burada yazılı, çünkü panel.css'teki
+    karşılığı yalnızca başlatıcı penceresini kapsıyor ve menüde iki
+    dosya alt alta çiziliyordu (ölçüldü).
+  */
+  .os-konsol .os-yan-marka .marka-koyu { display: none; }
+  html[data-theme="dark"] .os-konsol .os-yan-marka .marka-acik { display: none; }
+  html[data-theme="dark"] .os-konsol .os-yan-marka .marka-koyu { display: block; }
 
   .os-konsol .os-yan-liste { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
   .os-konsol .os-yan-alt { display: flex; flex-direction: column; gap: 2px; margin-top: auto; padding-top: var(--sp-2); border-top: 1px solid var(--line-soft); }
@@ -102,11 +140,28 @@
     transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
   }
   .os-konsol .os-yan-oge:hover,
-  .os-konsol .os-yan-daralt:hover { background: var(--surface-2); color: var(--ink); }
+  .os-konsol .os-yan-daralt:hover { background: var(--os-yan-vurgu); color: var(--ink); }
+  /* Odak HALKA, zemin değil: fareyle gezinmeden ayrışsın ve etkin
+     girdiye odaklanıldığında ikisi birden okunabilsin. */
   .os-konsol .os-yan-oge:focus-visible,
   .os-konsol .os-yan-daralt:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-  /* Seçili: zemin + kalın yazı; renk tek başına durumu taşımasın. */
-  .os-konsol .os-yan-oge.is-active { background: var(--primary-soft); color: var(--primary); font-weight: var(--fw-semibold); }
+  /* Seçili: zemin + sol çubuk + kalın yazı. Renk tek başına durumu
+     taşımasın (renk körlüğü ve düşük kontrastlı ekran). */
+  .os-konsol .os-yan-oge.is-active { background: var(--os-yan-etkin); color: var(--primary); font-weight: var(--fw-semibold); }
+  .os-konsol .os-yan-oge.is-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    translate: 0 -50%;
+    width: 3px;
+    height: 20px;
+    border-radius: 0 3px 3px 0;
+    background: var(--primary);
+  }
+  /* Üzerine gelinen etkin girdi daha da belirginleşir; "seçili" hissi
+     fareyle kaybolmasın. */
+  .os-konsol .os-yan-oge.is-active:hover { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
   .os-konsol .os-yan-simge { display: grid; place-items: center; flex: none; width: 24px; height: 24px; }
   .os-konsol .os-yan-etiket { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .os-konsol .os-yan-rozet {
@@ -124,6 +179,19 @@
     text-align: center;
   }
   .os-konsol .os-yan-daralt { color: var(--muted); }
+  /*
+    "Uygulamalar" bir sayfa değil pencere açıyor: açıkken vurgulanıyor
+    ama görünümü ETKİN SAYFA vurgusundan ayrı — nötr zemin, sol çubuk
+    yok, yazı rengi değişmiyor. Böylece ürün detayındayken "Ürünler"in
+    sayfa vurgusu ile bu düğmenin pencere durumu karışmıyor
+    (26.11.2026, inceleme bulgusu).
+  */
+  .os-konsol .os-yan-alt .os-yan-oge[aria-expanded="true"] {
+    background: var(--os-yan-vurgu);
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
 
   /*
     RAY (tablet ve daraltılmış masaüstü): yalnızca ikon. Ad DOM'da
@@ -131,8 +199,7 @@
     erişilebilir adı kaybolmuyor. Rozet ikonun köşesine geçiyor:
     bekleyen iş sayısı dar menüde de görünmeli.
   */
-  .os-konsol .os-yan-etiket,
-  .os-konsol .os-yan-ad { display: none; }
+  .os-konsol .os-yan-etiket { display: none; }
   .os-konsol .os-yan-oge,
   .os-konsol .os-yan-daralt,
   .os-konsol .os-yan-marka { justify-content: center; gap: 0; padding-inline: 0; }
@@ -152,8 +219,9 @@
 @media (min-width: 1200px) {
   .os-konsol .os-yan { --os-yan-g: 240px; }
   .os-konsol .os-frame { padding-left: 240px; }
-  .os-konsol .os-yan-etiket,
-  .os-konsol .os-yan-ad { display: block; }
+  .os-konsol .os-yan-etiket { display: block; }
+  .os-konsol .os-yan-logo { display: block; }
+  .os-konsol .os-yan-isaret { display: none; }
   .os-konsol .os-yan-oge,
   .os-konsol .os-yan-daralt { justify-content: flex-start; gap: var(--sp-3); padding-inline: var(--sp-2); }
   .os-konsol .os-yan-marka { justify-content: flex-start; gap: var(--sp-2); padding-inline: var(--sp-2); }
@@ -162,8 +230,9 @@
   /* Kullanıcının tercihi: dar. Ray görünümüne dönülür. */
   html[data-konsol-menu="dar"] .os-konsol .os-yan { --os-yan-g: 64px; }
   html[data-konsol-menu="dar"] .os-konsol .os-frame { padding-left: 64px; }
-  html[data-konsol-menu="dar"] .os-konsol .os-yan-etiket,
-  html[data-konsol-menu="dar"] .os-konsol .os-yan-ad { display: none; }
+  html[data-konsol-menu="dar"] .os-konsol .os-yan-etiket { display: none; }
+  html[data-konsol-menu="dar"] .os-konsol .os-yan-logo { display: none; }
+  html[data-konsol-menu="dar"] .os-konsol .os-yan-isaret { display: grid; }
   html[data-konsol-menu="dar"] .os-konsol .os-yan-oge,
   html[data-konsol-menu="dar"] .os-konsol .os-yan-daralt,
   html[data-konsol-menu="dar"] .os-konsol .os-yan-marka { justify-content: center; gap: 0; padding-inline: 0; }

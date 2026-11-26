@@ -50,8 +50,48 @@ const dizin = process.env.SAKLA ?? fs.mkdtempSync(path.join(os.tmpdir(), "yerles
 if (process.env.SAKLA) fs.mkdirSync(dizin, { recursive: true });
 const shim = path.join(dizin, "shim");
 fs.mkdirSync(shim);
-fs.writeFileSync(path.join(shim, "link.tsx"), `export default function Link({ href, children, prefetch, scroll, replace, ...p }) { return <a href={typeof href === "string" ? href : "#"} {...p}>{children}</a>; }`);
-fs.writeFileSync(path.join(shim, "navigation.ts"), `export const usePathname = () => window.__yol || "/panel"; export const useSearchParams = () => new URLSearchParams(); export const useRouter = () => ({ push(){}, replace(){}, refresh(){} });`);
+/*
+  GEZİNME ŞİMİ (26.11.2026). Rota artık ölçülen şeyin parçası: ürün
+  kartının bölümü adreste (?bolum=) ve kabul tıklamayla başlıyor —
+  tıkla, adres değişsin, içerik ona uysun; geri/ileri da çalışsın.
+
+  Adres HASH'te tutuluyor: sayfa file:// ile açıldığı için
+  history.pushState yol DEĞİŞTİREMİYOR (kaynak opak), ama hash
+  değiştirebiliyor. Böylece tarayıcının GERÇEK geçmişi kullanılıyor:
+  geri/ileri popstate üretiyor, yenileme hash'i koruyor.
+*/
+fs.writeFileSync(path.join(shim, "link.tsx"), `import { yonlendir } from "./navigation";
+export default function Link({ href, children, prefetch, scroll, replace, onClick, ...p }) {
+  const yol = typeof href === "string" ? href : "#";
+  return <a href={"#" + yol} {...p} onClick={(o) => { onClick?.(o); if (!o.defaultPrevented) { o.preventDefault(); yonlendir(yol); } }}>{children}</a>;
+}`);
+fs.writeFileSync(path.join(shim, "navigation.ts"), `import { useSyncExternalStore } from "react";
+const dinleyiciler = new Set();
+const bildir = () => { for (const f of dinleyiciler) f(); };
+const abone = (f) => { dinleyiciler.add(f); return () => dinleyiciler.delete(f); };
+/** Geçerli adres: hash varsa o, yoksa sayfanın kurulum adresi. */
+function adres() {
+  const h = location.hash.slice(1);
+  if (h) return h;
+  const p = new URLSearchParams(location.search);
+  const yol = p.get("yol") || window.__yol || "/panel";
+  const bolum = p.get("bolum");
+  return bolum ? yol + "?bolum=" + bolum : yol;
+}
+let anlik = adres();
+const tazele = () => { const y = adres(); if (y !== anlik) { anlik = y; bildir(); } };
+window.addEventListener("hashchange", tazele);
+window.addEventListener("popstate", tazele);
+export function yonlendir(hedef) {
+  history.pushState({}, "", "#" + hedef);
+  anlik = hedef;
+  bildir();
+}
+const oku = () => anlik;
+export const usePathname = () => useSyncExternalStore(abone, oku, oku).split("?")[0];
+export const useSearchParams = () => new URLSearchParams(useSyncExternalStore(abone, oku, oku).split("?")[1] || "");
+export const useRouter = () => ({ push: yonlendir, replace: yonlendir, refresh(){}, back(){ history.back(); }, forward(){ history.forward(); } });
+`);
 /* Sayfa file:// ile açılıyor; "/brand/..." gibi kök yollar dosya
    sisteminin köküne düşüyor ve logo kırık çıkıyordu. Şim, kök yolları
    deponun public/ dizinine çeviriyor. */
@@ -71,9 +111,15 @@ import { ThemeToggle } from ${a("app/panel/theme-toggle.tsx")};
 import { OsSimge as OsSimgeDuz } from ${a("app/panel/os/os-icons.tsx")};
 import { UrunPerformansiKarti, OncelikliIslerKarti } from "@/app/panel/konsol-urun-performansi";
 import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
+import { ArvoOsIsareti } from "@/app/panel/os/arvoos-markasi";
+import { bolumAdresi, bolumSirasi, urunBolumu } from "@/lib/konsol/urun-bolumleri";
+import { OsBolumMenusu } from "@/app/panel/os/os-bolum-menusu";
 import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-bakis";
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
 import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
+import { useSearchParams } from "next/navigation";
+import { MobilSatir } from "@/app/panel/crm/table-cells";
+import Link from "next/link";
 import { konsolUygulamalari } from ${a("app/panel/os/konsol-apps.ts")};
 ${yeniKurulum ? `import { KurulumOzeti } from ${a("app/panel/os/kurulum-ozeti.tsx")};` : ""}
 const sayfa = new URLSearchParams(location.search).get("sayfa") || "ana";
@@ -221,6 +267,17 @@ function Konsol() {
     { kod: "arc", ad: "ArvoARC", aktifMusteri: { durum: "var", deger: 316 }, donusum: { durum: "okunamadi" }, tahsilat: { durum: "var", deger: 184900 } },
     { kod: "randevu", ad: "ArvoCal", aktifMusteri: { durum: "var", deger: 427 }, donusum: { durum: "kaynak_yok" }, tahsilat: { durum: "var", deger: 160750 } },
   ];
+  /*
+    ?durum=bos: veri DURUMLARININ kanıtı. Dolu liste varsayılan;
+    bu değişkende öncelikli işler boş ("Bekleyen iş yok"), bir ürünün
+    dönüşümü "Dönemde deneme yok" (payda sıfır — yüzde YAZILMAZ) ve
+    kuyruğun bir kalemi okunamamış durumda. Üçü de üretimde tek tek
+    çizilebilen hâller ve ekranda farklı metinler üretiyor.
+  */
+  const bosDurum = new URLSearchParams(location.search).get("durum") === "bos";
+  /* Dönüşümün payda-sıfır hâli: oran null → "Dönemde deneme yok". */
+  const URUN_DURUMLARI = URUN_SATIRLARI.map((r) =>
+    r.kod === "arvolab" ? { ...r, donusum: { durum: "var", deger: { denemeye: 0, ucretliye: 0, oran: null } } } : r);
   const ONCELIKLI = [
     { anahtar: "o1", urun: "ArvoLab", baslik: "Ödeme bildirimi", alt: "Akademik Merkez Danışmanlık A.Ş. · ₺24.900", href: "/panel/platform/payments" },
     { anahtar: "o2", urun: "ArvoCal", baslik: "Yaklaşan yenileme", alt: "Yıldız Eğitim Kurumları · 3 gün kaldı", href: "/panel/platform/musteriler/1" },
@@ -233,12 +290,12 @@ function Konsol() {
     { anahtar: "genel", etiket: "Genel Bakış", yer: "liste",
       icerik: (
         <div className="konsol-genel">
-          <UrunPerformansiKarti satirlar={URUN_SATIRLARI} olcut="musteri"
+          <UrunPerformansiKarti satirlar={bosDurum ? URUN_DURUMLARI : URUN_SATIRLARI} olcut="musteri"
             donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
             para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
             secici={<DonemSecici secili="30g" taban="/panel" />}
             olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
-          <OncelikliIslerKarti isler={ONCELIKLI} okunamayan={[]} />
+          <OncelikliIslerKarti isler={bosDurum ? [] : ONCELIKLI} okunamayan={bosDurum ? ["Destek kuyruğu"] : []} />
         </div>
       ) },
     { anahtar: "isler", etiket: "Bugünün İşleri", yer: "liste", icerik: islerPaneli },
@@ -270,21 +327,19 @@ function Konsol() {
     ölçüm var olmayan bir sayfayı ölçer.
   */
   return (
-    <GenelBakis baslik="Genel Bakış" sinif="dash-sabit konsol-ana">
+    <GenelBakis baslik="Genel Bakış" sinif="dash-sabit konsol-ana"
+      eylem={<DonemSecici secili="30g" taban="/panel" />}>
       <p className="dash-uyari konsol-uyari" data-tone="danger" role="alert">
         <span aria-hidden="true" />
         <span><b>3 ürün köprüsü yanıt vermiyor · 2 veri kaynağı okunamadı</b></span>
         <a className="konsol-uyari-bag" href="/panel/platform/saglik">Sistem sağlığı</a>
       </p>
-      <div className="konsol-arac">
-        <DonemSecici secili="30g" taban="/panel" />
-      </div>
       <div className="konsol-genel">
-        <UrunPerformansiKarti satirlar={URUN_SATIRLARI} olcut="musteri"
+        <UrunPerformansiKarti satirlar={bosDurum ? URUN_DURUMLARI : URUN_SATIRLARI} olcut="musteri"
           donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
           para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
           olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
-        <OncelikliIslerKarti isler={ONCELIKLI} okunamayan={[]} />
+        <OncelikliIslerKarti isler={bosDurum ? [] : ONCELIKLI} okunamayan={bosDurum ? ["Destek kuyruğu"] : []} />
       </div>
     </GenelBakis>
   );
@@ -303,35 +358,57 @@ function UrunDetay() {
     tahsilat: { durum: "var", deger: 128450 },
   };
   const donem = { kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" };
+  /*
+    ÜRÜN İÇİ BÖLÜM ADRESTE (26.11.2026). Üretimdeki kurulumun aynısı:
+    gerçek TalepAkis, bölüm başına adres ve adresten gelen seçim
+    (lib/konsol/urun-bolumleri.ts). Paneller ÜRÜNE AİT içerik taşıyor —
+    düzenek "Abonelikler" derken başka bir ürünün listesini
+    göstermemeli; her panel data-bolum ile işaretli, ölçüm görünen
+    paneli adresle karşılaştırıyor.
+  */
+  const taban = "/panel/platform/urunler/arvolab";
+  const sorgu = useSearchParams();
+  const secilenBolum = urunBolumu(sorgu.get("bolum"));
+  const bolumler = [
+    { anahtar: "genel-bakis", etiket: "Genel Bakış" },
+    { anahtar: "musteriler", etiket: "Müşteriler · 42" },
+    { anahtar: "fiyat", etiket: "Fiyat basamakları" },
+    { anahtar: "abonelikler", etiket: "Abonelikler · 248" },
+    { anahtar: "tahsilat", etiket: "Tahsilat" },
+    { anahtar: "destek", etiket: "Destek" },
+  ];
+  const seciliSira = bolumSirasi(bolumler.map((b) => b.anahtar), secilenBolum);
+  const aboneler = [
+    ["Zeynep A.", "Pro", "Aylık", "₺1.490"],
+    ["Mert K.", "Plus", "Yıllık", "₺9.900"],
+    ["Elif D.", "Standart", "Aylık", "₺790"],
+  ];
+  const basitPanel = (anahtar, baslik, govde) => (
+    <section data-bolum={anahtar} key={anahtar}>
+      <div className="ugb">
+        <h2>{baslik}</h2>
+        {govde}
+      </div>
+    </section>
+  );
   return (
     <main className="plt talep cari ekip urun-sayfa liste-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
-          <small className="panel-kicker">ÜRÜNLER · LB</small>
+          <small className="panel-kicker"><Link href="/panel/platform/urunler">ÜRÜNLER</Link> · LB</small>
           <h1>ArvoLab</h1>
           <p className="ek-alt">Akademik yazım ve editöryal kontrol · lab.arvo-os.com</p>
         </div>
         <div className="talep-bas-eylem">
-          <DonemSecici secili="30g" taban="/panel/platform/urunler/arvolab" />
+          <DonemSecici secili="30g" taban={taban} ek={secilenBolum === "genel-bakis" ? undefined : "bolum=" + secilenBolum} />
         </div>
       </header>
       <div className="talep-izgara ekip-izgara">
-        <section className="talep-akis panel-card sy-kart">
-          {/* Üretimdeki TalepAkis gibi: dar pencere seçicisi ve şerit
-              birlikte çiziliyor, hangisinin görüneceğine CSS karar veriyor. */}
-          <label className="talep-akis-sec">
-            <select aria-label="ArvoLab kartı" defaultValue={0}>
-              {["Genel Bakış", "Müşteriler · 42", "Fiyat basamakları", "Abonelikler · 248", "Tahsilat", "Destek"].map((ad, i) => (
-                <option key={ad} value={i}>{ad}</option>
-              ))}
-            </select>
-          </label>
-          <div className="talep-akis-sekmeler" role="tablist" aria-label="ArvoLab kartı">
-            {["Genel Bakış", "Müşteriler · 42", "Fiyat basamakları", "Abonelikler · 248", "Tahsilat", "Destek"].map((ad, i) => (
-              <button key={ad} type="button" role="tab" aria-selected={i === 0} tabIndex={i === 0 ? 0 : -1} className={i === 0 ? "is-active" : undefined}>{ad}</button>
-            ))}
-          </div>
-          <section>
+        <TalepAkis kimlik="urun-kart" sinif="sy-kart" darSecici etiket="ArvoLab kartı"
+          sekmeler={bolumler.map((b) => b.etiket)}
+          adresler={bolumler.map((b) => bolumAdresi(taban, b.anahtar, null))}
+          baslangic={seciliSira}>
+          <section data-bolum="genel-bakis">
             <UrunGenelBakis satir={satir} donem={donem}
               para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
               bekleyenler={[
@@ -340,7 +417,50 @@ function UrunDetay() {
                 { anahtar: "b3", baslik: "Yanıt bekleyen talepler", alt: "Destek ekranında", href: "#", eylem: "Görüntüle" },
               ]} />
           </section>
-        </section>
+          {basitPanel("musteriler", "ArvoLab müşterileri", (
+            <p className="ugb-bos">42 kurum ArvoLab lisansı kullanıyor.</p>
+          ))}
+          {basitPanel("fiyat", "ArvoLab fiyat basamakları", (
+            <p className="ugb-bos">Standart ₺790 · Plus ₺1.190 · Pro ₺1.490</p>
+          ))}
+          {basitPanel("abonelikler", "ArvoLab abonelikleri", (
+            /*
+              ÜRETİMDEKİ TABLO KALIBI (26.11.2026, ölçümle düzeltildi).
+              Burada önce çıplak bir <table> vardı ve 390 px'te tablo
+              364 px'lik panelin içinde 680 px çiziliyordu: paket, dönem
+              ve ücret hücreleri ekranın dışında kalıyor, yatay kaydırma
+              da olmadığı için (html/body overflow-x:clip) hiçbir yoldan
+              okunamıyordu. 680 px panel-premium.css'ten geliyor
+              (dar ekranda .panel-content table icin min-width:680px)
+              ve üretimdeki tablolar bu yüzden .talep-tablo sarmalayıcısı
+              + data-label + MobilSatir ile çiziliyor: telefonda hücreler
+              gizlenir, aynı veri tek satırda okunur. Düzenek artık o
+              kalıbı kullanıyor — ölçülen şey üretimdeki davranış.
+            */
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="ur-abone">
+                <thead><tr><th scope="col">Abone</th><th scope="col">Paket</th><th className="crm-col-date" scope="col">Dönem</th><th className="crm-col-amount" scope="col">Ücret</th></tr></thead>
+                <tbody>
+                  {aboneler.map(([ad, paket, don, ucret]) => (
+                    <tr key={ad}>
+                      <td data-label="Abone"><span className="crm-table-title">{ad}</span></td>
+                      <td data-label="Paket"><span className="crm-table-title">{paket}</span></td>
+                      <td className="crm-col-date" data-label="Dönem">{don}</td>
+                      <td className="crm-col-amount" data-label="Ücret"><span className="crm-table-title">{ucret}</span></td>
+                      <MobilSatir baslik={ad} alt={[paket, don, ucret]} />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          {basitPanel("tahsilat", "ArvoLab tahsilatı", (
+            <p className="ugb-bos">Son 30 günde ₺128.450 tahsil edildi.</p>
+          ))}
+          {basitPanel("destek", "ArvoLab destek talepleri", (
+            <p className="ugb-bos">Yanıt bekleyen 2 talep var.</p>
+          ))}
+        </TalepAkis>
       </div>
     </main>
   );
@@ -350,7 +470,10 @@ function UrunDetay() {
   "Ürünler" etkin görünmeli (etkinUygulama en uzun eşleşen yolu seçer).
   Şim usePathname'i window.__yol'dan okuyor.
 */
-window.__yol = sayfa === "urundetay" ? "/panel/platform/urunler/arvolab" : sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel";
+/* ?yol=<rota>: bağlamlı gezinmenin kanıtı için rota dışarıdan verilebilir
+   (ör. /panel/platform/billing → ana menüde Finans, şeritte Abonelikler). */
+window.__yol = new URLSearchParams(location.search).get("yol")
+  || (sayfa === "urundetay" ? "/panel/platform/urunler/arvolab" : sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel");
 
 function Kabuk() {
   /* Konsol senaryoları yeni kabuğu kullanıyor (.os-konsol): masaüstü ve
@@ -369,7 +492,9 @@ function Kabuk() {
     */}
     <header className="os-bar">
       {konsolMu ? null : <a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a>}
-      {konsolMu ? <a className="os-brand" href="/panel"><i>◇</i><span><b>Kurucu Konsolu</b></span></a> : null}
+      {/* Üretimdeki marka bloğunun aynısı: resmî işaret (app/panel/layout.tsx).
+          Masaüstü/tablette CSS gizliyor, telefonda görünen bu. */}
+      {konsolMu ? <a className="os-brand" href="/panel"><i className="os-brand-isaret" aria-hidden="true"><ArvoOsIsareti /></i><span><b>Kurucu Konsolu</b></span></a> : null}
       {konsolMu ? <OsAramaDugmesi /> : null}
       {konsolMu ? (
         <div className="os-bar-right">
@@ -386,17 +511,37 @@ function Kabuk() {
         </div>
       ) : null}
     </header>
-    <section className="os-workspace">${'{'}/* bölüm menüsü CRM'de layout'ta; burada yükseklik payı CSS tahmininden */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <Konsol /> : sayfa === "urundetay" ? <UrunDetay /> : <Ana />}</div></section>
+    <section className="os-workspace">{konsolMu ? <OsBolumMenusu uygulamalar={konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 })} /> : null}${'{'}/* bölüm menüsü CRM'de layout'ta; burada yükseklik payı CSS tahmininden */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <Konsol /> : sayfa === "urundetay" ? <UrunDetay /> : <Ana />}</div></section>
     <OsNavigasyon
       uygulamalar={konsolMu ? konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 }) : uygulamalar}
       digerUygulamalar={[]}
       yanMenu={konsolMu}
       yanMenuSirasi={konsolMu ? ["home", "urunler", "musteriler", "finans", "destek"] : undefined}
-      marka={konsolMu ? { kod: "yonetim", ad: "ArvoOS" } : undefined}
+      marka={konsolMu}
     />
   </main></div>;
 }
 createRoot(document.getElementById("kok")).render(<Kabuk />);
+/*
+  DÜZ <img> ETİKETLERİ İÇİN AYNI KÖK YOLU ŞİMİ. next/image şimi yalnızca
+  o bileşeni kapsıyor; marka dosyaları (srcset'li kelime logosu, SVG
+  işaret) düz <img> ile çiziliyor ve file:// sayfasında "/brand/..."
+  dosya sisteminin köküne düşüp KIRIK görünüyordu — ölçülmek istenen
+  şeyin ta kendisi. Kök yollar burada public/ dizinine çevriliyor.
+*/
+const KAMU_YOL = "file://" + ${JSON.stringify(path.join(KOK, "public"))};
+function kokYollariCevir() {
+  for (const g of document.querySelectorAll('img[src^="/"]')) {
+    const sr = g.getAttribute("srcset");
+    /* Düzenli ifade YOK: bu kaynak önce .mjs şablonuna, sonra üretilen
+       dosyaya giriyor ve ters bölü iki kez yutuluyor (bir kez yaşandı:
+       srcset hiç çevrilmedi, logo kırık kaldı). */
+    if (sr) g.setAttribute("srcset", sr.split(",").map((x) => x.trim()).map((x) => (x.startsWith("/") ? KAMU_YOL + x : x)).join(", "));
+    g.setAttribute("src", KAMU_YOL + g.getAttribute("src"));
+  }
+}
+kokYollariCevir();
+new MutationObserver(kokYollariCevir).observe(document.body, { childList: true, subtree: true });
 `);
 await build({
   entryPoints: [path.join(dizin, "giris.tsx")], bundle: true, outfile: path.join(dizin, "paket.js"), format: "iife",
@@ -604,6 +749,33 @@ const olc = () => {
            (26.11.2026 inceleme bulgusu): "Uygulamalar" bir sayfa değil
            pencere açıyor, vurgusu da pencereye bağlı. */
         secili: [...m.querySelectorAll(".os-yan-oge.is-active")].map((o) => (o.getAttribute("aria-label") || o.textContent || "").trim()),
+        /*
+          MARKA GÖRÜNTÜSÜ: görünen dosya gerçekten yüklendi mi ve kaç px
+          çiziliyor. Dar menüde kırık görsel simgesi çıkmıştı
+          (26.11.2026 inceleme bulgusu) — "öğe DOM'da" yetmez.
+        */
+        marka: (() => {
+          const g = [...m.querySelectorAll(".os-yan-marka img")].filter((x) => getComputedStyle(x).display !== "none" && getComputedStyle(x.parentElement).display !== "none");
+          if (!g.length) return null;
+          const r = g[0].getBoundingClientRect();
+          return {
+            biçim: g[0].closest(".os-yan-logo") ? "logo" : "isaret",
+            dosya: g[0].getAttribute("src").split("/").pop(),
+            yuklendi: g.every((x) => x.naturalWidth > 0),
+            genislik: Math.round(r.width),
+            yukseklik: Math.round(r.height),
+            /* Kaynağın kendi oranı ile çizilen oran: kutuya sıkıştırılmış
+               (ezik) bir logo buradan görünür. ORANSAL ölçülüyor —
+               görüntüleme dosyalarının yüksekliği tam sayıya yuvarlanıyor
+               (160×30, oysa tam değer 30,4) ve mutlak farkla ölçünce
+               sağlam bir logo da "bozuk" çıkıyordu. */
+            oranSapmasi: (() => {
+              const cizilen = r.width / r.height;
+              const kaynak = g[0].naturalWidth / g[0].naturalHeight;
+              return Math.abs(cizilen - kaynak) / kaynak;
+            })(),
+          };
+        })(),
         pencereAcik: document.querySelector("dialog.os-uygulamalar")?.open ?? false,
       };
     })(),
@@ -625,10 +797,21 @@ const olc = () => {
       const satirlar = kap === t ? [...t.querySelectorAll("tbody tr")] : [...liste.children];
       const son = satirlar[satirlar.length - 1];
       if (!son) return null;
-      const oncekiKaydirma = govde.scrollTop;
-      const kartKayabilir = govde.scrollHeight > govde.clientHeight + 1;
-      govde.scrollTop = govde.scrollHeight;
-      const g = govde.getBoundingClientRect();
+      /*
+        KAYDIRICI DEĞİŞEBİLİYOR (26.11.2026). Masaüstünde kaydırma
+        kartın gövdesinde, 1200 px altında ANA İÇERİKTE: kart artık
+        içerik boyunda ve .panel-content kayıyor. Ölçüm hangi kabın
+        kaydığını bulup onu sona getiriyor — kartın gövdesini kaydırmaya
+        çalışmak, içerik kayarken "son ürüne ulaşılamıyor" diyordu.
+      */
+      const icerik = document.querySelector(".panel-content");
+      const kayan = govde.scrollHeight > govde.clientHeight + 1 ? govde
+        : icerik && icerik.scrollHeight > icerik.clientHeight + 1 ? icerik : null;
+      const oncekiKaydirma = kayan ? kayan.scrollTop : 0;
+      const kartKayabilir = Boolean(kayan);
+      if (kayan) kayan.scrollTop = kayan.scrollHeight;
+      /* Görünürlük penceresi: kaydıran kap (yoksa kartın gövdesi). */
+      const g = (kayan ?? govde).getBoundingClientRect();
       const b = son.getBoundingClientRect();
       const tam = b.top >= g.top - 1 && b.bottom <= g.bottom + 1;
       /* Eylem de erişilebilir olmalı: bağlantı satırın kendisi (liste)
@@ -642,8 +825,18 @@ const olc = () => {
         bag.focus();
         klavye = document.activeElement === bag;
       }
-      govde.scrollTop = oncekiKaydirma;
-      return { kartKayabilir, hepsiSigiyor: !kartKayabilir, tam, dokunma, klavye, metin: (son.textContent ?? "").trim().slice(0, 14) };
+      /*
+        ODAK HALKASI DA TAM GÖRÜNMELİ (26.11.2026, ürün kararı):
+        halka satırın dışına 2 px taşıyor; satırın kenarına yapışmış bir
+        satırda klavye kullanıcısı nereye geldiğini göremiyor.
+      */
+      const halka = bag ? (() => {
+        const r = bag.getBoundingClientRect();
+        const pay = 4;
+        return r.top - pay >= g.top - 1 && r.bottom + pay <= g.bottom + 1;
+      })() : null;
+      if (kayan) kayan.scrollTop = oncekiKaydirma;
+      return { kartKayabilir, hepsiSigiyor: !kartKayabilir, tam, dokunma, klavye, halka, metin: (son.textContent ?? "").trim().slice(0, 14) };
     })(),
     /*
       Öncelikli işlerin İLK kaydı ve eylemi tam görünmeli: kartın
@@ -705,6 +898,99 @@ const olc = () => {
       sağda 296 px boşluk, 1440'ta seçiciden 350 px geride
       (26.11.2026 inceleme bulgusu).
     */
+    /*
+      BAĞLAMLI GEZİNME (26.11.2026): ana menü hangi MODÜLDE, şerit hangi
+      ALT BÖLÜMDE olunduğunu göstermeli ve sayfa vurgusu tek olmalı.
+    */
+    /*
+      ÜRÜN İÇİ BÖLÜM ADRESLE AYNI OLMALI (26.11.2026, ürün kararı).
+      Sekme seçimi bileşenin kendi durumundayken adres bir şey, ekran
+      başka bir şey söyleyebiliyordu: paylaşılan bağlantı Genel Bakış'ı
+      açıyordu. Ölçü dörtlü: adresteki bölüm, seçili sekme, GÖRÜNEN
+      panelin işareti ve ürün başlığı.
+    */
+    urunBolumu: (() => {
+      const kart = document.querySelector("main.urun-sayfa .talep-akis");
+      if (!kart) return null;
+      const adres = (location.hash.slice(1) || "").split("?")[1] || "";
+      const istenen = new URLSearchParams(adres).get("bolum") || "genel-bakis";
+      const panel = [...kart.querySelectorAll('[role="tabpanel"]')].find((p) => !p.hidden);
+      const isaretli = panel?.querySelector("[data-bolum]") ?? (panel?.firstElementChild?.hasAttribute?.("data-bolum") ? panel.firstElementChild : null);
+      return {
+        istenen,
+        gorunen: isaretli?.getAttribute("data-bolum") ?? null,
+        seciliSekme: [...kart.querySelectorAll('.talep-akis-sekmeler [aria-selected="true"]')].map((e) => e.textContent.trim()),
+        baslik: document.querySelector("main.urun-sayfa h1")?.textContent.trim() ?? null,
+        /* Sekmeler bağlantı mı: adres paylaşılabilir olmalı. */
+        baglantili: Boolean(kart.querySelector(".talep-akis-sekmeler a[href]")),
+        /*
+          PANEL BAŞLIĞININ YANINDA ALANLAR DA OKUNMALI (26.11.2026,
+          inceleme bulgusu). 390 px'te abonelik tablosu 364 px'lik
+          panelde 680 px çiziliyordu: paket, dönem ve ücret ekranın
+          dışında kalıyor ve yatay kaydırma da olmadığı için
+          (html/body overflow-x:clip) hiçbir yoldan okunamıyordu.
+          "Panel görünüyor" yetmez; sütun başlığı kadar DEĞER de
+          ekranda olmalı. Telefonda değerler tek satırda (MobilSatir),
+          masaüstünde hücrelerde — ölçüm ikisini de sayar.
+        */
+        alanlar: (() => {
+          if (!panel) return null;
+          const ekranG = document.documentElement.clientWidth;
+          const gorunurMu = (el) => {
+            const c = getComputedStyle(el);
+            if (c.display === "none" || c.visibility === "hidden") return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && r.left >= -1 && r.right <= ekranG + 1;
+          };
+          const tablo = panel.querySelector("table");
+          if (!tablo) return null;
+          const baslikSayisi = tablo.querySelectorAll("thead th").length;
+          const ilkSatir = tablo.querySelector("tbody tr");
+          if (!ilkSatir) return null;
+          const mobil = ilkSatir.querySelector(".mobil-satir");
+          const parcalar = mobil && gorunurMu(mobil)
+            ? [...mobil.querySelectorAll(".ms-baslik-metin, .ms-alt, .status-pill")]
+            : [...ilkSatir.children].filter((c) => !c.classList.contains("mobil-satir"));
+          const okunan = parcalar.filter((e) => gorunurMu(e) && e.textContent.trim());
+          /* Mobil satırda alt bilgiler tek metinde "·" ile birleşiyor. */
+          const alanSayisi = mobil && gorunurMu(mobil)
+            ? okunan.reduce((t2, e) => t2 + (e.classList.contains("ms-alt") ? e.textContent.split("·").filter((x) => x.trim()).length : 1), 0)
+            : okunan.length;
+          return {
+            bicim: mobil && gorunurMu(mobil) ? "mobil-satir" : "tablo",
+            beklenen: baslikSayisi,
+            okunan: alanSayisi,
+            metin: okunan.map((e) => e.textContent.trim()).join(" · ").slice(0, 70),
+            yatayKayiyor: panel.scrollWidth > panel.clientWidth + 1,
+            tasanOge: [...panel.querySelectorAll("td,th,.ms-baslik-metin,.ms-alt")].filter((e) => {
+              const r = e.getBoundingClientRect();
+              return r.width > 0 && getComputedStyle(e).display !== "none" && r.right > ekranG + 1;
+            }).length,
+          };
+        })(),
+      };
+    })(),
+    bolumSeridi: (() => {
+      const n = document.querySelector(".os-bolumler");
+      if (!n) return null;
+      const c = getComputedStyle(n);
+      if (c.display === "none") return null;
+      const baglar = [...n.querySelectorAll(".os-bolumler-liste a")];
+      const liste = n.querySelector(".os-bolumler-liste");
+      const dugme = n.querySelector(".os-bolumler-ac");
+      const dugmeGorunur = dugme ? getComputedStyle(dugme).display !== "none" : false;
+      let odaklanamayan = 0;
+      if (!dugmeGorunur) for (const a of baglar) { a.focus(); if (document.activeElement !== a) odaklanamayan += 1; }
+      return {
+        bicim: dugmeGorunur ? "secici" : "serit",
+        sayi: baglar.length,
+        etkin: baglar.filter((a) => a.getAttribute("aria-current") === "page").map((a) => a.textContent.trim()),
+        /* Dar ekranda seçili bölümün ADI düğmede yazmalı. */
+        dugmeMetni: dugmeGorunur ? dugme.textContent.trim() : null,
+        yatayKayiyor: liste ? liste.scrollWidth > liste.clientWidth + 1 : false,
+        odaklanamayan,
+      };
+    })(),
     kartHizasi: (() => {
       const kart = document.querySelector("main.urun-sayfa>.talep-izgara>.talep-akis");
       const eylem = document.querySelector("main.urun-sayfa>.talep-bas .talep-bas-eylem");
@@ -828,13 +1114,19 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          görüntü kümesi. Tercih üretimde localStorage'dan geliyor; burada
          adresle veriliyor (sayfanın başındaki not). */
       const menuEki = process.env.MENU === "dar" ? "&menu=dar" : "";
-      await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}${menuEki}`);
+      /* BOLUM=<anahtar>: ürün detayı o bölümle AÇILIR (adres hash'te,
+         üretimde ?bolum=). Abonelikler gibi tablo taşıyan bölümlerin
+         ölçülmesi için gerekli — varsayılan açılış Genel Bakış. */
+      const bolumEki = process.env.BOLUM && s === "urundetay"
+        ? `#/panel/platform/urunler/arvolab?bolum=${process.env.BOLUM}` : "";
+      await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}${menuEki}${bolumEki}`);
       await sayfa.waitForTimeout(300);
       const o = await sayfa.evaluate(olc);
       if (sayfaHatalari.length) o.sayfaHatasi = sayfaHatalari;
       /* Masaüstü sayılan boyut: dört ürünün kaydırmasız okunması bu
          boyutlarda bekleniyor. */
       o.masaustu = w >= 1200 && h >= 800;
+
       /* Mobil: kompakt satır düzeninin geçerli olduğu genişlik
          (CSS eşiğiyle aynı — 560 px). Dört ürün orada da ilk
          görünümde karşılaştırılabilmeli. */
@@ -844,7 +1136,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          görünür, kullanıcının açılışta gördüğü ekran değil. */
       if (process.env.EKRAN) {
         fs.mkdirSync(process.env.EKRAN, { recursive: true });
-        await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}${process.env.MENU === "dar" ? "-menu-dar" : ""}.png`) });
+        await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}${process.env.MENU === "dar" ? "-menu-dar" : ""}${process.env.BOLUM && s === "urundetay" ? `-${process.env.BOLUM}` : ""}.png`) });
       }
       // Kurulum: eski kartta başlık kaydırmayla kayıyor mu; yenide pencere ve odak dönüşü.
       if (s === "ana") {
@@ -877,6 +1169,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         üstünü başka bir şey örtmüyor), klavyeyle odaklanabiliyor mu ve
         dock'un üstünde mi.
       */
+      const konsolSenaryosu = s === "konsol" || s === "urundetay";
       if (s === "konsol") {
         o.erisim = await sayfa.evaluate(() => {
           const gorunur2 = (el) => {
@@ -895,6 +1188,26 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
                bütün satırları ölçmek baştakileri haksız yere
                "erişilemez" sayıyordu. */
             el.scrollIntoView({ block: "nearest", inline: "nearest" });
+            /*
+              ALT ÇUBUĞUN ARKASI "GÖRÜNÜR" SAYILMAZ (26.11.2026).
+              scrollIntoView "nearest" öğeyi kaydırma kutusuna sokar
+              sokmaz duruyor; kutunun alt kenarı ise alt çubuğun
+              ARKASINDA. Kullanıcı o satırı görmek için biraz daha
+              kaydırıyor — ölçüm de aynısını yapıyor: dock'un üstüne
+              çıkana kadar en yakın kaydırılabilir atayı ilerletiyor.
+            */
+            if (dock) {
+              let kutu = el.getBoundingClientRect();
+              if (kutu.bottom > dock.top) {
+                for (let ata = el.parentElement; ata; ata = ata.parentElement) {
+                  if (ata.scrollHeight <= ata.clientHeight + 1) continue;
+                  const once = ata.scrollTop;
+                  ata.scrollTop = Math.min(ata.scrollHeight, once + (kutu.bottom - dock.top) + 8);
+                  kutu = el.getBoundingClientRect();
+                  if (kutu.bottom <= dock.top || ata.scrollTop === once) break;
+                }
+              }
+            }
             const r = el.getBoundingClientRect();
             const hedef = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
             el.focus();
@@ -926,6 +1239,49 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
             sonIs: erisilir(sonIs),
             olcutSecici: Boolean(document.querySelector(".kds-olcut")),
           };
+        });
+      }
+      /*
+        SONA KAYDIRINCA NE OLUYOR (26.11.2026, ürün kararı). 1200 px
+        altında konsol ekranları artık sayfa olarak kayıyor; orada
+        "içerik dock'un altında mı" sorusunun cevabı ilk görünümde
+        değil, SONA KAYDIRILMIŞ hâlde aranır. Alt çubuğun arkasında
+        kalan bir son satır, kullanıcının hiçbir şekilde göremediği
+        satırdır.
+      */
+      if (konsolSenaryosu) {
+        o.sonaKaydir = await sayfa.evaluate(() => {
+          const gorunurMu = (el) => {
+            if (!el) return false;
+            const c = getComputedStyle(el);
+            if (c.display === "none" || c.visibility === "hidden") return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0;
+          };
+          /*
+            KAYDIRICI SAYFA DEĞİL, İÇERİK. html ve body'de
+            overflow-x:clip var (panel.css) ve Chromium o durumda dikey
+            kaydırmayı da kapatıyor: taşan içerik kaydırılamadan
+            kırpılıyor. Dar ekranda kaydırma .panel-content'te.
+          */
+          const icerik = document.querySelector(".panel-content");
+          const kok = icerik && icerik.scrollHeight > icerik.clientHeight + 1 ? icerik : document.scrollingElement;
+          const kayiyor = kok.scrollHeight > kok.clientHeight + 1;
+          kok.scrollTop = kok.scrollHeight;
+          const dockE = document.querySelector(".os-dock");
+          const dock = gorunurMu(dockE) ? dockE.getBoundingClientRect() : null;
+          /* Son içerik: sayfanın en altındaki görünür kart ya da bağlantı. */
+          const adaylar = [...document.querySelectorAll(".panel-content .dash-card, .panel-content .panel-card, .panel-content .sy-kart, .panel-content .dash-card-link")].filter(gorunurMu);
+          const alt = adaylar.length ? Math.max(...adaylar.map((e) => e.getBoundingClientRect().bottom)) : null;
+          const sonuc = {
+            kayiyor,
+            sonIcerikAlt: alt === null ? null : Math.round(alt),
+            dockUstu: dock ? Math.round(dock.top) : null,
+            ortuyor: alt === null || !dock ? false : alt > dock.top + 1,
+            kalanKaydirma: Math.round(kok.scrollHeight - kok.clientHeight - kok.scrollTop),
+          };
+          kok.scrollTop = 0;
+          return sonuc;
         });
       }
       // Görünüm seçici açıksa (dar/kısa ekran) her paneli sırayla seçip ölç:
@@ -974,7 +1330,7 @@ await tarayici.close();
 if (!process.env.SAKLA) fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, yanMenu: o.zincir?.yanMenu, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik, kartHizasi: o.zincir?.kartHizasi }));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, yanMenu: o.zincir?.yanMenu, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik, kartHizasi: o.zincir?.kartHizasi, bolumSeridi: o.zincir?.bolumSeridi, urunBolumu: o.zincir?.urunBolumu }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);

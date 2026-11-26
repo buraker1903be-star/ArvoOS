@@ -91,8 +91,14 @@ test("sol menüde 'Uygulamalar' vurgusu PENCEREYE bağlı, rotaya değil", () =>
   */
   const tsx = oku("app/panel/os/os-navigasyon.tsx");
   const yan = tsx.slice(tsx.indexOf("function YanMenu"));
-  assert.match(yan, /className=\{pencereAcik \? "os-yan-oge is-active"/);
+  /* Düğme is-active ALMIYOR: o sınıf etkin SAYFAYI işaretliyor ve
+     ikisi aynı görünürse "hangi sayfadayım" okunmuyor. Pencere durumu
+     aria-expanded'da, görünümü de ondan geliyor (os-yanmenu.css). */
+  assert.match(yan, /aria-expanded=\{pencereAcik\}/);
+  assert.doesNotMatch(yan, /pencereAcik \? "os-yan-oge is-active"/);
   assert.doesNotMatch(yan, /panelEtkin/);
+  const css = oku("app/panel/os/os-yanmenu.css");
+  assert.match(css, /\.os-yan-alt \.os-yan-oge\[aria-expanded="true"\]/);
   /* Durumun sıfırlanması: close(), Esc ve zemine tıklama aynı olayı
      veriyor, pencerenin kendisi dinliyor. Dinleyici düşerse düğme
      pencere kapandıktan sonra da vurgulu kalır. */
@@ -116,4 +122,112 @@ test("ürün detayı ızgarası tek sütun: kart içerik genişliğini kullanıy
   assert.doesNotMatch(sayfa, /className="[^"]*personel-iki/);
   const css = oku("app/panel/platform/urunler/[urun]/urun-detay.css");
   assert.match(css, /main\.urun-sayfa>\.talep-izgara\{grid-template-columns:minmax\(0,1fr\)\}/);
+});
+
+test("menüde RESMÎ marka dosyaları kullanılıyor", () => {
+  /*
+    26.11.2026 inceleme bulgusu: dar menüde kırık görsel simgesi vardı ve
+    menüdeki işaret resmî dosya değildi (public/brand/yonetim.svg, motifin
+    iki çemberle çizilmiş yaklaşığı). Açık menüde resmî KELİME LOGOSU,
+    dar menüde ve tablet rayında resmî İŞARET duruyor.
+  */
+  const marka = oku("app/panel/os/arvoos-markasi.tsx");
+  assert.match(marka, /\/brand\/arvoos-320\.png/);
+  assert.match(marka, /\/brand\/arvoos-on-dark-320\.png/);
+  assert.match(marka, /\/brand\/arvoos-simge-68\.png/);
+  assert.match(marka, /\/brand\/arvoos-simge-on-dark-68\.png/);
+  /* Yorumda geçiyor (neden değiştiğini anlatıyor); kullanımda geçmemeli. */
+  assert.doesNotMatch(marka, /src="[^"]*yonetim\.svg/);
+
+  const tsx = oku("app/panel/os/os-navigasyon.tsx");
+  assert.doesNotMatch(tsx, /marka="yonetim"|kod: "yonetim"/);
+  /* Telefonun üst çubuğundaki "◇" karakteri de kalktı. */
+  assert.doesNotMatch(oku("app/panel/layout.tsx"), /aria-hidden="true">◇/);
+
+  /*
+    Hangi biçimin görüneceğine CSS karar veriyor; JS ile seçmek menü
+    daraltılırken bir kare yanlış logo demek.
+  */
+  const css = oku("app/panel/os/os-yanmenu.css");
+  assert.match(css, /\.os-yan-logo \{ display: none; \}/);
+  assert.match(css, /html\[data-konsol-menu="dar"\] \.os-konsol \.os-yan-logo \{ display: none; \}/);
+});
+
+test("üç menü durumu üç farklı işaret taşıyor", () => {
+  /*
+    26.11.2026 inceleme bulgusu: açık temada üzerine gelinen "Destek",
+    seçili "Genel Bakış" kadar baskın görünüyordu — iki zemin neredeyse
+    aynı açıklıkta (#f9fafb / #eef1f6) ve hover yazısı daha koyuydu.
+    Etkin girdi artık zemin + sol çubuk + kalın yazı taşıyor; üzerine
+    gelme yalnızca nötr bir yıkama, odak ise halka.
+  */
+  const css = oku("app/panel/os/os-yanmenu.css");
+  assert.match(css, /--os-yan-vurgu: color-mix/);
+  assert.match(css, /--os-yan-etkin: color-mix/);
+  assert.match(css, /\.os-yan-oge\.is-active::before/);
+  assert.match(css, /\.os-yan-oge:focus-visible,[\s\S]{0,80}outline: 2px solid var\(--primary\)/);
+  /* Üzerine gelme artık --surface-2 kullanmıyor: etkin zeminle aynı
+     açıklıktaydı. */
+  assert.doesNotMatch(css.slice(css.indexOf(".os-konsol .os-yan-oge:hover")), /^[\s\S]{0,200}--surface-2/);
+});
+
+test("Genel Bakış: dönem seçici başlık satırında, kartlar içerik boyunda", () => {
+  /*
+    26.11.2026 inceleme bulgusu: ürün tablosunun son satırı ile
+    "Ürünler" bağlantısı arasında, boş "Öncelikli işler" ile "Bugünün
+    işleri" arasında kartın payından artan boşluk kalıyordu. Kartlar
+    kalan yüksekliği 3:2 bölüşüyor ve bağlantı margin-top:auto ile
+    kartın dibine itiliyordu.
+  */
+  const sayfa = oku("app/panel/konsol-ana-sayfa.tsx");
+  assert.match(sayfa, /eylem=\{<DonemSecici/);
+  assert.doesNotMatch(sayfa, /konsol-arac/);
+
+  const css = oku("app/panel/konsol-urun-performansi.css");
+  assert.match(css, /\.konsol-genel>\.dash-card\{[^}]*flex:0 1 auto/);
+  assert.match(css, /\.konsol-genel \.dash-card-link\{flex:none;margin-top:0\}/);
+  assert.doesNotMatch(css, /flex:3 3 0|flex:2 2 0/);
+  /* Geniş masaüstünde yan yana; eşik üç menü durumu için ayrı yazılı. */
+  assert.match(css, /@media \(min-width:1328px\)\{[\s\S]{0,120}flex-direction:row/);
+  assert.match(css, /html\[data-konsol-menu="dar"\] \.konsol-genel\{flex-direction:row/);
+});
+
+test("bağlamlı gezinme: rota → modül + alt bölüm", async () => {
+  /*
+    26.11.2026 ürün kararı: ana navigasyon etkin MODÜLÜ, sayfa içindeki
+    navigasyon etkin ALT BÖLÜMÜ gösterir ve ikisi de URL'den çözülür.
+    URL'den çözüldüğü için doğrudan giriş, yenileme ve geri/ileri aynı
+    sonucu verir — durum bellekte tutulmuyor.
+  */
+  const { konsolUygulamalari } = await import("../../app/panel/os/konsol-apps");
+  const { etkinUygulama } = await import("../../app/panel/os/os-apps");
+  const { etkinBolum } = await import("../../app/panel/os/os-bolumler");
+  const uygulamalar = konsolUygulamalari();
+
+  const coz = (yol: string) => {
+    const u = etkinUygulama(uygulamalar, yol);
+    const b = u?.bolumler?.length ? etkinBolum(u.bolumler, yol, "") : null;
+    return [u?.key, b?.key];
+  };
+
+  /* Brifteki akış: Ürünler → ArvoLab → Abonelikler → ürün listesine dönüş. */
+  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", "urunler"]);
+  assert.deepEqual(coz("/panel/platform/urunler/arvolab"), ["urunler", "urunler"]);
+  assert.deepEqual(coz("/panel/platform/billing"), ["finans", "abonelikler"]);
+  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", "urunler"]);
+
+  /* Finans'ta alt bölüm geçişi. */
+  assert.deepEqual(coz("/panel/platform/tahsilat"), ["finans", "tahsilatlar"]);
+  assert.deepEqual(coz("/panel/platform/payments"), ["finans", "odemeler"]);
+
+  /* Öteki modüller. */
+  assert.deepEqual(coz("/panel/platform/musteriler"), ["musteriler", "musteriler"]);
+  assert.deepEqual(coz("/panel/platform/saglik"), ["sistem", "saglik"]);
+  assert.deepEqual(coz("/panel"), ["home", undefined]);
+
+  /* Ürün detayında SOL menüde yalnızca "Ürünler" sayfa vurgusu taşır:
+     etkin uygulama tek ve "Uygulamalar" düğmesi sayfa değil pencere. */
+  const etkin = etkinUygulama(uygulamalar, "/panel/platform/urunler/arvolab");
+  assert.equal(etkin?.key, "urunler");
+  assert.equal(uygulamalar.filter((u) => etkinUygulama(uygulamalar, "/panel/platform/urunler/arvolab")?.key === u.key).length, 1);
 });
