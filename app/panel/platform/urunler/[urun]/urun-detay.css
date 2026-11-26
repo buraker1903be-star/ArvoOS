@@ -1,0 +1,78 @@
+/*
+  ÜRÜN DETAYI TEK EKRAN (26.11.2026, ürün kararı).
+
+  Yönetim ekranlarında sayfa iki eksende de kaymaz; kaydırma yalnızca
+  kartın içindedir. Sayfa daha önce kayıt sayfası sayıldığı için
+  390×844'te 1254/844 kayıyordu. Yükseklik os-shell.css'teki
+  .liste-sayfa sözleşmesinden geliyor (üst çubuk, boşluk ve dock payı
+  oradan türetiliyor); burada yalnızca kartın içindeki zincir kuruluyor.
+  Zincirin HER halkasında min-height:0 — biri eksik kalırsa kart
+  içeriği kadar uzar ve sayfa yine kayar.
+*/
+.os-root main.urun-sayfa.liste-sayfa>.talep-izgara{flex:1 1 auto;min-height:0}
+.os-root .urun-sayfa .talep-akis.sy-kart{display:flex;flex-direction:column;min-height:0;max-height:100%}
+.os-root .urun-sayfa .talep-akis.sy-kart>.talep-akis-sekmeler{flex:0 0 auto}
+.os-root .urun-sayfa .talep-akis.sy-kart>div[role="tabpanel"],
+.os-root .urun-sayfa .talep-akis.sy-kart>section{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+}
+
+/*
+  BÖLÜMLER YATAY KAYMADAN SEÇİLİR. finans.css dar ekranda bu şeridi
+  nowrap + overflow-x:auto yapıyor ve kaydırma çubuğunu gizliyor:
+  390 px'de son iki bölüm kutunun dışında kalıyor ve varlıkları ekranda
+  hiç belli olmuyordu (konsolun kuyruk sekmelerinde ölçülen aynı kusur).
+  Burada şerit sarıyor.
+*/
+.os-root .urun-sayfa .sy-kart .talep-akis-sekmeler{flex-wrap:wrap;overflow-x:visible;row-gap:0}
+.os-root .urun-sayfa .sy-kart .talep-akis-sekmeler>*{flex:0 1 auto}
+
+/* Fiyat bölümünün kendi eylemi: başlığın sağında. */
+.urun-fiyat-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
+
+/*
+  DAR EKRANDA DA TEK EKRAN (26.11.2026, ürün kararı).
+
+  os-shell.css 1200 px altında .liste-sayfa'nın sabit yüksekliğini
+  bilerek kapatıyor (height:auto): kiracı panelinin liste sayfaları
+  telefonda kayar. Yönetim ekranlarında kural farklı — ürün detayı dahil
+  sayfa kaymıyor, kart kayıyor. Kural .urun-sayfa ile sınırlı; kiracı
+  listeleri etkilenmiyor. Yükseklik yine kabuktan türüyor, sihirli sayı
+  yok: üst çubuk, üst boşluk, dock payı ve güvenli alan düşülüyor.
+*/
+@media (max-width:1200px){
+  .os-root main.urun-sayfa.liste-sayfa{
+    display:flex;min-height:0;
+    height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
+  }
+  .os-root main.urun-sayfa.liste-sayfa>.talep-izgara{min-height:0}
+  .os-root main.urun-sayfa.liste-sayfa>.talep-izgara>.talep-bilgi{display:flex;overflow:hidden}
+}
+
+/*
+  DAR PENCEREDE TEK BÖLÜM SEÇİCİSİ (26.11.2026, ölçümle).
+
+  Altı bölüm sekmesi 1099 px'e kadar tek satırda duruyor; 901 ve
+  768'de iki, 390'da ÜÇ satıra sarıyor ve kartın gövdesinden 133 px
+  yiyordu. Yatay kaydırma çözüm değil: şeridi kaydırmak sekmenin
+  varlığını gizler (kuyruk sekmelerinde yaşandı). Dar pencerede aynı
+  seçim tek bir açılır listeden yapılıyor — altı bölümün hepsi tek
+  dokunuşla ve klavyeyle seçilebiliyor, kaydırma yok.
+
+  Eşik ölçümle: 1000 px. Şerit 1099'da tek satır, 901'de iki satır.
+*/
+@media (max-width:1000px){
+  .os-root .urun-sayfa .sy-kart>.talep-akis-sekmeler{display:none}
+  .os-root .urun-sayfa .talep-akis-sec{
+    display:block;flex:0 0 auto;padding:var(--sp-3) var(--sp-4) 0;
+  }
+  .os-root .urun-sayfa .talep-akis-sec select{
+    width:100%;min-height:44px;padding:0 var(--sp-3);
+    border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--surface);color:var(--ink);
+    font-size:var(--fs-sm);font-weight:var(--fw-semibold);
+  }
+  .os-root .urun-sayfa .talep-akis-sec select:focus-visible{
+    outline:none;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary);
+  }
+}

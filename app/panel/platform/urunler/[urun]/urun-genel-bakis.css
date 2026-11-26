@@ -1,0 +1,38 @@
+/*
+  ÜRÜN DETAYI — GENEL BAKIŞ SEKMESİ (26.11.2026, onaylı mockup).
+  Sayfa kendi sınıfının CSS'ini kendi import ediyor (AGENTS.md): sekme
+  başka bir rotadan açıldığında stil eksik kalmasın.
+*/
+.ugb{display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-4) var(--sp-5) var(--sp-5)}
+.ugb-serit{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:var(--sp-4);margin:0;
+  padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface)}
+.ugb-serit>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ugb-serit dt{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.ugb-serit small{color:var(--muted);font-size:var(--fs-micro)}
+.ugb-serit dd{margin:0;font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--ink);font-variant-numeric:tabular-nums}
+
+.ugb-izgara{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:var(--sp-4)}
+.ugb-kart{display:flex;flex-direction:column;gap:var(--sp-3);min-width:0;margin:0}
+
+/* Huni iki adım: kaynağı olmayan ara adım çizilmiyor (bileşendeki not). */
+.ugb-huni{display:flex;gap:var(--sp-3);margin:0;padding:0;list-style:none}
+.ugb-huni>li{flex:1 1 0;display:flex;flex-direction:column;gap:2px;min-width:0;
+  padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-2)}
+.ugb-huni span{color:var(--muted);font-size:var(--fs-sm)}
+.ugb-huni b{font-size:var(--fs-lg);font-variant-numeric:tabular-nums;color:var(--ink)}
+.ugb-not{margin:0;color:var(--muted);font-size:var(--fs-sm)}
+
+.ugb-liste{display:flex;flex-direction:column;gap:var(--sp-1);margin:0;padding:0;list-style:none}
+.ugb-liste>li>a{display:flex;align-items:center;gap:var(--sp-3);min-width:0;padding:var(--sp-2) 0;
+  border-bottom:1px solid var(--line-soft);color:inherit;text-decoration:none}
+.ugb-liste>li:last-child>a{border-bottom:0}
+.ugb-govde{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
+.ugb-govde b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.ugb-govde small{color:var(--muted);font-size:var(--fs-micro)}
+.ugb-eylem{flex:none;color:var(--accent);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+
+.ugb-yok{color:var(--muted);font-size:var(--fs-sm);font-style:italic}
+.ugb-yok[data-tone="danger"]{color:var(--danger);font-style:normal}
+.ugb-bos{margin:0;color:var(--muted);font-size:var(--fs-sm)}
+.ugb-bos[data-tone="danger"]{color:var(--danger)}
+.ugb-bos b{color:var(--ink);font-weight:var(--fw-semibold)}

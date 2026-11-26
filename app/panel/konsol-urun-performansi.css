@@ -1,0 +1,244 @@
+/*
+  ÜRÜN PERFORMANSI TABLOSU VE ÖNCELİKLİ İŞLER (26.11.2026, onaylı mockup).
+
+  Kart gövdesi tek kaydırma alanı (.dash-col-govde, dashboard.css):
+  tablo uzadığında sayfa değil kart kayar — konsolun tek ekran kuralı.
+  Renkler token'dan; TSX'te satır içi stil ve ham hex yok (check:css).
+*/
+/*
+  KART KENDİ GENİŞLİĞİNE GÖRE DÜZEN DEĞİŞTİRİR (26.11.2026, ölçümle).
+
+  Tablo mockup'ta tam genişlikte; konsolun üç sütunlu ızgarasında aynı
+  kart 415 px'e düşüyor ve dört veri sütunu üst üste biniyordu
+  ("Veri bağlı değil₺612.400"). Medya sorgusu burada işe yaramaz:
+  kart dar, EKRAN değil. Container sorgusu kartın kendi genişliğini
+  ölçüyor; dar kartta satır yığılıyor, geniş kartta tablo kalıyor.
+*/
+.kup-kart{container-type:inline-size}
+.kup-kart .dash-card-head{align-items:flex-start;gap:var(--sp-3)}
+.kup-govde{padding-bottom:var(--sp-1)}
+
+/* Tablo: başlık satırı kaydırmada yerinde dursun; kurucu hangi sütuna
+   baktığını kaybetmesin. */
+.kup-tablo thead th{position:sticky;top:0;z-index:1;background:var(--surface)}
+/*
+  TABLO DARALABİLİR OLMALI (26.11.2026, ölçümle). Hücrelerde
+  white-space:nowrap varken sütunun min-content genişliği 846 px'e
+  çıkıyor; ızgara (.dash-cols--sabit, auto-fit) o genişliğe yer açmak
+  için sütun sayısını İKİYE düşürüyor ve üç panel iki satıra sarıyor —
+  satır yüksekliği yarılanınca nabız sütunundaki kartlar 14 px'e iniyor
+  ve kayıtları görünmüyordu. table-layout:fixed sütunu içeriğe değil
+  kutuya göre böler; uzun ad sarar, sayı satırı bölünmez.
+*/
+.kup-tablo{table-layout:fixed;width:100%}
+.kup-tablo th,.kup-tablo td{overflow-wrap:anywhere}
+.kup-tablo td:last-child,.kup-tablo .kup-oran,.kup-tablo .kup-yok{white-space:nowrap}
+/*
+  HİZA: ad sola, ölçüm sağa. Varsayılan th ortalı geldiği için ürün
+  adları ile sayılar farklı eksenlere oturuyordu — dört ürünü
+  karşılaştırmak sayıların aynı hizada olmasına bağlı.
+*/
+.kup-tablo th,.kup-tablo td{text-align:right}
+.kup-tablo thead th:first-child,.kup-tablo tbody th{text-align:left}
+.kup-tablo tbody th{font-weight:var(--fw-semibold);color:var(--ink)}
+/* Satır yüksekliği kısıldı: dört ürün kaydırmadan görünsün. */
+.kup-tablo tbody th,.kup-tablo tbody td{padding-block:var(--sp-2)}
+.kup-tablo td{font-variant-numeric:tabular-nums}
+.kup-tablo td:not(:first-child){white-space:nowrap}
+.kup-ac{text-align:right}
+/* Ok CSS'te: işaretlemede ayrı bir <span> olarak durduğunda sabit
+   yerleşimli tabloda satırın SOL kenarına kayıp hayalet bir ok
+   bırakıyordu (1440×900'de dört satırda da görüldü). */
+.kup-ac a{color:var(--accent);font-weight:var(--fw-semibold);text-decoration:none;white-space:nowrap}
+.kup-ac a::after{content:" →"}
+.kup-ac a:hover{text-decoration:underline}
+.kup-gizli{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* Kaynağı olmayan ya da okunamayan ölçüm: sayı YOK, sebep var. Sıfır
+   basmak "satış yok" diye okunurdu (AGENTS.md, okunamayan sorgu). */
+.kup-yok{color:var(--muted);font-size:var(--fs-sm);font-style:italic}
+.kup-yok[data-tone="danger"]{color:var(--danger);font-style:normal}
+.kup-oran{display:inline-flex;align-items:baseline;gap:var(--sp-2)}
+
+
+/* Satır yatay: solda ürün + iş adı, sağda eylem (onaylı mockup).
+   Dikey yığıldığında "İncele" ayrı bir satır gibi duruyordu. */
+.koi-liste>li>a{
+  display:flex;align-items:center;gap:var(--sp-3);min-height:44px;
+  padding:var(--sp-2);border-radius:var(--r-sm);color:inherit;text-decoration:none;
+}
+.koi-liste>li>a:hover{background:var(--surface-2)}
+.koi-liste>li>a:focus-visible{outline:none;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary)}
+.koi-liste .pu-govde{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
+.koi-liste .pu-govde b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.koi-liste .pu-govde small{color:var(--muted);font-size:var(--fs-micro)}
+.koi-liste .koi-urun{color:var(--muted);font-weight:var(--fw-medium)}
+.koi-eylem{flex:none;color:var(--accent);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+
+@media (max-width:760px){
+  .kup-kart .dash-card-head{flex-wrap:wrap}
+  /* Telefonda "Aç" sütunu satırın kendisi: ürün adına dokunmak yeter. */
+  .kup-tablo th:nth-child(3),.kup-tablo td:nth-child(3){display:none}
+}
+
+/* Dar kartta tablo satırı bloğa dönüşüyor: etiket + değer alt alta. */
+.kup-secici{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+/* Geniş kartta üç ölçüt birden çizildiği için ölçüt seçici gizli. */
+.kup-olcut-gizli{display:none}
+
+/* Kompakt liste yalnızca dar kartta; geniş kartta tablo çizilir. */
+.kup-mobil{display:none}
+
+/*
+  DAR KARTTA TABLO YERİNE LİSTE (26.11.2026, onaylı mockup).
+
+  Tabloyu dar kartta ızgaraya çevirmek iki kez denendi: satır kabın
+  dışına taştı ve seçili ölçüt 390 px'lik ekranda görünmeyen bir
+  koordinatta çizildi (x=565). Depodaki kalıp daha sağlam: dar ekranda
+  tablo gizlenir, aynı veri listeyle çizilir. Yatay kaydırma yok.
+  Medya sorgusu değil container: kart ızgarada da dar olabiliyor.
+*/
+@container (max-width:470px){
+  .kup-kart .kds-olcut{display:inline-flex}
+  .kup-tablo{display:none}
+  .kup-mobil{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+  .kup-mobil>li+li{border-top:1px solid var(--line-soft)}
+  .kup-mobil>li>a{
+    display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+    min-height:44px;padding:var(--sp-2) 0;color:inherit;text-decoration:none;
+  }
+  .kup-mobil>li>a:focus-visible{outline:none;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary);border-radius:var(--r-sm)}
+  .kup-mobil-ad{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink);overflow-wrap:anywhere}
+  .kup-mobil-deger{flex:none;font-size:var(--fs-sm);font-variant-numeric:tabular-nums;white-space:nowrap}
+}
+
+/*
+  GENEL BAKIŞ BÖLÜMÜ: İKİ KART ALT ALTA, TAM GENİŞLİK (26.11.2026,
+  onaylı mockup). Üç sütunlu ızgaranın yerine geçti. İkisi kalan
+  yüksekliği paylaşıyor ve her biri KENDİ gövdesinde kayıyor; sayfa
+  kaymıyor (konsolun tek ekran kuralı).
+*/
+.konsol-genel{display:flex;flex-direction:column;gap:var(--sp-4);min-height:0;max-height:100%;flex:1 1 auto}
+/*
+  ÜRÜN TABLOSU ÖNCE DOYAR, ÖNCELİKLİ İŞLER KALANI ALIR. İkisi eşit pay
+  aldığında (flex:1 1 0) tabloya 60 px kalıyor ve masaüstünde tek ürün
+  satırı görünüyordu; oysa kurucunun ilk sorusu dört ürünü YAN YANA
+  görmek. Tablo içeriği kadar büyüyor, alanı aşarsa kendi gövdesinde
+  kayıyor (max-height:100%).
+*/
+/*
+  PAY SABİT: tabloya 3, öncelikli işlere 2. İçerik boyuna bırakmak iki
+  uçta da kırıldı — tablo içeriği kadar alınca kısa pencerede öncelikli
+  işler 26 px'e eziliyor ve gövdesi 0 px kalıyordu; küçülme ağırlığıyla
+  denendiğinde bu kez tablo tek satıra düşüyordu (ikisinin de içeriği
+  bölümden uzun). Yüzdeyle sınırlamak çözülmedi: yüzde max-height,
+  yüksekliği tanımsız bir kapsayıcıda yok sayılıyor. 3:2 her boyutta
+  öngörülebilir: 1440×900'de tablo 313 px (dört ürün kaydırmasız),
+  1440×600'de 166 px (satırlar kart içinde kayar).
+*/
+.konsol-genel>:first-child{flex:3 3 0;min-height:0}
+.konsol-genel>:last-child{flex:2 2 0;min-height:0}
+/*
+  KAYDIRMA ZİNCİRİ. Kartlar daha önce ızgaranın içindeydi ve zinciri
+  dashboard.css kuruyordu (.dash-cols--sabit > panel). Artık doğrudan
+  burada duruyorlar: her halkada min-height:0 ve kartta max-height:100%
+  olmadan kart içeriği kadar uzuyor, sayfa kayıyordu (ölçüm: .dash 726
+  px'ken içeriği 861). Kaydırma kart başına TEK alanda.
+*/
+.konsol-genel>.dash-card{display:flex;flex-direction:column;min-width:0;min-height:0;max-height:100%}
+.konsol-genel .dash-col-govde{
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  /* Liste satırının hover zemini kart kenarına uzanıyor
+     (.dash-col-list margin-inline:-8px); gövde aynı payı kendisi
+     almazsa satırlar SOLDAN kırpılıyor (ölçüldü: "rvoLab · Ödeme"). */
+  margin-inline:calc(var(--sp-2) * -1);padding-inline:var(--sp-2);
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+}
+.konsol-genel .dash-card-link{flex:none}
+
+/*
+  BAŞLIK ALTINDAKİ ARAÇ SATIRI (26.11.2026, onaylı mockup): dönem
+  seçici başlığın hemen altında, kartların üstünde. Doğal boyunda;
+  yalnızca kartlar esner.
+*/
+.konsol-arac{display:flex;flex-wrap:wrap;gap:var(--sp-2);flex:0 0 auto}
+/* Uyarı satırındaki ayrıntı bağlantısı: metin kısa, ayrıntı tek tık. */
+.konsol-uyari-bag{flex:none;margin-left:auto;color:var(--accent);font-size:var(--fs-sm);font-weight:var(--fw-semibold);white-space:nowrap}
+/*
+  Dar ekranda uyarı alt alta: metin iki satıra sardığında bağlantı
+  satırın ortasında, cümlenin yanında asılı kalıyordu (390 px'te
+  ölçüldü). Kendi satırına inince hem okunuyor hem dokunma hedefi
+  büyüyor.
+*/
+@media (max-width:560px){
+  .konsol-uyari{flex-direction:column;align-items:flex-start}
+  .konsol-uyari-bag{margin-left:0;min-height:32px;display:inline-flex;align-items:center}
+}
+
+/*
+  KISA PENCEREDE KART SÜSÜ KISILIR (26.11.2026, ölçümle).
+
+  600 px yüksekliğinde bölüme 277 px kalıyor; 3:2 payla kartlar 151 ve
+  110 px oluyor ve başlık açıklaması (20 px), alt bağlantı (21 px) ve iç
+  boşluk bunun neredeyse tamamını yiyor: gövdeler 43 ve 1 px, yani ne
+  ürün ne de bekleyen iş okunuyordu. Kayıt, süsten önce gelir —
+  açıklama ve alt bağlantı o yükseklikte çizilmiyor; ürün satırı ve iş
+  satırı kendi hedefine zaten tıklanabiliyor, Dock da yerinde.
+*/
+@media (max-height:700px){
+  .konsol-genel .dash-card{padding:var(--sp-3);gap:var(--sp-2)}
+  .konsol-genel .dash-card-head p{display:none}
+  .konsol-genel .dash-card-link{display:none}
+  .konsol-genel .dash-card-head h2{font-size:var(--fs-base)}
+  /*
+    Kısa pencerede pay ürün kartına kayar (3:2 yerine 2:1) ve satır
+    boşluğu kısılır: ekranın işi dört ürünü yan yana okutmak, bekleyen
+    iş listesi kendi ekranında da var. 3:2 payla 1440×600'de tek ürün
+    satırı görünüyordu.
+  */
+  /*
+    Öncelikli işler kartına BİR TAM SATIRLIK taban veriliyor; kalanı
+    ürün kartının. Oranla bölüşümde (2:1) 1440×600'de öncelikli kartın
+    gövdesi 38 px kalıyordu ve 56 px'lik ilk kayıt kesiliyordu —
+    "bekleyen iş var" diyen kart işin kendisini göstermiyordu. Ürün
+    satırlarına kart içinden erişiliyor; ilk kayıt kesilmiyor.
+    130 px = kart süsü (ölçülen 66: iç boşluk, başlık, aralık) + satır
+    (48) + pay. 118 px denendi ve 768×600'de gövde 52 px kaldı: süs o
+    genişlikte 66 px, 56 px değil. Satır da burada kısılıyor —
+    iki satırlık iş kaydı 48 px'te okunuyor.
+  */
+  .konsol-genel>:first-child{flex:1 1 auto}
+  .konsol-genel>:last-child{flex:0 0 130px}
+  .koi-liste>li>a{min-height:48px;padding-block:var(--sp-1)}
+  .kup-tablo tbody th,.kup-tablo tbody td{padding-block:var(--sp-1)}
+  .kup-tablo thead th{padding-block:var(--sp-1)}
+}
+
+/*
+  MOBİLDE DÖRT ÜRÜN İLK GÖRÜNÜMDE (26.11.2026, ölçümle).
+
+  Oranla bölüşümde 390×844'te ürün kartının gövdesi 57 px kalıyordu:
+  dört satırdan biri görünüyordu, oysa ekranın işi dördünü
+  karşılaştırmak. Ürün kartı artık DOĞAL boyunda (dört satır sabit ve
+  az), kalan yükseklik öncelikli işlerin. Kart süsü de kısılıyor:
+  alt bağlantı mobilde Dock'taki "Ürünler" ile aynı yere gidiyor.
+*/
+@media (max-width:560px){
+  .konsol-genel>:first-child{flex:0 0 auto;max-height:none}
+  .konsol-genel>:last-child{flex:1 1 auto;min-height:0}
+  .konsol-genel>:first-child .dash-col-govde{overflow:visible}
+  .konsol-genel>:first-child .dash-card-link{display:none}
+  /*
+    Kart açıklamaları mobilde çizilmiyor: öncelikli işler kartının
+    "Bekleyen kalemler; satır ilgili kayda açılır" satırı iki satıra
+    sarıp gövdeyi 24 px'e düşürüyordu — ilk kayıt kesiliyordu. Satırın
+    kendisi zaten ürün, iş adı ve eylemi yazıyor.
+  */
+  .konsol-genel .dash-card-head p{display:none}
+  /* Kartlar arası boşluk ve iş satırı kısılıyor: açıklamalar
+     gizlendikten sonra bile öncelikli kartın gövdesi 46 px kalıyordu,
+     satır ise 56. İki satırlık iş kaydı 48 px'te hâlâ okunuyor. */
+  .konsol-genel{gap:var(--sp-3)}
+  .koi-liste>li>a{min-height:48px;padding-block:var(--sp-1)}
+  .kup-mobil>li>a{min-height:48px;padding:var(--sp-1) 0}
+}

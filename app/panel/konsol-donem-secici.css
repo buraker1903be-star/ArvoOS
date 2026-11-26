@@ -1,0 +1,9 @@
+/* Dönem seçici: kart başlığının ya da sayfa başlığının sağında. */
+.kds-donem{flex:none}
+.kds-donem>summary{white-space:nowrap}
+.kds-donem .os-menu-item[aria-current="true"]{font-weight:var(--fw-semibold);color:var(--ink)}
+
+/* Ölçüt seçici: dar kartta görünür, geniş kartta gizli (kartın kendi
+   CSS'i container sorgusuyla açıp kapatıyor). Sınıfın tanımı burada,
+   çünkü onu çizen bileşen bu dosyayı import ediyor. */
+.kds-olcut{display:none}
