@@ -1,0 +1,284 @@
+/*
+  YÖNETİM GİRİŞİ — İKİ PANELLİ DÜZEN, ArvoLab KONTROL STANDARDI.
+
+  Her kural `.login-shell.konsol-giris` altında: /login kiracılarla
+  PAYLAŞIMLI (kurum logosu ve rengiyle açılıyor) ve bu görünüm yalnızca
+  yonetim.arvo-os.com'da uygulanıyor. Kiracı girişi değişmiyor.
+
+  ESKİDEN ortada tek beyaz kart vardı: altın çizgi, ağır gölge ve
+  "GÜVENLİ PANEL GİRİŞİ" şeridi. Yönetim girişi artık ArvoLab'ın
+  çalışan kimlik ekranını izliyor — solda marka, sağda form.
+
+  KONTROL DEĞERLERİ ÖLÇÜMLE ALINDI (26.11.2026, ArvoLab'ın çalışan
+  arayüzü, 1440×900 CSS viewport ve DPR 2'de):
+
+    girdi/düğme yüksekliği 40px · köşe 4px · yazı 14px
+    girdi iç boşluk 0 12px · düğme iç boşluk 0 16px · düğme ağırlık 600
+    etiket 12px/600 · şifre göz düğmesi 44×36
+    odak halkası: 0 0 0 2px <form zemini>, 0 0 0 4px <birincil>
+
+  Eskiden 44px/10px/15px ve ALTIN düğme vardı; ölçüm iki ürünü yan yana
+  koyunca üç değerin de ayrıştığı görüldü. Birincil eylem artık
+  lacivert/mavi: açıkta --brand-600, koyuda --brand-300 (ArvoLab da
+  koyuda brand-300'e geçiyor — lacivert zeminde lacivert düğme
+  okunmuyor). Altın yalnızca marka üst satırında kaldı.
+
+  İKİ TEMA GERÇEKTEN FARKLI YÜZEY KULLANIR. Eskiden ekran her temada
+  aynı koyu gradyandı; açık temayı seçen kullanıcı hiçbir fark
+  görmüyordu. ArvoLab'ın modeli uygulanıyor: MARKA paneli iki temada da
+  koyu lacivert (kimlik), FORM paneli açıkta beyaz, koyuda sayfa
+  zemini. Tema `html[data-theme]` ile; kök yerleşim onu boya öncesi
+  betikle yazıyor (app/layout.tsx), yani /login'de de geçerli.
+
+  Renkler burada tanımlı: panelin token'ları (.panel-root) /login'de
+  YOK ve login.css'in kendi paleti altın eksenli. Değerler ArvoOS'un
+  kendi marka basamaklarından (panel-tokens.css --brand-*), ölçülen
+  ArvoLab karşılıklarıyla aynı aileden.
+*/
+.login-shell.konsol-giris{
+  /* ArvoLab ölçümü */
+  --kg-h:40px;
+  --kg-r:4px;
+  --kg-yazi:14px;
+  --kg-etiket-yazi:12px;
+  --kg-dolgu:12px;
+
+  /* ArvoOS marka basamakları */
+  --kg-lacivert-600:#1b3050;
+  --kg-lacivert-700:#13243f;
+  --kg-lacivert-800:#0b1b2e;
+  --kg-lacivert-900:#08142a;
+  --kg-lacivert-950:#050c1a;
+  --kg-mavi-300:#8497b5;
+
+  /* AÇIK TEMA: form paneli beyaz, marka paneli lacivert. */
+  --kg-form-zemin:#ffffff;
+  --kg-metin:#141b2b;
+  --kg-metin-soluk:#5a6478;
+  --kg-alan-zemin:#ffffff;
+  --kg-kenarlik:#d3d9e2;
+  --kg-kenarlik-hover:#9aa4b5;
+  --kg-birincil:var(--kg-lacivert-600);
+  --kg-birincil-hover:var(--kg-lacivert-700);
+  --kg-birincil-yazi:#ffffff;
+  --kg-odak:var(--kg-lacivert-600);
+  --kg-cizgi:#e6e9ef;
+  --kg-hata:#b3261e;
+  --kg-hata-kenar:#e4b5b0;
+  --kg-hata-zemin:#fbeceb;
+
+  --kg-marka-zemin:var(--kg-lacivert-900);
+  --kg-marka-yazi:#fbf8f1;
+  --kg-marka-soluk:#9eafc5;
+
+  --kg-yan:clamp(24px,5vw,64px);
+
+  /* Izgara: solda marka (üç satır), sağda form bütün satırları kaplıyor. */
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-rows:auto 1fr auto;
+  justify-items:stretch;align-content:stretch;
+  row-gap:0;padding:0;
+  background:var(--kg-marka-zemin);
+}
+
+/* KOYU TEMA: form paneli sayfa zeminine iner, marka paneli en derin
+   laciverte. İki panel kaynaşmasın diye aralarındaki çizgi kalır. */
+html[data-theme="dark"] .login-shell.konsol-giris{
+  --kg-form-zemin:#0f1626;
+  --kg-metin:#ece9e2;
+  --kg-metin-soluk:#9eafc5;
+  --kg-alan-zemin:#131c2e;
+  --kg-kenarlik:#2a3650;
+  --kg-kenarlik-hover:#44536f;
+  --kg-birincil:var(--kg-mavi-300);
+  --kg-birincil-hover:#9aacc6;
+  --kg-birincil-yazi:var(--kg-lacivert-950);
+  --kg-odak:var(--kg-mavi-300);
+  --kg-cizgi:#1d2740;
+  --kg-hata:#ff9d93;
+  --kg-hata-kenar:#6d3a37;
+  --kg-hata-zemin:#2a1a1a;
+  --kg-marka-zemin:var(--kg-lacivert-950);
+}
+
+/* --- Sol panel: logo, vaat, yasal unvan --- */
+.login-shell.konsol-giris .login-brand>a,
+.login-shell.konsol-giris .login-brand>img{
+  grid-column:1;grid-row:1;justify-self:start;align-self:start;
+  padding:clamp(24px,4vh,44px) var(--kg-yan) 0;
+}
+/*
+  RESMİ LOGO KENDİ RENKLERİYLE (public/arvoos-logo.png: lacivert
+  #002045 + yeşil #6f9548). Eskiden brightness(0) invert(1) ile beyaza
+  düzleştiriliyordu, yani resmi logo tek renk bir silüete iniyordu.
+  Dosya 1920×1080 ve mürekkep yalnızca y 309–662 bandında; geri kalanı
+  saydam. object-fit:cover + object-position bandı ortalıyor
+  (mürekkebin dikey ortası 1080'in %44,95'i), beyaz plaka da lacivert
+  panelde logonun kendi renklerini okutuyor.
+*/
+.login-shell.konsol-giris .login-brand img{
+  width:300px;height:76px;padding:0 14px;box-sizing:border-box;
+  object-fit:cover;object-position:center 45%;
+  filter:none;background:#fff;border-radius:10px;
+}
+/* Vaat metni tek sayfada gizliydi; iki panelde sol sütunun işi bu. */
+.login-shell.konsol-giris .login-brand>div{
+  display:block;grid-column:1;grid-row:2;align-self:center;
+  max-width:min(560px,100%);padding:0 var(--kg-yan);
+}
+.login-shell.konsol-giris .login-brand>div span{
+  display:block;margin-bottom:14px;
+  color:var(--gold-soft);font-size:12px;font-weight:700;letter-spacing:.2em;
+}
+.login-shell.konsol-giris .login-brand>div h1{
+  margin:0 0 14px;color:var(--kg-marka-yazi);
+  font:600 clamp(30px,2.9vw,46px)/1.08 var(--display);letter-spacing:0;text-wrap:balance;
+}
+.login-shell.konsol-giris .login-brand>div p{
+  margin:0;color:var(--kg-marka-soluk);font-size:15px;line-height:1.6;
+}
+.login-shell.konsol-giris .login-brand>small{
+  grid-column:1;grid-row:3;justify-self:start;align-self:end;
+  padding:0 var(--kg-yan) clamp(20px,3vh,32px);text-align:left;
+  color:var(--kg-marka-soluk);
+}
+
+/* --- Sağ panel: form doğrudan yüzeyde --- */
+.login-shell.konsol-giris .login-form-wrap{
+  grid-column:2;grid-row:1 / -1;
+  align-content:center;justify-items:center;
+  padding:clamp(24px,5vh,56px) var(--kg-yan);
+  border-left:1px solid var(--kg-cizgi);
+  background:var(--kg-form-zemin);
+}
+.login-shell.konsol-giris .login-card{
+  width:min(400px,100%);padding:0;
+  background:none;border:0;border-radius:0;box-shadow:none;
+  display:flex;flex-direction:column;gap:14px;
+}
+/* Altın çizgi kartın süsüydü; kart yok. */
+.login-shell.konsol-giris .login-card::before{display:none}
+.login-shell.konsol-giris .login-card h2{
+  margin:0;color:var(--kg-metin);font:600 28px/1.16 var(--display);
+}
+.login-shell.konsol-giris .login-card>p{
+  margin:0 0 4px;color:var(--kg-metin-soluk);font-size:var(--kg-yazi);line-height:1.6;
+}
+
+/* --- Alanlar: ArvoLab ölçüsü --- */
+.login-shell.konsol-giris .login-card label{
+  display:grid;gap:6px;margin:0;
+  font-family:var(--body);font-size:var(--kg-etiket-yazi);font-weight:600;
+  letter-spacing:0;color:var(--kg-metin);
+}
+.login-shell.konsol-giris .kg-etiket{display:inline-flex;align-items:baseline;gap:3px}
+/* Zorunlu alan yıldızı: ArvoLab'daki gibi etiketin yanında, görsel.
+   Alanın zorunluluğunu required söylüyor; yıldız aria-hidden. */
+.login-shell.konsol-giris .kg-zorunlu{color:var(--kg-hata);font-weight:600}
+.login-shell.konsol-giris .login-card input{
+  display:block;width:100%;height:var(--kg-h);margin:0;padding:0 var(--kg-dolgu);
+  border:1px solid var(--kg-kenarlik);border-radius:var(--kg-r);
+  background:var(--kg-alan-zemin);color:var(--kg-metin);
+  font:400 var(--kg-yazi) var(--body);
+  transition:border-color .12s ease,box-shadow .12s ease;
+}
+.login-shell.konsol-giris .login-card input::placeholder{color:var(--kg-metin-soluk)}
+.login-shell.konsol-giris .login-card input:hover:not(:focus){border-color:var(--kg-kenarlik-hover)}
+/* Odak halkası iki katmanlı, ArvoLab ile aynı biçim: içte form zemini,
+   dışta birincil renk. Tek katmanlı halka koyu zeminde alanın
+   kenarından ayrışmıyor. */
+.login-shell.konsol-giris .login-card input:focus,
+.login-shell.konsol-giris .login-card input:focus-visible{
+  outline:none;border-color:var(--kg-odak);
+  box-shadow:0 0 0 2px var(--kg-form-zemin),0 0 0 4px var(--kg-odak);
+}
+.login-shell.konsol-giris .login-card input:disabled{opacity:.55;cursor:not-allowed}
+/* Hata: hangi alanın sorunlu olduğu da görünür, yalnızca üstteki metin değil. */
+.login-shell.konsol-giris .login-card[data-hata="true"] input{border-color:var(--kg-hata-kenar)}
+
+/* Şifre alanı: göz düğmesi alanın İÇİNDE (ArvoLab ölçüsü 44×36). */
+.login-shell.konsol-giris .kg-alan{position:relative;display:flex}
+.login-shell.konsol-giris .kg-alan input{padding-right:48px}
+.login-shell.konsol-giris .kg-goz{
+  position:absolute;top:50%;right:0;transform:translateY(-50%);
+  display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:36px;margin:0;padding:0;
+  border:0;border-radius:var(--kg-r);background:none;color:var(--kg-metin-soluk);
+  box-shadow:none;cursor:pointer;
+}
+.login-shell.konsol-giris .kg-goz:hover{color:var(--kg-metin);transform:translateY(-50%);box-shadow:none}
+.login-shell.konsol-giris .kg-goz:focus-visible{
+  outline:none;color:var(--kg-metin);
+  box-shadow:0 0 0 2px var(--kg-form-zemin),0 0 0 4px var(--kg-odak);
+}
+
+/* --- Eylemler --- */
+.login-shell.konsol-giris .kg-unuttum{
+  align-self:flex-end;margin:-4px 0 2px;
+  font-size:13px;font-weight:600;color:var(--kg-birincil);
+}
+.login-shell.konsol-giris .login-card button[type="submit"]{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;height:var(--kg-h);margin:4px 0 0;padding:0 16px;
+  border:1px solid transparent;border-radius:var(--kg-r);
+  background:var(--kg-birincil);color:var(--kg-birincil-yazi);
+  font:600 var(--kg-yazi) var(--body);letter-spacing:0;
+  box-shadow:none;transform:none;cursor:pointer;
+  transition:background-color .12s ease;
+}
+.login-shell.konsol-giris .login-card button[type="submit"]:hover{
+  transform:none;box-shadow:none;background:var(--kg-birincil-hover);
+}
+.login-shell.konsol-giris .login-card button[type="submit"]:active{transform:none}
+.login-shell.konsol-giris .login-card button[type="submit"]:focus-visible{
+  outline:none;box-shadow:0 0 0 2px var(--kg-form-zemin),0 0 0 4px var(--kg-odak);
+}
+.login-shell.konsol-giris .login-card button[type="submit"]:disabled{opacity:.55;cursor:not-allowed}
+.login-shell.konsol-giris .login-card button[type="submit"] b{font-weight:600;opacity:1}
+
+/* Erişim desteği ikincil: birincil eylemle yarışmıyor. */
+.login-shell.konsol-giris .login-card>a{
+  display:block;margin:0;text-align:center;
+  font:600 13px var(--body);color:var(--kg-metin-soluk);text-decoration:none;
+}
+.login-shell.konsol-giris .login-card>a:hover{color:var(--kg-metin);text-decoration:underline}
+.login-shell.konsol-giris .login-card>a:focus-visible{
+  outline:none;border-radius:var(--kg-r);
+  box-shadow:0 0 0 2px var(--kg-form-zemin),0 0 0 4px var(--kg-odak);
+}
+.login-shell.konsol-giris .login-card>small{
+  margin:4px 0 0;padding-top:16px;border-top:1px solid var(--kg-cizgi);
+  color:var(--kg-metin-soluk);font-size:12px;
+}
+
+.login-shell.konsol-giris .login-error{
+  display:flex;align-items:flex-start;gap:10px;margin:0;
+  border:1px solid var(--kg-hata-kenar);border-radius:var(--kg-r);
+  background:var(--kg-hata-zemin);color:var(--kg-hata);
+  font-family:var(--body);font-size:13px;text-align:left;
+}
+
+/*
+  TEK SÜTUN (≤900 px): logo üstte, form hemen altında. Vaat metni
+  çizilmiyor — 390×844'te sloganla birlikte e-posta, şifre ve giriş
+  düğmesi ilk görünüme sığmıyordu, oysa ekranın işi giriş yapmak.
+  Form paneli tam ekranı kaplıyor; marka zemini yalnızca logo
+  şeridinde kalıyor.
+*/
+@media (max-width:900px){
+  .login-shell.konsol-giris{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr auto;background:var(--kg-form-zemin)}
+  .login-shell.konsol-giris .login-brand>a,
+  .login-shell.konsol-giris .login-brand>img{grid-column:1;justify-self:center;padding-top:clamp(20px,3vh,32px)}
+  .login-shell.konsol-giris .login-brand>div{display:none}
+  .login-shell.konsol-giris .login-brand>small{grid-column:1;grid-row:3;justify-self:center;text-align:center;color:var(--kg-metin-soluk)}
+  .login-shell.konsol-giris .login-form-wrap{
+    grid-column:1;grid-row:2;border-left:0;
+    padding:clamp(16px,3vh,28px) 20px;align-content:start;
+  }
+  .login-shell.konsol-giris .login-card h2{font-size:24px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .login-shell.konsol-giris .login-card input,
+  .login-shell.konsol-giris .login-card button[type="submit"]{transition:none}
+}

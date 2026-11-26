@@ -1,0 +1,13 @@
+/*
+  Sekme bileşeninin KENDİ stili (26.11.2026).
+
+  Dar pencere seçicisi (.talep-akis-sec) bu bileşende çiziliyor ve
+  bileşen panelin her yerinde kullanılıyor; tanımı bir sayfanın
+  dosyasına koymak o sınıfı öteki rotalarda stilsiz bırakıyordu
+  (check:css on bir rotada bildirdi). Kural AGENTS.md'de: her yerde
+  kullanılan bileşen CSS'ini kendisi import eder.
+
+  Varsayılan GİZLİ: seçiciyi yalnızca darSecici veren sayfa, kendi
+  düzenine göre belirlediği genişlikte açar.
+*/
+.talep-akis-sec{display:none}

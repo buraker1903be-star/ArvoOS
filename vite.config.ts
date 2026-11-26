@@ -54,7 +54,10 @@ export default defineConfig(async () => {
   return {
     server: {
       host: "0.0.0.0",
-      allowedHosts: ["terminal.local"],
+      /* Yönetim konağı yerelde de açılabilsin: konsolun rotaları
+         isManagementHost ile ayrılıyor ve host verilmeden /panel kiracı
+         ekranını çiziyor. Yalnızca dev sunucusu; üretimi etkilemez. */
+      allowedHosts: ["terminal.local", "yonetim.arvo-os.com"],
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),

@@ -304,3 +304,156 @@ test("borç listesi başka bir kusuru örtmez", () => {
   assert.equal(h.gecti, false);
   assert.ok(h.eksik.some((m: string) => m.includes("sayfa dikey kayıyor")), h.eksik.join(" | "));
 });
+
+/*
+  26.11.2026, Genel Bakış yeniden kuruldu: kuyruk kendi bölümüne taşındı,
+  ekranda ürün performansı ve öncelikli işler var. Yeni ölçütler.
+*/
+const GENEL_TEMEL = {
+  sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 810, dockUstu: 824,
+  masaustu: true,
+  urunTablosu: { satir: 4, tamGorunen: 4, govdeH: 190 },
+  erisim: {
+    urunSayisi: 4, erisilemeyenUrun: [],
+    sonIs: { metin: "Yanıt bekleyen", dokunma: true, klavye: true, dockUstunde: true },
+  },
+};
+
+test("masaüstünde dört ürün kaydırmadan görünmeli", () => {
+  assert.deepEqual(tekEkranHukmu("1440x900 acik konsol", GENEL_TEMEL).eksik, []);
+  const h = tekEkranHukmu("1440x900 acik konsol", {
+    ...GENEL_TEMEL, urunTablosu: { bicim: "tablo", satir: 4, tamGorunen: 1, govdeH: 85 },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("ürün satırlarının 1/4'i görünüyor")), h.eksik.join(" | "));
+});
+
+test("dar ekranda kaydırma doğal: dört ürün kuralı yalnızca masaüstünde", () => {
+  /* Ara genişlik (ne masaüstü ne mobil): kart içinde kaydırma kusur
+     değil, dört satır zorunlu değil. */
+  const h = tekEkranHukmu("901x641 acik konsol", {
+    ...GENEL_TEMEL, masaustu: false, mobil: false, sayfaDikey: "641/641", sayfaYatay: "901/901",
+    urunTablosu: { bicim: "tablo", satir: 4, tamGorunen: 1, govdeH: 88 },
+  });
+  assert.deepEqual(h.eksik, []);
+});
+
+test("mobilde de dört ürün ilk görünümde olmalı", () => {
+  /* Ürün kararı (26.11.2026): 390×844'te dört ürünün adı ve seçili
+     ölçütü kompakt satırlarda karşılaştırılabilmeli. Eskiden mobil
+     muaftı ve kart içinde kaydırmak kabul sayılıyordu. */
+  const h = tekEkranHukmu("390x844 acik konsol", {
+    ...GENEL_TEMEL, masaustu: false, mobil: true, sayfaDikey: "844/844", sayfaYatay: "390/390",
+    urunTablosu: { bicim: "liste", satir: 4, tamGorunen: 1, govdeH: 57 },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("1/4")), h.eksik.join(" | "));
+});
+
+test("mobilde dördü de görünüyorsa geçer", () => {
+  const h = tekEkranHukmu("390x844 acik konsol", {
+    ...GENEL_TEMEL, masaustu: false, mobil: true, sayfaDikey: "844/844", sayfaYatay: "390/390",
+    urunTablosu: { bicim: "liste", satir: 4, tamGorunen: 4, govdeH: 199 },
+  });
+  assert.deepEqual(h.eksik, []);
+});
+
+test("ilk öncelikli iş kesiliyorsa düşer", () => {
+  /* 1440×600'de gövde 38 px, satır 56 px: kart "bekleyen iş var"
+     diyor ama işin kendisini göstermiyordu. */
+  const h = tekEkranHukmu("1440x600 acik konsol", {
+    ...GENEL_TEMEL, ilkIs: { tam: false, eylemTam: false, h: 56, govdeH: 38 },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("ilk öncelikli iş kesiliyor")), h.eksik.join(" | "));
+});
+
+test("ilk iş tam ama eylemi kesikse düşer", () => {
+  const h = tekEkranHukmu("1440x600 acik konsol", {
+    ...GENEL_TEMEL, ilkIs: { tam: true, eylemTam: false, h: 56, govdeH: 60 },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("ilk öncelikli işin eylemi kesiliyor")), h.eksik.join(" | "));
+});
+
+test("ürün detayında altı bölüm seçilebilmeli", () => {
+  /* Dar pencerede tek seçici, geniş pencerede şerit; hangisi
+     görünüyorsa o ölçülüyor. */
+  const temel = { sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 700, dockUstu: 781 };
+  assert.deepEqual(
+    tekEkranHukmu("390x844 acik urundetay", { ...temel, bolumSecimi: { bicim: "secici", sayi: 6, icerde: true, klavye: true } }).eksik,
+    [],
+  );
+  const eksikBolum = tekEkranHukmu("390x844 acik urundetay", { ...temel, bolumSecimi: { bicim: "secici", sayi: 4, icerde: true, klavye: true } });
+  assert.ok(eksikBolum.eksik.some((m: string) => m.includes("4 bölüm")), eksikBolum.eksik.join(" | "));
+});
+
+test("bölüm şeridi kaydırılarak sığdırılmış sayılmaz", () => {
+  /* Kaydırılan şerit sekmenin VARLIĞINI gizler; kuyruk sekmelerinde
+     aynı kusur ölçülmüştü. */
+  const h = tekEkranHukmu("768x600 acik urundetay", {
+    sayfaDikey: "600/600", sayfaYatay: "768/768", dockOrtuyor: false, icerikAlt: 500, dockUstu: 530,
+    bolumSecimi: { bicim: "serit", sayi: 6, icerde: false, disarida: ["Destek"], klavye: true, kaydirma: true },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("bölüm seçimi ekrana sığmıyor")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("bölüm şeridi yatay kayıyor")), h.eksik.join(" | "));
+});
+
+test("açılamayan ürün satırı ve erişilemeyen öncelikli iş düşürür", () => {
+  const h = tekEkranHukmu("1440x600 acik konsol", {
+    ...GENEL_TEMEL,
+    erisim: {
+      urunSayisi: 4, erisilemeyenUrun: ["Aç →", "Aç →"],
+      sonIs: { metin: "Yanıt bekleyen", dokunma: false, klavye: true, dockUstunde: false },
+    },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("açılamayan ürün satırı")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("son öncelikli işin eylemi erişilemiyor")), h.eksik.join(" | "));
+});
+
+test("ürün satırı hiç yoksa ekran boş sayılmaz, DÜŞER", () => {
+  /* Tablo çizilmediyse "sorun yok" değil, "ölçülemedi" durumudur. */
+  const h = tekEkranHukmu("1440x900 acik konsol", {
+    ...GENEL_TEMEL, erisim: { urunSayisi: 0, erisilemeyenUrun: [] },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("ürün satırı bulunamadı")), h.eksik.join(" | "));
+});
+
+test("ürün detayı da tek ekran: dikey kayma muafiyeti kalktı", () => {
+  /* Önceki sürüm kayıt sayfasına muafiyet tanıyordu ve detay 390×844'te
+     1254/844 kayarken kabul geçiyordu. */
+  const h = tekEkranHukmu("390x844 acik urundetay", {
+    sayfaDikey: "1254/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 700, dockUstu: 781,
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("sayfa dikey kayıyor (1254/844)")), h.eksik.join(" | "));
+});
+
+test("son ürüne kart içinden ulaşılamıyorsa düşer", () => {
+  /* 1440×600'de dört satır sığmıyor; kabul, kartın kaymasına ve
+     kaydırınca son ürünün TAM görünmesine bağlı. */
+  const temel = { sayfaDikey: "600/600", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 500, dockUstu: 530 };
+  const h = tekEkranHukmu("1440x600 acik konsol", {
+    ...temel, sonUrun: { kartKayabilir: true, tam: false, dokunma: true, klavye: true, metin: "ArvoCal" },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("son ürüne kart içinden ulaşılamıyor")), h.eksik.join(" | "));
+
+  const iyi = tekEkranHukmu("1440x600 acik konsol", {
+    ...temel, sonUrun: { kartKayabilir: true, tam: true, dokunma: true, klavye: true, metin: "ArvoCal" },
+  });
+  assert.deepEqual(iyi.eksik, []);
+});
+
+test("son ürünün eylemi tıklanamıyor ya da odaklanamıyorsa düşer", () => {
+  const h = tekEkranHukmu("1440x600 koyu konsol", {
+    sayfaDikey: "600/600", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 500, dockUstu: 530,
+    sonUrun: { kartKayabilir: true, tam: true, dokunma: false, klavye: false, metin: "ArvoCal" },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("tıklanamıyor")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("klavyeyle odaklanamıyor")), h.eksik.join(" | "));
+});

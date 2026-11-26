@@ -1,45 +1,32 @@
 import type { ReactNode } from "react";
 import { sureOlcer } from "@/lib/sure-olcumu";
 import { kopruSagliklari } from "@/lib/kopru-sagliklari";
-import { askidakiKurumlar, type AskiSatiri } from "@/lib/askidakiler";
-import { GONDERIM_ADI, gonderimDurumu, gonderimSirasi } from "@/lib/proforma-gonderim";
 import MIGRATION_IZLERI from "@/lib/migration-izleri.json";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatPersonName } from "@/lib/format-name";
 import { arvolabKopyalari } from "@/lib/arvolab";
 import { arcKopyalari } from "@/lib/arc-bridge";
 import { randevuKopyalari } from "@/lib/randevu-bridge";
-import { eskiKopyalar } from "@/lib/kopya-denetimi";
-import { kotaDurumu } from "@/lib/kota-durumu";
-import { kurumTuru, musteriMi } from "@/lib/kurum-turu";
-import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
+import { musteriMi } from "@/lib/kurum-turu";
+import { renewalReminders, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 import { productName } from "@/lib/products";
-import { getPaymentIncidents, incidentLabels } from "@/lib/payment-incidents";
-import { havaleDenetimleri } from "@/lib/beklenen-odeme";
-import { reviewBankTransferPayment } from "./platform/payments/actions";
-import { HizliOnay } from "./platform/payments/hizli-onay";
-import { notTamamla } from "./platform/musteriler/[id]/not-actions";
+import { donem as donemiCoz, type DonemKodu } from "@/lib/konsol/donem";
+import { urunPerformansi, type Okuma, type OlcutKodu } from "@/lib/konsol/urun-performansi";
+import { UrunPerformansiKarti, OncelikliIslerKarti, type OncelikliIs } from "./konsol-urun-performansi";
+import { DonemSecici, OlcutSecici } from "./konsol-donem-secici";
+import { getPaymentIncidents } from "@/lib/payment-incidents";
 import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
-import { gunFarki } from "@/lib/is-adimlari";
 import { todayInIstanbul } from "@/lib/istanbul-date";
-import { gunlukSeri } from "@/lib/gunluk-seri";
-import { tumSatirlar } from "@/lib/rapor-okuma";
+import { sayfaliSonuc, tumSatirlar } from "@/lib/rapor-okuma";
 import { musteriEtkinlikleri } from "@/lib/musteri-etkinligi-oku";
-import { etkinlikYazisi, kullanilmayanMi, yenilemeRiski } from "@/lib/musteri-etkinligi";
-import { beklemeSuresi, gecikmisMi, kuyrukSirala, ONCELIK_ADI, YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
+import { YANIT_BEKLEYEN_DURUMLAR, kuyrukSirala } from "@/lib/destek-kuyrugu";
 import Link from "next/link";
 import { KONSOL_ALANLARI, uygulamalariSuz, type KonsolKapsami } from "@/lib/konsol-alanlari";
 import { konsolUygulamalari } from "./os/konsol-apps";
-import { donemDegisimi } from "@/lib/gunluk-seri";
-import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
-import { GorunumSecici, type GorunumPaneli } from "./os/gorunum-secici";
-import { TalepAkis } from "./crm/kayit-detay/kayit-akis";
+import { GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, seriBaslangici } from "./os/genel-bakis";
 import { StgIcon } from "./settings/settings-ui";
-import { KURULUM_ADI, KURULUM_ISLEMI, para, tarih } from "./platform/bicim";
-import { relativeTime } from "./crm/last-contact";
+import { para, sayi } from "./platform/bicim";
 import "./dashboard.css";
 import "./hr/hr.css";
 import "./crm/kayit-detay/kayit-detay.css";
@@ -97,10 +84,7 @@ import "./konsol-ana-sayfa.css";
 */
 
 const TZ = "Europe/Istanbul";
-const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
-const ODEYEN_DURUMLAR = new Set(["active", "past_due"]);
 
-type Tone = "info" | "gold" | "success" | "danger" | "brand" | "neutral";
 
 function KisitliKonsol({ kapsam }: { kapsam: KonsolKapsami }) {
   const uygulamalar = uygulamalariSuz(konsolUygulamalari(), kapsam).filter((u) => u.key !== "home");
@@ -144,14 +128,18 @@ const hatirlatmalariHesapla = (lisanslar: RenewalLicense[], kurumlar: RenewalOrg
   renewalReminders(lisanslar, kurumlar, Date.now());
 
 type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null; grup_markasi: boolean | null };
-type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
 type BekleyenOdeme = { id: string; organization_id: string; product: string | null; plan_code: string | null; amount: number | null; currency: string | null; payment_method: string | null; created_at: string };
 type BekleyenSozlesme = { id: string; contract_no: string | null; customer_name: string | null; amount: number | null; currency: string | null; created_at: string };
-type KurulumKaydi = { id: number | string; organization_id: string; action: string; result: string | null; state: string | null; created_at: string };
 
-export async function KonsolAnaSayfa() {
-  const { supabase, userId, isPlatformOwner, konsolKapsami } = await getPanelContext();
+/*
+  ÜRÜN PERFORMANSI VE ÖNCELİKLİ İŞLER (26.11.2026, onaylı mockup).
+
+  Dönem ADRESTE (?donem=30g): sorgu sunucuda, geri tuşu çalışıyor ve
+  seçim paylaşılan bağlantıda korunuyor. İstemci durumu yok.
+*/
+export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: { donem?: DonemKodu; olcut?: OlcutKodu } = {}) {
+  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   /* Kabuk da eliyor (layout.tsx) ama yetki üç yerde birden duruyor
      (AGENTS.md): kabuğun bir gün değişmesi bu sayfayı açmamalı. */
   if (!isPlatformOwner) notFound();
@@ -189,6 +177,13 @@ export async function KonsolAnaSayfa() {
   */
   const ayBasi = `${todayInIstanbul().slice(0, 7)}-01T00:00:00+03:00`;
   const seriBasi = seriBaslangici();
+  /* Seçili dönem: ürün performansı tablosu ve "seçili dönemde tahsilat"
+     bunu kullanıyor. Grafiğin 14 günlük penceresi DEĞİŞMİYOR — şeritteki
+     "Son 14 gün tahsilat" ile tablo farklı soruların yanıtı. */
+  const secilenDonem = donemiCoz(donemParam ?? "30g");
+  /* Dar ekranda tabloda tek ölçüt gösteriliyor; hangisi olduğu adreste.
+     Yatay tablo kaydırması yok (onaylı mockup kuralı). */
+  const secilenOlcut = olcutParam ?? "musteri";
   /*
     KÜÇÜK OKUMALAR TEK ÇAĞRIDA (03.11.2026, migration 20261103065144).
     Tek tura indirmek yetmedi: otuz beşe yakın istek aynı anda gidince
@@ -282,6 +277,36 @@ export async function KonsolAnaSayfa() {
       .eq("status", "approved").gte("reviewed_at", seriBasi)),
     yedek((o) => liste(o, "bireysel"), () => supabase.from("subscriber_payments").select("id,amount,paid_at").gte("paid_at", seriBasi)),
   ]);
+  /*
+    ÜRÜN PERFORMANSININ KENDİ OKUMALARI (26.11.2026).
+
+    Grafiğin penceresi 14 gün, tablonunki seçili dönem (30/90/365).
+    Özet çağrısının p_seri_basi'sını genişletip ikisini aynı satırlardan
+    beslemek grafiği de değiştirirdi; tablo ayrı okuyor.
+
+    ÜÇÜ DE SAYFALI: bir yılın ödemeleri PostgREST'in satır tavanını aşar
+    ve toplam sessizce eksilir (AGENTS.md, rakam denetimi). Tarih sınırı
+    hem başta hem sonda: üst sınır yazılmazsa "son 30 gün" ileri tarihli
+    bir kaydı da toplar.
+  */
+  const performansIstegi = Promise.all([
+    sayfaliSonuc<{ organization_id: string; product: string | null; amount: number | null; reviewed_at: string | null }>(
+      "dönem kurum ödemeleri",
+      (bas, son) => supabase.from("organization_payment_requests").select("organization_id,product,amount,reviewed_at")
+        .eq("status", "approved").gte("reviewed_at", secilenDonem.baslangic).lt("reviewed_at", secilenDonem.bitis)
+        .order("reviewed_at").range(bas, son)),
+    sayfaliSonuc<{ subscriber_id: string; amount: number | null; paid_at: string | null }>(
+      "dönem abone ödemeleri",
+      (bas, son) => supabase.from("subscriber_payments").select("subscriber_id,amount,paid_at")
+        .gte("paid_at", secilenDonem.baslangic).lt("paid_at", secilenDonem.bitis)
+        .order("paid_at").range(bas, son)),
+    /* Aboneler dönemle sınırlanamaz: "aktif müşteri" bugünkü durumdur,
+       dönüşüm grubu ise created_at'e göre bellekte süzülüyor. */
+    sayfaliSonuc<{ id: string; product: string; status: string; trial_ends_at: string | null; created_at: string }>(
+      "bireysel aboneler",
+      (bas, son) => supabase.from("product_subscribers").select("id,product,status,trial_ends_at,created_at")
+        .order("id").range(bas, son)),
+  ]);
   /* Köprü sağlığı 60 sn önbellekte (lib/kopru-sagliklari); Sistem sağlığı canlı okuyor. */
   const kopruSagligi = kopruSagliklari();
   const kopruIstegi = Promise.all([
@@ -309,13 +334,12 @@ export async function KonsolAnaSayfa() {
     { data: kiraciSatirlari, error: kiraciHatasi },
     { data: urunSatirlari, error: urunHatasi },
     bekleyenOdeme,
-    // hata-tamam: kurucunun kendi adı (selamlama); düşerse selam adsız kalır
-    { data: profil },
-    // hata-tamam: kurucunun kendi personel kaydı, yine yalnızca ad için
-    { data: personel },
-    // hata-tamam: depolamaKullanimi bir promise; düşerse Promise.all REDDEDİLİR ve sayfa hata ekranına gider, sessizce sıfır göstermez
-    { data: depolamalar },
-  ] = await sure.olc("kiraci_urun_depolama", Promise.all([
+    /*
+      Kurucunun adı, personel kaydı ve depolama toplamı 26.11.2026'da
+      kaldırıldı: Genel Bakış artık selamlama ve kota rozeti çizmiyor
+      (onaylı mockup), okunmayan veri de okunmuyor — üç sorgu eksildi.
+    */
+  ] = await sure.olc("kiraci_urun", Promise.all([
     /*
       KURUM, LİSANS VE AKTİF ÜYE SAYISI TEK GÖRÜNÜMDEN (12.10.2026).
 
@@ -361,26 +385,18 @@ export async function KonsolAnaSayfa() {
       */
       .then((data) => ({ data, error: null as { message: string } | null }))
       .catch((hata: unknown) => ({ data: null, error: { message: hata instanceof Error ? hata.message : String(hata) } })),
-    /* Bekleyenlerin TAMAMI, sınırsız: kuyruk kurucunun bugünkü işi ve
-       satır satır gösteriliyor (Ödeme onayları ekranındaki kuralın aynısı). */
+    /* Bekleyen ödeme bildirimlerinin TAMAMI: kurucunun bugünkü işi.
+       sınırsız-tamam: satır satır gösteriliyor ve sayısı küçük (Ödeme
+       onayları ekranındaki kuralın aynısı). */
     yedek((o) => liste(o, "bekleyen_odemeler"), () => supabase.from("organization_payment_requests").select("id,organization_id,product,plan_code,amount,currency,payment_method,created_at")
       .eq("status", "pending").order("created_at", { ascending: false })),
-    yedek((o) => ({ data: { full_name: o.ad } }), () => supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle()),
-    /* Ad birden çok yerde olabilir ve hiçbiri zorunlu değil; davet
-       akışından geçmeden açılmış bir hesabın profiles kaydı yok ve
-       selamlama adsız kalıyordu. */
-    yedek((o) => ({ data: { full_name: o.ad } }), () => supabase.from("hr_employees").select("full_name").eq("user_id", userId).limit(1).maybeSingle()),
-    /* Depolama storage.objects'ten geliyor; o tablo PostgREST'e açık değil
-       ve olmamalı. Fonksiyon yalnızca kurum başına TOPLAM döndürüyor. */
-    /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
-    depolamaKullanimi().then((data) => ({ data })),
   ]));
 
   /* Sözleşme kuyruğu ve kurulum günlüğü yalnızca sunucu anahtarıyla
      okunuyor (sozlesmeler sayfasındaki kuralın aynısı). Anahtar yoksa
      satır hiç çizilmiyor: "0 sözleşme bekliyor" yazmak, okunamayan bir
      kuyruğu boş göstermek olurdu. */
-  const [{ data: sozlesmeSatirlari, error: sozlesmeHatasi }, { data: kurulumKayitlari, error: kurulumHatasi }, { data: proformaSatirlari, error: proformaHatasi }] = await sozlesmeIstegi;
+  const [{ data: sozlesmeSatirlari, error: sozlesmeHatasi }, { error: kurulumHatasi }, { error: proformaHatasi }] = await sozlesmeIstegi;
   /*
     ÖDEME VE KREDİ SORUNLARI da kuyrukta (29.10.2026): PayTR'nin ödeyip
     kaydı oluşmayan bildirimleri ve ödenip ArvoLab'a yüklenemeyen AI
@@ -389,7 +405,6 @@ export async function KonsolAnaSayfa() {
     getPaymentIncidents okunamazsa kendi içinde boş döner (günlüğe yazar);
     kredi okuması düşerse satırı "okunamadı" olarak işaretliyoruz.
   */
-  const [odemeOlaylari, krediSonucu, etkinlik, askiCekirdek, askiUrun] = await odemeIstegi;
 
   /*
     YANIT BEKLEYEN DESTEK TALEPLERİ (02.11.2026): kurumların açtığı
@@ -415,13 +430,11 @@ export async function KonsolAnaSayfa() {
      yalnızca kurum sayılınca bir tık ötedeki rapor başka sayı yazıyordu. */
   const yeniAboneSayimi = await yeniAboneIstegi;
   if (yeniAboneSayimi.error) console.error("[konsol] bu ayın yeni abone sayısı okunamadı", yeniAboneSayimi.error.message);
-  const yeniOkunamadi = Boolean(yeniSayimi.error || yeniAboneSayimi.error);
 
   /* sınırsız-tamam: zamanı gelen takipler — kurucunun temizlediği iş listesi, sayısı küçük. */
   const takipSonucu = await takipIstegi;
   const takipKurulu = !(takipSonucu.error && (takipSonucu.error.code === "PGRST205" || takipSonucu.error.code === "42P01"));
   const takipHatasi = takipKurulu ? takipSonucu.error : null;
-  const takipler = (takipSonucu.data ?? []) as { id: string; organization_id: string; metin: string; takip_tarihi: string }[];
 
   /* sınırsız-tamam: yanıt bekleyen talepler — kurucunun temizlediği iş listesi, sayısı küçük. */
   const { data: destekSatirlari, error: destekHatasi } = await destekIstegi;
@@ -441,9 +454,8 @@ export async function KonsolAnaSayfa() {
     kurum ödemesinin aktivasyon ikizi — grafik her ödemeyi iki kez
     çiziyordu (14.10.2026, 20261014062145).
   */
-  const [{ data: havaleler, error: havaleHatasi }, { data: bireyselOdemeler, error: bireyselHatasi }] = await grafikIstegi;
 
-  const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya] = await kopruIstegi;
+  const [arvolab, arc, randevu] = await kopruIstegi;
 
   /* Görünümün satırı hem kurumu hem lisansı taşıyor; ikisi burada
      ayrılıyor. Lisans alanı boş olan kurum (tetikleyici lisansı
@@ -460,13 +472,16 @@ export async function KonsolAnaSayfa() {
     zaten uyguluyordu (app/panel/page.tsx, failedQueries → GenelBakis
     uyarısı); konsolun ana ekranı dışarıda kalmıştı.
   */
+  /* Dönem okumaları banner'ı da besliyor: düşen bir ödeme okuması
+     "okunamadı" olarak yazılmalı, tabloda sessizce kalmamalı. */
+  const [donemKurumOdemeleri, donemAboneOdemeleri, aboneKayitlari] = await performansIstegi;
   const okunamayan = ([
     ["Kiracı listesi", kiraciHatasi],
     ["Ürün lisansları", urunHatasi],
     ["Ödeme bildirimleri", bekleyenOdeme.error],
     ["Sözleşme onayları", sozlesmeHatasi],
-    ["Kurum ödemeleri", havaleHatasi],
-    ["Bireysel abone ödemeleri", bireyselHatasi],
+    ["Kurum ödemeleri", donemKurumOdemeleri.error],
+    ["Bireysel abone ödemeleri", donemAboneOdemeleri.error],
     ["Kurulum günlüğü", kurulumHatasi],
     ["Bekleyen proformalar", proformaHatasi],
     ["Destek talepleri", destekHatasi],
@@ -492,37 +507,9 @@ export async function KonsolAnaSayfa() {
   */
   const kiracilarListesi = kurumlar.filter((kurum) => kurum.kind !== "internal");
   const musteriler = kurumlar.filter(musteriMi);
-  const grupMarkalari = kurumlar.filter((kurum) => kurumTuru(kurum) === "grup");
   const kurumAdi = new Map(kurumlar.map((kurum) => [kurum.id, kurum.display_name || kurum.name]));
-  const askiHatasi = askiCekirdek.error ?? askiUrun.error;
-  const askiMusterileri = new Set(kurumlar.filter((k) => musteriMi(k)).map((k) => k.id));
-  const askidakiler = askiHatasi ? [] : askidakiKurumlar([
-    ...((askiCekirdek.data ?? []) as { organization_id: string; suspended_at: string | null; suspension_reason: string | null }[]).map((s) => ({ ...s, product: "arvoos" })),
-    ...((askiUrun.data ?? []) as AskiSatiri[]),
-  ], (id) => askiMusterileri.has(id), simdi());
 
-  const aktifUye = new Map(kiracilar.map((satir) => [satir.id, Number(satir.aktif_uye)]));
-  const depolamaBayt = new Map(
-    ((depolamalar ?? []) as { organization_id: string; bytes: number }[]).map((satir) => [satir.organization_id, Number(satir.bytes ?? 0)]),
-  );
-  const cekirdek: CekirdekLisans[] = kiracilar
-    .filter((satir) => satir.license_status !== null && satir.user_limit !== null && satir.storage_limit_mb !== null)
-    .map((satir) => ({
-      organization_id: satir.id,
-      license_status: satir.license_status!,
-      monthly_fee: satir.monthly_fee,
-      user_limit: Number(satir.user_limit),
-      storage_limit_mb: Number(satir.storage_limit_mb),
-    }));
-  const kota = new Map(cekirdek.map((lisans) => [lisans.organization_id, kotaDurumu({
-    organizationId: lisans.organization_id,
-    kullaniciSayisi: aktifUye.get(lisans.organization_id) ?? 0,
-    kullaniciLimiti: lisans.user_limit,
-    depolamaBayt: depolamaBayt.get(lisans.organization_id) ?? 0,
-    depolamaLimitiMb: lisans.storage_limit_mb,
-  })]));
 
-  const kullanimda = musteriler.filter((kurum) => kurum.provisioning_state === "active").length;
   /*
     Beklenen aylık gelir LİSANSLARDAN hesaplanıyor, abonelik kaydından
     değil: o tabloya satır ancak bir ödeme onaylandığında düşüyor, yani
@@ -531,14 +518,31 @@ export async function KonsolAnaSayfa() {
   */
   /* Gelire yalnızca gerçek müşteri girer: grup markalarının (AkademikMerkez,
      ArvoCulture) ücreti grup içi değer, müşteri geliri değil (lib/kurum-turu). */
-  const kiraciMi = new Set(kiracilarListesi.map((kurum) => kurum.id));
-  const musteriKimlikleri = new Set(musteriler.map((kurum) => kurum.id));
   const urunler = (urunSatirlari ?? []) as UrunLisansi[];
-  const aylikGelir =
-    cekirdek.filter((satir) => musteriKimlikleri.has(satir.organization_id) && ODEYEN_DURUMLAR.has(satir.license_status))
-      .reduce((toplam, satir) => toplam + Number(satir.monthly_fee ?? 0), 0)
-    + urunler.filter((satir) => musteriKimlikleri.has(satir.organization_id) && ODEYEN_DURUMLAR.has(satir.status))
-      .reduce((toplam, satir) => toplam + Number(satir.monthly_fee ?? 0), 0);
+
+  /*
+    ÜRÜN PERFORMANSI (26.11.2026). Sayma işi saf çekirdekte
+    (lib/konsol/urun-performansi); burada yalnızca okunanlar veriliyor.
+    Okuması düşen kaynak "hata" olarak geçiyor ki tabloda sıfır değil
+    "Veri okunamadı" yazsın.
+  */
+  const okumaOlarak = <T,>(sonuc: { data: T[] | null; error: { message: string } | null }): Okuma<T[]> =>
+    sonuc.error || !sonuc.data ? { hata: true } : { veri: sonuc.data };
+  /* Tahsilata yalnızca MÜŞTERİ kurumlar girer: iç ekip ve grup markası
+     ödemesi gelir değil (platform_tahsilat_ozeti ile aynı küme). */
+  const musteriKurumKumesi = new Set(musteriler.map((kurum) => kurum.id));
+  const performans = urunPerformansi({
+    donem: secilenDonem,
+    cekirdek: kiraciHatasi
+      ? { hata: true }
+      : { veri: kiracilarListesi.map((kurum) => ({ organization_id: kurum.id, license_status: (kurum as { license_status?: string | null }).license_status ?? null })) },
+    urunLisanslari: urunHatasi ? { hata: true } : { veri: urunler.map((u) => ({ organization_id: u.organization_id, product: u.product, status: u.status })) },
+    aboneler: okumaOlarak(aboneKayitlari),
+    aboneOdemeleri: okumaOlarak(donemAboneOdemeleri),
+    kurumOdemeleri: okumaOlarak(donemKurumOdemeleri),
+    musteriKurumlar: kiraciHatasi ? { hata: true } : { veri: musteriKurumKumesi },
+  });
+
 
   const hatirlatmalar = hatirlatmalariHesapla(urunler as RenewalLicense[], kurumlar as RenewalOrganization[]);
   const odemeler = (bekleyenOdeme.data ?? []) as BekleyenOdeme[];
@@ -548,14 +552,6 @@ export async function KonsolAnaSayfa() {
     satır "İncele" diyerek ekrana götürüyor, çünkü farkı görerek teyit
     etmek orada (payments/karar-formu). Okuma bekleyen kuyruk kadar
     küçük ve kurum kimlikleriyle sınırlı.
-  */
-  const odemeDenetimleri = await sure.olc("havale_denetimi", havaleDenetimleri(supabase, odemeler.map((o) => ({
-    id: o.id, organization_id: o.organization_id, product: o.product, plan_code: o.plan_code,
-    /* Tutarsız bildirim yoktur: sütun NOT NULL değil ama bildirim
-       tutarsız gelirse denetim onu 0 ile karşılaştırıp fark yazar —
-       yani sessizce "uyumlu" saymaz. */
-    amount: Number(o.amount ?? 0),
-  }))));
   /** Sunucu anahtarı yoksa null: okunamadı, boş değil. */
   const sozlesmeler = admin ? ((sozlesmeSatirlari ?? []) as BekleyenSozlesme[]) : null;
 
@@ -564,41 +560,12 @@ export async function KonsolAnaSayfa() {
     ağırlıksız çağrılsaydı grafik "kaç ödeme" gösterirdi; kurucunun
     sorduğu "ne kadar tahsil edildi".
   */
-  type Havale = { id: string; organization_id: string; product: string | null; amount: number | null; payment_method: string | null; reviewed_at: string | null };
-  const tahsilatKayitlari = [
-    ...((havaleler ?? []) as Havale[]).map((satir) => ({
-      id: `k-${satir.id}`, tarih: satir.reviewed_at, tutar: Number(satir.amount ?? 0),
-      ad: kurumAdi.get(satir.organization_id) ?? "Kurum",
-      alt: [satir.product ? productName(satir.product) : null, satir.payment_method === "paytr" ? "Kart (PayTR)" : "Havale/EFT"].filter(Boolean).join(" · "),
-      href: `/panel/platform/musteriler/${satir.organization_id}`,
-    })),
-    ...((bireyselOdemeler ?? []) as { id: string; amount: number | null; paid_at: string | null }[]).map((satir) => ({
-      id: `b-${satir.id}`, tarih: satir.paid_at, tutar: Number(satir.amount ?? 0),
-      ad: "Bireysel abone", alt: "Kart (PayTR)", href: "/panel/platform/subscribers",
-    })),
-  ].filter((satir) => satir.tarih);
-  const tahsilatSerisi = gunlukSeri(
-    tahsilatKayitlari.map((satir) => satir.tarih as string),
-    simdi(),
-    14,
-    tahsilatKayitlari.map((satir) => satir.tutar),
-  );
 
-  const { selam } = selamlama();
-  const ad = formatPersonName(
-    (profil?.full_name as string | null | undefined) || (personel?.full_name as string | null | undefined),
-  ).split(" ")[0];
 
   /*
     Kopyası konsoldan farklı erişim veren kiracılar. Yalnızca MÜŞTERİ
     kurumları: Arvo'nun kendi kurumu ürünlerin kopyasında bulunmaz ve her
     açılışta listeye düşerdi.
-  */
-  const bayatKopyalar = eskiKopyalar(
-    // Grup markaları da gerçek kiracı: kopyaları denetimde kalıyor (yalnızca Arvo'nun kendisi dışarıda).
-    urunler.filter((satir) => kiraciMi.has(satir.organization_id)),
-    { arvolab: labKopya, arc: arcKopya, randevu: rdvKopya },
-  );
 
   const kopruler = [
     arvolab?.broken
@@ -617,16 +584,6 @@ export async function KonsolAnaSayfa() {
   /* Dikkat isteyen kiracılar: kurulumu hatada kalan ya da kotasını aşan.
      BÜTÜN kiracılar üzerinden: bozuk kurulan ya da kotasını aşan bir grup
      markası da kurucunun işidir, müşteri olmaması onu ilgisiz yapmıyor. */
-  const dikkatliler = kiracilarListesi
-    .filter((kurum) => kurum.provisioning_state === "failed" || kota.get(kurum.id)?.durum === "asildi")
-    .map((kurum) => ({
-      id: kurum.id,
-      ad: kurum.display_name || kurum.name,
-      sebep: kurum.provisioning_state === "failed"
-        ? "Kurulum hatası"
-        : kota.get(kurum.id)?.kullanici.asildi ? "Kullanıcı limiti aşıldı" : "Depolama limiti aşıldı",
-    }));
-  const kurulumdakiler = kiracilarListesi.filter((kurum) => PENDING_STATES.has(kurum.provisioning_state));
 
   /*
     SORUNLAR TEK SEKMEDE: kurulum hatası, kota aşımı ve bayat ürün
@@ -635,55 +592,16 @@ export async function KonsolAnaSayfa() {
     daha)" diye kesiliyordu; şimdi her kiracı kendi satırında ve o
     kiracının dosyasına gidiyor. Köprü kopması yerinde kaldı: o tek bir
     kiracının değil bütün ürünün sorunu.
-  */
-  const semaSonucu = await semaIstegi;
-  const eksikMigrationlar = [...new Set(((semaSonucu?.error ? [] : semaSonucu?.data) ?? []).map((e: { eksik_migration: string }) => e.eksik_migration))].sort();
   /* Denetim okunamadıysa (işlevin olmaması dahil) kuyruk bunu söylüyor: sessizce
      boş kalması "eksik migration yok" diye okunuyordu (inceleme bulgusu, 02.11.2026). */
-  const semaOkunamadi = Boolean(admin) && (semaSonucu === null || Boolean(semaSonucu.error));
-  const sorunlar = [
-    ...(semaOkunamadi ? [{ id: "m-denetim", href: "/panel/platform/saglik?sekme=veritabani", ad: "Migration denetimi", alt: semaSonucu?.error?.message ?? "Denetim yanıt vermedi", rozet: "Okunamadı" }] : []),
-    ...eksikMigrationlar.map((ad) => ({
-      id: `m-${ad}`, href: "/panel/platform/saglik?sekme=veritabani", ad: `${ad}.sql`,
-      alt: "Canlı veritabanına uygulanmamış; SQL Editor'de çalıştırın", rozet: "Migration eksik",
-    })),
-    ...odemeOlaylari.map((olay) => ({
-      id: `o-${olay.id}`,
-      href: olay.organizationId ? `/panel/platform/musteriler/${olay.organizationId}?pencere=odemeler` : "/panel/platform/payments#karsiliksiz",
-      ad: olay.organizationName ?? "Kurum bilinmiyor",
-      alt: `PayTR ${olay.merchantOid}${olay.paymentAmount !== null ? ` · ${para(olay.paymentAmount)}` : ""}`,
-      rozet: incidentLabels[olay.result] ?? "Ödeme işlenemedi",
-    })),
-    ...krediSonucu.veri.map((kredi) => ({
-      id: `c-${kredi.siparisId}`,
-      href: kredi.organizationId ? `/panel/platform/musteriler/${kredi.organizationId}?pencere=odemeler` : "/panel/platform/saglik?sekme=odeme",
-      ad: kredi.organizationId ? kurumAdi.get(kredi.organizationId) ?? "Kurum" : "Bireysel abone",
-      alt: `${kredi.kredi} AI kredisi ödendi, ArvoLab'a yüklenemedi`,
-      rozet: "Kredi yüklenemedi",
-    })),
-    ...(krediSonucu.hata ? [{ id: "c-hata", href: "/panel/platform/saglik?sekme=odeme", ad: "AI kredi siparişleri", alt: krediSonucu.hata, rozet: "Okunamadı" }] : []),
-    ...dikkatliler.map((kurum) => ({ id: `d-${kurum.id}`, href: `/panel/platform/musteriler/${kurum.id}`, ad: kurum.ad, alt: "Kiracı", rozet: kurum.sebep })),
-    ...bayatKopyalar.map((kayit) => ({
-      id: `k-${kayit.organizationId}-${kayit.product}`,
-      href: `/panel/platform/musteriler/${kayit.organizationId}`,
-      ad: kurumAdi.get(kayit.organizationId) ?? "Kurum",
-      alt: `${productName(kayit.product)}: üründe "${kayit.kopyaDurumu}", burada "${kayit.konsolDurumu}" · lisanstan "Ürüne yeniden yansıt"`,
-      rozet: "Kopya bozuk",
-    })),
-  ];
 
   /*
     Sekmeler. Kuyruk okunamadıysa sekme "okunamadı" der, boş değil:
     sıfır bir cevaptır, okunamayan sorgu cevap değildir (yukarıdaki
     `okunamayan` da aynı adı en üstte yazıyor).
-  */
-  const bugun = todayInIstanbul();
   /* Müşteriye ULAŞMAYAN önce (02.11.2026, lib/proforma-gonderim): bu kuyruk
      "gönderilmiş, ödemesi gelmemiş" diyordu ama gönderime hiç bakmıyordu;
      29.10–02.11 arasında kesilenler müşteriye gitmediği hâlde öyle görünüyordu. */
-  const proformalar = gonderimSirasi((proformaSatirlari ?? []) as { id: string; proforma_no: string; musteri_adi: string; product: string; toplam: number; para_birimi: string | null; gecerlilik_tarihi: string; gonderildi_at: string | null; bildirildi_at: string | null; gonderim_hatasi: string | null }[])
-    .map((p) => ({ ...p, kalan: gunFarki(bugun, p.gecerlilik_tarihi), gonderim: gonderimDurumu(p) }));
-  const gitmeyenProforma = proformalar.filter((p) => p.gonderim !== "gitti").length;
   /*
     YENİLEME RİSKİ (02.11.2026): ArvoOS lisansı açık, yenilemesi 30 gün
     içinde ve son 7 günde panele kimse girmemiş müşteriler
@@ -691,78 +609,88 @@ export async function KonsolAnaSayfa() {
     kuralın aynısı; ana ekranda da çünkü "kimi arayayım" sorusu bugünün işi.
     Grup markaları ve Arvo'nun kendisi dışarıda: ödemeyi yenileyecek
     bir müşteri değiller.
-  */
-  const riskliler = etkinlik.harita
-    ? kiracilar
-        .filter((k) => musteriMi(k))
-        .map((k) => {
-          const son = etkinlik.harita!.get(k.id)?.son ?? null;
-          const yenileme = k.license_status === "trialing" ? k.trial_ends_at : k.current_period_end;
-          const acik = k.license_status === "active" || k.license_status === "trialing" || k.license_status === "past_due";
-          return { id: k.id, ad: k.display_name || k.name, son, yenileme, risk: yenilemeRiski({ acik, yenileme, son }, etkinlik.simdi) };
-        })
-        .filter((k) => k.risk)
-        .sort((a, b) => (a.yenileme ?? "").localeCompare(b.yenileme ?? ""))
-    : [];
   /*
     KURULUP KULLANILMAYANLAR (02.11.2026, lib/musteri-etkinligi
     kullanilmayanMi): denemesi boşa giden ya da ödediği hâlde panele hiç
     girilmemiş müşteriler. Yeni müşteriyi ilk haftalarda kaybetmenin en
     sık yolu bu; yenileme riskinde olanlar orada, burada tekrar edilmiyor.
-  */
-  const riskliIdler = new Set(riskliler.map((k) => k.id));
-  const kullanmayanlar = etkinlik.harita
-    ? kiracilar
-        .filter((k) => musteriMi(k) && !riskliIdler.has(k.id))
-        .map((k) => ({ id: k.id, ad: k.display_name || k.name, durum: k.license_status, son: etkinlik.harita!.get(k.id)?.son ?? null, kurulum: k.provisioning_state }))
-        .filter((k) => kullanilmayanMi({ kurulum: k.kurulum, durum: k.durum, son: k.son }, etkinlik.simdi))
-        .sort((a, b) => (a.son ?? "").localeCompare(b.son ?? "") || a.ad.localeCompare(b.ad, "tr"))
-    : [];
   const destekTalepleri = kuyrukSirala((destekSatirlari ?? []) as { id: string; subject: string; priority: string; status: string; last_message_at: string; organization_id: string }[]);
-  const destekAni = new Date(simdi());
-  const sekmeler = [
-    { ad: "Ödeme onayları", sayi: odemeler.length, hata: Boolean(bekleyenOdeme.error) },
-    { ad: "Destek", sayi: destekTalepleri.length, hata: Boolean(destekHatasi) },
-    ...(takipKurulu ? [{ ad: "Takip", sayi: takipler.length, hata: Boolean(takipHatasi) }] : []),
-    ...(sozlesmeler ? [{ ad: "Sözleşmeler", sayi: sozlesmeler.length, hata: Boolean(sozlesmeHatasi) }] : []),
-    ...(admin ? [{ ad: "Proformalar", sayi: proformalar.length, hata: Boolean(proformaHatasi) }] : []),
-    { ad: "Kurulumlar", sayi: kurulumdakiler.length, hata: Boolean(kiraciHatasi) },
-    { ad: "Dönemi dolanlar", sayi: hatirlatmalar.length, hata: Boolean(urunHatasi) },
-    { ad: "Askıdakiler", sayi: askidakiler.length, hata: Boolean(askiHatasi) },
-    { ad: "Yenileme riski", sayi: riskliler.length, hata: !etkinlik.harita || Boolean(kiraciHatasi) },
-    { ad: "Kullanmayanlar", sayi: kullanmayanlar.length, hata: !etkinlik.harita || Boolean(kiraciHatasi) },
-    { ad: "Sorunlar", sayi: sorunlar.length, hata: Boolean(kiraciHatasi) },
-  ];
-  const bekleyenIs = sekmeler.reduce((toplam, sekme) => toplam + sekme.sayi, 0);
-  /* Açılışta işi olan İLK sekme: kurucu boş bir listeye inip doluyu aramasın. */
-  const ilkDolu = Math.max(0, sekmeler.findIndex((sekme) => sekme.sayi > 0));
 
-  const kurulumlar = (kurulumKayitlari ?? []) as KurulumKaydi[];
   /* Hangi kiracının kurulumu HÂLÂ hatada: rozetin tonu buna bakıyor. */
   const hatadaKalanlar = new Set(kurumlar.filter((k) => k.provisioning_state === "failed").map((k) => k.id));
-  const sonTahsilatlar = [...tahsilatKayitlari]
-    .sort((x, y) => (y.tarih as string).localeCompare(x.tarih as string))
-    .slice(0, GENEL_BAKIS_SATIR);
 
   /*
     Sayılar TEK ŞERİTTE (29.10.2026). Eskiden grafiğin başlığına
     sıkıştırılmıştı ve telefonda grafiğin altına kayıyordu; "kaç iş
     bekliyor" sorusu da grafiğin değil kuyruğun sorusu.
   */
-  const serit: { ad: string; deger: string; alt?: string; href: string; ton?: Tone }[] = [
-    { ad: "Beklenen aylık", deger: para(aylikGelir), alt: "Ödeyen müşteri lisansları", href: "/panel/platform/billing" },
-    { ad: "Müşteri kurum", deger: `${kullanimda} / ${musteriler.length}`, alt: "Kullanımda / toplam", href: "/panel/platform/musteriler?tur=kurumsal" },
-    ...(grupMarkalari.length ? [{ ad: "Grup markası", deger: String(grupMarkalari.length), alt: "Müşteri sayılmaz", href: "/panel/platform/musteriler" }] : []),
-    { ad: "Son 14 gün tahsilat", deger: para(tahsilatSerisi.total), alt: donemDegisimi(tahsilatSerisi, { adet: "tahsilat" }).metin, href: "/panel/platform/tahsilat" },
-    { ad: "Bu ay yeni müşteri", deger: yeniOkunamadi ? "—" : String((yeniSayimi.count ?? 0) + (yeniAboneSayimi.count ?? 0)), alt: yeniOkunamadi ? "okunamadı" : `${yeniSayimi.count ?? 0} kurum · ${yeniAboneSayimi.count ?? 0} bireysel`, href: `/panel/platform/rapor?ay=${todayInIstanbul().slice(0, 7)}-01` },
-    { ad: "Bekleyen iş", deger: String(bekleyenIs), alt: bekleyenIs ? "Aşağıdaki kuyrukta" : "Kuyruk boş", href: "#bugunun-isleri", ton: bekleyenIs ? "gold" : undefined },
-  ];
 
-  const bos = (metin: string) => <p className="pu-bos">{metin}</p>;
-  const okunamadi = <p className="pu-bos" data-tone="danger">Bu kuyruk okunamadı; sayfayı yenileyin. Sorun sürerse Sistem → Sistem sağlığı.</p>;
-  const bas = (not: string, href: string, etiket: string) => (
-    <header className="phr-bas"><small>{not}</small><Link className="pu-tumu" href={href}>{etiket}</Link></header>
-  );
+  /*
+    ÖNCELİKLİ İŞLER (26.11.2026, onaylı mockup). Kuyruğun ZATEN okuduğu
+    kalemlerden türüyor — yeni sorgu yok, yetki aynı. Her satır işin
+    yapıldığı ekrana açılıyor: ödeme bildirimi onay ekranına, yenileme
+    müşteri kaydına, talep kendi kaydına. Onay düğmeleri kuyrukta kaldı,
+    bu kart onların yerine geçmiyor.
+
+    Sıra aciliyete göre: para bekleyen iş önce. Liste kısa tutuluyor,
+    tamamı "Bugünün işleri" kartında.
+  */
+  const ONCELIKLI_TAVAN = 6;
+  /* Köprü sağlığı uyarı satırını besliyor: hangi ürünün köprüsü sessiz. */
+  const kopruler = [
+    arvolab?.broken
+      ? {
+          ad: "ArvoLab köprüsü",
+          not: arvolab.permanent
+            ? "Anahtar eksik ya da iki tarafta farklı; bireysel abonelikler denetlenemiyor."
+            : "ArvoLab, ArvoOS'a ulaşamıyor; kullanıcılar engellenmiyor ama abonelik denetimi durdu.",
+        }
+      : null,
+    !arc.ok ? { ad: "ArvoARC köprüsü", not: arc.error ? `Bağlanılamadı: ${arc.error}` : `Tanımlı olmayan değişkenler: ${arc.missing.join(", ")}` } : null,
+    !randevu.ok ? { ad: "ArvoCal köprüsü", not: randevu.error ? `Bağlanılamadı: ${randevu.error}` : `Tanımlı olmayan değişkenler: ${randevu.missing.join(", ")}` } : null,
+  ].filter(Boolean) as { ad: string; not: string }[];
+
+  /* Öncelikli işler listesinin destek ayağı. */
+  const destekTalepleri = kuyrukSirala((destekSatirlari ?? []) as { id: string; subject: string; priority: string; status: string; last_message_at: string; organization_id: string }[]);
+
+  const oncelikliIsler: OncelikliIs[] = [
+    ...odemeler.map((o) => ({
+      anahtar: `odeme-${o.id}`,
+      urun: o.product ? productName(o.product) : undefined,
+      baslik: "Ödeme bildirimi",
+      alt: [kurumAdi.get(o.organization_id) ?? "Kurum", para(Number(o.amount ?? 0), o.currency ?? "TRY")].join(" · "),
+      href: "/panel/platform/payments",
+    })),
+    ...(sozlesmeler ?? []).map((i) => ({
+      anahtar: `sozlesme-${i.id}`,
+      baslik: "Sözleşme onayı",
+      alt: [i.customer_name || "Müşteri", i.contract_no].filter(Boolean).join(" · "),
+      href: "/panel/platform/sozlesmeler",
+    })),
+    ...hatirlatmalar.map((h) => ({
+      anahtar: `yenileme-${h.organizationId}-${h.product}`,
+      urun: h.productName,
+      baslik: h.daysLeft < 0 ? "Dönemi doldu" : "Yaklaşan yenileme",
+      alt: [h.organizationName, h.daysLeft < 0 ? `${-h.daysLeft} gün geçti` : `${h.daysLeft} gün kaldı`].join(" · "),
+      href: `/panel/platform/musteriler/${h.organizationId}`,
+    })),
+    ...destekTalepleri.map((t) => ({
+      anahtar: `destek-${t.id}`,
+      baslik: "Yanıt bekleyen talep",
+      alt: [kurumAdi.get(t.organization_id) ?? "Kurum", t.subject].filter(Boolean).join(" · "),
+      href: `/panel/platform/destek/${t.id}`,
+      eylem: "Görüntüle",
+    })),
+  ].slice(0, ONCELIKLI_TAVAN);
+  /* Okunamayan kuyruk "iş yok" diye gösterilmez: hangi kalemin sayısının
+     bilinmediği yazılır. */
+  const oncelikliOkunamayan = [
+    bekleyenOdeme.error ? "Ödeme bildirimleri" : null,
+    sozlesmeHatasi ? "Sözleşme onayları" : null,
+    urunHatasi ? "Yenilemeler" : null,
+    destekHatasi ? "Destek talepleri" : null,
+  ].filter((x): x is string => Boolean(x));
+
 
   sure.bitir();
   /*
@@ -771,262 +699,6 @@ export async function KonsolAnaSayfa() {
     TalepAkis, aynı sunucu işlemi, aynı yetki davranışı. Değişen tek şey
     nerede durduğu — sayfa boyunca yığılmak yerine kendi kartında.
   */
-  const islerPaneli = (
-    <div id="bugunun-isleri" className="konsol-isler-kap">
-        <h2 className="konsol-isler-baslik">Bugünün işleri</h2>
-        <TalepAkis
-          kimlik="konsol-is"
-          etiket="Bugünün işleri"
-          sinif="konsol-isler"
-          baslangic={ilkDolu}
-          sekmeler={sekmeler.map((sekme) => (sekme.sayi ? `${sekme.ad} · ${sekme.sayi}` : sekme.ad))}
-        >
-          <section>
-            {bas("Kurumların gönderdiği dekontlar ve kart ödemeleri; onaylanınca lisans açılır.", "/panel/platform/payments", "Ödeme onayları")}
-            {bekleyenOdeme.error ? okunamadi : odemeler.length ? (
-              <ul className="pu-liste">
-                {odemeler.map((odeme) => {
-                  const farklar = odemeDenetimleri.get(odeme.id)?.farklar ?? [];
-                  const ayrinti = [odeme.product ? productName(odeme.product) : null, odeme.payment_method === "paytr" ? "Kart (PayTR)" : "Havale/EFT", relativeTime(odeme.created_at)].filter(Boolean).join(" · ");
-                  const tutar = para(Number(odeme.amount ?? 0), odeme.currency ?? "TRY");
-                  return (
-                    <li key={odeme.id} className="pu-eylemli">
-                      <Link href="/panel/platform/payments">
-                        <span className="pu-govde">
-                          <b>{kurumAdi.get(odeme.organization_id) ?? "Kurum"}</b>
-                          <small>{farklar.length ? "Beklenenle uyuşmuyor · incelenmeli" : ayrinti}</small>
-                        </span>
-                        <span className="konsol-tutar" data-uyari={farklar.length ? "evet" : undefined}>{tutar}</span>
-                      </Link>
-                      {/* Farkı olan bildirim burada onaylanmıyor: teyit,
-                          farkın satır satır yazılı olduğu ekranda. */}
-                      {farklar.length ? null : (
-                        <HizliOnay
-                          paymentId={odeme.id}
-                          kurumAdi={kurumAdi.get(odeme.organization_id) ?? "Kurum"}
-                          tutar={tutar}
-                          ayrinti={ayrinti}
-                          kaydet={reviewBankTransferPayment}
-                        />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : bos("İncelenecek ödeme bildirimi yok.")}
-          </section>
-
-          <section>
-            {bas("Kurumların yanıt bekleyen destek talepleri; acil olan ve en uzun bekleyen başta.", "/panel/platform/destek", "Destek talepleri")}
-            {destekHatasi ? okunamadi : destekTalepleri.length ? (
-              <ul className="pu-liste">
-                {destekTalepleri.map((t) => (
-                  <li key={t.id}>
-                    <Link href={`/panel/platform/destek/${t.id}`}>
-                      <span className="pu-govde">
-                        <b>{t.subject}</b>
-                        <small>{[kurumAdi.get(t.organization_id) ?? "Kurum", ONCELIK_ADI[t.priority]].filter(Boolean).join(" · ")}</small>
-                      </span>
-                      <span className="status-pill" data-tone={gecikmisMi(t.last_message_at, destekAni) ? "danger" : "gold"}>
-                        {beklemeSuresi(t.last_message_at, destekAni)} bekliyor
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : bos("Yanıt bekleyen destek talebi yok.")}
-          </section>
-
-          {takipKurulu ? (
-            <section>
-              {bas("Müşteri notlarından takip tarihi gelen ya da geçenler; tamamlayınca listeden düşer.", "/panel/platform/musteriler", "Müşteriler")}
-              {takipHatasi ? okunamadi : takipler.length ? (
-                <ul className="pu-liste">
-                  {takipler.map((t) => {
-                    const gecikme = gunFarki(t.takip_tarihi, bugun);
-                    return (
-                      <li key={t.id} className="pu-eylemli">
-                        <Link href={`/panel/platform/musteriler/${t.organization_id}?pencere=notlar`}>
-                          <span className="pu-govde">
-                            <b>{kurumAdi.get(t.organization_id) ?? "Kurum"}</b>
-                            <small>{t.metin.length > 120 ? `${t.metin.slice(0, 117)}…` : t.metin}</small>
-                          </span>
-                          <span className="status-pill" data-tone={gecikme > 0 ? "danger" : "gold"}>{gecikme > 0 ? `${gecikme} gün geçti` : "Bugün"}</span>
-                        </Link>
-                        <form action={notTamamla}><input type="hidden" name="id" value={t.id} /><button type="submit" className="panel-secondary konsol-takip-kapat">Tamamlandı</button></form>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : bos("Bugün takip edilecek not yok.")}
-            </section>
-          ) : null}
-
-          {sozlesmeler ? (
-            <section>
-              {bas("İmzalanan sözleşmeler; onay aboneliği açar.", "/panel/platform/sozlesmeler", "Sözleşme onayları")}
-              {sozlesmeHatasi ? okunamadi : sozlesmeler.length ? (
-                <ul className="pu-liste">
-                  {sozlesmeler.map((istek) => (
-                    <li key={istek.id}>
-                      <Link href="/panel/platform/sozlesmeler">
-                        <span className="pu-govde">
-                          <b>{istek.customer_name || "Müşteri"}</b>
-                          <small>{[istek.contract_no, relativeTime(istek.created_at)].filter(Boolean).join(" · ")}</small>
-                        </span>
-                        {istek.amount ? <span className="konsol-tutar">{para(Number(istek.amount), istek.currency ?? "TRY")}</span> : null}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : bos("Onay bekleyen sözleşme yok.")}
-            </section>
-          ) : null}
-
-          {admin ? (
-            <section>
-              {bas(gitmeyenProforma
-                ? `Ödemesi gelmemiş proformalar; ${gitmeyenProforma} tanesi müşteriye ulaşmamış ve en üstte. Tahsilat → Proforma'dan toplu gönderilir.`
-                : "Gönderilmiş, ödemesi gelmemiş proformalar; geçerliliği en yakın olan başta.", "/panel/platform/tahsilat?kanal=proforma", "Proformalar")}
-              {proformaHatasi ? okunamadi : proformalar.length ? (
-                <ul className="pu-liste">
-                  {proformalar.map((p) => (
-                    <li key={p.id}>
-                      <Link href={`/panel/platform/tahsilat/proforma/${p.id}`}>
-                        <span className="pu-govde">
-                          <b>{p.musteri_adi}</b>
-                          <small>{[p.proforma_no, productName(p.product), p.gonderim !== "gitti" ? GONDERIM_ADI[p.gonderim] : null].filter(Boolean).join(" · ")}</small>
-                        </span>
-                        <span className="konsol-tutar">{para(Number(p.toplam), p.para_birimi ?? "TRY")}</span>
-                        {p.gonderim === "gitmedi" ? (
-                          <span className="status-pill" data-tone="danger" title={p.gonderim_hatasi ?? undefined}>Gitmedi</span>
-                        ) : (
-                          <span className="status-pill" data-tone={p.kalan < 0 ? "danger" : p.kalan <= 3 ? "gold" : "neutral"}>
-                            {p.kalan < 0 ? `${-p.kalan} gün geçti` : p.kalan === 0 ? "Bugün son gün" : `${p.kalan} gün kaldı`}
-                          </span>
-                        )}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : bos("Ödeme bekleyen proforma yok.")}
-            </section>
-          ) : null}
-
-          <section>
-            {bas("Kurulumu bitmemiş kiracılar: oluşturuluyor, davet gönderiliyor ya da kurum sahibi bekleniyor.", "/panel/platform/kurulumlar?asama=devam", "Kurulumlar")}
-            {kiraciHatasi ? okunamadi : kurulumdakiler.length ? (
-              <ul className="pu-liste">
-                {kurulumdakiler.map((kurum) => (
-                  <li key={kurum.id}>
-                    <Link href={`/panel/platform/musteriler/${kurum.id}?pencere=ayarlar`}>
-                      <span className="pu-govde"><b>{kurum.display_name || kurum.name}</b><small>{kurum.contact_phone || "Telefon yok"}</small></span>
-                      <span className="status-pill" data-tone="info">{KURULUM_ADI[kurum.provisioning_state] ?? kurum.provisioning_state}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : bos("Devam eden kurulum yok.")}
-          </section>
-
-          <section>
-            {bas(`Dönemi ya da denemesi ${REMINDER_WINDOW_DAYS} gün içinde dolan, ya da son 30 günde dolmuş abonelikler.`, "/panel/platform/billing", "Abonelikler")}
-            {urunHatasi ? okunamadi : hatirlatmalar.length ? (
-              <ul className="pu-liste">
-                {hatirlatmalar.map((h) => (
-                  <li key={`${h.organizationId}-${h.product}`}>
-                    <Link href={`/panel/platform/musteriler/${h.organizationId}`}>
-                      <span className="pu-govde">
-                        <b>{h.organizationName}</b>
-                        <small>{[h.trial ? `${h.productName} denemesi` : h.productName, h.endsAtLabel, h.feeLabel].filter(Boolean).join(" · ")}</small>
-                      </span>
-                      <span className="status-pill" data-tone={h.daysLeft < 0 ? "danger" : h.daysLeft <= 2 ? "gold" : "neutral"}>
-                        {h.daysLeft < 0 ? `${-h.daysLeft} gün geçti` : h.daysLeft === 0 ? "Bugün" : `${h.daysLeft} gün kaldı`}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : bos("Yakında dolan abonelik yok.")}
-          </section>
-
-          <section>
-            {bas("Ödeme gelmediği için askıya alınmış müşteriler, en uzun bekleyen başta. Askı geçici: ödeme gelince açılır, gelmeyecekse lisansı İptal edip kayıp nedenini yazın.", "/panel/platform/musteriler", "Müşteriler")}
-            {askiHatasi ? okunamadi : askidakiler.length ? (
-              <ul className="pu-liste">
-                {askidakiler.map((k) => (
-                  <li key={k.organizationId}>
-                    <Link href={`/panel/platform/musteriler/${k.organizationId}?pencere=urunler`}>
-                      <span className="pu-govde">
-                        <b>{kurumAdi.get(k.organizationId) ?? "Kurum"}</b>
-                        <small>{[k.urunler.map((u) => productName(u)).join(", "), k.sebep].filter(Boolean).join(" · ")}</small>
-                      </span>
-                      <span className="status-pill" data-tone={k.gun !== null && k.gun >= 14 ? "danger" : "gold"}>
-                        {k.gun === null ? "Askıda" : k.gun === 0 ? "Bugün" : `${k.gun} gündür`}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : bos("Askıda bekleyen müşteri yok.")}
-          </section>
-
-          <section>
-            {bas("Yenilemesi 30 gün içinde ve son 7 günde paneli kullanmamış müşteriler; yenilemeden önce arayın.", "/panel/platform/musteriler", "Müşteriler")}
-            {!etkinlik.harita || kiraciHatasi ? okunamadi : riskliler.length ? (
-              <ul className="pu-liste">
-                {riskliler.map((k) => (
-                  <li key={k.id}>
-                    <Link href={`/panel/platform/musteriler/${k.id}`}>
-                      <span className="pu-govde">
-                        <b>{k.ad}</b>
-                        <small>Son kullanım: {etkinlikYazisi(k.son, etkinlik.simdi).toLocaleLowerCase("tr-TR")}</small>
-                      </span>
-                      <span className="status-pill" data-tone="gold">{k.yenileme ? `Yenileme ${tarih(k.yenileme)}` : "Yenileme"}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : bos("Yenilemesi yaklaşan bütün müşteriler paneli kullanıyor.")}
-          </section>
-
-          <section>
-            {bas("Denemesi boşa giden (son 7 günde kimse girmedi) ya da ödediği hâlde panele hiç girilmemiş müşteriler; arayıp başlamalarına yardım edin.", "/panel/platform/musteriler?etkinlik=sessiz", "Müşteriler")}
-            {!etkinlik.harita || kiraciHatasi ? okunamadi : kullanmayanlar.length ? (
-              <ul className="pu-liste">
-                {kullanmayanlar.map((k) => (
-                  <li key={k.id}>
-                    <Link href={`/panel/platform/musteriler/${k.id}?pencere=kullanicilar`}>
-                      <span className="pu-govde">
-                        <b>{k.ad}</b>
-                        <small>Son kullanım: {etkinlikYazisi(k.son, etkinlik.simdi).toLocaleLowerCase("tr-TR")}</small>
-                      </span>
-                      <span className="status-pill" data-tone={k.durum === "trialing" ? "gold" : "info"}>{k.durum === "trialing" ? "Denemede" : "Ödüyor, girmedi"}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : bos("Kurulan bütün müşteriler paneli kullanıyor.")}
-          </section>
-
-          <section>
-            {bas("İşlenemeyen ödeme, yüklenemeyen AI kredisi, kurulum hatası, kota aşımı ve ürüne yansımamış lisanslar.", "/panel/platform/saglik", "Sistem sağlığı")}
-            {kiraciHatasi ? okunamadi : sorunlar.length ? (
-              <ul className="pu-liste">
-                {sorunlar.map((sorun) => (
-                  <li key={sorun.id}>
-                    <Link href={sorun.href}>
-                      <span className="pu-govde"><b>{sorun.ad}</b><small>{sorun.alt}</small></span>
-                      <span className="status-pill" data-tone="danger">{sorun.rozet}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : bos("Her kiracı yolunda.")}
-          </section>
-        </TalepAkis>
-    </div>
-  );
 
   /*
     NABIZ: tahsilat, sistem sağlığı ve son hareketler.
@@ -1077,88 +749,6 @@ export async function KonsolAnaSayfa() {
     );
   }
 
-  const nabizPanelleri: GorunumPaneli[] = [
-    {
-      anahtar: "tahsilat", etiket: "Tahsilat", yer: "liste", grup: "nabiz",
-      icerik: (
-        <SeriKarti
-          baslik="Tahsilat"
-          alt="Son 14 gün"
-          seri={tahsilatSerisi}
-          birim={(deger) => para(deger)}
-          adet="tahsilat"
-          href="/panel/platform/tahsilat"
-          bos="Son 14 günde tahsilat yok. İlk ödeme alındığında günlük dağılım burada çizilir."
-        />
-      ),
-    },
-    {
-      anahtar: "saglik", etiket: "Sistem sağlığı", yer: "liste", grup: "nabiz",
-      icerik: (
-        <article className="dash-card dash-col">
-          <header className="dash-card-head"><div><h2>Sistem sağlığı</h2><p>Ürün köprüleri, kurulumlar ve okunabilirlik</p></div></header>
-          <div className="dash-col-govde">
-            {saglikSatirlari.length ? (
-              <ul className="konsol-saglik">{saglikSatirlari}</ul>
-            ) : (
-              <p className="dash-empty">Köprüler yanıt veriyor, kurulumda hatada kalan kurum yok ve bütün kaynaklar okundu.</p>
-            )}
-          </div>
-          <Link className="dash-card-link" href="/panel/platform/saglik">Sistem sağlığı <span aria-hidden="true">›</span></Link>
-        </article>
-      ),
-    },
-    {
-      anahtar: "hareketler", etiket: "Son hareketler", yer: "liste", grup: "nabiz",
-      icerik: (
-        <ListeKarti
-          baslik="Son hareketler" alt="Tahsilatlar ve kurulum adımları"
-          bos="Son dört haftada hareket yok."
-          sayi={sonTahsilatlar.length + kurulumlar.length}
-          href="/panel/platform/tahsilat" hrefEtiket="Tahsilatlar"
-          gruplar={[
-            {
-              anahtar: "tahsilat", baslik: "Tahsilat",
-              satirlar: sonTahsilatlar.map((kayit) => (
-                <ListeSatiri
-                  key={kayit.id}
-                  href={kayit.href}
-                  baslik={kayit.ad}
-                  alt={kayit.alt}
-                  sag={<span className="konsol-tutar">{para(kayit.tutar)}</span>}
-                  zaman={relativeTime(kayit.tarih as string)}
-                />
-              )),
-            },
-            {
-              anahtar: "kurulum", baslik: "Kurulum",
-              satirlar: kurulumlar.map((kayit) => (
-                <ListeSatiri
-                  key={kayit.id}
-                  href={`/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`}
-                  baslik={kurumAdi.get(kayit.organization_id) ?? "Kurum"}
-                  /* Aşama da yazılıyor (14.10.2026): aynı eylemin iki aşaması
-                     yoksa birbirinin aynısı iki satır gibi görünüyordu. */
-                  alt={[KURULUM_ISLEMI[kayit.action] ?? kayit.action, kayit.state ? KURULUM_ADI[kayit.state] ?? kayit.state : null]
-                    .filter(Boolean).join(" · ")}
-                  /* 'failed', 'error' değil (sütunun kısıtı). Ton kiracının
-                     BUGÜNKÜ durumuna göre: sonradan tamamlanmış bir kurulumun
-                     eski hatası her gün kırmızı yanmasın. */
-                  sag={kayit.result === "failed" ? (
-                    <span className="status-pill" data-tone={hatadaKalanlar.has(kayit.organization_id) ? "danger" : "neutral"}>
-                      {hatadaKalanlar.has(kayit.organization_id) ? "hata" : "hata · çözüldü"}
-                    </span>
-                  ) : null}
-                  /* Göreli zaman (15.10.2026): tam tarih rozetli satırlarda adı kırpıyordu. */
-                  zaman={relativeTime(kayit.created_at)}
-                />
-              )),
-            },
-          ]}
-        />
-      ),
-    },
-  ];
 
   /*
     TEK EKRAN (25.11.2026). sinif="dash-sabit": sayfa hiçbir boyutta
@@ -1170,30 +760,25 @@ export async function KonsolAnaSayfa() {
     Dock, navigasyon hedefleri ve rozetler değişmedi: düzen kabuğun
     İÇİNDE kuruluyor, kabuğa dokunulmuyor.
   */
-  return (
-    <GenelBakis
-      baslik={`${selam}${ad ? `, ${ad}` : ""}`}
-      sinif="dash-sabit konsol-ana"
-    >
-      {/*
-        TEK UYARI SATIRI (25.11.2026, ölçümle).
+  /*
+    GENEL BAKIŞ = BAŞLIK + DÖNEM + İKİ KART (26.11.2026, onaylı mockup).
 
-        İki ayrı blok çiziliyordu: GenelBakis'in `uyari` prop'u
-        (okunamayan kaynaklar) ve köprü satırı. 1440×600'de ikisi
-        birlikte 130 px, yani .dash'in 426 px'inin üçte biri; başlık,
-        şerit ve boşluklarla birlikte kabuk 325 px tutuyor ve içeriğe
-        101 px kalıyordu — kuyruk paneli 0 px'e düşüp kayıtlara
-        erişilemiyordu. İkisi tek satırda birleşti; ayrıntı zaten
-        Sistem sağlığı kartında kayıt kayıt duruyor.
+    Selamlama, sayaç şeridi ve görünüm hapları kalktı: kurucunun ilk
+    sorusu "hangi ürün yaşıyor" ve "ne bekliyor". Kuyruk, tahsilat ve
+    sistem sağlığı KENDİ ekranlarında; buradan bağlantıyla gidiliyor.
+    İşlem, onay ve yetki akışlarının hiçbiri değişmedi — bu ekran yalnızca
+    neyi GÖSTERDİĞİNİ değiştirdi, ne yaptığını değil.
+  */
+  return (
+    <GenelBakis baslik="Genel Bakış" sinif="dash-sabit konsol-ana">
+      {/*
+        Kritik uyarı tek satır ve ayrıntıya giden bağlantı: köprünün
+        sessizliği ile sorgunun düşmesi ayrı şeyler, ikisi de yazılıyor.
       */}
       {kopruler.length || okunamayan.length ? (
         <p className="dash-uyari konsol-uyari" data-tone={kopruler.length ? "danger" : "warning"} role="alert">
           <span aria-hidden="true"><StgIcon name="shield" size={16} /></span>
           <span>
-            {/* İKİSİ BİRDEN olabilir ve ikisi AYRI şey: köprü sessiz kalmış
-                olabilir ve ayrıca bir sorgu düşmüş olabilir. Yalnızca
-                köprüyü yazmak "okunamadı" olgusunu bannerdan siliyordu;
-                tek satır olması ikisinden birini atmak demek değil. */}
             <b>
               {[
                 kopruler.length
@@ -1202,25 +787,22 @@ export async function KonsolAnaSayfa() {
                 okunamayan.length ? `${okunamayan.length} veri kaynağı okunamadı` : null,
               ].filter(Boolean).join(" · ")}
             </b>
-            <small>Ayrıntı: Sistem sağlığı kartı.</small>
           </span>
+          <Link className="konsol-uyari-bag" href="/panel/platform/saglik">Sistem sağlığı</Link>
         </p>
       ) : null}
 
-      <dl className="konsol-serit" aria-label="Konsolun sayıları">
-        {serit.map((oge) => (
-          <div key={oge.ad} data-tone={oge.ton}>
-            <dt>{oge.ad}</dt>
-            <dd><Link href={oge.href}>{oge.deger}</Link></dd>
-            {oge.alt ? <small>{oge.alt}</small> : null}
-          </div>
-        ))}
-      </dl>
+      <div className="konsol-arac">
+        <DonemSecici secili={secilenDonem.kod} taban="/panel" ek={`olcut=${secilenOlcut}`} />
+      </div>
 
-      <GorunumSecici
-        etiket="Konsol görünümü"
-        paneller={[{ anahtar: "isler", etiket: "Bugünün İşleri", yer: "liste", icerik: islerPaneli }, ...nabizPanelleri]}
-      />
+      <div className="konsol-genel">
+        <UrunPerformansiKarti
+          satirlar={performans} donem={secilenDonem} olcut={secilenOlcut} para={para} sayi={sayi}
+          olcutSecici={<OlcutSecici secili={secilenOlcut} taban="/panel" ek={`donem=${secilenDonem.kod}`} />}
+        />
+        <OncelikliIslerKarti isler={oncelikliIsler} okunamayan={oncelikliOkunamayan} />
+      </div>
     </GenelBakis>
   );
 }

@@ -53,8 +53,11 @@
   flex:1 1 auto;min-height:0;max-height:none;
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
 }
-/* Şerit ve köprü satırı doğal boyunda; yalnızca paneller esner. */
-.dash-sabit.konsol-ana>:not(.dash-gorunum-kap):not(.dash-gorunum){flex:0 0 auto}
+/* Başlık, uyarı ve araç satırı doğal boyunda; yalnızca kart bölümü esner.
+   26.11.2026: Genel Bakış artık görünüm seçici değil .konsol-genel
+   taşıyor; istisnaya eklenmeyince o da flex:0 0 auto alıyor ve içeriği
+   kadar uzayıp sayfayı kaydırıyordu (ölçüm: 1440×900'de 945/900). */
+.dash-sabit.konsol-ana>:not(.dash-gorunum-kap):not(.dash-gorunum):not(.konsol-genel){flex:0 0 auto}
 /*
    İŞLER GENİŞ, NABIZ DAR. İkisi eşit sütun olunca kuyruk satırındaki
    kurum adı + tutar + "Onayla" düğmesi 1440'ta sarıyordu; nabız
@@ -63,6 +66,36 @@
 @media (min-width:901px){
   .dash-sabit.konsol-ana .dash-cols--sabit{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 }
+/*
+  ÜÇÜNCÜ SÜTUN: ÜRÜNLER (26.11.2026, onaylı mockup).
+
+  Ürün performansı + Öncelikli işler üçüncü bir grup olarak geldi. İki
+  sütunlu şablonda üç grup İKİ SATIRA sarıyor ve satır yüksekliği
+  yarılanıyordu: 1440×900'de nabız sütunundaki kartlar 14 px'e iniyor,
+  üç kaydın hiçbiri görünmüyordu (ölçüldü). Sütun eklenmesi şablonda
+  yazılı olmalı — auto-fit'e bırakılırsa kuyruk sütunu daralıp satırdaki
+  "Onayla" düğmesi yine sarardı, ki 1.6fr tam bunun için konmuştu.
+
+  1400 px altında üç sütun kuyruğu okunmaz hâle getiriyor (ölçüm: 1100'de
+  sütun başına 340 px); orada konsol görünüm seçicisine düşüyor ve her
+  kart tam yükseklikte tek tek açılıyor.
+*/
+/*
+  ÜÇ SÜTUN ANCAK YETERLİ ALANDA (26.11.2026, taramayla).
+
+  Ürünler sütunu en geniş: tablonun değeri dört ürünü YAN YANA
+  görmekte. 415 px'e düştüğünde kart yığılmış satıra geçiyor ve
+  karşılaştırma kayboluyordu (container sorgusu,
+  konsol-urun-performansi.css).
+
+  Üçüncü sütun dar kalınca "Son hareketler" satırı iki satıra sarıyor:
+  1440×900'de satır 82 px, kart gövdesi 40 px — son kayda kaydırarak
+  bile ulaşılamıyor. Ölçülen sınır: 1500×900 ve 1440×920 geçiyor
+  (gövde 50 px, satır sarmıyor), 1440×900 geçmiyor. Eşik ikisinin
+  birleşimi; altında konsol görünüm seçicisine düşüyor ve her kart tam
+  yükseklikte açılıyor (gövde 135–153 px).
+*/
+
 
 /* Sistem sağlığı: üç gerçek sinyal (köprüler, okunamayan kaynaklar,
    kurulumda hatada kalan kurum). Uydurma gösterge yok; sinyal yoksa
@@ -203,11 +236,9 @@
   kartın kendi kaydırma alanı yoksa panelin kendisi kayar. İç içe
   kaydırma olmasın diye kural yalnızca gövdesi olmayan panele uygulanır.
 */
-@media (max-width:1099px),(max-height:899px){
-  .konsol-ana .dash-cols--sabit>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)),
-  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)){
-    min-height:0;overflow-y:auto;overscroll-behavior:contain;
-  }
+.konsol-ana .dash-cols--sabit>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)),
+.konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)){
+  min-height:0;overflow-y:auto;overscroll-behavior:contain;
 }
 
 /*
@@ -223,9 +254,7 @@
   gösteriyordu — taşma sıfır, dock açık; kusur yalnızca görüntüde.
   Kural konsola özgü: kiracı panelinin ızgara davranışı değişmiyor.
 */
-@media (max-width:1099px),(max-height:899px){
-  .konsol-ana .dash-cols--sabit{align-items:stretch}
-}
+.konsol-ana .dash-cols--sabit{align-items:stretch}
 
 /*
   GRAFİK KARTI ALTTAKİNİN ÜSTÜNE BİNMİYOR (25.11.2026, ölçümle).
@@ -269,35 +298,7 @@
 */
 /* Yalnızca IZGARA düzeni, yani seçicinin kapalı olduğu aralık: eşit pay
    seçicili düzene sızınca kart panelini aşıyordu (390×844'te ölçüldü). */
-@media (min-width:1100px) and (min-height:900px){
-  .konsol-ana .dash-cols--sabit>.dash-gorunum-yigin{align-self:stretch}
-  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde){flex:1 1 0}
-  /*
-    Eşit pay tek başına yetmedi: 1440×900'de kart 128 px'e çıktı ama
-    gövdeye 11 px kaldı, yani yine tek kayıt görünmüyordu (satır 40 px).
-    Kartın 128 px'inin 46'sı başlık, 21'i alt bağlantı, gerisi iç boşluk
-    ve aradaki boşluklar. Nabız sütununda kart dar olduğu için iç boşluk
-    ve kutular arası boşluk kısılıyor; kayıt, başlığın süsünden önce
-    gelir. Grafik kartına dokunulmuyor — kabul edilen hâli o.
-  */
-  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde) .dash-card{padding:12px;gap:8px}
-  /*
-    Başlığın altındaki açıklama satırı ("Ürün köprüleri, kurulumlar ve
-    okunabilirlik" / "Tahsilatlar ve kurulum adımları") nabız sütununda
-    çizilmiyor: 20 px tutuyor ve kartın adı zaten ne olduğunu söylüyor.
-    Üç kaydı olup hiçbirini göstermeyen bir kartta süs, içeriğin önüne
-    geçemez. Sütunun dışında (tam genişlikte, görünüm seçicide) açıklama
-    duruyor.
-  */
-  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde) .dash-card-head p{display:none}
-  /*
-    Grafiğin çubukları 7dvh yerine 5dvh: 1440×900'de 63 → 45 px. Grafik
-    kartının sınırında kalmaya devam ediyor (kabul edilen davranış), ama
-    sütunun yüksekliğinin %42'sini tek başına tutmuyor; serbest kalan
-    yükseklik iki liste kartının gövdesine gidiyor.
-  */
-  .konsol-ana .dash-gorunum-yigin .dash-bars{height:clamp(36px,5dvh,56px)}
-}
+
 
 
 /*
@@ -317,8 +318,11 @@
     - 901×641'de kart panelini 5 px aşıyordu (sayfa sabit, dock açık —
       yani yalnızca taşmaya bakan bir kabul bunu da görmüyordu).
 
-  Eşik buradan: ızgara yalnızca 1100×900 ve üstünde. Altında konsol
-  mevcut görünüm seçicisine düşüyor — kartlar tek tek, tam yükseklikte
+  Eşik 26.11.2026'da 1400×900'e çıktı: ürün performansı ve öncelikli
+  işler ÜÇÜNCÜ bir sütun getirdi, iki sütunlu şablonda üç grup iki
+  satıra sarıyor ve satır yüksekliği yarılanıyordu (1363×936'da nabız
+  kartları 22 px). Üç sütun ancak 1400 px'den sonra okunur genişlik
+  bırakıyor. Altında konsol mevcut görünüm seçicisine düşüyor — kartlar tek tek, tam yükseklikte
   ve kayıtlar kendi gövdelerinde kayarak erişilebilir. Kural konsola
   özgü; kiracı panelinin eşiği değişmedi.
 
@@ -326,13 +330,11 @@
   bağlı. Düğme biçimi orada medya sorgusunun dışına alındı ki iki yerde
   ayrı ayrı sapmasın.
 */
-@media (max-width:1099px),(max-height:899px){
-  .konsol-ana .dash-gorunum-sec{display:flex;flex-wrap:wrap;gap:6px;flex:none}
-  .konsol-ana.dash-sabit .dash-gorunum-panel:not(.is-secili){display:none}
-  .konsol-ana.dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-  .konsol-ana .dash-cols--sabit{display:flex;flex-direction:column}
-  .konsol-ana .dash-cols--sabit:not(:has(.is-secili)){display:none}
-  .konsol-ana .dash-gorunum-yigin:not(:has(> .is-secili)){display:none}
-  .konsol-ana .dash-gorunum-yigin{flex:0 1 auto}
-  .konsol-ana .dash-cols--sabit .dash-gorunum-panel.is-secili{flex:0 1 auto;max-height:100%}
-}
+.konsol-ana .dash-gorunum-sec{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+.konsol-ana.dash-sabit .dash-gorunum-panel:not(.is-secili){display:none}
+.konsol-ana.dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.konsol-ana .dash-cols--sabit{display:flex;flex-direction:column}
+.konsol-ana .dash-cols--sabit:not(:has(.is-secili)){display:none}
+.konsol-ana .dash-gorunum-yigin:not(:has(> .is-secili)){display:none}
+.konsol-ana .dash-gorunum-yigin{flex:0 1 auto}
+.konsol-ana .dash-cols--sabit .dash-gorunum-panel.is-secili{flex:0 1 auto;max-height:100%}
