@@ -216,13 +216,32 @@ async function YonetimGirisi({ error, eposta }: { error?: string; eposta: string
       </div>
       <aside className="kg-marka" aria-label="ArvoOS Yönetim">
         {/*
-          Resmî logo, koyu zemin varyantı (public/arvoos-logo-koyu.png,
-          scripts/logo-koyu-varyant.py): ARVO beyaz, OS marka yeşilinde.
-          Beyaz plaka kalktı; dosya saydam ve doğrudan lacivert panelde.
-          Kutu logonun GÖRÜNÜR oranında (5,27 : 1) ve object-fit: cover
-          yalnızca saydam boşluğu kırpar — çizim ve oran değişmez.
+          RESMÎ koyu zemin varyantı (public/brand/arvoos-on-dark.png):
+          ARVO beyaz, OS marka yeşilinde, saydam zemin. Vektör kaynak
+          yok; bu dosya markanın kendi deposundan geliyor, yeniden
+          çizilmedi.
+
+          Çizilen dosyalar ondan TÜRETİLDİ (scripts/logo-goruntu-boyutlari.py):
+          mürekkep kutusuna kırpılıp Lanczos ile 160/320/480 px'e
+          indirildi. Eskiden 1859 px'lik çizim tarayıcıda ~11 kat
+          küçültülüyordu ve dosyanın kenar yumuşatma bandı sınır başına
+          yalnızca 1,06 piksel olduğu için eğriler TIRTIKLI çıkıyordu;
+          ayrıca 1920×1080'lik tuval object-fit: cover ile kırpılıyor,
+          tarayıcı çizimden üç kat büyük bir tuvali ölçekliyordu.
+          srcset ile tarayıcı kendi yoğunluğuna uyanı seçip 1:1 çiziyor.
+
+          Genişlik CSS'te (masaüstü 160 px): dosyalar mürekkep kutusuna
+          kırpılı olduğu için CSS genişliği = GÖRÜNEN logo genişliği.
         */}
-        <img className="kg-logo" src="/arvoos-logo-koyu.png" alt="ArvoOS" width={1920} height={1080} />
+        <img
+          className="kg-logo"
+          src="/brand/arvoos-on-dark-320.png"
+          srcSet="/brand/arvoos-on-dark-160.png 160w, /brand/arvoos-on-dark-320.png 320w, /brand/arvoos-on-dark-480.png 480w"
+          sizes="(max-width: 900px) 128px, 160px"
+          alt="ArvoOS"
+          width={320}
+          height={61}
+        />
         <div className="kg-marka-govde">
           <p className="kg-marka-baslik">{t({ tr: "Arvo ürünlerini tek yerden yönetin.", en: "Manage every Arvo product from one place." })}</p>
           <p className="kg-marka-metin">

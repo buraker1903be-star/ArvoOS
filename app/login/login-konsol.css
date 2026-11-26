@@ -124,13 +124,21 @@ html[data-theme="dark"] .kg-kimlik {
   color: var(--kg-marka-yazi);
 }
 /*
-  Logo kutusu logonun GÖRÜNÜR oranında. Dosya 1920×1080 ve mürekkep
-  yalnızca y 309–662 bandında (1859×353 → 5,27 : 1); olduğu gibi konsa
-  logo kutunun üçte birine küçülürdü. object-fit: cover yalnızca saydam
-  boşluğu kırpar — pikseller ve oran değişmez. Görünür yükseklik
-  ArvoLab'ın logosuyla aynı (38 px; mobilde 30).
+  LOGO GENİŞLİKLE ÖLÇÜLÜR, yükseklikle değil (26.11.2026).
+
+  Eskiden iki ürünün logosuna aynı kutu YÜKSEKLİĞİ veriliyordu (38 px).
+  ArvoOS'un işaretinin oranı 5,27 : 1, ArvoLab'ınki 4,22 : 1 — aynı
+  yükseklikte ArvoOS %25 daha geniş çiziliyor ve ekranda baskın
+  görünüyordu. Ölçü artık görünür GENİŞLİK: masaüstünde 160 px,
+  mobilde 128 px (ArvoLab'ın masaüstü/mobil oranıyla aynı).
+
+  Dosyalar mürekkep kutusuna kırpılı (scripts/logo-goruntu-boyutlari.py),
+  yani buradaki genişlik doğrudan görünen logo genişliğidir ve
+  object-fit gerekmez; oran height:auto ile kendiliğinden korunur.
+  Sol paneldeki başlıkla aynı hizada: ikisi de panelin iç boşluğundan
+  başlıyor.
 */
-.kg-logo { display: block; flex: none; width: calc(var(--kg-logo-h, 38px) * 5.27); height: var(--kg-logo-h, 38px); object-fit: cover; }
+.kg-logo { display: block; flex: none; width: var(--kg-logo-g, 160px); height: auto; }
 .kg-marka-govde { display: grid; gap: 16px; max-width: 440px; }
 .kg-marka-baslik {
   margin: 0;
@@ -340,7 +348,7 @@ html[data-theme="dark"] .kg-marka { border-right: 1px solid var(--kg-cizgi-ince)
   /* Satırlar auto + 1fr: yoksa artan yükseklik iki satıra bölünüyor ve marka şeridi uzuyordu. */
   .kg-kimlik { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; --kg-bolum-aralik: 28px; --kg-fs-sayfa: 24px; }
   .kg-marka { position: static; flex-direction: row; align-items: center; height: auto; padding: 14px 20px; }
-  .kg-logo { --kg-logo-h: 30px; }
+  .kg-logo { --kg-logo-g: 128px; }
   .kg-marka-govde,
   .kg-yasal--marka { display: none; }
   html[data-theme="dark"] .kg-marka { border-right: 0; border-bottom: 1px solid var(--kg-cizgi-ince); }
