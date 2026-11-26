@@ -43,6 +43,12 @@
   .os-konsol .os-frame { padding-left: var(--os-yan-g, 64px); }
   /* Alt pay artık dock'a değil, sayfanın kendi boşluğuna göre. */
   .panel-root.os-root.os-konsol { --os-dock-space: var(--sp-6); }
+  /*
+    Üst çubuktaki marka bloğu masaüstü/tablette çizilmiyor: marka sol
+    menünün tepesinde ve iki yerde birden durması onaylı mockup'ta yok.
+    Telefonda menü olmadığı için marka üst çubukta KALIYOR.
+  */
+  .os-konsol .os-bar > .os-brand { display: none; }
 
   .os-konsol .os-yan-marka {
     display: flex;

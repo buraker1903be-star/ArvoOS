@@ -66,6 +66,9 @@ fs.writeFileSync(path.join(dizin, "giris.tsx"), `
 import { createRoot } from "react-dom/client";
 import { GenelBakis, ListeKarti, ListeSatiri, SeriKarti } from ${a("app/panel/os/genel-bakis.tsx")};
 import { GorunumSecici } from ${a("app/panel/os/gorunum-secici.tsx")};
+import { OsAramaDugmesi } from ${a("app/panel/os/os-command-palette.tsx")};
+import { ThemeToggle } from ${a("app/panel/theme-toggle.tsx")};
+import { OsSimge as OsSimgeDuz } from ${a("app/panel/os/os-icons.tsx")};
 import { UrunPerformansiKarti, OncelikliIslerKarti } from "@/app/panel/konsol-urun-performansi";
 import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
 import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-bakis";
@@ -74,6 +77,10 @@ import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
 import { konsolUygulamalari } from ${a("app/panel/os/konsol-apps.ts")};
 ${yeniKurulum ? `import { KurulumOzeti } from ${a("app/panel/os/kurulum-ozeti.tsx")};` : ""}
 const sayfa = new URLSearchParams(location.search).get("sayfa") || "ana";
+/* ?menu=dar: masaüstü sol menünün DARALTILMIŞ hâli. Üretimde bu
+   özniteliği ön boyama betiği yazıyor (lib/konsol/gezinme.ts); burada
+   aynı öznitelik elle veriliyor ki iki durum da görüntülenebilsin. */
+if (new URLSearchParams(location.search).get("menu") === "dar") document.documentElement.setAttribute("data-konsol-menu", "dar");
 window.__yol = sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel";
 const gun = (i) => { const d = new Date(Date.UTC(2026, 10, 10 - (13 - i))); return d; };
 const seri = { days: Array.from({ length: 14 }, (_, i) => ({ key: "g" + i, day: String(i + 1), title: "Gün " + (i + 1), count: [2,5,1,0,3,4,6,2,1,3,5,2,4,3][i], isToday: i === 13 })), total: 41, previous: 33, max: 6, aralik: "28 Eki – 10 Kas", oncekiAralik: "14–27 Eki" };
@@ -351,7 +358,34 @@ function Kabuk() {
      crm) dock'ta kalıyor — üretimdeki ayrımın aynısı. */
   const konsolMu = sayfa === "konsol" || sayfa === "urundetay";
   return <div className={konsolMu ? "panel-root os-root os-konsol" : "panel-root os-root"}><main className="panel-frame os-frame">
-    <header className="os-bar"><a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a></header>
+    {/*
+      ÜST ÇUBUK. Kiracı senaryolarında olduğu gibi sade; KONSOL
+      senaryolarında üretimdeki yerleşimin aynısı çiziliyor: arama
+      (Ctrl+K kısayolunu da taşıyan gerçek bileşen), bildirim, tema ve
+      profil. Arama ve tema GERÇEK bileşenler (os-command-palette,
+      theme-toggle); bildirim çekmecesi ve hesap menüsü sunucu
+      işlemlerine bağlı olduğu için düzenekte aynı sınıflarla duruyor —
+      ölçülen şey yerleşim, davranış değil.
+    */}
+    <header className="os-bar">
+      {konsolMu ? null : <a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a>}
+      {konsolMu ? <a className="os-brand" href="/panel"><i>◇</i><span><b>Kurucu Konsolu</b></span></a> : null}
+      {konsolMu ? <OsAramaDugmesi /> : null}
+      {konsolMu ? (
+        <div className="os-bar-right">
+          <div className="os-bar-actions">
+            <button type="button" className="panel-quick-action" aria-label="Bildirimler, 3 okunmamış">
+              <OsSimgeDuz ad="bell" boyut={18} />
+              <span className="panel-unread-badge" aria-hidden="true">3</span>
+            </button>
+            <ThemeToggle />
+          </div>
+          <details className="os-user">
+            <summary aria-label="Hesap: Kurucu"><span className="os-avatar">AK</span></summary>
+          </details>
+        </div>
+      ) : null}
+    </header>
     <section className="os-workspace">${'{'}/* bölüm menüsü CRM'de layout'ta; burada yükseklik payı CSS tahmininden */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <Konsol /> : sayfa === "urundetay" ? <UrunDetay /> : <Ana />}</div></section>
     <OsNavigasyon
       uygulamalar={konsolMu ? konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 }) : uygulamalar}
