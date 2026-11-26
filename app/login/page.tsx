@@ -97,7 +97,9 @@ export default async function LoginPage({
           <h2>{yonetim ? "ArvoOS Yönetim'e giriş yapın" : "Panele hoş geldiniz"}</h2>
           <p>{yonetim ? "E-posta adresiniz ve şifrenizle devam edin." : "Size tanımlanan kurumsal e-posta adresiyle giriş yapın."}</p>
           {error && <div className="login-error" role="alert">{LOGIN_HATASI[error] ?? LOGIN_HATASI.invalid}</div>}
-          <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder={yonetim ? "adiniz@arvo-os.com" : "adiniz@kurum.com"} defaultValue={eposta} aria-invalid={yonetim && error ? true : undefined} /></label>
+          {/* Zorunlu alan işareti ArvoLab standardı: yıldız yalnızca
+              GÖRSEL, alanın zorunluluğunu required bildiriyor. */}
+          <label>{yonetim ? <span className="kg-etiket">E-posta adresi<b className="kg-zorunlu" aria-hidden="true">*</b></span> : "E-posta adresi"}<input name="email" type="email" autoComplete="email" required placeholder={yonetim ? "adiniz@arvo-os.com" : "adiniz@kurum.com"} defaultValue={eposta} aria-invalid={yonetim && error ? true : undefined} /></label>
           {/* Şifre göster/gizle yalnızca yönetim girişinde: kiracı ekranının
               işaretlemesi ve davranışı aynen duruyor. */}
           {yonetim ? <SifreAlani hataVar={Boolean(error)} /> : <label>Parola<input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" /></label>}

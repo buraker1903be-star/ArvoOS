@@ -18,7 +18,7 @@ export function SifreAlani({ hataVar }: { hataVar?: boolean }) {
   const id = useId();
   return (
     <label htmlFor={id}>
-      Şifre
+      <span className="kg-etiket">Şifre<b className="kg-zorunlu" aria-hidden="true">*</b></span>
       <span className="kg-alan">
         <input
           id={id}

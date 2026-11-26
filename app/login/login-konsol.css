@@ -120,6 +120,13 @@
 /* Hata: hangi alanın sorunlu olduğu da görünür, yalnızca üstteki metin değil. */
 .login-shell.konsol-giris .login-card[data-hata="true"] input{border-color:var(--kg-hata-kenar)}
 
+/* Zorunlu alan yıldızı: ArvoLab'daki gibi etiketin YANINDA, görsel.
+   Alanın zorunluluğunu required söylüyor; yıldız aria-hidden.
+   Etiket metni kendi span'inde: label ızgara olduğu için çıplak <b>
+   ayrı bir ızgara satırına düşüyor ve yıldız alt satırda kalıyordu. */
+.login-shell.konsol-giris .kg-etiket{display:inline-flex;align-items:baseline;gap:3px}
+.login-shell.konsol-giris .kg-zorunlu{color:var(--kg-hata);font-weight:600}
+
 /* Şifre alanı: göz düğmesi alanın İÇİNDE, dokunma hedefi 44 px. */
 /* display:flex — blok span'de satır yüksekliği alanı 10 px uzatıyor ve
    mutlak konumlu göz düğmesi alanın altına taşıyordu (ölçüldü: 54/44). */
