@@ -28,13 +28,52 @@
 */
 .os-konsol .os-brand-isaret { display: grid; place-items: center; background: none; border-radius: 0; }
 .os-konsol .os-brand-isaret img { grid-area: 1 / 1; width: 34px; height: auto; }
-.os-konsol .os-brand-isaret .marka-koyu { display: none; }
-html[data-theme="dark"] .os-konsol .os-brand-isaret .marka-acik { display: none; }
-html[data-theme="dark"] .os-konsol .os-brand-isaret .marka-koyu { display: block; }
+
+/*
+  ÜST ÇUBUKTAKİ MARKA (26.11.2026, onaylı mockup): resmî tam logo +
+  ince dikey ayırıcı + "Yönetim Merkezi". Telefonda yer yok: orada
+  logo gizlenip resmî İŞARET çiziliyor, ad kalıyor.
+*/
+.os-konsol .os-konsol-marka { gap: var(--sp-3); }
+.os-konsol .os-konsol-logo { display: none; }
+.os-konsol .os-konsol-logo img { display: block; width: 116px; height: auto; }
+.os-konsol .os-konsol-ad {
+  position: relative;
+  padding-left: var(--sp-3);
+  color: var(--ink-soft);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+.os-konsol .os-konsol-ad::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+}
+.os-konsol .os-brand .marka-koyu { display: none; }
+html[data-theme="dark"] .os-konsol .os-brand .marka-acik { display: none; }
+html[data-theme="dark"] .os-konsol .os-brand .marka-koyu { display: block; }
+
+@media (min-width: 761px) {
+  /* Masaüstü ve tablette logo; işaret yalnızca telefonda. */
+  .os-konsol .os-konsol-logo { display: block; }
+  .os-konsol .os-brand-isaret { display: none; }
+}
 
 @media (min-width: 761px) {
   .os-konsol .os-yan {
     /*
+      ÜST ÇUBUK EKRAN BOYUNCA (26.11.2026, onaylı mockup): marka
+      çubuğun solunda ve çubuk kesintisiz. Sol menü bu yüzden çubuğun
+      ALTINDAN başlıyor (inset-block); iç boşluk .os-frame'den
+      .os-workspace'e geçti, yoksa çubuk da menünün sağından
+      başlıyordu.
+
       ÜÇ DURUM ÜÇ FARKLI AĞIRLIKTA (26.11.2026, inceleme bulgusu).
       Eskiden üzerine gelme zemini --surface-2 (#f9fafb), etkin zemin
       --primary-soft (#eef1f6) idi: iki zemin neredeyse aynı açıklıkta,
@@ -48,7 +87,7 @@ html[data-theme="dark"] .os-konsol .os-brand-isaret .marka-koyu { display: block
     --os-yan-etkin: color-mix(in srgb, var(--primary) 12%, transparent);
     position: fixed;
     z-index: 56;
-    inset-block: 0;
+    inset-block: var(--os-bar-h) 0;
     left: 0;
     display: flex;
     flex-direction: column;
@@ -64,55 +103,10 @@ html[data-theme="dark"] .os-konsol .os-brand-isaret .marka-koyu { display: block
     İkisi birden dururdu ve aynı sayfa iki yerde "etkin" görünürdü.
   */
   .os-konsol .os-dock { display: none; }
-  /* İçerik (üst çubuk dahil) menünün sağında başlar. */
-  .os-konsol .os-frame { padding-left: var(--os-yan-g, 64px); }
+  /* İÇERİK menünün sağında başlar; ÜST ÇUBUK başlamaz. */
+  .os-konsol .os-workspace { padding-left: var(--os-yan-g, 64px); }
   /* Alt pay artık dock'a değil, sayfanın kendi boşluğuna göre. */
   .panel-root.os-root.os-konsol { --os-dock-space: var(--sp-6); }
-  /*
-    Üst çubuktaki marka bloğu masaüstü/tablette çizilmiyor: marka sol
-    menünün tepesinde ve iki yerde birden durması onaylı mockup'ta yok.
-    Telefonda menü olmadığı için marka üst çubukta KALIYOR.
-  */
-  .os-konsol .os-bar > .os-brand { display: none; }
-
-  /*
-    MARKA SATIRI. İki biçim de DOM'da: kelime logosu ve işaret; hangisi
-    görünecekse CSS seçiyor (os/arvoos-markasi.tsx). Ölçüler dosyaların
-    mürekkep kutusuna göre — kaynaklar kırpılı olduğu için CSS genişliği
-    = GÖRÜNEN logo genişliği.
-  */
-  .os-konsol .os-yan-marka {
-    display: flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 var(--sp-2);
-    border-radius: var(--r-md);
-    color: var(--ink);
-    text-decoration: none;
-  }
-  .os-konsol .os-yan-marka:hover { background: var(--os-yan-vurgu); }
-  .os-konsol .os-yan-marka:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-
-  /* Varsayılan (ray ve dar menü): yalnızca işaret. */
-  .os-konsol .os-yan-logo { display: none; }
-  .os-konsol .os-yan-isaret { display: grid; place-items: center; flex: none; width: 100%; }
-  /*
-    İŞARETİN ÖLÇÜSÜ GENİŞLİKTEN. Resmî dosya 2 : 1 — yüksekliği kutuya
-    sabitlemek (28×28) onu ezer ya da daraltırdı. 34 px genişlik 17 px
-    yükseklik demek; yanındaki 24 px'lik menü ikonlarıyla optik olarak
-    aynı ağırlıkta duruyor (işaret yatay, ikonlar kare).
-  */
-  .os-konsol .os-yan-isaret img { grid-area: 1 / 1; width: 34px; height: auto; }
-  .os-konsol .os-yan-logo img { display: block; width: 150px; height: auto; }
-  /*
-    Açık/koyu varyant seçimi CSS'te: JS ile seçmek tema değişiminde bir
-    kare yanlış logo demek. Kural burada yazılı, çünkü panel.css'teki
-    karşılığı yalnızca başlatıcı penceresini kapsıyor ve menüde iki
-    dosya alt alta çiziliyordu (ölçüldü).
-  */
-  .os-konsol .os-yan-marka .marka-koyu { display: none; }
-  html[data-theme="dark"] .os-konsol .os-yan-marka .marka-acik { display: none; }
-  html[data-theme="dark"] .os-konsol .os-yan-marka .marka-koyu { display: block; }
 
   .os-konsol .os-yan-liste { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
   .os-konsol .os-yan-alt { display: flex; flex-direction: column; gap: 2px; margin-top: auto; padding-top: var(--sp-2); border-top: 1px solid var(--line-soft); }
@@ -201,8 +195,7 @@ html[data-theme="dark"] .os-konsol .os-brand-isaret .marka-koyu { display: block
   */
   .os-konsol .os-yan-etiket { display: none; }
   .os-konsol .os-yan-oge,
-  .os-konsol .os-yan-daralt,
-  .os-konsol .os-yan-marka { justify-content: center; gap: 0; padding-inline: 0; }
+  .os-konsol .os-yan-daralt { justify-content: center; gap: 0; padding-inline: 0; }
   .os-konsol .os-yan-rozet {
     position: absolute;
     top: 2px;
@@ -218,24 +211,18 @@ html[data-theme="dark"] .os-konsol .os-brand-isaret .marka-koyu { display: block
 /* ---------- Masaüstü: 240 px, daraltılabilir ---------- */
 @media (min-width: 1200px) {
   .os-konsol .os-yan { --os-yan-g: 240px; }
-  .os-konsol .os-frame { padding-left: 240px; }
+  .os-konsol .os-workspace { padding-left: 240px; }
   .os-konsol .os-yan-etiket { display: block; }
-  .os-konsol .os-yan-logo { display: block; }
-  .os-konsol .os-yan-isaret { display: none; }
   .os-konsol .os-yan-oge,
   .os-konsol .os-yan-daralt { justify-content: flex-start; gap: var(--sp-3); padding-inline: var(--sp-2); }
-  .os-konsol .os-yan-marka { justify-content: flex-start; gap: var(--sp-2); padding-inline: var(--sp-2); }
   .os-konsol .os-yan-rozet { position: static; min-width: 18px; height: 18px; padding: 0 5px; font-size: 11px; line-height: 18px; margin-left: auto; }
 
   /* Kullanıcının tercihi: dar. Ray görünümüne dönülür. */
   html[data-konsol-menu="dar"] .os-konsol .os-yan { --os-yan-g: 64px; }
-  html[data-konsol-menu="dar"] .os-konsol .os-frame { padding-left: 64px; }
+  html[data-konsol-menu="dar"] .os-konsol .os-workspace { padding-left: 64px; }
   html[data-konsol-menu="dar"] .os-konsol .os-yan-etiket { display: none; }
-  html[data-konsol-menu="dar"] .os-konsol .os-yan-logo { display: none; }
-  html[data-konsol-menu="dar"] .os-konsol .os-yan-isaret { display: grid; }
   html[data-konsol-menu="dar"] .os-konsol .os-yan-oge,
-  html[data-konsol-menu="dar"] .os-konsol .os-yan-daralt,
-  html[data-konsol-menu="dar"] .os-konsol .os-yan-marka { justify-content: center; gap: 0; padding-inline: 0; }
+  html[data-konsol-menu="dar"] .os-konsol .os-yan-daralt { justify-content: center; gap: 0; padding-inline: 0; }
   html[data-konsol-menu="dar"] .os-konsol .os-yan-rozet {
     position: absolute;
     top: 2px;

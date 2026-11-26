@@ -7,7 +7,6 @@ import { MarkaLogosu, type DigerUygulama } from "../panel-navigation";
 import { aramaAnahtari, etkinUygulama, mobilAltCubuk, type OsUygulama } from "./os-apps";
 import { OsSimge } from "./os-icons";
 import { masaustuAbone, masaustuMu, yanMenuAbone, yanMenuDarMi, yanMenuTercihiniUygula } from "./gezinme-istemci";
-import { ArvoOsIsareti, ArvoOsLogosu } from "./arvoos-markasi";
 import "./os-navigasyon.css";
 import "./os-yanmenu.css";
 
@@ -44,7 +43,7 @@ import "./os-yanmenu.css";
 const sunucuDar = () => false;
 const sunucuMasaustu = () => false;
 
-export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, yanMenuSirasi, marka }: {
+export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, yanMenuSirasi }: {
   uygulamalar: OsUygulama[];
   digerUygulamalar: DigerUygulama[];
   /**
@@ -56,8 +55,7 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   yanMenu?: boolean;
   /** Sol menüdeki birincil sıra (anahtarlar); verilmezse liste sırası. */
   yanMenuSirasi?: string[];
-  /** Sol menünün tepesinde resmî ArvoOS markası (logo/işaret). */
-  marka?: boolean;
+
 }) {
   const yol = usePathname();
   const pencere = useRef<HTMLDialogElement>(null);
@@ -109,7 +107,6 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
           pencereAcik={pencereAcik}
           panelRozeti={panelRozeti}
           ac={ac}
-          marka={marka}
           rozetMetni={rozetMetni}
         />
       ) : null}
@@ -233,7 +230,7 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   ad `title` ve `aria-label` olarak kalır. Erişilebilir ad hiçbir
   biçimde kaybolmaz; rozetler görünür durur.
 */
-function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, marka, rozetMetni }: {
+function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, rozetMetni }: {
   uygulamalar: OsUygulama[];
   sira?: string[];
   etkinKey?: string;
@@ -241,8 +238,7 @@ function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, ma
   pencereAcik: boolean;
   panelRozeti: number;
   ac: () => void;
-  /** Menünün tepesinde resmî ArvoOS markası çizilsin mi. */
-  marka?: boolean;
+
   rozetMetni: (n: number) => string;
 }) {
   const dar = useSyncExternalStore(yanMenuAbone, yanMenuDarMi, sunucuDar);
@@ -257,19 +253,6 @@ function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, ma
 
   return (
     <nav className="os-yan" aria-label="Konsol menüsü" data-dar={dar ? "evet" : undefined}>
-      {marka ? (
-        <Link className="os-yan-marka" href="/panel" aria-label="ArvoOS ana ekran">
-          {/*
-            İKİ BİÇİM BİRDEN ÇİZİLİR, HANGİSİNİN GÖRÜNECEĞİNE CSS KARAR
-            VERİR (26.11.2026). Açık menüde resmî KELİME LOGOSU, dar
-            menüde ve tablet rayında resmî İŞARET. JavaScript ile
-            seçmek menü daraltılırken bir kare yanlış logo demek; aynı
-            gerekçe açık/koyu varyantında da geçerli (panel-navigation).
-          */}
-          <span className="os-yan-logo"><ArvoOsLogosu /></span>
-          <span className="os-yan-isaret"><ArvoOsIsareti /></span>
-        </Link>
-      ) : null}
 
       <ul className="os-yan-liste">
         {birincilMenu.map((u) => {

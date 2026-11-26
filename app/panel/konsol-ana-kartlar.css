@@ -1,0 +1,205 @@
+/*
+  ANA SAYFA · KARAR BEKLEYENLER VE OTOMASYONLAR (26.11.2026, onaylı mockup).
+
+  İki kart üstte yan yana (58/42), altlarında tam genişlikte ürün
+  performansı. Ölçüler ArvoLab'ın kart dilinden: ince kenarlık, --r-xl
+  köşe, yumuşak gölge; renk ve boşluk token'dan (panel-tokens.css).
+*/
+
+.kak-kart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-4) var(--sp-5) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.kak-bas {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-height: 28px;
+}
+.kak-bas h2 {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+}
+
+.kak-liste { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.kak-liste > li + li { border-top: 1px solid var(--line-soft); }
+
+/*
+  SATIR DÜZENİ: ürün etiketi → iş adı ve ayrıntı → zaman → eylem.
+  Ürün sütunu SABİT genişlikte, yoksa da yer tutuyor; yoksa satırlar
+  birbirine göre kayıyor ve göz iş adını takip edemiyordu.
+*/
+.kak-satir {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 52px;
+  padding: var(--sp-2) 0;
+  border-radius: var(--r-md);
+  color: inherit;
+  text-decoration: none;
+}
+a.kak-satir:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+a.kak-satir:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+.kak-urun {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  min-height: 24px;
+  padding: 0 var(--sp-2);
+  box-sizing: border-box;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kak-urun-bos { background: transparent; }
+
+.kak-govde { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.kak-govde b {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* İkincil satır TAŞMASIN: uzun kurum adı + tutar tek satırda kırpılıyor. */
+.kak-govde small {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kak-zaman { flex: none; color: var(--muted); font-size: var(--fs-micro); white-space: nowrap; }
+.kak-eylem {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); color: var(--primary); }
+
+.kak-bos { margin: var(--sp-2) 0; color: var(--muted); font-size: var(--fs-sm); }
+.kak-bos[data-tone="danger"] { color: var(--danger); }
+
+/* ---------- Otomasyonlar ---------- */
+/* Satırlar bağlantı değil: durum okunuyor, işlem geçmişi alttaki
+   bağlantıda. Dokunma hedefi gerekmediği için satır biraz daha kısa. */
+.kak-otomasyon .kak-satir { min-height: 48px; }
+.kak-satir-duz { cursor: default; }
+.kak-ikon { flex: none; display: grid; place-items: center; width: 24px; height: 24px; }
+.kak-ikon[data-tone="success"] { color: var(--success); }
+.kak-ikon[data-tone="warning"] { color: var(--warning); }
+.kak-ikon[data-tone="danger"] { color: var(--danger); }
+.kak-ikon[data-tone="neutral"] { color: var(--dim); }
+
+.kak-rozet {
+  flex: none;
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.kak-rozet[data-tone="success"] { background: var(--success-soft); color: var(--success); }
+.kak-rozet[data-tone="warning"] { background: var(--warning-soft); color: var(--warning); }
+.kak-rozet[data-tone="danger"] { background: var(--danger-soft); color: var(--danger); }
+.kak-rozet[data-tone="neutral"] { background: var(--surface-2); color: var(--muted); }
+
+.kak-alt-bag {
+  align-self: flex-start;
+  margin-top: var(--sp-1);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+}
+.kak-alt-bag:hover { text-decoration: underline; }
+
+/*
+  BAŞLIK SATIRI: dönem seçici başlığın ÜST hizasında. .dash-hero
+  varsayılanı flex-end; durum satırı eklenince seçici aşağı kayıp
+  ikinci satıra yaslanıyordu (onaylı mockup'ta başlıkla aynı hatta).
+*/
+.konsol-ana .dash-hero { align-items: flex-start; }
+.konsol-ana .dash-hero h1 { margin-top: 0; }
+
+/* ---------- Başlık altındaki durum satırı ---------- */
+.kak-durum {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin: var(--sp-1) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.kak-durum > span { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.kak-durum i {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--dim);
+}
+.kak-durum i[data-tone="success"] { background: var(--success); }
+.kak-durum i[data-tone="warning"] { background: var(--warning); }
+.kak-durum i[data-tone="danger"] { background: var(--danger); }
+.kak-durum a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--line); }
+.kak-durum a:hover { color: var(--ink); border-bottom-color: var(--primary); }
+
+/* ---------- Üst ızgara: 58 / 42 ---------- */
+.kak-ust {
+  display: grid;
+  grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+  gap: var(--sp-4);
+  align-items: start;
+}
+/*
+  Dar ekranda alt alta. Eşik ölçümle: iki kart 760 px'in altına
+  indiğinde karar satırının ürün etiketi, zaman ve eylem aynı satıra
+  sığmıyor ve ikincil metin kırpılmaya başlıyor.
+*/
+@media (max-width: 1180px) {
+  .kak-ust { grid-template-columns: minmax(0, 1fr); }
+}
+
+/*
+  TELEFON: ürün etiketi ile zaman ikincil satıra iniyor, eylem sağda
+  kalıyor. Satır 52 px'ten 64 px'e çıkıyor; dokunma hedefi büyüyor.
+*/
+@media (max-width: 560px) {
+  .kak-kart { padding: var(--sp-4); }
+  .kak-satir { align-items: flex-start; min-height: 64px; }
+  .kak-urun { display: none; }
+  .kak-zaman { display: none; }
+  .kak-govde b { white-space: normal; }
+  .kak-govde small { white-space: normal; }
+  .kak-eylem { align-self: center; }
+}

@@ -59,10 +59,20 @@ export function alanSecimi(degerler: readonly unknown[]): KonsolAlani[] {
   return KONSOL_ALANLARI.map((a) => a.kod).filter((kod) => secili.has(kod));
 }
 
-/** Dock süzgeci: ana ekran her zaman; geri kalanı kapsamdaysa. */
-export function uygulamalariSuz<T extends { key: string }>(uygulamalar: readonly T[], kapsam: KonsolKapsami): T[] {
+/**
+ * Dock süzgeci: ana ekran her zaman; geri kalanı kapsamdaysa.
+ *
+ * Girdinin yetki alanı normalde ANAHTARIYLA aynı; `alan` verilmişse o
+ * kullanılıyor (26.11.2026, "Otomasyonlar" girdisi sistem sağlığının
+ * sekmesini açıyor ve sistem yetkisi istiyor).
+ */
+export function uygulamalariSuz<T extends { key: string; alan?: string }>(uygulamalar: readonly T[], kapsam: KonsolKapsami): T[] {
   if (kapsam === null) return [...uygulamalar];
-  return uygulamalar.filter((u) => u.key === "home" || (GECERLI.has(u.key) && kapsam.has(u.key as KonsolAlani)));
+  return uygulamalar.filter((u) => {
+    if (u.key === "home") return true;
+    const alan = u.alan ?? u.key;
+    return GECERLI.has(alan) && kapsam.has(alan as KonsolAlani);
+  });
 }
 
 /**

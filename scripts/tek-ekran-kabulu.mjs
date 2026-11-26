@@ -188,15 +188,20 @@ export function tekEkranHukmu(ad, o) {
       MARKA ÇİZİLİYOR MU (26.11.2026, inceleme bulgusu). Dar menüde
       logo yerine kırık görsel simgesi vardı: dosya yüklenmiş olmalı ve
       çizilen oran kaynağınkinden sapmamalı (kutuya sıkıştırılmış logo).
+
+      Marka 26.11.2026'da sol menüden ÜST ÇUBUĞA taşındı (onaylı
+      mockup): aynı üç denetim orada koşuyor. Ölçüm sol menüye bakmayı
+      sürdürseydi her ekran "marka çizilmiyor" derdi ve kırık logoyu
+      yakalayan denetim susturulmuş olurdu.
     */
     if (m.marka) {
-      if (!m.marka.yuklendi) eksik.push(`menüdeki marka dosyası yüklenmedi (${m.marka.dosya})`);
+      if (!m.marka.yuklendi) eksik.push(`üst çubuktaki marka dosyası yüklenmedi (${m.marka.dosya})`);
       /* %2: yuvarlamadan gelen sapma (~%1,4) geçer, kutuya sıkıştırılmış
          bir logo (2:1 → 1:1, %100) geçmez. */
       if (m.marka.oranSapmasi > 0.02) eksik.push(`marka oranı bozuk (${m.marka.dosya}, sapma %${(m.marka.oranSapmasi * 100).toFixed(1)})`);
       if (m.marka.genislik < 20) eksik.push(`marka ${m.marka.genislik} px çiziliyor (okunmaz)`);
     } else if (m.oge) {
-      eksik.push("sol menüde marka çizilmiyor");
+      eksik.push("üst çubukta marka çizilmiyor");
     }
     if (m.pencereAcik === false && m.secili && m.secili.length > 1) {
       eksik.push(`sol menüde ${m.secili.length} girdi birden seçili (${m.secili.join(", ")})`);

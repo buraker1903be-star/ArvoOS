@@ -62,6 +62,17 @@
 .kup-tablo tbody th,.kup-tablo tbody td{padding-block:var(--sp-2)}
 .kup-tablo td{font-variant-numeric:tabular-nums}
 .kup-tablo td:not(:first-child){white-space:nowrap}
+/*
+  DURUM SÜTUNU (26.11.2026): ürünün köprü sağlığı. Renk tek başına
+  bilgi taşımıyor — etiketin kendisi "Sağlıklı / Sorunlu / Bağlı değil"
+  diyor, nokta yalnızca tarama hızı için.
+*/
+.kup-tablo .kup-durum,.kup-tablo .kup-durum-bas{text-align:left;width:128px}
+.kup-saglik{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:var(--fs-sm);color:var(--ink-soft)}
+.kup-saglik::before{content:"";width:8px;height:8px;border-radius:var(--r-pill);background:var(--dim)}
+.kup-saglik[data-tone="success"]::before{background:var(--success)}
+.kup-saglik[data-tone="danger"]::before{background:var(--danger)}
+.kup-saglik[data-tone="danger"]{color:var(--danger)}
 .kup-ac{text-align:right}
 /* Ok CSS'te: işaretlemede ayrı bir <span> olarak durduğunda sabit
    yerleşimli tabloda satırın SOL kenarına kayıp hayalet bir ok
@@ -127,6 +138,8 @@
   .kup-mobil>li>a:focus-visible{outline:none;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary);border-radius:var(--r-sm)}
   .kup-mobil-ad{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink);overflow-wrap:anywhere}
   .kup-mobil-deger{flex:none;font-size:var(--fs-sm);font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* Dar kartta durum ad ile değerin arasında, küçük ve nötr. */
+  .kup-mobil .kup-saglik{flex:none;font-size:var(--fs-micro);color:var(--muted)}
 }
 
 /*

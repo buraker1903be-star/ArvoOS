@@ -19,7 +19,7 @@ import { headers } from "next/headers";
 import { hostFromHeaders, isManagementHost, MANAGEMENT_HOST } from "@/lib/site/host-rules";
 import { formatPersonName } from "@/lib/format-name";
 import { osUygulamalari } from "./os/os-apps";
-import { ArvoOsIsareti } from "./os/arvoos-markasi";
+import { ArvoOsIsareti, ArvoOsLogosu } from "./os/arvoos-markasi";
 import { OsNavigasyon } from "./os/os-navigasyon";
 import { konsolUygulamalari } from "./os/konsol-apps";
 import { YANIT_BEKLEYEN_DURUMLAR } from "@/lib/destek-kuyrugu";
@@ -554,13 +554,16 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <header className="os-bar">
       <OsGeri uygulamalar={konsolUygulamalariListesi} />
       {/*
-        Telefonun üst çubuğundaki marka alanı: eskiden "◇" karakteriydi —
-        logonun yerini tutan bir süs. Artık resmî işaret (masaüstü ve
-        tablette bu blok çizilmiyor, marka sol menünün tepesinde).
+        MARKA ÜST ÇUBUKTA, TEK KEZ (26.11.2026, onaylı mockup). Resmî tam
+        logo + ince dikey ayırıcı + "Yönetim Merkezi". Marka sol menünün
+        tepesinden buraya taşındı: iki yerde birden durması mockup'ta
+        yok ve sol menü artık doğrudan girdilerle başlıyor.
+        Telefonda logo yerine resmî İŞARET çiziliyor (os-yanmenu.css).
       */}
-      <Link className="os-brand" href="/panel" aria-label="Kurucu Konsolu ana ekran">
+      <Link className="os-brand os-konsol-marka" href="/panel" aria-label="ArvoOS Yönetim Merkezi ana sayfa">
+        <span className="os-konsol-logo" aria-hidden="true"><ArvoOsLogosu /></span>
         <i className="os-brand-isaret" aria-hidden="true"><ArvoOsIsareti /></i>
-        <span><b>Kurucu Konsolu</b><OsUygulamaAdi uygulamalar={konsolUygulamalariListesi} /></span>
+        <span className="os-konsol-ad">Yönetim Merkezi</span>
       </Link>
       <OsAramaDugmesi />
       <div className="os-bar-right">
@@ -593,8 +596,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       uygulamalar={konsolUygulamalariListesi}
       digerUygulamalar={[{ kod: "panel", ad: "Kiracı Paneli", href: `https://${DEFAULT_APP_HOST}/panel`, ayniSekme: false, marka: "arvoos" as const }]}
       yanMenu
-      yanMenuSirasi={["home", "urunler", "musteriler", "finans", "destek"]}
-      marka
+      yanMenuSirasi={["home", "urunler", "musteriler", "finans", "destek", "otomasyonlar"]}
     />}
     <OsUygulamaKabugu />
     {/* Ctrl+K kiracı adıyla da arıyor: konsolda en çok tekrarlanan

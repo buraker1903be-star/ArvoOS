@@ -12,12 +12,15 @@ import { musteriMi } from "@/lib/kurum-turu";
 import { renewalReminders, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 import { productName } from "@/lib/products";
 import { donem as donemiCoz, type DonemKodu } from "@/lib/konsol/donem";
-import { urunPerformansi, type Okuma, type OlcutKodu } from "@/lib/konsol/urun-performansi";
-import { UrunPerformansiKarti, OncelikliIslerKarti, type OncelikliIs } from "./konsol-urun-performansi";
+import { urunPerformansi, type Okuma, type OlcutKodu, type UrunSagligi } from "@/lib/konsol/urun-performansi";
+import { UrunPerformansiKarti } from "./konsol-urun-performansi";
+import { KararBekleyenlerKarti, OtomasyonlarKarti, type KararKalemi } from "./konsol-ana-kartlar";
+import { cronDurumlari, type CronKaydi } from "@/lib/cron-isleri";
+import { otomasyonlar, sonOtomatikKontrol, type KopruDurumu } from "@/lib/konsol/otomasyonlar";
 import { DonemSecici, OlcutSecici } from "./konsol-donem-secici";
 import { getPaymentIncidents } from "@/lib/payment-incidents";
 import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
-import { todayInIstanbul } from "@/lib/istanbul-date";
+import { istanbulDateTime, todayInIstanbul } from "@/lib/istanbul-date";
 import { sayfaliSonuc, tumSatirlar } from "@/lib/rapor-okuma";
 import { musteriEtkinlikleri } from "@/lib/musteri-etkinligi-oku";
 import { YANIT_BEKLEYEN_DURUMLAR, kuyrukSirala } from "@/lib/destek-kuyrugu";
@@ -25,7 +28,6 @@ import Link from "next/link";
 import { KONSOL_ALANLARI, uygulamalariSuz, type KonsolKapsami } from "@/lib/konsol-alanlari";
 import { konsolUygulamalari } from "./os/konsol-apps";
 import { GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, seriBaslangici } from "./os/genel-bakis";
-import { StgIcon } from "./settings/settings-ui";
 import { para, sayi } from "./platform/bicim";
 import "./dashboard.css";
 import "./hr/hr.css";
@@ -271,6 +273,23 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
     .select("id,subject,priority,status,last_message_at,organization_id")
     .in("status", YANIT_BEKLEYEN_DURUMLAR)
     .order("last_message_at", { ascending: true }));
+  /*
+    OTOMASYONLARIN KOŞMA KAYDI (26.11.2026). Sistem sağlığının okuduğu
+    tablonun aynısı (platform_cron_kayitlari); ana sayfa üç satıra
+    indirip gösteriyor (lib/konsol/otomasyonlar). İki okuma: her işin
+    SON kaydı ve kayıt tutmanın başlangıcı — "hiç koşmamış" ile "henüz
+    kayıt yok" ancak bu ikisiyle ayrılıyor.
+
+    hata-tamam: okunamazsa kart "kayıt yok" der ve ana sayfa açılmaya
+    devam eder; zamanlanmış iş durumu sayfanın açılmasını engellememeli.
+  */
+  const cronIstegi = Promise.all([
+    supabase.from("platform_cron_durumu").select("is_adi,son_calisma,son_basarili,sonuc,sure_ms,ayrinti")
+      .then(({ data, error }) => (error ? [] : ((data ?? []) as unknown as CronKaydi[])), () => []),
+    supabase.from("platform_cron_kayitlari").select("basladi_at").order("basladi_at", { ascending: true }).limit(1)
+      .then(({ data, error }) => (error || !data?.length ? null : new Date((data[0] as { basladi_at: string }).basladi_at)), () => null),
+  ]);
+
   const grafikIstegi = Promise.all([
     /* sınırsız-tamam: 14 günlük grafik penceresi; okuma tarihle sınırlı. */
     yedek((o) => liste(o, "havaleler"), () => supabase.from("organization_payment_requests").select("id,organization_id,product,amount,payment_method,reviewed_at")
@@ -653,18 +672,26 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
   /* Öncelikli işler listesinin destek ayağı. */
   const destekTalepleri = kuyrukSirala((destekSatirlari ?? []) as { id: string; subject: string; priority: string; status: string; last_message_at: string; organization_id: string }[]);
 
-  const oncelikliIsler: OncelikliIs[] = [
+  /*
+    KARAR BEKLEYENLER (26.11.2026, onaylı mockup). Kuyruğun kendisi,
+    sırası ve yetkisi DEĞİŞMEDİ; satıra kaydın ZAMANI eklendi ("Bugün,
+    09:15") ve eylem adı kayda göre yazılıyor. Yenilemede zaman yok:
+    orada kayıt anı değil, kalan gün anlamlı.
+  */
+  const kararlar: KararKalemi[] = [
     ...odemeler.map((o) => ({
       anahtar: `odeme-${o.id}`,
       urun: o.product ? productName(o.product) : undefined,
       baslik: "Ödeme bildirimi",
       alt: [kurumAdi.get(o.organization_id) ?? "Kurum", para(Number(o.amount ?? 0), o.currency ?? "TRY")].join(" · "),
+      zaman: o.created_at,
       href: "/panel/platform/payments",
     })),
     ...(sozlesmeler ?? []).map((i) => ({
       anahtar: `sozlesme-${i.id}`,
       baslik: "Sözleşme onayı",
       alt: [i.customer_name || "Müşteri", i.contract_no].filter(Boolean).join(" · "),
+      zaman: i.created_at,
       href: "/panel/platform/sozlesmeler",
     })),
     ...hatirlatmalar.map((h) => ({
@@ -678,13 +705,45 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
       anahtar: `destek-${t.id}`,
       baslik: "Yanıt bekleyen talep",
       alt: [kurumAdi.get(t.organization_id) ?? "Kurum", t.subject].filter(Boolean).join(" · "),
+      zaman: t.last_message_at,
       href: `/panel/platform/destek/${t.id}`,
       eylem: "Görüntüle",
     })),
   ].slice(0, ONCELIKLI_TAVAN);
+  /*
+    OTOMASYONLAR (26.11.2026). Sekiz zamanlanmış işin kaydı üç satıra
+    iniyor (lib/konsol/otomasyonlar); köprü durumu yalnızca
+    "Veri senkronizasyonu" satırını etkiliyor.
+  */
+  const [cronSatirlari, cronBaslangici] = await cronIstegi;
+  const cronDurumu = cronDurumlari(cronSatirlari, new Date(), cronBaslangici);
+  const kopruDurumlari: KopruDurumu[] = [
+    { yapilandirilmamis: Boolean(arvolab?.broken && arvolab.permanent), kopuk: Boolean(arvolab?.broken) },
+    { yapilandirilmamis: !arc.ok && arc.missing.length > 0, kopuk: !arc.ok },
+    { yapilandirilmamis: !randevu.ok && randevu.missing.length > 0, kopuk: !randevu.ok },
+  ];
+  const otomasyonSatirlari = otomasyonlar(cronDurumu, kopruDurumlari);
+  const sonKontrol = sonOtomatikKontrol(cronDurumu);
+
+  /*
+    ÜRÜNÜN DURUM SÜTUNU köprü yoklamasından. ArvoOS'un köprüsü yok —
+    konsolun kendisi; onu "Bağlı değil" göstermek yanlış olurdu.
+  */
+  const urunSagligi = (kod: string): UrunSagligi => {
+    if (kod === "arvoos") return { durum: "saglikli", etiket: "Sağlıklı", ton: "success" };
+    const kopru = kod === "arvolab"
+      ? { kopuk: Boolean(arvolab?.broken), eksik: Boolean(arvolab?.permanent), not: arvolab?.broken ? "ArvoOS'a ulaşamıyor" : undefined }
+      : kod === "arc"
+      ? { kopuk: !arc.ok, eksik: arc.missing.length > 0, not: arc.error ?? undefined }
+      : { kopuk: !randevu.ok, eksik: randevu.missing.length > 0, not: randevu.error ?? undefined };
+    if (kopru.kopuk && kopru.eksik) return { durum: "bagli_degil", etiket: "Bağlı değil", ton: "neutral", not: "Köprü anahtarı tanımlı değil." };
+    if (kopru.kopuk) return { durum: "sorunlu", etiket: "Sorunlu", ton: "danger", not: kopru.not ?? "Köprü yanıt vermiyor." };
+    return { durum: "saglikli", etiket: "Sağlıklı", ton: "success" };
+  };
+
   /* Okunamayan kuyruk "iş yok" diye gösterilmez: hangi kalemin sayısının
      bilinmediği yazılır. */
-  const oncelikliOkunamayan = [
+  const kararOkunamayan = [
     bekleyenOdeme.error ? "Ödeme bildirimleri" : null,
     sozlesmeHatasi ? "Sözleşme onayları" : null,
     urunHatasi ? "Yenilemeler" : null,
@@ -761,48 +820,63 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
     İÇİNDE kuruluyor, kabuğa dokunulmuyor.
   */
   /*
-    GENEL BAKIŞ = BAŞLIK + DÖNEM + İKİ KART (26.11.2026, onaylı mockup).
+    ANA SAYFA = BAŞLIK + DURUM + ÜÇ KART (26.11.2026, onaylı mockup).
 
-    Selamlama, sayaç şeridi ve görünüm hapları kalktı: kurucunun ilk
-    sorusu "hangi ürün yaşıyor" ve "ne bekliyor". Kuyruk, tahsilat ve
-    sistem sağlığı KENDİ ekranlarında; buradan bağlantıyla gidiliyor.
-    İşlem, onay ve yetki akışlarının hiçbiri değişmedi — bu ekran yalnızca
-    neyi GÖSTERDİĞİNİ değiştirdi, ne yaptığını değil.
+    Ekranın adı "Genel Bakış" değil ANA SAYFA: kurucunun günü buradan
+    başlıyor ve ekran üç soruya sırayla cevap veriyor —
+      1. hangi iş benim kararımı bekliyor (Karar bekleyenler),
+      2. sistem arka planda neyi bitirdi (Otomasyonlar),
+      3. ürünler ve tahsilat nasıl (Ürün performansı).
+
+    Başlığın altındaki satır "her şey yolunda mı"yı tek bakışta
+    söylüyor: son BAŞARILI otomatik kontrolün saati ve dikkat isteyen
+    bağlantı sayısı. Kayıt yoksa uydurulmuyor, "Otomatik kontrol kaydı
+    yok" yazıyor.
+
+    İşlem, onay ve yetki akışlarının hiçbiri değişmedi — bu ekran
+    yalnızca neyi GÖSTERDİĞİNİ değiştirdi, ne yaptığını değil.
   */
+  const dikkatSayisi = kopruler.length;
   return (
     <GenelBakis
-      baslik="Genel Bakış"
+      baslik="Ana Sayfa"
       sinif="dash-sabit konsol-ana"
       eylem={<DonemSecici secili={secilenDonem.kod} taban="/panel" ek={`olcut=${secilenOlcut}`} />}
-    >
-      {/*
-        Kritik uyarı tek satır ve ayrıntıya giden bağlantı: köprünün
-        sessizliği ile sorgunun düşmesi ayrı şeyler, ikisi de yazılıyor.
-      */}
-      {kopruler.length || okunamayan.length ? (
-        <p className="dash-uyari konsol-uyari" data-tone={kopruler.length ? "danger" : "warning"} role="alert">
-          <span aria-hidden="true"><StgIcon name="shield" size={16} /></span>
+      durum={
+        <p className="kak-durum">
           <span>
-            <b>
-              {[
-                kopruler.length
-                  ? kopruler.length === 1 ? `${kopruler[0].ad} yanıt vermiyor` : `${kopruler.length} ürün köprüsü yanıt vermiyor`
-                  : null,
-                okunamayan.length ? `${okunamayan.length} veri kaynağı okunamadı` : null,
-              ].filter(Boolean).join(" · ")}
-            </b>
+            <i aria-hidden="true" data-tone={sonKontrol ? "success" : undefined} />
+            {sonKontrol
+              ? `Son otomatik kontrol ${istanbulDateTime(sonKontrol.toISOString(), { hour: "2-digit", minute: "2-digit" })}`
+              : "Otomatik kontrol kaydı yok"}
           </span>
-          <Link className="konsol-uyari-bag" href="/panel/platform/saglik">Sistem sağlığı</Link>
+          {dikkatSayisi ? (
+            <span>
+              <i aria-hidden="true" data-tone="warning" />
+              <Link href="/panel/platform/saglik?sekme=kopru">
+                {dikkatSayisi === 1 ? "1 bağlantı dikkat gerektiriyor" : `${dikkatSayisi} bağlantı dikkat gerektiriyor`}
+              </Link>
+            </span>
+          ) : null}
+          {okunamayan.length ? (
+            <span>
+              <i aria-hidden="true" data-tone="danger" />
+              <Link href="/panel/platform/saglik">{okunamayan.length} veri kaynağı okunamadı</Link>
+            </span>
+          ) : null}
         </p>
-      ) : null}
-
-      <div className="konsol-genel">
-        <UrunPerformansiKarti
-          satirlar={performans} donem={secilenDonem} olcut={secilenOlcut} para={para} sayi={sayi}
-          olcutSecici={<OlcutSecici secili={secilenOlcut} taban="/panel" ek={`donem=${secilenDonem.kod}`} />}
-        />
-        <OncelikliIslerKarti isler={oncelikliIsler} okunamayan={oncelikliOkunamayan} />
+      }
+    >
+      <div className="kak-ust">
+        <KararBekleyenlerKarti kalemler={kararlar} okunamayan={kararOkunamayan} />
+        <OtomasyonlarKarti isler={otomasyonSatirlari} href="/panel/platform/saglik?sekme=isler" />
       </div>
+
+      <UrunPerformansiKarti
+        satirlar={performans.map((p) => ({ ...p, saglik: urunSagligi(p.kod) }))}
+        donem={secilenDonem} olcut={secilenOlcut} para={para} sayi={sayi}
+        olcutSecici={<OlcutSecici secili={secilenOlcut} taban="/panel" ek={`donem=${secilenDonem.kod}`} />}
+      />
     </GenelBakis>
   );
 }

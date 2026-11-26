@@ -18,7 +18,7 @@ import "../dashboard.css";
 
 export const GENEL_BAKIS_SATIR = 6;
 
-export function GenelBakis({ baslik, gizliBaslik, ust, eylem, uyari, sinif, children }: {
+export function GenelBakis({ baslik, gizliBaslik, ust, eylem, durum, uyari, sinif, children }: {
   /* sinif="dash-sabit": sayfa kaymaz, kartlar kalan yüksekliği paylaşır
      (os/gorunum-secici.tsx ile; dashboard.css). */
   /** Görünen başlık (ana ekranda selamlama). Modül genel bakışlarında yok. */
@@ -39,6 +39,13 @@ export function GenelBakis({ baslik, gizliBaslik, ust, eylem, uyari, sinif, chil
     sarıyor, dar ekranda kontrol kendiliğinden başlığın altına geçiyor.
   */
   eylem?: ReactNode;
+  /*
+    Başlığın HEMEN ALTINDAKİ durum satırı (26.11.2026, onaylı mockup):
+    konsolda "son otomatik kontrol" saati ve dikkat isteyen bağlantı
+    sayısı. Başlık bloğunun içinde duruyor ki dönem seçicisi sağda
+    hizalı kalsın ve satır sarmada başlıkla birlikte insin.
+  */
+  durum?: ReactNode;
   /** Okunamayan veriler için uyarı satırı. */
   uyari?: string[];
   /** Ek sınıf: kendi düzenini kuran ekranlar (ör. Analitik, tek ekrana sabit). */
@@ -52,6 +59,7 @@ export function GenelBakis({ baslik, gizliBaslik, ust, eylem, uyari, sinif, chil
           <div>
             {ust ? <small className="panel-kicker">{ust}</small> : null}
             <h1>{baslik}</h1>
+            {durum}
           </div>
           {eylem ? <div className="dash-hero-eylem">{eylem}</div> : null}
         </header>

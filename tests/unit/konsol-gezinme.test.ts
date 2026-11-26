@@ -66,10 +66,12 @@ test("dar görünüm kuralları yalnızca masaüstü sorgusunun içinde", () => 
 });
 
 test("sol menünün birincil sırası onaylı mockup'takiyle aynı", () => {
-  /* Sıra yerleşimde yazılı; mockup: Genel Bakış · Ürünler · Müşteriler
-     · Finans · Destek. Uygulamalar ikincil bölümde. */
+  /* Sıra yerleşimde yazılı; mockup: Ana Sayfa · Ürünler · Müşteriler ·
+     Finans · Destek · Otomasyonlar. Uygulamalar ikincil bölümde.
+     Otomasyonlar 26.11.2026'da eklendi: arka planda koşan işlerin
+     durumu Ana Sayfa'da özet, burada tam liste. */
   const yerlesim = oku("app/panel/layout.tsx");
-  assert.match(yerlesim, /yanMenuSirasi=\{\["home", "urunler", "musteriler", "finans", "destek"\]\}/);
+  assert.match(yerlesim, /yanMenuSirasi=\{\["home", "urunler", "musteriler", "finans", "destek", "otomasyonlar"\]\}/);
 });
 
 test("Ürünler menüde kısa adıyla, başlatıcıda tam adıyla", () => {
@@ -124,12 +126,15 @@ test("ürün detayı ızgarası tek sütun: kart içerik genişliğini kullanıy
   assert.match(css, /main\.urun-sayfa>\.talep-izgara\{grid-template-columns:minmax\(0,1fr\)\}/);
 });
 
-test("menüde RESMÎ marka dosyaları kullanılıyor", () => {
+test("üst çubukta RESMÎ marka dosyaları kullanılıyor", () => {
   /*
     26.11.2026 inceleme bulgusu: dar menüde kırık görsel simgesi vardı ve
     menüdeki işaret resmî dosya değildi (public/brand/yonetim.svg, motifin
-    iki çemberle çizilmiş yaklaşığı). Açık menüde resmî KELİME LOGOSU,
-    dar menüde ve tablet rayında resmî İŞARET duruyor.
+    iki çemberle çizilmiş yaklaşığı).
+
+    Marka aynı gün onaylanan mockup'la sol menüden ÜST ÇUBUĞA taşındı:
+    çubuk ekran boyunca kesintisiz ve marka bir kez görünüyor. Geniş
+    ekranda resmî KELİME LOGOSU, telefonda resmî İŞARET duruyor.
   */
   const marka = oku("app/panel/os/arvoos-markasi.tsx");
   assert.match(marka, /\/brand\/arvoos-320\.png/);
@@ -149,8 +154,12 @@ test("menüde RESMÎ marka dosyaları kullanılıyor", () => {
     daraltılırken bir kare yanlış logo demek.
   */
   const css = oku("app/panel/os/os-yanmenu.css");
-  assert.match(css, /\.os-yan-logo \{ display: none; \}/);
-  assert.match(css, /html\[data-konsol-menu="dar"\] \.os-konsol \.os-yan-logo \{ display: none; \}/);
+  /* Telefonda kelime logosu yerine işaret; 761 px'ten sonra tersi. */
+  assert.match(css, /\.os-konsol \.os-konsol-logo \{ display: none; \}/);
+  assert.match(css, /\.os-konsol \.os-konsol-logo \{ display: block; \}/);
+  assert.match(css, /\.os-konsol \.os-brand-isaret \{ display: none; \}/);
+  /* Marka BİR kez görünsün: sol menüde ikinci bir marka bloğu kalmadı. */
+  assert.doesNotMatch(oku("app/panel/os/os-navigasyon.tsx"), /os-yan-marka/);
 });
 
 test("üç menü durumu üç farklı işaret taşıyor", () => {

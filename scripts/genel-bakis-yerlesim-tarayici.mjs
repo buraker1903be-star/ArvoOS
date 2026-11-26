@@ -109,9 +109,10 @@ import { GorunumSecici } from ${a("app/panel/os/gorunum-secici.tsx")};
 import { OsAramaDugmesi } from ${a("app/panel/os/os-command-palette.tsx")};
 import { ThemeToggle } from ${a("app/panel/theme-toggle.tsx")};
 import { OsSimge as OsSimgeDuz } from ${a("app/panel/os/os-icons.tsx")};
-import { UrunPerformansiKarti, OncelikliIslerKarti } from "@/app/panel/konsol-urun-performansi";
+import { UrunPerformansiKarti } from "@/app/panel/konsol-urun-performansi";
+import { KararBekleyenlerKarti, OtomasyonlarKarti } from "@/app/panel/konsol-ana-kartlar";
 import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
-import { ArvoOsIsareti } from "@/app/panel/os/arvoos-markasi";
+import { ArvoOsIsareti, ArvoOsLogosu } from "@/app/panel/os/arvoos-markasi";
 import { bolumAdresi, bolumSirasi, urunBolumu } from "@/lib/konsol/urun-bolumleri";
 import { OsBolumMenusu } from "@/app/panel/os/os-bolum-menusu";
 import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-bakis";
@@ -275,6 +276,24 @@ function Konsol() {
     çizilebilen hâller ve ekranda farklı metinler üretiyor.
   */
   const bosDurum = new URLSearchParams(location.search).get("durum") === "bos";
+  /* Ana Sayfa kartlarının örnek verisi: yapı üretimdekiyle aynı
+     (KararKalemi / Otomasyon tipleri), değerler örnek. */
+  const KARARLAR = [
+    { anahtar: "k1", urun: "ArvoLab", baslik: "Ödeme bildirimi", alt: "#P-87421 · Akademik Merkez · ₺28.900 · 3 gün gecikmede", zaman: new Date().toISOString().slice(0, 11) + "09:15:00Z", href: "/panel/platform/payments" },
+    { anahtar: "k2", urun: "ArvoCal", baslik: "Yaklaşan yenileme", alt: "#Y-56390 · Yıldız Eğitim · 12 müşteri · 7 gün içinde", href: "/panel/platform/musteriler/1" },
+    { anahtar: "k3", urun: "ArvoOS", baslik: "Yanıt bekleyen talep", alt: "#T-91877 · Ege Akademi · Kurumsal plan · 18 saattir yanıtsız", zaman: new Date(Date.now() - 86400000).toISOString().slice(0, 11) + "11:27:00Z", href: "/panel/platform/destek/1", eylem: "Görüntüle" },
+  ];
+  const OTOMASYONLAR = [
+    { anahtar: "tahsilat", ad: "Otomatik tahsilat", detay: "Son çalışma başarılı.", durum: "tamamlandi", etiket: "Tamamlandı", ton: "success", sonCalisma: new Date() },
+    { anahtar: "belgeler", ad: "Proforma ve hatırlatmalar", detay: "2 iş de başarılı.", durum: "gonderildi", etiket: "Gönderildi", ton: "success", sonCalisma: new Date() },
+    { anahtar: "esitleme", ad: "Veri senkronizasyonu", detay: "Bir ürüne ulaşılamıyor; eşitleme on dakikada bir yeniden deniyor.", durum: "yeniden", etiket: "Yeniden deneniyor", ton: "warning", sonCalisma: new Date() },
+  ];
+  const URUN_SAGLIK = [
+    { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
+    { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
+    { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
+    { durum: "sorunlu", etiket: "Sorunlu", ton: "danger", not: "Köprü yanıt vermiyor." },
+  ];
   /* Dönüşümün payda-sıfır hâli: oran null → "Dönemde deneme yok". */
   const URUN_DURUMLARI = URUN_SATIRLARI.map((r) =>
     r.kod === "arvolab" ? { ...r, donusum: { durum: "var", deger: { denemeye: 0, ucretliye: 0, oran: null } } } : r);
@@ -295,7 +314,7 @@ function Konsol() {
             para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
             secici={<DonemSecici secili="30g" taban="/panel" />}
             olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
-          <OncelikliIslerKarti isler={bosDurum ? [] : ONCELIKLI} okunamayan={bosDurum ? ["Destek kuyruğu"] : []} />
+          <KararBekleyenlerKarti kalemler={bosDurum ? [] : KARARLAR} okunamayan={bosDurum ? ["Destek kuyruğu"] : []} />
         </div>
       ) },
     { anahtar: "isler", etiket: "Bugünün İşleri", yer: "liste", icerik: islerPaneli },
@@ -327,20 +346,22 @@ function Konsol() {
     ölçüm var olmayan bir sayfayı ölçer.
   */
   return (
-    <GenelBakis baslik="Genel Bakış" sinif="dash-sabit konsol-ana"
-      eylem={<DonemSecici secili="30g" taban="/panel" />}>
-      <p className="dash-uyari konsol-uyari" data-tone="danger" role="alert">
-        <span aria-hidden="true" />
-        <span><b>3 ürün köprüsü yanıt vermiyor · 2 veri kaynağı okunamadı</b></span>
-        <a className="konsol-uyari-bag" href="/panel/platform/saglik">Sistem sağlığı</a>
-      </p>
-      <div className="konsol-genel">
-        <UrunPerformansiKarti satirlar={bosDurum ? URUN_DURUMLARI : URUN_SATIRLARI} olcut="musteri"
-          donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
-          para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
-          olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
-        <OncelikliIslerKarti isler={bosDurum ? [] : ONCELIKLI} okunamayan={bosDurum ? ["Destek kuyruğu"] : []} />
+    <GenelBakis baslik="Ana Sayfa" sinif="dash-sabit konsol-ana"
+      eylem={<DonemSecici secili="30g" taban="/panel" />}
+      durum={
+        <p className="kak-durum">
+          <span><i aria-hidden="true" data-tone="success" />Son otomatik kontrol 09:42</span>
+          <span><i aria-hidden="true" data-tone="warning" /><a href="/panel/platform/saglik?sekme=kopru">1 bağlantı dikkat gerektiriyor</a></span>
+        </p>
+      }>
+      <div className="kak-ust">
+        <KararBekleyenlerKarti kalemler={bosDurum ? [] : KARARLAR} okunamayan={bosDurum ? ["Destek talepleri"] : []} />
+        <OtomasyonlarKarti isler={OTOMASYONLAR} href="/panel/platform/saglik?sekme=isler" />
       </div>
+      <UrunPerformansiKarti satirlar={(bosDurum ? URUN_DURUMLARI : URUN_SATIRLARI).map((u, i) => ({ ...u, saglik: URUN_SAGLIK[i] }))} olcut="musteri"
+        donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
+        para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
+        olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
     </GenelBakis>
   );
 }
@@ -494,7 +515,7 @@ function Kabuk() {
       {konsolMu ? null : <a className="os-brand" href="/panel"><i>A</i><span><b>Prova Kurum</b></span></a>}
       {/* Üretimdeki marka bloğunun aynısı: resmî işaret (app/panel/layout.tsx).
           Masaüstü/tablette CSS gizliyor, telefonda görünen bu. */}
-      {konsolMu ? <a className="os-brand" href="/panel"><i className="os-brand-isaret" aria-hidden="true"><ArvoOsIsareti /></i><span><b>Kurucu Konsolu</b></span></a> : null}
+      {konsolMu ? <a className="os-brand os-konsol-marka" href="/panel"><span className="os-konsol-logo" aria-hidden="true"><ArvoOsLogosu /></span><i className="os-brand-isaret" aria-hidden="true"><ArvoOsIsareti /></i><span className="os-konsol-ad">Yönetim Merkezi</span></a> : null}
       {konsolMu ? <OsAramaDugmesi /> : null}
       {konsolMu ? (
         <div className="os-bar-right">
@@ -516,8 +537,7 @@ function Kabuk() {
       uygulamalar={konsolMu ? konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 }) : uygulamalar}
       digerUygulamalar={[]}
       yanMenu={konsolMu}
-      yanMenuSirasi={konsolMu ? ["home", "urunler", "musteriler", "finans", "destek"] : undefined}
-      marka={konsolMu}
+      yanMenuSirasi={konsolMu ? ["home", "urunler", "musteriler", "finans", "destek", "otomasyonlar"] : undefined}
     />
   </main></div>;
 }
@@ -753,13 +773,18 @@ const olc = () => {
           MARKA GÖRÜNTÜSÜ: görünen dosya gerçekten yüklendi mi ve kaç px
           çiziliyor. Dar menüde kırık görsel simgesi çıkmıştı
           (26.11.2026 inceleme bulgusu) — "öğe DOM'da" yetmez.
+
+          Ölçüm ÜST ÇUBUĞA bakıyor (26.11.2026, onaylı mockup): marka
+          sol menünün başından çubuğun soluna taşındı. Sonda kalan
+          ".os-yan-marka" ölçümü her ekranda "marka çizilmiyor" diyordu;
+          oysa marka duruyor, yeri değişti.
         */
         marka: (() => {
-          const g = [...m.querySelectorAll(".os-yan-marka img")].filter((x) => getComputedStyle(x).display !== "none" && getComputedStyle(x.parentElement).display !== "none");
+          const g = [...document.querySelectorAll(".os-konsol .os-bar .os-brand img")].filter((x) => getComputedStyle(x).display !== "none" && getComputedStyle(x.parentElement).display !== "none");
           if (!g.length) return null;
           const r = g[0].getBoundingClientRect();
           return {
-            biçim: g[0].closest(".os-yan-logo") ? "logo" : "isaret",
+            biçim: g[0].closest(".os-konsol-logo") ? "logo" : "isaret",
             dosya: g[0].getAttribute("src").split("/").pop(),
             yuklendi: g.every((x) => x.naturalWidth > 0),
             genislik: Math.round(r.width),
