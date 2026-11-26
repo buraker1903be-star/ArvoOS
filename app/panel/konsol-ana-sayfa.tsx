@@ -770,7 +770,11 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
     neyi GÖSTERDİĞİNİ değiştirdi, ne yaptığını değil.
   */
   return (
-    <GenelBakis baslik="Genel Bakış" sinif="dash-sabit konsol-ana">
+    <GenelBakis
+      baslik="Genel Bakış"
+      sinif="dash-sabit konsol-ana"
+      eylem={<DonemSecici secili={secilenDonem.kod} taban="/panel" ek={`olcut=${secilenOlcut}`} />}
+    >
       {/*
         Kritik uyarı tek satır ve ayrıntıya giden bağlantı: köprünün
         sessizliği ile sorgunun düşmesi ayrı şeyler, ikisi de yazılıyor.
@@ -791,10 +795,6 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
           <Link className="konsol-uyari-bag" href="/panel/platform/saglik">Sistem sağlığı</Link>
         </p>
       ) : null}
-
-      <div className="konsol-arac">
-        <DonemSecici secili={secilenDonem.kod} taban="/panel" ek={`olcut=${secilenOlcut}`} />
-      </div>
 
       <div className="konsol-genel">
         <UrunPerformansiKarti

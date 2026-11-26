@@ -53,9 +53,29 @@ export function tekEkranHukmu(ad, o) {
     ölçtüğü kuralı kendi deliyordu. Muafiyet kalktı.
   */
   if (kayiyor(o.sayfaDikey)) eksik.push(`sayfa dikey kayıyor (${o.sayfaDikey})`);
+  /*
+    DAR EKRANDA KAYDIRMA ANA İÇERİKTE (26.11.2026, ürün kararı).
+    1200 px altında kartlar içerik boyunda ve .panel-content kayıyor;
+    sayfanın kendisi yine kaymıyor. İki şey aranıyor: içerik SONUNA
+    kaydırıldığında son kart alt çubuğun altında kalmamalı ve
+    kaydırılacak bir şey kalmamalı (kırpılmış içerik yok).
+  */
+  if (o.sonaKaydir) {
+    if (o.sonaKaydir.ortuyor) {
+      eksik.push(`sona kaydırıldığında son içerik alt çubuğun altında (içerik ${o.sonaKaydir.sonIcerikAlt}, çubuk ${o.sonaKaydir.dockUstu})`);
+    }
+    if (o.sonaKaydir.kalanKaydirma > 1) {
+      eksik.push(`içerik sonuna kaydırılamıyor (${o.sonaKaydir.kalanKaydirma} px kırpık kalıyor)`);
+    }
+  }
   if (kayiyor(o.sayfaYatay)) eksik.push(`sayfa yatay kayıyor (${o.sayfaYatay})`);
-  if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
-  else if (o.dockOrtuyor) eksik.push(`dock içeriği örtüyor (içerik ${o.icerikAlt} > dock ${o.dockUstu})`);
+  /* İçerik kayabiliyorsa "ilk görünümde içerik dock'un altında mı"
+     sorusu anlamsız: içerik zaten görünür alanın dışına taşıyor ve
+     ölçü yukarıda, sona kaydırılmış hâlde alınıyor. */
+  if (!o.sonaKaydir?.kayiyor) {
+    if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
+    else if (o.dockOrtuyor) eksik.push(`dock içeriği örtüyor (içerik ${o.icerikAlt} > dock ${o.dockUstu})`);
+  }
 
   /*
     GENEL BAKIŞ ERİŞİMİ (26.11.2026). Kuyruk kendi bölümüne taşındı;
@@ -164,8 +184,65 @@ export function tekEkranHukmu(ad, o) {
       kullanıcı hangi sayfada olduğunu menüden okuyamıyordu. Pencere
       kapalıyken en çok BİR girdi seçili olacak.
     */
+    /*
+      MARKA ÇİZİLİYOR MU (26.11.2026, inceleme bulgusu). Dar menüde
+      logo yerine kırık görsel simgesi vardı: dosya yüklenmiş olmalı ve
+      çizilen oran kaynağınkinden sapmamalı (kutuya sıkıştırılmış logo).
+    */
+    if (m.marka) {
+      if (!m.marka.yuklendi) eksik.push(`menüdeki marka dosyası yüklenmedi (${m.marka.dosya})`);
+      /* %2: yuvarlamadan gelen sapma (~%1,4) geçer, kutuya sıkıştırılmış
+         bir logo (2:1 → 1:1, %100) geçmez. */
+      if (m.marka.oranSapmasi > 0.02) eksik.push(`marka oranı bozuk (${m.marka.dosya}, sapma %${(m.marka.oranSapmasi * 100).toFixed(1)})`);
+      if (m.marka.genislik < 20) eksik.push(`marka ${m.marka.genislik} px çiziliyor (okunmaz)`);
+    } else if (m.oge) {
+      eksik.push("sol menüde marka çizilmiyor");
+    }
     if (m.pencereAcik === false && m.secili && m.secili.length > 1) {
       eksik.push(`sol menüde ${m.secili.length} girdi birden seçili (${m.secili.join(", ")})`);
+    }
+  }
+
+  /*
+    ÜRÜN İÇİ BÖLÜM ADRESTE (26.11.2026, ürün kararı). Adresteki bölüm,
+    seçili sekme ve GÖRÜNEN panel aynı şeyi söylemeli; sekmeler
+    bağlantı olmalı ki adres paylaşılabilsin. Eskiden seçim bileşenin
+    durumundaydı: paylaşılan bağlantı ve yenileme Genel Bakış'a
+    düşüyordu.
+  */
+  if (o.urunBolumu) {
+    const u = o.urunBolumu;
+    if (!u.baglantili) eksik.push("ürün sekmeleri bağlantı değil (adres paylaşılamaz)");
+    if (u.gorunen !== u.istenen) eksik.push(`adres "${u.istenen}" diyor, görünen panel "${u.gorunen}"`);
+    if (u.seciliSekme.length !== 1) eksik.push(`ürün kartında ${u.seciliSekme.length} sekme seçili (tam 1 olmalı)`);
+    if (!u.baslik) eksik.push("ürün başlığı yok");
+    /*
+      Panelin BAŞLIĞI değil, ALANLARI da okunmalı: 390 px'te abonelik
+      tablosunun paket, dönem ve ücret hücreleri ekranın dışında
+      kalıyordu ve yatay kaydırma olmadığı için hiçbir yoldan
+      görünmüyordu (26.11.2026, inceleme bulgusu).
+    */
+    if (u.alanlar) {
+      const a = u.alanlar;
+      if (a.yatayKayiyor) eksik.push("panel yatay kayıyor");
+      if (a.tasanOge) eksik.push(`${a.tasanOge} hücre ekranın dışında (${a.bicim})`);
+      if (a.okunan < a.beklenen) eksik.push(`panelde ${a.okunan}/${a.beklenen} alan okunuyor (${a.metin})`);
+    }
+  }
+
+  /*
+    BAĞLAMLI GEZİNME (26.11.2026, ürün kararı). Ana menü modülü, şerit
+    alt bölümü gösterir; sayfa vurgusu ikisinde de TEK olur. Dar ekranda
+    şerit yerine seçici çizilir ve seçili bölümün ADI düğmede yazar —
+    "Bölümler" yazan bir düğme nerede olunduğunu söylemiyor.
+  */
+  if (o.bolumSeridi) {
+    const b = o.bolumSeridi;
+    if (b.etkin.length !== 1) eksik.push(`bölüm şeridinde ${b.etkin.length} bölüm etkin (tam 1 olmalı)`);
+    if (b.yatayKayiyor) eksik.push("bölüm şeridi yatay kayıyor");
+    if (b.odaklanamayan) eksik.push(`${b.odaklanamayan} bölüm bağlantısı klavyeyle odaklanamıyor`);
+    if (b.bicim === "secici" && b.etkin.length === 1 && b.dugmeMetni && !b.dugmeMetni.includes(b.etkin[0])) {
+      eksik.push(`seçici düğmesi seçili bölümü yazmıyor (${b.dugmeMetni})`);
     }
   }
 
@@ -201,6 +278,9 @@ export function tekEkranHukmu(ad, o) {
     if (!u.tam) eksik.push(`son ürüne kart içinden ulaşılamıyor (${u.metin})`);
     if (u.dokunma === false) eksik.push(`son ürünün eylemi tıklanamıyor (${u.metin})`);
     if (u.klavye === false) eksik.push(`son ürünün eylemi klavyeyle odaklanamıyor (${u.metin})`);
+    /* Odak halkası satırın dışına taşıyor: kenara yapışmış son satırda
+       klavye kullanıcısı nerede olduğunu göremiyor (26.11.2026). */
+    if (u.halka === false) eksik.push(`son ürünün odak halkası kesiliyor (${u.metin})`);
   }
 
   /*

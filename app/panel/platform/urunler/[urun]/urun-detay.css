@@ -48,22 +48,34 @@
 .urun-fiyat-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
 
 /*
-  DAR EKRANDA DA TEK EKRAN (26.11.2026, ürün kararı).
+  DAR EKRANDA SAYFA KAYAR (26.11.2026, ürün kararı — önceki kural
+  tersiydi ve ölçümle düştü).
 
-  os-shell.css 1200 px altında .liste-sayfa'nın sabit yüksekliğini
-  bilerek kapatıyor (height:auto): kiracı panelinin liste sayfaları
-  telefonda kayar. Yönetim ekranlarında kural farklı — ürün detayı dahil
-  sayfa kaymıyor, kart kayıyor. Kural .urun-sayfa ile sınırlı; kiracı
-  listeleri etkilenmiyor. Yükseklik yine kabuktan türüyor, sihirli sayı
-  yok: üst çubuk, üst boşluk, dock payı ve güvenli alan düşülüyor.
+  26.11.2026 sabahına kadar burada "dar ekranda da tek ekran" kuralı
+  vardı: 1200 px altında sayfaya 100dvh'den türetilmiş sabit bir
+  yükseklik veriliyor, kart o yüksekliğe sıkıştırılıyordu. Ölçüldü:
+  390×844'te Deneme dönüşümü ve İşlem bekleyenler bölümlerinin sonuna
+  HİÇBİR yoldan ulaşılamıyordu (kart içi kaydırma alanı sekmeyle
+  paylaşıldığı için son kart gövdenin dışında kalıyor), 768×600'de
+  satır ortasından kesiliyordu. Dar ekranda doğru davranış, ana
+  içeriğin kayması: kart içeriği kadar uzuyor, sayfa kayıyor.
+
+  Masaüstünde (≥1200 px) tek ekran kuralı duruyor: üstteki zincir
+  (kart kendi gövdesinde kayar) orada geçerli.
 */
-@media (max-width:1200px){
-  .os-root main.urun-sayfa.liste-sayfa{
-    display:flex;min-height:0;
-    height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
+@media (max-width:1199px){
+  /* Kaydırma kartın içinden ANA İÇERİĞE geçiyor: kart içeriği kadar
+     uzuyor, bölüm sonuna kaydırarak ulaşılıyor. Sayfanın kendisi
+     kaydırılamıyor (html/body overflow-x:clip, panel.css). */
+  .os-root .panel-content:has(> main.urun-sayfa){
+    height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+    box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;
   }
+  .os-root main.urun-sayfa.liste-sayfa{display:flex;height:auto;min-height:0}
   .os-root main.urun-sayfa.liste-sayfa>.talep-izgara{min-height:0}
-  .os-root main.urun-sayfa.liste-sayfa>.talep-izgara>.talep-bilgi{display:flex;overflow:hidden}
+  .os-root main.urun-sayfa .talep-akis.sy-kart{max-height:none}
+  .os-root main.urun-sayfa .talep-akis.sy-kart>div[role="tabpanel"],
+  .os-root main.urun-sayfa .talep-akis.sy-kart>section{overflow-y:visible}
 }
 
 /*

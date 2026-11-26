@@ -126,9 +126,24 @@ html[data-theme="dark"] .os-uygulamalar .marka-koyu{display:block}
   color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap;
   transition:background-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
 }
-.os-bolumler-liste a:hover{background:var(--surface-2);color:var(--ink)}
+/*
+  DURUMLAR SOL MENÜYLE AYNI DİLDE (26.11.2026). Bölüm şeridinde de
+  üzerine gelme zemini (--surface-2) ile etkin zemin (--primary-soft)
+  neredeyse aynı açıklıktaydı ve hangi bölümde olunduğu ancak yazı
+  rengine dikkatle bakılınca anlaşılıyordu. Etkin bölüm artık zemin +
+  ALT ÇİZGİ + kalın yazı taşıyor; üzerine gelme nötr bir yıkama, odak
+  halka. Değişkenler os-yanmenu.css'te tanımlı olanların aynısı
+  (orası yalnızca konsolu kapsıyor, bu şerit kiracı panelinde de var).
+*/
+.os-bolumler-liste a:hover{background:color-mix(in srgb,var(--ink) 5%,transparent);color:var(--ink)}
 .os-bolumler-liste a:focus-visible,.os-bolumler-ac:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.os-bolumler-liste a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
+.os-bolumler-liste a.is-active{
+  position:relative;background:color-mix(in srgb,var(--primary) 12%,transparent);
+  color:var(--primary);font-weight:var(--fw-semibold);
+}
+.os-bolumler-liste a.is-active::after{
+  content:"";position:absolute;left:12px;right:12px;bottom:2px;height:2px;border-radius:2px;background:var(--primary);
+}
 @media (max-width:900px){.os-bolumler{padding:var(--sp-3) var(--sp-3) 0}}
 @media (max-width:760px){
   .os-bolumler{padding:var(--sp-2) var(--sp-3) 0}
@@ -149,6 +164,8 @@ html[data-theme="dark"] .os-uygulamalar .marka-koyu{display:block}
   }
   .os-bolumler-liste.is-acik{display:flex}
   .os-bolumler-liste a{display:flex;min-height:var(--ctl-h-touch);border-radius:var(--r-md);font-size:15px;white-space:normal}
+  /* Açılır listede alt çizgi satırın altında kayboluyor: orada sol çubuk. */
+  .os-bolumler-liste a.is-active::after{left:0;right:auto;top:8px;bottom:8px;width:3px;height:auto;border-radius:0 3px 3px 0}
 }
 
 @media (prefers-reduced-motion:reduce){

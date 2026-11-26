@@ -17,6 +17,13 @@ html[data-theme="dark"] .dash [data-tone="brand"]{--tone-fg:var(--brand-200)}
 
 /* ---------- Selamlama ---------- */
 .dash-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+/*
+  BAŞLIK SATIRININ SAĞINDAKİ KONTROL (26.11.2026). Konsolda dönem
+  seçici başlığın ALTINDA ayrı bir şeritti ve ekranın üstünden bir
+  satır daha yiyordu. Şerit sarıyor: dar ekranda kontrol kendiliğinden
+  başlığın altına geçiyor, orada da sola yaslı başlıyor.
+*/
+.dash-hero-eylem{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2)}
 .dash-hero h1{margin:6px 0 0;color:var(--ink);font-size:clamp(26px,2.2vw,var(--fs-2xl));font-weight:var(--fw-semibold);line-height:var(--lh-tight);letter-spacing:-.02em}
 .dash-hero p{margin:8px 0 0;max-width:620px;color:var(--muted);font-size:15px;line-height:1.5}
 /* Kurucu konsolunun selamlama altı özeti ("Bugün 1 kiracı dikkat
