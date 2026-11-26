@@ -191,3 +191,43 @@ test("Genel Bakış: dönem seçici başlık satırında, kartlar içerik boyund
   assert.match(css, /@media \(min-width:1328px\)\{[\s\S]{0,120}flex-direction:row/);
   assert.match(css, /html\[data-konsol-menu="dar"\] \.konsol-genel\{flex-direction:row/);
 });
+
+test("bağlamlı gezinme: rota → modül + alt bölüm", async () => {
+  /*
+    26.11.2026 ürün kararı: ana navigasyon etkin MODÜLÜ, sayfa içindeki
+    navigasyon etkin ALT BÖLÜMÜ gösterir ve ikisi de URL'den çözülür.
+    URL'den çözüldüğü için doğrudan giriş, yenileme ve geri/ileri aynı
+    sonucu verir — durum bellekte tutulmuyor.
+  */
+  const { konsolUygulamalari } = await import("../../app/panel/os/konsol-apps");
+  const { etkinUygulama } = await import("../../app/panel/os/os-apps");
+  const { etkinBolum } = await import("../../app/panel/os/os-bolumler");
+  const uygulamalar = konsolUygulamalari();
+
+  const coz = (yol: string) => {
+    const u = etkinUygulama(uygulamalar, yol);
+    const b = u?.bolumler?.length ? etkinBolum(u.bolumler, yol, "") : null;
+    return [u?.key, b?.key];
+  };
+
+  /* Brifteki akış: Ürünler → ArvoLab → Abonelikler → ürün listesine dönüş. */
+  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", "urunler"]);
+  assert.deepEqual(coz("/panel/platform/urunler/arvolab"), ["urunler", "urunler"]);
+  assert.deepEqual(coz("/panel/platform/billing"), ["finans", "abonelikler"]);
+  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", "urunler"]);
+
+  /* Finans'ta alt bölüm geçişi. */
+  assert.deepEqual(coz("/panel/platform/tahsilat"), ["finans", "tahsilatlar"]);
+  assert.deepEqual(coz("/panel/platform/payments"), ["finans", "odemeler"]);
+
+  /* Öteki modüller. */
+  assert.deepEqual(coz("/panel/platform/musteriler"), ["musteriler", "musteriler"]);
+  assert.deepEqual(coz("/panel/platform/saglik"), ["sistem", "saglik"]);
+  assert.deepEqual(coz("/panel"), ["home", undefined]);
+
+  /* Ürün detayında SOL menüde yalnızca "Ürünler" sayfa vurgusu taşır:
+     etkin uygulama tek ve "Uygulamalar" düğmesi sayfa değil pencere. */
+  const etkin = etkinUygulama(uygulamalar, "/panel/platform/urunler/arvolab");
+  assert.equal(etkin?.key, "urunler");
+  assert.equal(uygulamalar.filter((u) => etkinUygulama(uygulamalar, "/panel/platform/urunler/arvolab")?.key === u.key).length, 1);
+});

@@ -1,6 +1,29 @@
 /* Dönem seçici: kart başlığının ya da sayfa başlığının sağında. */
 .kds-donem{flex:none}
-.kds-donem>summary{white-space:nowrap}
+/*
+  İKİ SEÇİCİ TEK TİPOGRAFİ (26.11.2026, inceleme bulgusu).
+
+  Her ikisi de .panel-secondary üstüne .os-menu>summary kuralını
+  alıyordu; o kural "⋯" işlem menüsü için yazılmış: 40 px yükseklik,
+  --fs-lg ve .1em HARF ARALIĞI. Sonuçta "Son 30 gün" ile "Aktif
+  müşteri" sayfa başlığının yanında ikinci bir başlık gibi, harfleri
+  açılmış hâlde duruyordu — Genel Bakış'ta, ürün detayında ve kart
+  başlığında üç ayrı yerde. Tek tanım: 34 px, --fs-sm, normal aralık.
+  Dokunmatikte yükseklik 40 px'e çıkıyor (hedef küçülmesin).
+*/
+/* Seçici .os-root ile: panel-ui.css'teki `.os-root .os-menu>summary`
+   (0,2,1) bu kuralı yeniyordu — mobilde seçici hâlâ 40 px ve açılmış
+   harflerle çiziliyordu (ölçüldü). */
+.os-root .kds-donem>summary,
+.os-root .kds-olcut>summary{
+  min-height:34px;padding:0 var(--sp-3);
+  font-size:var(--fs-sm);font-weight:var(--fw-medium);letter-spacing:normal;
+  white-space:nowrap;
+}
+@media (pointer:coarse){
+  .os-root .kds-donem>summary,
+  .os-root .kds-olcut>summary{min-height:var(--ctl-h-touch)}
+}
 .kds-donem .os-menu-item[aria-current="true"]{font-weight:var(--fw-semibold);color:var(--ink)}
 
 /* Ölçüt seçici: dar kartta görünür, geniş kartta gizli (kartın kendi

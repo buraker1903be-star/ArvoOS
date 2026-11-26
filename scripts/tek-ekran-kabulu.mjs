@@ -53,9 +53,29 @@ export function tekEkranHukmu(ad, o) {
     ölçtüğü kuralı kendi deliyordu. Muafiyet kalktı.
   */
   if (kayiyor(o.sayfaDikey)) eksik.push(`sayfa dikey kayıyor (${o.sayfaDikey})`);
+  /*
+    DAR EKRANDA KAYDIRMA ANA İÇERİKTE (26.11.2026, ürün kararı).
+    1200 px altında kartlar içerik boyunda ve .panel-content kayıyor;
+    sayfanın kendisi yine kaymıyor. İki şey aranıyor: içerik SONUNA
+    kaydırıldığında son kart alt çubuğun altında kalmamalı ve
+    kaydırılacak bir şey kalmamalı (kırpılmış içerik yok).
+  */
+  if (o.sonaKaydir) {
+    if (o.sonaKaydir.ortuyor) {
+      eksik.push(`sona kaydırıldığında son içerik alt çubuğun altında (içerik ${o.sonaKaydir.sonIcerikAlt}, çubuk ${o.sonaKaydir.dockUstu})`);
+    }
+    if (o.sonaKaydir.kalanKaydirma > 1) {
+      eksik.push(`içerik sonuna kaydırılamıyor (${o.sonaKaydir.kalanKaydirma} px kırpık kalıyor)`);
+    }
+  }
   if (kayiyor(o.sayfaYatay)) eksik.push(`sayfa yatay kayıyor (${o.sayfaYatay})`);
-  if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
-  else if (o.dockOrtuyor) eksik.push(`dock içeriği örtüyor (içerik ${o.icerikAlt} > dock ${o.dockUstu})`);
+  /* İçerik kayabiliyorsa "ilk görünümde içerik dock'un altında mı"
+     sorusu anlamsız: içerik zaten görünür alanın dışına taşıyor ve
+     ölçü yukarıda, sona kaydırılmış hâlde alınıyor. */
+  if (!o.sonaKaydir?.kayiyor) {
+    if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
+    else if (o.dockOrtuyor) eksik.push(`dock içeriği örtüyor (içerik ${o.icerikAlt} > dock ${o.dockUstu})`);
+  }
 
   /*
     GENEL BAKIŞ ERİŞİMİ (26.11.2026). Kuyruk kendi bölümüne taşındı;
@@ -184,6 +204,22 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    BAĞLAMLI GEZİNME (26.11.2026, ürün kararı). Ana menü modülü, şerit
+    alt bölümü gösterir; sayfa vurgusu ikisinde de TEK olur. Dar ekranda
+    şerit yerine seçici çizilir ve seçili bölümün ADI düğmede yazar —
+    "Bölümler" yazan bir düğme nerede olunduğunu söylemiyor.
+  */
+  if (o.bolumSeridi) {
+    const b = o.bolumSeridi;
+    if (b.etkin.length !== 1) eksik.push(`bölüm şeridinde ${b.etkin.length} bölüm etkin (tam 1 olmalı)`);
+    if (b.yatayKayiyor) eksik.push("bölüm şeridi yatay kayıyor");
+    if (b.odaklanamayan) eksik.push(`${b.odaklanamayan} bölüm bağlantısı klavyeyle odaklanamıyor`);
+    if (b.bicim === "secici" && b.etkin.length === 1 && b.dugmeMetni && !b.dugmeMetni.includes(b.etkin[0])) {
+      eksik.push(`seçici düğmesi seçili bölümü yazmıyor (${b.dugmeMetni})`);
+    }
+  }
+
+  /*
     ÜRÜN DETAYI KARTI İÇERİK GENİŞLİĞİNİ KULLANIR (26.11.2026,
     inceleme bulgusu). Izgara sınıfı iki sütun kuruyordu ve tek çocuk
     olan kart birinci sütunda kalıyordu: 768×600'de sağda 296 px
@@ -215,6 +251,9 @@ export function tekEkranHukmu(ad, o) {
     if (!u.tam) eksik.push(`son ürüne kart içinden ulaşılamıyor (${u.metin})`);
     if (u.dokunma === false) eksik.push(`son ürünün eylemi tıklanamıyor (${u.metin})`);
     if (u.klavye === false) eksik.push(`son ürünün eylemi klavyeyle odaklanamıyor (${u.metin})`);
+    /* Odak halkası satırın dışına taşıyor: kenara yapışmış son satırda
+       klavye kullanıcısı nerede olduğunu göremiyor (26.11.2026). */
+    if (u.halka === false) eksik.push(`son ürünün odak halkası kesiliyor (${u.metin})`);
   }
 
   /*

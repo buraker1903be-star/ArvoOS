@@ -195,16 +195,6 @@
   .konsol-genel>:last-child{flex:1 1 30%;min-width:0}
 }
 
-/*
-  Dönem seçici başlık satırında: sayfa başlığından SAKİN dursun.
-  panel-secondary varsayılanı 40 px ve --fs-base; başlığın (28 px)
-  yanında ikinci bir başlık gibi duruyordu.
-*/
-.konsol-ana .dash-hero-eylem .kds-donem>summary{
-  min-height:34px;padding:0 var(--sp-3);
-  font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--ink-soft);
-}
-
 /* Uyarı satırındaki ayrıntı bağlantısı: metin kısa, ayrıntı tek tık. */
 .konsol-uyari-bag{flex:none;margin-left:auto;color:var(--accent);font-size:var(--fs-sm);font-weight:var(--fw-semibold);white-space:nowrap}
 /*
@@ -216,6 +206,47 @@
 @media (max-width:560px){
   .konsol-uyari{flex-direction:column;align-items:flex-start}
   .konsol-uyari-bag{margin-left:0;min-height:32px;display:inline-flex;align-items:center}
+}
+
+/*
+  DAR EKRANDA ANA İÇERİK KAYAR, KART KESİLMEZ (26.11.2026, ürün kararı).
+
+  Konsolun Genel Bakış'ı her boyutta tek ekrana sabitti ve kalan
+  yüksekliği kartlar paylaşıyordu: 768×600'de ürün satırının ve odak
+  halkasının yarısı kesiliyor, 390×844'te öncelikli iş listesinin son
+  satırı kırpılıyordu — kayıt duruyor ama okunmuyor, klavyeyle gidilen
+  satırın halkası görünmüyordu.
+
+  1200 px altında kartlar içerik boyunda kalıyor ve kaydırma ANA
+  İÇERİĞE geçiyor. Sayfanın kendisi kaydırılmıyor, çünkü kaydırılamıyor:
+  html ve body'de overflow-x:clip var (panel.css, yatay taşmayı kesmek
+  için) ve Chromium o durumda dikey kaydırmayı da kapatıyor — taşan
+  içerik kaydırılamadan KIRPILIYOR (ölçüldü: scrollHeight 939,
+  clientHeight 844, scrollTop sabit 0). Kaydırmayı içeriğe vermek aynı
+  zamanda üst çubuğu ve alt çubuğu yerinde tutuyor.
+
+  Masaüstünde (≥1200 px) kural değişmedi: ne sayfa ne içerik kayar,
+  gerekirse kart kendi gövdesinde kayar.
+*/
+@media (max-width:1199px){
+  .os-root .panel-content:has(> .dash-sabit.konsol-ana){overflow-y:auto;overscroll-behavior:contain}
+  /*
+    BÖLÜM KÜÇÜLMEMELİ, YOKSA KAYDIRMA HİÇ BAŞLAMAZ. .dash-sabit
+    varsayılanı flex:1 1 auto: sabit yükseklikli kapta içeriği kadar
+    uzamak yerine KISALIYOR, kaplar taşmıyor ve overflow:auto hiçbir
+    şey yapmıyordu — kartın görünür kutusu kısalırken içeriği
+    (overflow:visible) alt çubuğun arkasına taşıyordu. 390×844'te
+    ölçüldü: son iş satırı dock'un altında, tıklanamaz.
+  */
+  .konsol-ana.dash-sabit{flex:0 0 auto}
+  .konsol-genel{max-height:none}
+  .konsol-genel>.dash-card{max-height:none}
+  .konsol-genel .dash-col-govde{overflow:visible}
+  /* Kısa pencerede kart süsünü kısmaya ve 130 px tabana gerek yok:
+     kart içeriği kadar ve içerik kayıyor. */
+  .konsol-genel>:last-child{flex:0 1 auto;min-height:0}
+  .konsol-genel .dash-card-head p{display:block}
+  .konsol-genel .dash-card-link{display:inline-flex}
 }
 
 /*
@@ -264,6 +295,12 @@
   alt bağlantı mobilde Dock'taki "Ürünler" ile aynı yere gidiyor.
 */
 @media (max-width:560px){
+  /*
+    Telefonda dönem seçici BAŞLIĞIN ALTINDA (26.11.2026, ürün kararı).
+    Başlıkla aynı satıra sığıyor ama ikisi birbirini sıkıştırıyor ve
+    seçici başlığın hizasını bozuyordu; alt satırda sola yaslı duruyor.
+  */
+  .konsol-ana .dash-hero{flex-direction:column;align-items:flex-start;gap:var(--sp-2)}
   .konsol-genel>:first-child{flex:0 0 auto;max-height:none}
   .konsol-genel>:last-child{flex:1 1 auto;min-height:0}
   .konsol-genel>:first-child .dash-col-govde{overflow:visible}
