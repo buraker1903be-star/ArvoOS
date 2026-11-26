@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { TEMA_BETIGI } from "@/lib/konsol-giris/tema";
 import "./globals.css";
 // Pazarlama sitesinin stilleri ve hareketleri app/(site)/layout.tsx'te;
 // kök yerleşim yalnızca uygulama geneli temeli yükler.
@@ -61,6 +62,14 @@ export const viewport: Viewport = {
 // Tema, ThemeToggle tarafından localStorage'a yazılıyordu ama hiçbir yerde
 // geri okunmuyordu; her sayfa yenilemesinde aydınlık moda dönüyordu.
 // Bu script render'dan önce çalışır, böylece "flash" da olmaz.
-const themeInit = `(function(){try{var t=localStorage.getItem("arvoos.theme");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
+//
+// 26.11.2026: betik üç tercihli modele geçti (Açık / Koyu / SİSTEM,
+// lib/konsol-giris/tema.ts). Eskisi yalnızca iki durum biliyordu:
+// kullanıcı bir kez seçince "sisteme uy"a dönmenin yolu kalmıyor ve
+// sistem teması gün içinde değişince (macOS/iOS otomatik koyu mod)
+// açık sekme bunu izlemiyordu. Depolama anahtarı ve "light"/"dark"
+// değerleri AYNI; kaydı olmayan kullanıcı "system" sayılır — eskiden
+// aldığı davranışın aynısı. Betik <html>'e data-theme ile birlikte
+// data-theme-tercih de yazar: tema seçicisi onu okur.
 
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeInit}}/></head><body className={inter.variable}>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:TEMA_BETIGI}}/></head><body className={inter.variable}>{children}</body></html>}
