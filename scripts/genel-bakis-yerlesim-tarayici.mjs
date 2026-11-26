@@ -315,7 +315,7 @@ function UrunDetay() {
           <DonemSecici secili="30g" taban="/panel/platform/urunler/arvolab" />
         </div>
       </header>
-      <div className="talep-izgara personel-iki ekip-izgara">
+      <div className="talep-izgara ekip-izgara">
         <section className="talep-akis panel-card sy-kart">
           {/* Üretimdeki TalepAkis gibi: dar pencere seçicisi ve şerit
               birlikte çiziliyor, hangisinin görüneceğine CSS karar veriyor. */}
@@ -599,6 +599,12 @@ const olc = () => {
         daraltVar: Boolean(daralt),
         rozet: [...m.querySelectorAll(".os-yan-rozet")].map((b) => b.textContent),
         etkin: m.querySelector(".os-yan-oge.is-active")?.getAttribute("aria-label") ?? null,
+        /* Pencere KAPALIYKEN tam bir girdi seçili olmalı. Ürün
+           detayında "Ürünler" ile "Uygulamalar" aynı anda vurguluydu
+           (26.11.2026 inceleme bulgusu): "Uygulamalar" bir sayfa değil
+           pencere açıyor, vurgusu da pencereye bağlı. */
+        secili: [...m.querySelectorAll(".os-yan-oge.is-active")].map((o) => (o.getAttribute("aria-label") || o.textContent || "").trim()),
+        pencereAcik: document.querySelector("dialog.os-uygulamalar")?.open ?? false,
       };
     })(),
     /*
@@ -691,6 +697,36 @@ const olc = () => {
       return { bicim: "serit", sayi: dugmeler.length, icerde: disarida.length === 0, disarida,
         klavye: document.activeElement === dugmeler[0], yukseklik: Math.round(g.height),
         kaydirma: serit.scrollWidth > serit.clientWidth + 1 };
+    })(),
+    /*
+      ÜRÜN DETAYI: kart içerik genişliğini kullanıyor mu ve sağ kenarı
+      başlıktaki dönem seçicisiyle aynı hatta mı. Izgara sınıfı iki
+      sütun kurduğu için kart birinci sütunda kalıyordu: 768x600'de
+      sağda 296 px boşluk, 1440'ta seçiciden 350 px geride
+      (26.11.2026 inceleme bulgusu).
+    */
+    kartHizasi: (() => {
+      const kart = document.querySelector("main.urun-sayfa>.talep-izgara>.talep-akis");
+      const eylem = document.querySelector("main.urun-sayfa>.talep-bas .talep-bas-eylem");
+      const izgara = document.querySelector("main.urun-sayfa>.talep-izgara");
+      if (!kart || !eylem || !izgara) return null;
+      const k = kart.getBoundingClientRect(), e = eylem.getBoundingClientRect(), i = izgara.getBoundingClientRect();
+      /* Başlık tek satır mı: telefonda eylem bloğu başlığın ALTINA
+         geçiyor (talep-bas sarıyor) ve orada sağ kenar hizası diye bir
+         şey yok — hizayı yalnızca eylem başlığın yanındayken ölçüyoruz. */
+      const metin = document.querySelector("main.urun-sayfa>.talep-bas .talep-bas-metin");
+      const mr = metin?.getBoundingClientRect();
+      return {
+        tekSatir: mr ? e.top < mr.bottom - 1 : null,
+        kartG: Math.round(k.width),
+        bosluk: Math.round(i.right - k.right),
+        seciciyeFark: Math.round(e.right - k.right),
+        /* Metrikler alan izin verdiğinde yan yana: şerit ve kart ızgarası
+           kaç sütun çiziyor (sıfır genişlikli sütunlar auto-fit'in boş
+           izleri, sayılmıyor). */
+        seritSutun: ((el) => el ? getComputedStyle(el).gridTemplateColumns.split(" ").filter((x) => parseFloat(x) > 0).length : null)(document.querySelector(".ugb-serit")),
+        metrikSutun: ((el) => el ? getComputedStyle(el).gridTemplateColumns.split(" ").filter((x) => parseFloat(x) > 0).length : null)(document.querySelector(".ugb-izgara")),
+      };
     })(),
     /* Kuyruk sekme şeridi: yatay kaydırma olmadan hepsi sığıyor mu. */
     sekmeSeridi: (() => {
@@ -788,7 +824,11 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          "temiz" göstermenin en kolay yoludur. */
       const sayfaHatalari = [];
       sayfa.on("pageerror", (h) => sayfaHatalari.push(String(h.message).slice(0, 200)));
-      await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}`);
+      /* MENU=dar: masaüstü sol menünün daraltılmış hâliyle aynı ölçüm ve
+         görüntü kümesi. Tercih üretimde localStorage'dan geliyor; burada
+         adresle veriliyor (sayfanın başındaki not). */
+      const menuEki = process.env.MENU === "dar" ? "&menu=dar" : "";
+      await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}${menuEki}`);
       await sayfa.waitForTimeout(300);
       const o = await sayfa.evaluate(olc);
       if (sayfaHatalari.length) o.sayfaHatasi = sayfaHatalari;
@@ -804,7 +844,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          görünür, kullanıcının açılışta gördüğü ekran değil. */
       if (process.env.EKRAN) {
         fs.mkdirSync(process.env.EKRAN, { recursive: true });
-        await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}.png`) });
+        await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}${process.env.MENU === "dar" ? "-menu-dar" : ""}.png`) });
       }
       // Kurulum: eski kartta başlık kaydırmayla kayıyor mu; yenide pencere ve odak dönüşü.
       if (s === "ana") {
@@ -934,7 +974,7 @@ await tarayici.close();
 if (!process.env.SAKLA) fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, yanMenu: o.zincir?.yanMenu, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik }));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, yanMenu: o.zincir?.yanMenu, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik, kartHizasi: o.zincir?.kartHizasi }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);

@@ -61,9 +61,22 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   const yol = usePathname();
   const pencere = useRef<HTMLDialogElement>(null);
   const [arama, setArama] = useState("");
+  /*
+    Uygulamalar PENCERESİ açık mı. Sol menüde düğmenin vurgusu buna
+    bakıyor; dock'ta rotaya bakmaya devam ediyor (aşağıdaki not).
+  */
+  const [pencereAcik, setPencereAcik] = useState(false);
 
   const etkin = etkinUygulama(uygulamalar, yol);
   const { birincil, digerleri } = mobilAltCubuk(uygulamalar);
+  /*
+    DOCK'un "Uygulamalar" düğmesi: dock yalnızca ilk dört girişi
+    gösteriyor, o yüzden etkin uygulama dışarıda kaldığında düğme
+    "burayı buradan açtın" demek için vurgulanıyor. SOL MENÜ'de bu
+    yanlış: orada beş birincil giriş var ve ürün detayında "Ürünler"
+    ile "Uygulamalar" AYNI ANDA seçili görünüyordu (26.11.2026,
+    inceleme bulgusu). Sol menü kendi kuralını YanMenu'de kuruyor.
+  */
   const panelEtkin = Boolean(etkin && digerleri.some((u) => u.key === etkin.key));
   const panelRozeti = digerleri.reduce((t, u) => t + (u.rozet ?? 0), 0);
 
@@ -78,6 +91,7 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
 
   const ac = () => {
     setArama("");
+    setPencereAcik(true);
     pencere.current?.showModal();
   };
   const kapat = () => pencere.current?.close();
@@ -91,7 +105,7 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
           uygulamalar={uygulamalar}
           sira={yanMenuSirasi}
           etkinKey={etkin?.key}
-          panelEtkin={panelEtkin}
+          pencereAcik={pencereAcik}
           panelRozeti={panelRozeti}
           ac={ac}
           marka={marka}
@@ -134,6 +148,9 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
         className="os-uygulamalar"
         aria-labelledby="os-uygulamalar-baslik"
         onClick={(olay) => { if (olay.target === pencere.current) kapat(); }}
+        /* close(), Esc ve zemine tıklama: üçü de "close" olayını veriyor,
+           tek yerden dinlemek üçünü birden kapsıyor. */
+        onClose={() => setPencereAcik(false)}
       >
         <header className="os-uygulamalar-bas">
           <h2 id="os-uygulamalar-baslik">Uygulamalar</h2>
@@ -215,11 +232,12 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   ad `title` ve `aria-label` olarak kalır. Erişilebilir ad hiçbir
   biçimde kaybolmaz; rozetler görünür durur.
 */
-function YanMenu({ uygulamalar, sira, etkinKey, panelEtkin, panelRozeti, ac, marka, rozetMetni }: {
+function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, marka, rozetMetni }: {
   uygulamalar: OsUygulama[];
   sira?: string[];
   etkinKey?: string;
-  panelEtkin: boolean;
+  /** Uygulamalar penceresi açık mı; düğmenin vurgusu buna bakıyor. */
+  pencereAcik: boolean;
   panelRozeti: number;
   ac: () => void;
   marka?: { kod: MarkaKodu; ad: string };
@@ -269,10 +287,19 @@ function YanMenu({ uygulamalar, sira, etkinKey, panelEtkin, panelRozeti, ac, mar
       <div className="os-yan-alt">
         {/* İkincil bölüm: bütün uygulamalar ve diğer Arvo ürünleri aynı
             pencereden (dock'takiyle tek bileşen, tek liste). */}
+        {/*
+          VURGU PENCEREYE BAĞLI, ROTAYA DEĞİL. "Uygulamalar" bir sayfa
+          değil, bir pencere açıyor: rotaya bağlanınca birincil listede
+          duran bir uygulamada (ürün detayı → Ürünler) iki öğe birden
+          seçili görünüyordu. Pencere kapanınca düğme normale dönüyor.
+          Birincil listede HİÇ karşılığı olmayan bir rotada da vurgu yok;
+          yanlış yeri işaretlemek yerine hiçbir yeri işaretlemiyor.
+        */}
         <button
           type="button"
-          className={panelEtkin ? "os-yan-oge is-active" : "os-yan-oge"}
+          className={pencereAcik ? "os-yan-oge is-active" : "os-yan-oge"}
           aria-haspopup="dialog"
+          aria-expanded={pencereAcik}
           onClick={ac}
           aria-label={panelRozeti ? `Uygulamalar, ${panelRozeti} bekleyen` : "Uygulamalar"}
           title="Uygulamalar"

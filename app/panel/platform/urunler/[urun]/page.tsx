@@ -265,7 +265,10 @@ export default async function UrunPage({ params, searchParams }: {
       </dl>
     </nav>
 
-    <div className="talep-izgara personel-iki ekip-izgara">
+    {/* personel-iki YOK: ızgaranın tek çocuğu var, iki sütun kurmak kartı
+        birinci sütuna sıkıştırıyordu (urun-detay.css). ekip-izgara duruyor:
+        kart kendi içinde kayıyor (kayit-detay.css :not(.ekip-izgara)). */}
+    <div className="talep-izgara ekip-izgara">
       <TalepAkis kimlik="urun-kart" sinif="sy-kart" darSecici etiket={`${urunTanimi.name} kartı`} sekmeler={sekmeler}>
         {/*
           Sekmeler onaylı mockup'a göre: Genel Bakış · Müşteriler ·

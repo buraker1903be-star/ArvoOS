@@ -80,3 +80,40 @@ test("Ürünler menüde kısa adıyla, başlatıcıda tam adıyla", () => {
   const nav = oku("app/panel/os/os-navigasyon.tsx");
   assert.match(nav, /u\.kisaEtiket \?\? u\.label/);
 });
+
+test("sol menüde 'Uygulamalar' vurgusu PENCEREYE bağlı, rotaya değil", () => {
+  /*
+    26.11.2026 inceleme bulgusu: ürün detayında "Ürünler" ile
+    "Uygulamalar" aynı anda seçili görünüyordu. Dock'ta kural doğru
+    (orada yalnızca ilk dört giriş var, etkin uygulama dışarıda
+    kalabiliyor); sol menüde beş birincil giriş olduğu için aynı kural
+    iki vurgu demekti. Düğme bir sayfa değil pencere açıyor.
+  */
+  const tsx = oku("app/panel/os/os-navigasyon.tsx");
+  const yan = tsx.slice(tsx.indexOf("function YanMenu"));
+  assert.match(yan, /className=\{pencereAcik \? "os-yan-oge is-active"/);
+  assert.doesNotMatch(yan, /panelEtkin/);
+  /* Durumun sıfırlanması: close(), Esc ve zemine tıklama aynı olayı
+     veriyor, pencerenin kendisi dinliyor. Dinleyici düşerse düğme
+     pencere kapandıktan sonra da vurgulu kalır. */
+  assert.match(tsx, /onClose=\{\(\) => setPencereAcik\(false\)\}/);
+  /* Dock DEĞİŞMEDİ: telefonun alt çubuğu rotaya bakmaya devam ediyor. */
+  assert.match(tsx, /className=\{panelEtkin \? "os-dock-oge is-active"/);
+});
+
+test("ürün detayı ızgarası tek sütun: kart içerik genişliğini kullanıyor", () => {
+  /*
+    26.11.2026 inceleme bulgusu: ızgaranın tek çocuğu (ürün kartı)
+    iki sütunluk bir şablonun birinci sütununda kalıyordu —
+    768×600'de sağda 296 px boşluk, 1440×900'de kartın sağ kenarı
+    dönem seçicisinden 350 px geride, metrikler alt alta.
+  */
+  const sayfa = oku("app/panel/platform/urunler/[urun]/page.tsx");
+  assert.match(sayfa, /className="talep-izgara ekip-izgara"/);
+  /* personel-iki iki sütun kuruyor (kayit-detay.css); burada ikinci
+     sütun yok. ekip-izgara ise kalmalı: kartın kendi içinde kayması
+     ona bağlı. */
+  assert.doesNotMatch(sayfa, /className="[^"]*personel-iki/);
+  const css = oku("app/panel/platform/urunler/[urun]/urun-detay.css");
+  assert.match(css, /main\.urun-sayfa>\.talep-izgara\{grid-template-columns:minmax\(0,1fr\)\}/);
+});
