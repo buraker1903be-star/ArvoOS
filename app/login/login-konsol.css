@@ -1,0 +1,80 @@
+/*
+  YÖNETİM GİRİŞİ — KONSOL STANDARDI (26.11.2026).
+
+  Her kural `.login-shell.konsol-giris` altında: /login kiracılarla
+  PAYLAŞIMLI (kurum logosu ve rengiyle açılıyor) ve bu görünüm yalnızca
+  yonetim.arvo-os.com'da uygulanıyor. Kiracı girişi değişmiyor.
+
+  DEĞERLER GİRİŞ SAYFASININ KENDİ DEĞİŞKENLERİNDEN (login.css:
+  --ink, --line, --gold, --action, --ivory). Panelin token'ları burada
+  TANIMSIZ — ilk sürüm onları kullandı ve kurallar sessizce geçersiz
+  değere düşüp düğmeyi beyaz, hata kutusunu renksiz bıraktı. ArvoOS'un
+  "gece mavisi ve şampanya" kimliği korunuyor.
+
+  GEOMETRİ VE ETKİLEŞİM ArvoLab'ın çalışan arayüzünden (os5):
+  kontrol ile düğme aynı yükseklikte, 1 px kenarlık, iki katmanlı odak
+  halkası, hata durumunda kenarlık + metin, devre dışı opaklık.
+  İŞARETLEME VE DAVRANIŞ AYNEN DURUYOR: aynı form, aynı server action,
+  aynı hata kodları ve yönlendirme.
+*/
+.login-shell.konsol-giris{
+  --kg-h:44px;
+  --kg-r:10px;
+  --kg-kenarlik:var(--line);
+  --kg-kenarlik-hover:var(--dim);
+  --kg-odak:var(--gold);
+  --kg-zemin:#ffffff;
+  --kg-hata:#b3261e;
+  --kg-hata-zemin:#fdecea;
+}
+.login-shell.konsol-giris .login-card{gap:14px}
+.login-shell.konsol-giris .login-card label{
+  display:grid;gap:6px;font-family:var(--body);font-size:13px;font-weight:600;color:var(--ink);
+}
+.login-shell.konsol-giris .login-card input{
+  width:100%;min-height:var(--kg-h);padding:0 14px;
+  border:1px solid var(--kg-kenarlik);border-radius:var(--kg-r);
+  background:var(--kg-zemin);color:var(--ink);
+  font-family:var(--body);font-size:15px;font-weight:400;
+  transition:border-color .12s ease,box-shadow .12s ease;
+}
+.login-shell.konsol-giris .login-card input::placeholder{color:var(--dim)}
+.login-shell.konsol-giris .login-card input:hover:not(:focus){border-color:var(--kg-kenarlik-hover)}
+/* Odak halkası iki katmanlı: beyaz kartta da koyu zeminde de görünür. */
+.login-shell.konsol-giris .login-card input:focus,
+.login-shell.konsol-giris .login-card input:focus-visible{
+  outline:none;border-color:var(--kg-odak);
+  box-shadow:0 0 0 2px var(--kg-zemin),0 0 0 4px var(--kg-odak);
+}
+.login-shell.konsol-giris .login-card input:disabled{background:var(--ivory);color:var(--dim);cursor:not-allowed}
+/* Hata: hangi alanın sorunlu olduğu da görünür, yalnızca üstteki metin değil. */
+.login-shell.konsol-giris .login-card[data-hata="true"] input{border-color:var(--kg-hata)}
+
+.login-shell.konsol-giris .login-card button[type="submit"]{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:var(--kg-h);padding:0 18px;
+  border:1px solid transparent;border-radius:var(--kg-r);
+  background:var(--action);color:var(--action-on);
+  font-family:var(--body);font-size:15px;font-weight:600;letter-spacing:0;
+  box-shadow:none;transform:none;cursor:pointer;transition:background-color .12s ease,opacity .12s ease;
+}
+.login-shell.konsol-giris .login-card button[type="submit"]:hover{transform:none;box-shadow:none;opacity:.92}
+.login-shell.konsol-giris .login-card button[type="submit"]:focus-visible{
+  outline:none;box-shadow:0 0 0 2px var(--kg-zemin),0 0 0 4px var(--kg-odak);
+}
+.login-shell.konsol-giris .login-card button[type="submit"]:disabled{opacity:.55;cursor:not-allowed}
+.login-shell.konsol-giris .login-card button[type="submit"] b{font-weight:600;opacity:1}
+
+.login-shell.konsol-giris .login-error{
+  display:flex;align-items:flex-start;gap:10px;
+  border:1px solid var(--kg-hata);border-radius:var(--kg-r);
+  background:var(--kg-hata-zemin);color:var(--kg-hata);
+  font-family:var(--body);text-align:left;
+}
+.login-shell.konsol-giris .login-card a{
+  font-family:var(--body);font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;
+}
+.login-shell.konsol-giris .login-card a:hover{text-decoration:underline}
+.login-shell.konsol-giris .login-card a:focus-visible{
+  outline:none;border-radius:6px;box-shadow:0 0 0 2px var(--kg-zemin),0 0 0 4px var(--kg-odak);
+}

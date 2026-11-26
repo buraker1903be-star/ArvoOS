@@ -304,3 +304,68 @@ test("borç listesi başka bir kusuru örtmez", () => {
   assert.equal(h.gecti, false);
   assert.ok(h.eksik.some((m: string) => m.includes("sayfa dikey kayıyor")), h.eksik.join(" | "));
 });
+
+/*
+  26.11.2026, Genel Bakış yeniden kuruldu: kuyruk kendi bölümüne taşındı,
+  ekranda ürün performansı ve öncelikli işler var. Yeni ölçütler.
+*/
+const GENEL_TEMEL = {
+  sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 810, dockUstu: 824,
+  masaustu: true,
+  urunTablosu: { satir: 4, tamGorunen: 4, govdeH: 190 },
+  erisim: {
+    urunSayisi: 4, erisilemeyenUrun: [],
+    sonIs: { metin: "Yanıt bekleyen", dokunma: true, klavye: true, dockUstunde: true },
+  },
+};
+
+test("masaüstünde dört ürün kaydırmadan görünmeli", () => {
+  assert.deepEqual(tekEkranHukmu("1440x900 acik konsol", GENEL_TEMEL).eksik, []);
+  const h = tekEkranHukmu("1440x900 acik konsol", {
+    ...GENEL_TEMEL, urunTablosu: { satir: 4, tamGorunen: 1, govdeH: 85 },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("ürün tablosunda 1/4 satır görünüyor")), h.eksik.join(" | "));
+});
+
+test("dar ekranda kaydırma doğal: dört ürün kuralı yalnızca masaüstünde", () => {
+  /* Telefonda tablo kompakt satıra düşüyor ve kart içinde kayıyor;
+     oradaki kaydırma kusur değil. */
+  const h = tekEkranHukmu("390x844 acik konsol", {
+    ...GENEL_TEMEL, masaustu: false, sayfaDikey: "844/844", sayfaYatay: "390/390",
+    urunTablosu: { satir: 4, tamGorunen: 1, govdeH: 88 },
+  });
+  assert.deepEqual(h.eksik, []);
+});
+
+test("açılamayan ürün satırı ve erişilemeyen öncelikli iş düşürür", () => {
+  const h = tekEkranHukmu("1440x600 acik konsol", {
+    ...GENEL_TEMEL,
+    erisim: {
+      urunSayisi: 4, erisilemeyenUrun: ["Aç →", "Aç →"],
+      sonIs: { metin: "Yanıt bekleyen", dokunma: false, klavye: true, dockUstunde: false },
+    },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("açılamayan ürün satırı")), h.eksik.join(" | "));
+  assert.ok(h.eksik.some((m: string) => m.includes("son öncelikli işin eylemi erişilemiyor")), h.eksik.join(" | "));
+});
+
+test("ürün satırı hiç yoksa ekran boş sayılmaz, DÜŞER", () => {
+  /* Tablo çizilmediyse "sorun yok" değil, "ölçülemedi" durumudur. */
+  const h = tekEkranHukmu("1440x900 acik konsol", {
+    ...GENEL_TEMEL, erisim: { urunSayisi: 0, erisilemeyenUrun: [] },
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("ürün satırı bulunamadı")), h.eksik.join(" | "));
+});
+
+test("ürün detayı da tek ekran: dikey kayma muafiyeti kalktı", () => {
+  /* Önceki sürüm kayıt sayfasına muafiyet tanıyordu ve detay 390×844'te
+     1254/844 kayarken kabul geçiyordu. */
+  const h = tekEkranHukmu("390x844 acik urundetay", {
+    sayfaDikey: "1254/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 700, dockUstu: 781,
+  });
+  assert.equal(h.gecti, false);
+  assert.ok(h.eksik.some((m: string) => m.includes("sayfa dikey kayıyor (1254/844)")), h.eksik.join(" | "));
+});

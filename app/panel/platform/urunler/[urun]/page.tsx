@@ -20,6 +20,7 @@ import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { donem as donemiCoz, donemKodu } from "@/lib/konsol/donem";
 import { urunPerformansi, type Okuma } from "@/lib/konsol/urun-performansi";
 import { UrunGenelBakis, type IslemBekleyen } from "./urun-genel-bakis";
+import "./urun-detay.css";
 import { DonemSecici } from "../../../konsol-donem-secici";
 import { IstatistikKarti } from "../../../crm/istatistik-karti";
 import "../../platform.css";
@@ -174,10 +175,16 @@ export default async function UrunPage({ params, searchParams }: {
   })[0];
 
   /* İşlem bekleyenler: bu ürünün ekranlarına açılan kısayollar. Sayı
-     üretilmiyor — kuyruğun kendisi konsolun ana ekranında. */
+     üretilmiyor — kuyruğun kendisi konsolun ana ekranında.
+
+     Bağlantı ÜRÜN SÜZGECİNİ taşır (yalnızca müşteri listesinde var:
+     ?urun=<kod>). Ödeme ve destek kuyrukları ürün süzgeci almıyor;
+     oraya süzgeç uydurmak yerine alt satır nereye gidildiğini yazıyor.
+     Ürünün kodu adından ayrıdır (ArvoCal → randevu), bu yüzden
+     bağlantıda `urun` değişkeni kullanılıyor, etiket değil. */
   const bekleyenler: IslemBekleyen[] = [
     { anahtar: "odeme", baslik: "Ödeme bildirimleri", alt: "Onay bekleyenler konsolun kuyruğunda", href: "/panel/platform/payments", eylem: "İncele" },
-    { anahtar: "yenileme", baslik: "Yaklaşan yenilemeler", alt: "Dönemi dolan lisanslar", href: "/panel/platform/musteriler", eylem: "Görüntüle" },
+    { anahtar: "yenileme", baslik: "Yaklaşan yenilemeler", alt: `${urunTanimi.name} lisansı dönemi dolanlar`, href: `/panel/platform/musteriler?urun=${urun}`, eylem: "Görüntüle" },
     { anahtar: "destek", baslik: "Yanıt bekleyen talepler", alt: "Destek ekranında", href: "/panel/platform/destek", eylem: "Görüntüle" },
   ];
   const basamaklar = planlar(urun as PricedProduct);
@@ -219,7 +226,7 @@ export default async function UrunPage({ params, searchParams }: {
     <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
   );
 
-  return <main className="plt talep cari ekip urun-sayfa">
+  return <main className="plt talep cari ekip urun-sayfa liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker"><Link href="/panel/platform/urunler">ÜRÜNLER</Link> · {urunTanimi.badge}</small>
@@ -229,7 +236,6 @@ export default async function UrunPage({ params, searchParams }: {
       <div className="talep-bas-eylem">
         {/* Dönem seçici başlığın sağında (onaylı mockup); seçim adreste. */}
         <DonemSecici secili={secilenDonem.kod} taban={`/panel/platform/urunler/${urun}`} />
-        <Link className="panel-primary" href={`/panel/platform/fiyatlar?urun=${urun}`}>Fiyatları düzenle</Link>
         <details className="os-menu talep-menu">
           <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
           <div className="os-menu-list" role="menu">
@@ -308,7 +314,12 @@ export default async function UrunPage({ params, searchParams }: {
         </section>
 
         <section>
-          <header className="phr-bas fn-alt-bas"><h2>Yayımlanmış fiyatlar</h2><small>KDV dahil; yıllıkta 10 ay bedeli. Değiştirmek için Fiyatları düzenle.</small></header>
+          {/* Fiyat düzenleme eylemi kendi bölümünde: başlıkta dururken
+              hangi bölümü etkilediği belli değildi. Yetki değişmedi. */}
+          <header className="phr-bas fn-alt-bas urun-fiyat-bas">
+            <div><h2>Yayımlanmış fiyatlar</h2><small>KDV dahil; yıllıkta 10 ay bedeli.</small></div>
+            <Link className="panel-primary" href={`/panel/platform/fiyatlar?urun=${urun}`}>Fiyatları düzenle</Link>
+          </header>
           <div className="talep-tablo fn-ic-tablo">
             <table className="crm-data-table" data-cols="ur-basamak">
               <thead><tr><th>Basamak</th><th>Birim</th><th className="crm-col-amount">Aylık</th><th className="crm-col-amount">Yıllık</th>{cekirdek ? <th>Kiracı</th> : null}</tr></thead>

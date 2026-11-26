@@ -46,34 +46,53 @@ const kayiyor = (olcu) => {
  */
 export function tekEkranHukmu(ad, o) {
   const eksik = [];
-  /* Dikey kayma yalnızca TEK EKRAN sayfalarında kusur: kayıt sayfası
-     (ürün detayı) tasarımı gereği kayar. Yatay kayma her yerde kusur. */
-  if (o.tekEkran !== false && kayiyor(o.sayfaDikey)) eksik.push(`sayfa dikey kayıyor (${o.sayfaDikey})`);
+  /*
+    YÖNETİM EKRANLARINDA SAYFA KAYMAZ — ÜRÜN DETAYI DAHİL (26.11.2026,
+    ürün kararı). Önceki sürüm kayıt sayfasına muafiyet tanıyordu ve
+    ürün detayı 390×844'te 1254/844 kayarken kabul geçiyordu: ölçüt,
+    ölçtüğü kuralı kendi deliyordu. Muafiyet kalktı.
+  */
+  if (kayiyor(o.sayfaDikey)) eksik.push(`sayfa dikey kayıyor (${o.sayfaDikey})`);
   if (kayiyor(o.sayfaYatay)) eksik.push(`sayfa yatay kayıyor (${o.sayfaYatay})`);
-  if (o.tekEkran === false) {
-    /* Kayıt sayfası: dock güvencesi sayfanın dibindeki PAY. Pay dock
-       yüksekliğinden küçükse son kart kalıcı olarak altında kalır. */
-    if (o.dockPayi === null || o.dockYuksekligi === null) eksik.push("dock payı ölçülemedi");
-    else if (o.dockPayi < o.dockYuksekligi) eksik.push(`sayfanın dibinde dock payı yetersiz (${o.dockPayi} < ${o.dockYuksekligi})`);
-  } else if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
+  if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
   else if (o.dockOrtuyor) eksik.push(`dock içeriği örtüyor (içerik ${o.icerikAlt} > dock ${o.dockUstu})`);
 
+  /*
+    GENEL BAKIŞ ERİŞİMİ (26.11.2026). Kuyruk kendi bölümüne taşındı;
+    burada ölçülen, ürün satırlarının ve son öncelikli işin GERÇEKTEN
+    açılabilmesi: tıklanabilir (üstünü bir şey örtmüyor), klavyeyle
+    odaklanabilir ve dock'un üstünde.
+  */
   const e = o.erisim;
   if (e) {
+    /* Ürün tablosu ölçülmüşse (Genel Bakış). */
+    if (e.urunSayisi !== undefined) {
+      if (!e.urunSayisi) eksik.push("ürün satırı bulunamadı");
+      if (e.erisilemeyenUrun?.length) eksik.push(`açılamayan ürün satırı: ${e.erisilemeyenUrun.join(", ")}`);
+    }
+    if (e.sonIs && !(e.sonIs.dokunma && e.sonIs.klavye && e.sonIs.dockUstunde)) {
+      eksik.push(`son öncelikli işin eylemi erişilemiyor (${e.sonIs.metin})`);
+    }
+
+    /*
+      KUYRUK ÖLÇÜTLERİ DURUYOR. Kuyruk 26.11.2026'da Genel Bakış'tan
+      kendi bölümüne taşındı ve bu tarayıcı onu artık çizmiyor; ölçütler
+      SİLİNMEDİ, çünkü kural ortadan kalkmadı — kuyruk ölçüldüğü anda
+      yine uygulanıyorlar. Ölçülmeyen alan için hüküm üretilmiyor.
+    */
     if (e.hata) eksik.push(`kuyruk ölçülemedi: ${e.hata}`);
-    if (!e.sonKayitPanelde) eksik.push(`son kayıt panele sığmıyor (satır ${e.sonLiYuk} px, panel ${e.panelH} px)`);
-    if (!e.dokunma) eksik.push("son satırın eylemi tıklanamıyor");
-    if (!e.klavye) eksik.push("son satırın eylemi klavyeyle odaklanamıyor");
-    if (!e.dockUstunde) eksik.push("son satırın eylemi dock'un altında");
+    if (e.sonKayitPanelde !== undefined) {
+      if (!e.sonKayitPanelde) eksik.push(`son kayıt panele sığmıyor (satır ${e.sonLiYuk} px, panel ${e.panelH} px)`);
+      if (!e.dokunma) eksik.push("son satırın eylemi tıklanamıyor");
+      if (!e.klavye) eksik.push("son satırın eylemi klavyeyle odaklanamıyor");
+      if (!e.dockUstunde) eksik.push("son satırın eylemi dock'un altında");
+    }
     const ic = e.icSekme;
     if (ic) {
-      /* Kaydırmayla ulaşmak yeterli sayılmıyor: şerit taşmayacak ve her
-         sekme kutusunun içinde, tıklanabilir ve odaklanabilir olacak. */
       if (ic.yatayTasiyor) eksik.push("kuyruk sekmeleri yatay kayıyor");
       if (ic.erisilemeyen?.length) eksik.push(`dokunmayla açılamayan kuyruk sekmesi: ${ic.erisilemeyen.join(", ")}`);
       else if (ic.sonGorunur === false) eksik.push("iç sekme şeridinin sonuna ulaşılamıyor");
-      /* Tablist'te Tab ile tek durak olur (gezici odak); sıfır durak şeridin
-         klavyeye hiç açılmadığı, birden çoğu kalıbın bozulduğu anlamına gelir. */
+      /* Tablist'te Tab ile tek durak olur (gezici odak). */
       if (ic.tabDurakSayisi !== undefined && ic.tabDurakSayisi !== 1) {
         eksik.push(`sekme şeridinde ${ic.tabDurakSayisi} Tab durağı var (gezici odakta tam 1 olmalı)`);
       }
@@ -86,11 +105,26 @@ export function tekEkranHukmu(ad, o) {
     }
   }
 
+  /* Son sekme açıkken ve oradan görünüme dönüldüğünde de sözleşme sürer. */
+  const sonSekmeDenetle2 = (olcum, etiket) => {
+    if (!olcum) return;
+    if (kayiyor(olcum.sayfaDikey)) eksik.push(`${etiket} sayfa kayıyor (${olcum.sayfaDikey})`);
+    if (kayiyor(olcum.sayfaYatay)) eksik.push(`${etiket} sayfa yatay kayıyor (${olcum.sayfaYatay})`);
+    if (olcum.dockOrtuyor) eksik.push(`${etiket} dock içeriği örtüyor`);
+    for (const k of olcum.zincir?.kartPanelde ?? []) {
+      if (k.panelAsiyor > 1 && !k.panelKayiyor) eksik.push(`${etiket} ${k.panel} kartı panelini ${k.panelAsiyor} px aşıyor`);
+    }
+  };
+  const sonAd2 = o.sonSekme?.ad ?? "son sekme";
+  sonSekmeDenetle2(o.sonSekme, `${sonAd2} açıkken`);
+  sonSekmeDenetle2(o.sonSekmeDonus, `${sonAd2} açıkken görünüme dönünce`);
+
   /*
-    KART KENDİ PANELİNİ AŞMAZ. Kaydıracak alanı olmayan bir kart (Tahsilat
-    grafiği) daralan panelin içinde küçülmüyor ve alttaki kartın ÜSTÜNE
-    çiziliyordu: 1440×900'de panel 70, kart 187 px. Sayfa taşması sıfır ve
-    dock açık olduğu için yalnızca taşmaya bakan kabul bunu görmüyordu.
+    KART KENDİ PANELİNİ AŞMAZ. Kaydıracak alanı olmayan bir kart
+    (Tahsilat grafiği) daralan panelin içinde küçülmüyor ve alttaki
+    kartın ÜSTÜNE çiziliyordu: 1440×900'de panel 70, kart 187 px. Sayfa
+    taşması sıfır ve dock açık olduğu için yalnızca taşmaya bakan kabul
+    bunu görmüyordu.
   */
   for (const k of o.kartPanelde ?? []) {
     if (k.panelAsiyor > 1 && !k.panelKayiyor) {
@@ -99,17 +133,22 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
-    Son kuyruk sekmesi (Sorun) AÇILDIĞINDA da tek ekran sözleşmesi
-    sürmeli: sekmeye ulaşmak, açıldığında sayfanın kaymaması demek değil.
+    MASAÜSTÜNDE DÖRT ÜRÜN İLK GÖRÜNÜMDE (26.11.2026, ürün kararı).
+    Dar ekranda tablo kompakt satıra düşüyor ve kaydırma doğal; masaüstü
+    genişliğinde ürünlerin hepsi kaydırmadan okunmalı.
   */
+  if (o.urunTablosu && o.masaustu) {
+    const u = o.urunTablosu;
+    if (u.tamGorunen < u.satir) {
+      eksik.push(`ürün tablosunda ${u.tamGorunen}/${u.satir} satır görünüyor (gövde ${u.govdeH} px)`);
+    }
+  }
+
   /*
-    UYARI VARKEN 0 PX GÖVDE BAŞARISIZDIR (25.11.2026, kullanıcı kararı).
-    Uyarı satırı en dar hâl: nabız sütununda Sistem sağlığı kartı üç
-    kaydıyla yalnızca başlığa iniyor, gövde 0 px ve kayıtlara karttan
-    erişilemiyordu. Kart orada duruyor, içindeki kayıt yok — grafiğin
-    altında kalmasıyla kullanıcı açısından aynı şey. "Gövde > 0" da tek
-    başına yetmez: 11 px'lik gövdede 40 px'lik satır okunmaz, bu yüzden
-    son kayda kartın İÇİNDEN erişilebildiği de ölçülüyor.
+    UYARI VARKEN 0 PX GÖVDE BAŞARISIZDIR. Kart duruyor ama içindeki
+    kayıt görünmüyorsa, kullanıcı açısından kart hiç yok demektir.
+    "Gövde > 0" da tek başına yetmez: 11 px'lik gövdede 40 px'lik satır
+    okunmaz, bu yüzden son kayda kartın İÇİNDEN erişildiği de ölçülüyor.
   */
   const kartlariDenetle = (kartlar, nerede = "") => {
     for (const k of kartlar ?? []) {

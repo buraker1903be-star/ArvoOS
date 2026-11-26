@@ -5,8 +5,11 @@ import Link from "next/link";
 import { login } from "./actions";
 import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import "./login.css";
+import "./login-konsol.css";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 import { hatirlananEposta } from "@/lib/eposta-hatirla";
+import { headers } from "next/headers";
+import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
 
 /*
   Giriş hatasının METNİ koda göre değişir. Eskiden `error` ne olursa olsun
@@ -47,12 +50,18 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  /*
+    Konsol görünümü YALNIZCA yönetim konağında: /login kiracılarla
+    paylaşımlı ve kurum markasıyla açılıyor. Stil yayılmasın diye
+    sınıf burada veriliyor, CSS de o sınıfın altında (login-konsol.css).
+  */
+  const yonetim = isManagementHost(hostFromHeaders(await headers()));
 
   const orgBrand = await getLoginBrand();
   /* Hata dönüşünde e-posta yeniden yazdırılmıyor (çerezden, adresten değil). */
   const eposta = error ? await hatirlananEposta() : "";
   return (
-    <main className="login-shell" style={loginAccentStyle(orgBrand?.primary_color)}>
+    <main className={yonetim ? "login-shell konsol-giris" : "login-shell"} style={loginAccentStyle(orgBrand?.primary_color)}>
       <section className="login-brand">
         {orgBrand ? (
           orgBrand.website_url ? (
@@ -77,7 +86,7 @@ export default async function LoginPage({
         {!orgBrand ? <small>ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ.</small> : null}
       </section>
       <section className="login-form-wrap">
-        <form action={login} className="login-card">
+        <form action={login} className="login-card" data-hata={error ? "true" : undefined}>
           <div className="login-card-brand">
             {orgBrand?.logo_url ? <img src={orgBrand.logo_url} alt={orgBrand.name} className="login-card-logo" /> : <small>{orgBrand ? orgBrand.name : "ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ."}</small>}
           </div>

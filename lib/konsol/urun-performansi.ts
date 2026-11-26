@@ -17,6 +17,20 @@
 import { PRODUCTS, SUBSCRIBER_PRODUCTS } from "@/lib/products";
 import { donemde, type Donem } from "./donem";
 
+/*
+  DAR EKRANDA GÖSTERİLEN ÖLÇÜT. Tabloyu yatay kaydırmak yerine tek
+  sütun gösteriliyor; hangisi olduğu adreste (?olcut=). Üç ölçüt de
+  aynı satırdan geliyor, seçim yalnızca neyin ÇİZİLECEĞİNİ söylüyor.
+*/
+export const OLCUTLER = [
+  { kod: "musteri", etiket: "Aktif müşteri" },
+  { kod: "donusum", etiket: "Denemeden ücretliye" },
+  { kod: "tahsilat", etiket: "Tahsilat" },
+] as const;
+export type OlcutKodu = (typeof OLCUTLER)[number]["kod"];
+export const olcutKodu = (deger: string | undefined): OlcutKodu =>
+  OLCUTLER.some((o) => o.kod === deger) ? (deger as OlcutKodu) : "musteri";
+
 export type Olcum<T> =
   | { durum: "var"; deger: T }
   | { durum: "kaynak_yok" }

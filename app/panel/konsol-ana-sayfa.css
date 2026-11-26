@@ -53,8 +53,11 @@
   flex:1 1 auto;min-height:0;max-height:none;
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
 }
-/* Şerit ve köprü satırı doğal boyunda; yalnızca paneller esner. */
-.dash-sabit.konsol-ana>:not(.dash-gorunum-kap):not(.dash-gorunum){flex:0 0 auto}
+/* Başlık, uyarı ve araç satırı doğal boyunda; yalnızca kart bölümü esner.
+   26.11.2026: Genel Bakış artık görünüm seçici değil .konsol-genel
+   taşıyor; istisnaya eklenmeyince o da flex:0 0 auto alıyor ve içeriği
+   kadar uzayıp sayfayı kaydırıyordu (ölçüm: 1440×900'de 945/900). */
+.dash-sabit.konsol-ana>:not(.dash-gorunum-kap):not(.dash-gorunum):not(.konsol-genel){flex:0 0 auto}
 /*
    İŞLER GENİŞ, NABIZ DAR. İkisi eşit sütun olunca kuyruk satırındaki
    kurum adı + tutar + "Onayla" düğmesi 1440'ta sarıyordu; nabız
@@ -92,9 +95,7 @@
   birleşimi; altında konsol görünüm seçicisine düşüyor ve her kart tam
   yükseklikte açılıyor (gövde 135–153 px).
 */
-@media (min-width:1500px) and (min-height:900px),(min-width:1400px) and (min-height:940px){
-  .dash-sabit.konsol-ana .dash-cols--sabit{grid-template-columns:minmax(0,1.5fr) minmax(0,1.4fr) minmax(0,1fr)}
-}
+
 
 /* Sistem sağlığı: üç gerçek sinyal (köprüler, okunamayan kaynaklar,
    kurulumda hatada kalan kurum). Uydurma gösterge yok; sinyal yoksa
@@ -235,11 +236,9 @@
   kartın kendi kaydırma alanı yoksa panelin kendisi kayar. İç içe
   kaydırma olmasın diye kural yalnızca gövdesi olmayan panele uygulanır.
 */
-@media (max-width:1499px) and (max-height:939px),(max-width:1399px),(max-height:899px){
-  .konsol-ana .dash-cols--sabit>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)),
-  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)){
-    min-height:0;overflow-y:auto;overscroll-behavior:contain;
-  }
+.konsol-ana .dash-cols--sabit>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)),
+.konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel.is-secili:not(:has(.dash-col-govde)){
+  min-height:0;overflow-y:auto;overscroll-behavior:contain;
 }
 
 /*
@@ -255,9 +254,7 @@
   gösteriyordu — taşma sıfır, dock açık; kusur yalnızca görüntüde.
   Kural konsola özgü: kiracı panelinin ızgara davranışı değişmiyor.
 */
-@media (max-width:1499px) and (max-height:939px),(max-width:1399px),(max-height:899px){
-  .konsol-ana .dash-cols--sabit{align-items:stretch}
-}
+.konsol-ana .dash-cols--sabit{align-items:stretch}
 
 /*
   GRAFİK KARTI ALTTAKİNİN ÜSTÜNE BİNMİYOR (25.11.2026, ölçümle).
@@ -301,44 +298,7 @@
 */
 /* Yalnızca IZGARA düzeni, yani seçicinin kapalı olduğu aralık: eşit pay
    seçicili düzene sızınca kart panelini aşıyordu (390×844'te ölçüldü). */
-@media (min-width:1500px) and (min-height:900px),(min-width:1400px) and (min-height:940px){
-  .konsol-ana .dash-cols--sabit>.dash-gorunum-yigin{align-self:stretch}
-  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde){flex:1 1 0}
-  /*
-    Eşit pay tek başına yetmedi: 1440×900'de kart 128 px'e çıktı ama
-    gövdeye 11 px kaldı, yani yine tek kayıt görünmüyordu (satır 40 px).
-    Kartın 128 px'inin 46'sı başlık, 21'i alt bağlantı, gerisi iç boşluk
-    ve aradaki boşluklar. Nabız sütununda kart dar olduğu için iç boşluk
-    ve kutular arası boşluk kısılıyor; kayıt, başlığın süsünden önce
-    gelir. Grafik kartına dokunulmuyor — kabul edilen hâli o.
-  */
-  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde) .dash-card{padding:12px;gap:8px}
-  /*
-    Başlığın altındaki açıklama satırı ("Ürün köprüleri, kurulumlar ve
-    okunabilirlik" / "Tahsilatlar ve kurulum adımları") nabız sütununda
-    çizilmiyor: 20 px tutuyor ve kartın adı zaten ne olduğunu söylüyor.
-    Üç kaydı olup hiçbirini göstermeyen bir kartta süs, içeriğin önüne
-    geçemez. Sütunun dışında (tam genişlikte, görünüm seçicide) açıklama
-    duruyor.
-  */
-  .konsol-ana .dash-gorunum-yigin>.dash-gorunum-panel:has(.dash-col-govde) .dash-card-head p{display:none}
-  /*
-    Grafiğin çubukları 7dvh yerine 5dvh: 1440×900'de 63 → 45 px. Grafik
-    kartının sınırında kalmaya devam ediyor (kabul edilen davranış), ama
-    sütunun yüksekliğinin %42'sini tek başına tutmuyor; serbest kalan
-    yükseklik iki liste kartının gövdesine gidiyor.
-  */
-  .konsol-ana .dash-gorunum-yigin .dash-bars{height:clamp(36px,5dvh,56px)}
-  /*
-    Çubukların ÜSTÜNDEKİ değerler nabız sütununda çizilmiyor: 20 px
-    tutuyorlar ve aynı sayılar kartın başlığındaki toplamda zaten var.
-    Serbest kalan yükseklik liste kartlarının gövdesine gidiyor —
-    ölçüm: Son hareketler'in 47 px'lik satırı ancak bundan sonra
-    kartın içinde tamamen görünüyor. Alttaki gün numaraları duruyor;
-    onlar eksen, süs değil.
-  */
-  .konsol-ana .dash-gorunum-yigin .dash-bar-value{display:none}
-}
+
 
 
 /*
@@ -370,13 +330,11 @@
   bağlı. Düğme biçimi orada medya sorgusunun dışına alındı ki iki yerde
   ayrı ayrı sapmasın.
 */
-@media (max-width:1499px) and (max-height:939px),(max-width:1399px),(max-height:899px){
-  .konsol-ana .dash-gorunum-sec{display:flex;flex-wrap:wrap;gap:6px;flex:none}
-  .konsol-ana.dash-sabit .dash-gorunum-panel:not(.is-secili){display:none}
-  .konsol-ana.dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-  .konsol-ana .dash-cols--sabit{display:flex;flex-direction:column}
-  .konsol-ana .dash-cols--sabit:not(:has(.is-secili)){display:none}
-  .konsol-ana .dash-gorunum-yigin:not(:has(> .is-secili)){display:none}
-  .konsol-ana .dash-gorunum-yigin{flex:0 1 auto}
-  .konsol-ana .dash-cols--sabit .dash-gorunum-panel.is-secili{flex:0 1 auto;max-height:100%}
-}
+.konsol-ana .dash-gorunum-sec{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+.konsol-ana.dash-sabit .dash-gorunum-panel:not(.is-secili){display:none}
+.konsol-ana.dash-sabit .dash-gorunum-panel.is-ust.is-secili{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.konsol-ana .dash-cols--sabit{display:flex;flex-direction:column}
+.konsol-ana .dash-cols--sabit:not(:has(.is-secili)){display:none}
+.konsol-ana .dash-gorunum-yigin:not(:has(> .is-secili)){display:none}
+.konsol-ana .dash-gorunum-yigin{flex:0 1 auto}
+.konsol-ana .dash-cols--sabit .dash-gorunum-panel.is-secili{flex:0 1 auto;max-height:100%}

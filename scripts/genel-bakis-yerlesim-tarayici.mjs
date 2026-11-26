@@ -53,7 +53,7 @@ import { createRoot } from "react-dom/client";
 import { GenelBakis, ListeKarti, ListeSatiri, SeriKarti } from ${a("app/panel/os/genel-bakis.tsx")};
 import { GorunumSecici } from ${a("app/panel/os/gorunum-secici.tsx")};
 import { UrunPerformansiKarti, OncelikliIslerKarti } from "@/app/panel/konsol-urun-performansi";
-import { DonemSecici } from "@/app/panel/konsol-donem-secici";
+import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
 import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-bakis";
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
 import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
@@ -186,11 +186,17 @@ function Konsol() {
     <ListeSatiri key={i} href="/panel/platform/tahsilat" baslik={ad} alt={alt}
       sag={<span className="konsol-tutar">{tutar}</span>} zaman="2 saat önce" />
   );
-  /* Üretimdeki dört ürün; üçüncüsü "Veri bağlı değil", dördüncüsü okunamadı
-     hâlini çiziyor ki iki durum da ölçülsün. */
+  /* Üretimdeki dört ürün; biri "Veri bağlı değil", biri "Veri okunamadı"
+     hâlini çiziyor ki iki durum da ölçülsün.
+
+     ArvoLab tahsilatı tabloda ve ürün detayında AYNI sayı (128.450):
+     ilk sürümde iki fikstür iki ayrı sayı taşıyordu (397.200 / 128.450)
+     ve görüntüler hesapta tutarsızlık varmış izlenimi veriyordu. Üretimde
+     iki ekran aynı fonksiyonu aynı süzgeçle çağırıyor; fark yalnızca
+     mockup'tan kopyalanan örnek sayılardaydı. */
   const URUN_SATIRLARI = [
     { kod: "arvoos", ad: "ArvoOS", aktifMusteri: { durum: "var", deger: 1248 }, donusum: { durum: "kaynak_yok" }, tahsilat: { durum: "var", deger: 612400 } },
-    { kod: "arvolab", ad: "ArvoLab", aktifMusteri: { durum: "var", deger: 892 }, donusum: { durum: "var", deger: { denemeye: 200, ucretliye: 36, oran: 0.18 } }, tahsilat: { durum: "var", deger: 397200 } },
+    { kod: "arvolab", ad: "ArvoLab", aktifMusteri: { durum: "var", deger: 892 }, donusum: { durum: "var", deger: { denemeye: 200, ucretliye: 36, oran: 0.18 } }, tahsilat: { durum: "var", deger: 128450 } },
     { kod: "arc", ad: "ArvoARC", aktifMusteri: { durum: "var", deger: 316 }, donusum: { durum: "okunamadi" }, tahsilat: { durum: "var", deger: 184900 } },
     { kod: "randevu", ad: "ArvoCal", aktifMusteri: { durum: "var", deger: 427 }, donusum: { durum: "kaynak_yok" }, tahsilat: { durum: "var", deger: 160750 } },
   ];
@@ -201,15 +207,19 @@ function Konsol() {
     { anahtar: "o4", baslik: "Yanıt bekleyen talep", alt: "Ege Akademi · Fatura adresi", href: "/panel/platform/destek/1", eylem: "Görüntüle" },
   ];
   const paneller = [
-    /* ÜRÜN PERFORMANSI + ÖNCELİKLİ İŞLER (26.11.2026): üretimde ilk iki
-       panel. Betik eski hâli çizmeye devam ederse ölçüm var olmayan bir
-       sayfanın yüksekliğini verir. */
-    { anahtar: "urun", etiket: "Performans", yer: "liste", grup: "urunler",
-      icerik: <UrunPerformansiKarti satirlar={URUN_SATIRLARI} donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
-        para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
-        secici={<DonemSecici secili="30g" taban="/panel" />} /> },
-    { anahtar: "oncelikli", etiket: "Öncelikli", yer: "liste", grup: "urunler",
-      icerik: <OncelikliIslerKarti isler={ONCELIKLI} okunamayan={[]} /> },
+    /* GENEL BAKIŞ TEK BÖLÜM (26.11.2026, onaylı mockup): iki kart alt
+       alta, tam genişlik. Üretimdeki yapının aynısı. */
+    { anahtar: "genel", etiket: "Genel Bakış", yer: "liste",
+      icerik: (
+        <div className="konsol-genel">
+          <UrunPerformansiKarti satirlar={URUN_SATIRLARI} olcut="musteri"
+            donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
+            para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
+            secici={<DonemSecici secili="30g" taban="/panel" />}
+            olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
+          <OncelikliIslerKarti isler={ONCELIKLI} okunamayan={[]} />
+        </div>
+      ) },
     { anahtar: "isler", etiket: "Bugünün İşleri", yer: "liste", icerik: islerPaneli },
     { anahtar: "tahsilat", etiket: "Tahsilat", yer: "liste", grup: "nabiz",
       icerik: <SeriKarti baslik="Tahsilat" alt="Son 14 gün" seri={seri} adet="tahsilat" href="/panel/platform/tahsilat" bos="Son 14 günde tahsilat yok." /> },
@@ -232,24 +242,37 @@ function Konsol() {
     kendi kopyasını doğrular. En yüksek gerçek hâl alınıyor: danger tonu,
     iki olgunun birden yazıldığı en uzun metin.
   */
+  /*
+    ÜRETİMDEKİ GENEL BAKIŞ (26.11.2026, onaylı mockup): başlık, kritik
+    uyarı satırı, dönem seçici ve iki tam genişlik kart. Selamlama,
+    sayaç şeridi ve görünüm hapları kalktı — betik eski hâli çizerse
+    ölçüm var olmayan bir sayfayı ölçer.
+  */
   return (
-    <GenelBakis baslik="İyi günler, Burak" sinif="dash-sabit konsol-ana">
+    <GenelBakis baslik="Genel Bakış" sinif="dash-sabit konsol-ana">
       <p className="dash-uyari konsol-uyari" data-tone="danger" role="alert">
         <span aria-hidden="true" />
-        <span><b>3 ürün köprüsü yanıt vermiyor · 2 veri kaynağı okunamadı</b><small>Ayrıntı: Sistem sağlığı kartı.</small></span>
+        <span><b>3 ürün köprüsü yanıt vermiyor · 2 veri kaynağı okunamadı</b></span>
+        <a className="konsol-uyari-bag" href="/panel/platform/saglik">Sistem sağlığı</a>
       </p>
-      <dl className="konsol-serit" aria-label="Konsolun sayıları">
-        {konsolSerit.map(([ad, deger, ton, href]) => (
-          <div key={ad} data-tone={ton}><dt>{ad}</dt><dd><a href={href}>{deger}</a></dd></div>
-        ))}
-      </dl>
-      <GorunumSecici etiket="Konsol görünümü" paneller={paneller} />
+      <div className="konsol-arac">
+        <DonemSecici secili="30g" taban="/panel" />
+      </div>
+      <div className="konsol-genel">
+        <UrunPerformansiKarti satirlar={URUN_SATIRLARI} olcut="musteri"
+          donem={{ kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" }}
+          para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
+          olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
+        <OncelikliIslerKarti isler={ONCELIKLI} okunamayan={[]} />
+      </div>
     </GenelBakis>
   );
 }
+
 /*
-  ÜRÜN DETAYI — GENEL BAKIŞ SEKMESİ (26.11.2026). Gerçek bileşen,
-  gerçek CSS; veri sentetik. Ölçülen: sayfa kaymıyor mu, dock örtüyor mu.
+  ÜRÜN DETAYI — GENEL BAKIŞ SEKMESİ (26.11.2026). Gerçek bileşen, gerçek
+  CSS; veri sentetik. Üretimle aynı kabuk sınıfları: sayfa artık TEK
+  EKRAN (liste-sayfa), yani kaydırma kartın içinde.
 */
 function UrunDetay() {
   const satir = {
@@ -260,7 +283,7 @@ function UrunDetay() {
   };
   const donem = { kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" };
   return (
-    <main className="plt talep cari ekip urun-sayfa">
+    <main className="plt talep cari ekip urun-sayfa liste-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
           <small className="panel-kicker">ÜRÜNLER · LB</small>
@@ -269,7 +292,6 @@ function UrunDetay() {
         </div>
         <div className="talep-bas-eylem">
           <DonemSecici secili="30g" taban="/panel/platform/urunler/arvolab" />
-          <a className="panel-primary" href="#">Fiyatları düzenle</a>
         </div>
       </header>
       <div className="talep-izgara personel-iki ekip-izgara">
@@ -279,15 +301,15 @@ function UrunDetay() {
               <button key={ad} type="button" role="tab" aria-selected={i === 0} tabIndex={i === 0 ? 0 : -1} className={i === 0 ? "is-active" : undefined}>{ad}</button>
             ))}
           </div>
-          <div className="talep-akis-panel">
+          <section>
             <UrunGenelBakis satir={satir} donem={donem}
               para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
               bekleyenler={[
                 { anahtar: "b1", baslik: "Ödeme bildirimleri", alt: "Onay bekleyenler konsolun kuyruğunda", href: "#", eylem: "İncele" },
-                { anahtar: "b2", baslik: "Yaklaşan yenilemeler", alt: "Dönemi dolan lisanslar", href: "#", eylem: "Görüntüle" },
+                { anahtar: "b2", baslik: "Yaklaşan yenilemeler", alt: "ArvoLab lisansı dönemi dolanlar", href: "/panel/platform/musteriler?urun=arvolab", eylem: "Görüntüle" },
                 { anahtar: "b3", baslik: "Yanıt bekleyen talepler", alt: "Destek ekranında", href: "#", eylem: "Görüntüle" },
               ]} />
-          </div>
+          </section>
         </section>
       </div>
     </main>
@@ -367,6 +389,7 @@ const olc = () => {
     degiskenler: { dockSpace: kokStil.getPropertyValue("--os-dock-space").trim(), barH: kokStil.getPropertyValue("--os-bar-h").trim(), ustH: kokStil.getPropertyValue("--os-ust-h").trim() },
     dock: dockK ? { ust: Math.round(dockK.top), h: Math.round(dockK.height), konum: getComputedStyle(document.querySelector(".os-dock")).position } : null,
     osFrame: kutu(".os-frame"), osWorkspace: kutu(".os-workspace"), panelContent: kutu(".panel-content"),
+    anaSayfa: kutu("main.liste-sayfa"),
     dash: kutu(".dash"), serit: kutu(".konsol-serit"), hero: kutu(".dash-hero"), uyari: kutu(".dash-uyari"),
     gorunum: kutu(".dash-gorunum"), cols: kutu(".dash-cols--sabit"), yigin: kutu(".dash-gorunum-yigin"),
     islerPanel: kutu("#gorunum-isler"), kap: kutu(".konsol-isler-kap"), kart: kutu(".konsol-isler"),
@@ -416,6 +439,26 @@ const olc = () => {
           h: Math.round(e.getBoundingClientRect().height), flex: getComputedStyle(e).flex })) };
     })(),
     uyariVar: Boolean(document.querySelector(".dash-uyari")),
+    genelKartlar: [...(document.querySelector(".konsol-genel")?.children ?? [])].map((e) => {
+      const c = getComputedStyle(e), r = e.getBoundingClientRect();
+      const g = e.querySelector(".dash-col-govde");
+      return { ad: e.className.split(" ").slice(-1)[0], h: Math.round(r.height), ic: e.scrollHeight,
+        flex: c.flex, minH: c.minHeight, maxH: c.maxHeight,
+        govde: g ? { h: Math.round(g.getBoundingClientRect().height), ic: g.scrollHeight, of: getComputedStyle(g).overflowY } : null };
+    }),
+    /*
+      ÜRÜN TABLOSU: kaç satır TAM görünüyor. Kurucunun ilk sorusu dört
+      ürünü birlikte görmek; kaydırarak ulaşmak masaüstünde kabul değil.
+    */
+    urunTablosu: (() => {
+      const t = document.querySelector(".kup-tablo");
+      if (!t || t.offsetParent === null) return null;
+      const govde = t.closest(".dash-col-govde") ?? t.parentElement;
+      const g = govde.getBoundingClientRect();
+      const satirlar = [...t.querySelectorAll("tbody tr")];
+      const tam = satirlar.filter((r) => { const b = r.getBoundingClientRect(); return b.top >= g.top - 1 && b.bottom <= g.bottom + 1; }).length;
+      return { satir: satirlar.length, tamGorunen: tam, govdeH: Math.round(g.height) };
+    })(),
     /* Kartın içinde yüksekliği ne yiyor: başlık, açıklama, gövde, alt bağlantı. */
     kartIci: [...document.querySelectorAll(".dash-gorunum-yigin>.dash-gorunum-panel")].filter((e) => e.offsetParent !== null).map((p2) => {
       const k = p2.firstElementChild;
@@ -517,9 +560,17 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
       /* EKRAN=<dizin>: ölçümün yanında görüntü de alınır (PR kabulü için).
          deviceScaleFactor 2, çünkü görüntüye insan bakıyor. */
       const sayfa = await tarayici.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: process.env.EKRAN ? 2 : 1 });
+      /* Sayfa hatası sessiz kalmasın: boş çizilen bir senaryo, ölçümü
+         "temiz" göstermenin en kolay yoludur. */
+      const sayfaHatalari = [];
+      sayfa.on("pageerror", (h) => sayfaHatalari.push(String(h.message).slice(0, 200)));
       await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}`);
       await sayfa.waitForTimeout(300);
       const o = await sayfa.evaluate(olc);
+      if (sayfaHatalari.length) o.sayfaHatasi = sayfaHatalari;
+      /* Masaüstü sayılan boyut: dört ürünün kaydırmasız okunması bu
+         boyutlarda bekleniyor. */
+      o.masaustu = w >= 1200 && h >= 800;
       /* EKRAN=<dizin>: görüntü ölçümün hemen ardında, sekme döngüsünden ÖNCE
          alınır — sonrasında son seçilen sekme ve sona kaydırılmış liste
          görünür, kullanıcının açılışta gördüğü ekran değil. */
@@ -550,150 +601,56 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         (elementFromPoint, yani üstünü başka bir şey örtmüyor), dock'un
         üstünde mi ve klavyeyle odaklanabiliyor mu.
       */
+      /*
+        GENEL BAKIŞ ERİŞİM KABULÜ (26.11.2026). Ekran değişti: kuyruk
+        kendi bölümünde, burada ürün tablosu ve öncelikli işler var.
+        Ölçülen: her ürün satırının "Aç" bağlantısı ve son öncelikli
+        işin eylemi GERÇEKTEN tıklanabilir mi (elementFromPoint, yani
+        üstünü başka bir şey örtmüyor), klavyeyle odaklanabiliyor mu ve
+        dock'un üstünde mi.
+      */
       if (s === "konsol") {
-        /*
-          Kuyruk artık VARSAYILAN panel değil (26.11.2026: ilk panel Ürün
-          performansı). Seçici açıkken kuyruk gizli olduğu için önce
-          sekmesi seçiliyor — yoksa prob görünmeyen bir paneli ölçer ve
-          "eylem tıklanamıyor" der. Izgarada hepsi görünür, tıklama
-          zararsız.
-        */
-        await sayfa.evaluate(() => {
-          const dugme = [...document.querySelectorAll(".dash-gorunum-sec button")]
-            .find((b) => b.textContent?.trim().startsWith("Bugünün"));
-          if (dugme && dugme.offsetParent !== null) dugme.click();
-        });
-        await sayfa.waitForTimeout(80);
         o.erisim = await sayfa.evaluate(() => {
-          const panel = document.querySelector(".talep-akis-panel:not([hidden])");
-          if (!panel) return { hata: "panel yok" };
-          panel.scrollTop = panel.scrollHeight;
-          const satirlar = [...panel.querySelectorAll("li")];
-          const son = satirlar[satirlar.length - 1];
-          if (!son) return { hata: "kayıt yok" };
-          const pr = panel.getBoundingClientRect(), sr = son.getBoundingClientRect();
           const dock = document.querySelector(".os-dock")?.getBoundingClientRect();
-          const dugme = son.querySelector("button");
-          let dokunma = null, dockUstunde = null, klavye = null;
-          if (dugme) {
-            const dr = dugme.getBoundingClientRect();
-            const hedef = document.elementFromPoint(Math.round(dr.left + dr.width / 2), Math.round(dr.top + dr.height / 2));
-            dokunma = Boolean(hedef && (hedef === dugme || dugme.contains(hedef)));
-            dockUstunde = dock ? dr.bottom <= dock.top + 1 : true;
-            dugme.focus();
-            klavye = document.activeElement === dugme && dugme.tabIndex >= 0;
-          }
-          /*
-            İç sekme şeridi (Ödeme/Sözleşme/Kurulum/Dönem/Sorun) 390 px'e
-            sığmıyor. Kesilmesi ancak YATAY KAYIYORSA kabul: son sekme
-            kaydırmayla görünür olmalı, yoksa "Sorun" kuyruğuna telefonda
-            hiç ulaşılamaz.
-          */
-          /*
-            Kuyruk sekmelerinin HEPSİ (Sorun dahil) yatay kaydırma olmadan
-            erişilebilir olmalı: şerit taşmayacak, her düğme kutusunun
-            içinde duracak, o noktada gerçekten tıklanabilecek
-            (elementFromPoint) ve klavyeyle odaklanabilecek. Eskiden şerit
-            nowrap + gizli kaydırma çubuğuyla kayıyordu: "Dönem" ve "Sorun"
-            kutunun dışındaydı, varlıkları ekranda hiç belli olmuyordu.
-          */
-          const serit = document.querySelector(".talep-akis-sekmeler");
-          let icSekme = null;
-          if (serit) {
-            const d = [...serit.querySelectorAll("button,a")];
-            const srr = serit.getBoundingClientRect();
-            const sorun = d.map((x) => {
-              const b = x.getBoundingClientRect();
-              const icinde = b.right <= srr.right + 1 && b.left >= srr.left - 1 && b.bottom <= srr.bottom + 1;
-              const hedef = document.elementFromPoint(Math.round(b.left + b.width / 2), Math.round(b.top + b.height / 2));
-              return { ad: x.textContent.trim().slice(0, 14), icinde,
-                dokunma: Boolean(hedef && (hedef === x || x.contains(hedef))) };
-            });
-            icSekme = {
-              sayi: d.length, yatayTasiyor: serit.scrollWidth > serit.clientWidth + 1,
-              overflowX: getComputedStyle(serit).overflowX, yukseklik: Math.round(srr.height),
-              /* Şerit role="tablist": GEZİCİ ODAK doğru kalıp, yani yalnızca
-                 seçili sekme tabIndex 0 olur ve ötekilere ok tuşuyla
-                 gidilir. "Her düğme tabIndex>=0 olmalı" demek bu kalıbı
-                 kusur sayardı; klavye erişimi aşağıda gerçekten tuşa
-                 basılarak ölçülüyor. */
-              tabDurakSayisi: d.filter((x) => x.tabIndex >= 0).length,
-              erisilemeyen: sorun.filter((x) => !(x.icinde && x.dokunma)).map((x) => x.ad),
-              sonGorunur: sorun.length ? sorun[sorun.length - 1].icinde : null,
+          const erisilir = (el) => {
+            if (!el) return null;
+            /* Kullanıcı ne yapıyorsa o: öğeyi KENDİ kartının içinde
+               görünür hâle getirip öyle bakıyoruz. Kartı sona kaydırıp
+               bütün satırları ölçmek baştakileri haksız yere
+               "erişilemez" sayıyordu. */
+            el.scrollIntoView({ block: "nearest", inline: "nearest" });
+            const r = el.getBoundingClientRect();
+            const hedef = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+            el.focus();
+            return {
+              metin: el.textContent.trim().slice(0, 18),
+              dokunma: Boolean(hedef && (hedef === el || el.contains(hedef))),
+              klavye: document.activeElement === el && el.tabIndex >= 0,
+              dockUstunde: dock ? r.bottom <= dock.top + 1 : true,
             };
-          }
+          };
+          /*
+            Ürün satırı iki biçimde çiziliyor: geniş kartta tablo, dar
+            kartta kompakt liste (container sorgusu seçiyor). Ölçüm
+            GÖRÜNEN biçime bakmalı — ikisini birden toplamak gizli
+            tablonun "Aç" bağlantılarını "açılamıyor" diye bildiriyordu.
+          */
+          const gorunur = (el) => Boolean(el && el.offsetParent !== null);
+          const tabloBaglari = [...document.querySelectorAll(".kup-tablo tbody tr .kup-ac a")];
+          const listeBaglari = [...document.querySelectorAll(".kup-mobil > li > a")];
+          const urunBaglari = (tabloBaglari.some(gorunur) ? tabloBaglari : listeBaglari).filter(gorunur);
+          const satirlar = urunBaglari;
+          const urunler = urunBaglari.map((a) => erisilir(a));
+          const liste = document.querySelector(".koi-liste");
+          const sonIs = liste ? [...liste.querySelectorAll("li > a")].pop() : null;
           return {
-            kayit: satirlar.length, icSekme,
-            panelH: Math.round(pr.height), kaydirildi: panel.scrollTop,
-            sonLiYuk: Math.round(sr.height), sonLiAltFark: Math.round(sr.bottom - pr.bottom),
-            sonKayitPanelde: sr.bottom <= pr.bottom + 1 && sr.top >= pr.top - 1,
-            panelKayiyor: panel.scrollHeight > panel.clientHeight,
-            dugmeVar: Boolean(dugme), dokunma, dockUstunde, klavye,
+            urunSayisi: satirlar.length,
+            urunErisimi: urunler,
+            erisilemeyenUrun: urunler.filter((u) => !u || !(u.dokunma && u.klavye && u.dockUstunde)).map((u) => u?.metin ?? "?"),
+            sonIs: erisilir(sonIs),
+            olcutSecici: Boolean(document.querySelector(".kds-olcut")),
           };
         });
-      }
-      /*
-        KLAVYE GEZİNTİSİ (25.11.2026). "Sorun sekmesi klavyeyle açılabiliyor
-        mu" sorusunun cevabı öznitelikten okunamaz: tablist'te seçili sekme
-        Tab ile alınır, ötekilere ok tuşuyla gidilir. Burada tuşa gerçekten
-        basılıyor ve her durakta odağın hangi sekmede olduğu, sekmenin
-        seçildiği ve PANELİNİN görünür olduğu okunuyor.
-      */
-      if (s === "konsol" && o.erisim?.icSekme?.sayi) {
-        await sayfa.evaluate(() => {
-          document.querySelector('.talep-akis-sekmeler [tabindex="0"]')?.focus();
-        });
-        const gezilen = [];
-        for (let i = 0; i < o.erisim.icSekme.sayi; i++) {
-          gezilen.push(await sayfa.evaluate(() => {
-            const a = document.activeElement;
-            const kimlik = a?.getAttribute("aria-controls");
-            const panel = kimlik ? document.getElementById(kimlik) : null;
-            return {
-              ad: a?.textContent?.trim().slice(0, 14) ?? null,
-              odakSeritte: Boolean(a?.closest(".talep-akis-sekmeler")),
-              secili: a?.getAttribute("aria-selected") === "true",
-              panelGorunur: panel ? panel.offsetParent !== null && panel.getBoundingClientRect().height > 0 : null,
-            };
-          }));
-          await sayfa.keyboard.press("ArrowRight");
-        }
-        o.erisim.klavyeGezinti = gezilen;
-        /*
-          SON SEKME (Sorun) SEÇİLİYKEN DE TEK EKRAN. Sekmeyi açabilmek
-          yetmiyor: açıldığında sayfa kaymamalı, dock örtmemeli, kart
-          paneline sığmalı. Gezinti başa döndüğü için bir sola basmak son
-          sekmeyi seçer — yani bu ölçüm klavye yolunun sonucunu ölçüyor.
-          Ölçümden sonra ilk sekmeye dönülüyor: görünüm seçici döngüsü
-          varsayılan hâli ölçmeli, bu adımın bıraktığı durumu değil.
-        */
-        await sayfa.keyboard.press("ArrowLeft");
-        await sayfa.waitForTimeout(60);
-        o.sonSekme = await sayfa.evaluate(olc);
-        o.sonSekme.ad = gezilen[gezilen.length - 1]?.ad ?? null;
-        if (process.env.EKRAN) {
-          fs.mkdirSync(process.env.EKRAN, { recursive: true });
-          await sayfa.screenshot({ path: path.join(process.env.EKRAN, `${s}-${w}x${h}-${tema}-son-sekme.png`) });
-        }
-        /*
-          Sorun seçiliyken görünüm sekmesine dönmek GERÇEK bir yol: telefonda
-          kullanıcı Tahsilat'a bakıp "Bugünün İşleri"ne dönüyor ve kuyruk
-          hâlâ Sorun'da. İlk ölçümde burası düşmüştü, o yüzden durumu
-          gizlemek yerine ölçüyoruz.
-        */
-        const gorunumDugmeleri = sayfa.locator(".dash-gorunum-sec button");
-        if (await gorunumDugmeleri.first().isVisible().catch(() => false)) {
-          const say = await gorunumDugmeleri.count();
-          await gorunumDugmeleri.nth(Math.min(1, say - 1)).click();
-          await sayfa.waitForTimeout(60);
-          await gorunumDugmeleri.first().click();
-          await sayfa.waitForTimeout(60);
-          o.sonSekmeDonus = await sayfa.evaluate(olc);
-        }
-        await sayfa.evaluate(() => {
-          document.querySelector(".talep-akis-sekmeler button")?.click();
-        });
-        await sayfa.waitForTimeout(60);
       }
       // Görünüm seçici açıksa (dar/kısa ekran) her paneli sırayla seçip ölç:
       // varsayılan seçim yalnızca ilk paneli gösteriyor, listeler görünmüyor.
@@ -741,7 +698,7 @@ await tarayici.close();
 fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar }));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, genislik: o.zincir?.genislik }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);
