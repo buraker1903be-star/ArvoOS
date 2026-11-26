@@ -204,6 +204,21 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    ÜRÜN İÇİ BÖLÜM ADRESTE (26.11.2026, ürün kararı). Adresteki bölüm,
+    seçili sekme ve GÖRÜNEN panel aynı şeyi söylemeli; sekmeler
+    bağlantı olmalı ki adres paylaşılabilsin. Eskiden seçim bileşenin
+    durumundaydı: paylaşılan bağlantı ve yenileme Genel Bakış'a
+    düşüyordu.
+  */
+  if (o.urunBolumu) {
+    const u = o.urunBolumu;
+    if (!u.baglantili) eksik.push("ürün sekmeleri bağlantı değil (adres paylaşılamaz)");
+    if (u.gorunen !== u.istenen) eksik.push(`adres "${u.istenen}" diyor, görünen panel "${u.gorunen}"`);
+    if (u.seciliSekme.length !== 1) eksik.push(`ürün kartında ${u.seciliSekme.length} sekme seçili (tam 1 olmalı)`);
+    if (!u.baslik) eksik.push("ürün başlığı yok");
+  }
+
+  /*
     BAĞLAMLI GEZİNME (26.11.2026, ürün kararı). Ana menü modülü, şerit
     alt bölümü gösterir; sayfa vurgusu ikisinde de TEK olur. Dar ekranda
     şerit yerine seçici çizilir ve seçili bölümün ADI düğmede yazar —

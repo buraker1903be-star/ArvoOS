@@ -50,8 +50,48 @@ const dizin = process.env.SAKLA ?? fs.mkdtempSync(path.join(os.tmpdir(), "yerles
 if (process.env.SAKLA) fs.mkdirSync(dizin, { recursive: true });
 const shim = path.join(dizin, "shim");
 fs.mkdirSync(shim);
-fs.writeFileSync(path.join(shim, "link.tsx"), `export default function Link({ href, children, prefetch, scroll, replace, ...p }) { return <a href={typeof href === "string" ? href : "#"} {...p}>{children}</a>; }`);
-fs.writeFileSync(path.join(shim, "navigation.ts"), `export const usePathname = () => window.__yol || "/panel"; export const useSearchParams = () => new URLSearchParams(); export const useRouter = () => ({ push(){}, replace(){}, refresh(){} });`);
+/*
+  GEZİNME ŞİMİ (26.11.2026). Rota artık ölçülen şeyin parçası: ürün
+  kartının bölümü adreste (?bolum=) ve kabul tıklamayla başlıyor —
+  tıkla, adres değişsin, içerik ona uysun; geri/ileri da çalışsın.
+
+  Adres HASH'te tutuluyor: sayfa file:// ile açıldığı için
+  history.pushState yol DEĞİŞTİREMİYOR (kaynak opak), ama hash
+  değiştirebiliyor. Böylece tarayıcının GERÇEK geçmişi kullanılıyor:
+  geri/ileri popstate üretiyor, yenileme hash'i koruyor.
+*/
+fs.writeFileSync(path.join(shim, "link.tsx"), `import { yonlendir } from "./navigation";
+export default function Link({ href, children, prefetch, scroll, replace, onClick, ...p }) {
+  const yol = typeof href === "string" ? href : "#";
+  return <a href={"#" + yol} {...p} onClick={(o) => { onClick?.(o); if (!o.defaultPrevented) { o.preventDefault(); yonlendir(yol); } }}>{children}</a>;
+}`);
+fs.writeFileSync(path.join(shim, "navigation.ts"), `import { useSyncExternalStore } from "react";
+const dinleyiciler = new Set();
+const bildir = () => { for (const f of dinleyiciler) f(); };
+const abone = (f) => { dinleyiciler.add(f); return () => dinleyiciler.delete(f); };
+/** Geçerli adres: hash varsa o, yoksa sayfanın kurulum adresi. */
+function adres() {
+  const h = location.hash.slice(1);
+  if (h) return h;
+  const p = new URLSearchParams(location.search);
+  const yol = p.get("yol") || window.__yol || "/panel";
+  const bolum = p.get("bolum");
+  return bolum ? yol + "?bolum=" + bolum : yol;
+}
+let anlik = adres();
+const tazele = () => { const y = adres(); if (y !== anlik) { anlik = y; bildir(); } };
+window.addEventListener("hashchange", tazele);
+window.addEventListener("popstate", tazele);
+export function yonlendir(hedef) {
+  history.pushState({}, "", "#" + hedef);
+  anlik = hedef;
+  bildir();
+}
+const oku = () => anlik;
+export const usePathname = () => useSyncExternalStore(abone, oku, oku).split("?")[0];
+export const useSearchParams = () => new URLSearchParams(useSyncExternalStore(abone, oku, oku).split("?")[1] || "");
+export const useRouter = () => ({ push: yonlendir, replace: yonlendir, refresh(){}, back(){ history.back(); }, forward(){ history.forward(); } });
+`);
 /* Sayfa file:// ile açılıyor; "/brand/..." gibi kök yollar dosya
    sisteminin köküne düşüyor ve logo kırık çıkıyordu. Şim, kök yolları
    deponun public/ dizinine çeviriyor. */
@@ -72,10 +112,13 @@ import { OsSimge as OsSimgeDuz } from ${a("app/panel/os/os-icons.tsx")};
 import { UrunPerformansiKarti, OncelikliIslerKarti } from "@/app/panel/konsol-urun-performansi";
 import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
 import { ArvoOsIsareti } from "@/app/panel/os/arvoos-markasi";
+import { bolumAdresi, bolumSirasi, urunBolumu } from "@/lib/konsol/urun-bolumleri";
 import { OsBolumMenusu } from "@/app/panel/os/os-bolum-menusu";
 import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-bakis";
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
 import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { konsolUygulamalari } from ${a("app/panel/os/konsol-apps.ts")};
 ${yeniKurulum ? `import { KurulumOzeti } from ${a("app/panel/os/kurulum-ozeti.tsx")};` : ""}
 const sayfa = new URLSearchParams(location.search).get("sayfa") || "ana";
@@ -314,35 +357,57 @@ function UrunDetay() {
     tahsilat: { durum: "var", deger: 128450 },
   };
   const donem = { kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" };
+  /*
+    ÜRÜN İÇİ BÖLÜM ADRESTE (26.11.2026). Üretimdeki kurulumun aynısı:
+    gerçek TalepAkis, bölüm başına adres ve adresten gelen seçim
+    (lib/konsol/urun-bolumleri.ts). Paneller ÜRÜNE AİT içerik taşıyor —
+    düzenek "Abonelikler" derken başka bir ürünün listesini
+    göstermemeli; her panel data-bolum ile işaretli, ölçüm görünen
+    paneli adresle karşılaştırıyor.
+  */
+  const taban = "/panel/platform/urunler/arvolab";
+  const sorgu = useSearchParams();
+  const secilenBolum = urunBolumu(sorgu.get("bolum"));
+  const bolumler = [
+    { anahtar: "genel-bakis", etiket: "Genel Bakış" },
+    { anahtar: "musteriler", etiket: "Müşteriler · 42" },
+    { anahtar: "fiyat", etiket: "Fiyat basamakları" },
+    { anahtar: "abonelikler", etiket: "Abonelikler · 248" },
+    { anahtar: "tahsilat", etiket: "Tahsilat" },
+    { anahtar: "destek", etiket: "Destek" },
+  ];
+  const seciliSira = bolumSirasi(bolumler.map((b) => b.anahtar), secilenBolum);
+  const aboneler = [
+    ["Zeynep A.", "Pro", "Aylık", "₺1.490"],
+    ["Mert K.", "Plus", "Yıllık", "₺9.900"],
+    ["Elif D.", "Standart", "Aylık", "₺790"],
+  ];
+  const basitPanel = (anahtar, baslik, govde) => (
+    <section data-bolum={anahtar} key={anahtar}>
+      <div className="ugb">
+        <h2>{baslik}</h2>
+        {govde}
+      </div>
+    </section>
+  );
   return (
     <main className="plt talep cari ekip urun-sayfa liste-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
-          <small className="panel-kicker">ÜRÜNLER · LB</small>
+          <small className="panel-kicker"><Link href="/panel/platform/urunler">ÜRÜNLER</Link> · LB</small>
           <h1>ArvoLab</h1>
           <p className="ek-alt">Akademik yazım ve editöryal kontrol · lab.arvo-os.com</p>
         </div>
         <div className="talep-bas-eylem">
-          <DonemSecici secili="30g" taban="/panel/platform/urunler/arvolab" />
+          <DonemSecici secili="30g" taban={taban} ek={secilenBolum === "genel-bakis" ? undefined : "bolum=" + secilenBolum} />
         </div>
       </header>
       <div className="talep-izgara ekip-izgara">
-        <section className="talep-akis panel-card sy-kart">
-          {/* Üretimdeki TalepAkis gibi: dar pencere seçicisi ve şerit
-              birlikte çiziliyor, hangisinin görüneceğine CSS karar veriyor. */}
-          <label className="talep-akis-sec">
-            <select aria-label="ArvoLab kartı" defaultValue={0}>
-              {["Genel Bakış", "Müşteriler · 42", "Fiyat basamakları", "Abonelikler · 248", "Tahsilat", "Destek"].map((ad, i) => (
-                <option key={ad} value={i}>{ad}</option>
-              ))}
-            </select>
-          </label>
-          <div className="talep-akis-sekmeler" role="tablist" aria-label="ArvoLab kartı">
-            {["Genel Bakış", "Müşteriler · 42", "Fiyat basamakları", "Abonelikler · 248", "Tahsilat", "Destek"].map((ad, i) => (
-              <button key={ad} type="button" role="tab" aria-selected={i === 0} tabIndex={i === 0 ? 0 : -1} className={i === 0 ? "is-active" : undefined}>{ad}</button>
-            ))}
-          </div>
-          <section>
+        <TalepAkis kimlik="urun-kart" sinif="sy-kart" darSecici etiket="ArvoLab kartı"
+          sekmeler={bolumler.map((b) => b.etiket)}
+          adresler={bolumler.map((b) => bolumAdresi(taban, b.anahtar, null))}
+          baslangic={seciliSira}>
+          <section data-bolum="genel-bakis">
             <UrunGenelBakis satir={satir} donem={donem}
               para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
               bekleyenler={[
@@ -351,7 +416,29 @@ function UrunDetay() {
                 { anahtar: "b3", baslik: "Yanıt bekleyen talepler", alt: "Destek ekranında", href: "#", eylem: "Görüntüle" },
               ]} />
           </section>
-        </section>
+          {basitPanel("musteriler", "ArvoLab müşterileri", (
+            <p className="ugb-bos">42 kurum ArvoLab lisansı kullanıyor.</p>
+          ))}
+          {basitPanel("fiyat", "ArvoLab fiyat basamakları", (
+            <p className="ugb-bos">Standart ₺790 · Plus ₺1.190 · Pro ₺1.490</p>
+          ))}
+          {basitPanel("abonelikler", "ArvoLab abonelikleri", (
+            <table className="crm-data-table">
+              <thead><tr><th scope="col">Abone</th><th scope="col">Paket</th><th scope="col">Dönem</th><th scope="col">Ücret</th></tr></thead>
+              <tbody>
+                {aboneler.map(([ad, paket, don, ucret]) => (
+                  <tr key={ad}><th scope="row">{ad}</th><td>{paket}</td><td>{don}</td><td>{ucret}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          ))}
+          {basitPanel("tahsilat", "ArvoLab tahsilatı", (
+            <p className="ugb-bos">Son 30 günde ₺128.450 tahsil edildi.</p>
+          ))}
+          {basitPanel("destek", "ArvoLab destek talepleri", (
+            <p className="ugb-bos">Yanıt bekleyen 2 talep var.</p>
+          ))}
+        </TalepAkis>
       </div>
     </main>
   );
@@ -793,6 +880,29 @@ const olc = () => {
       BAĞLAMLI GEZİNME (26.11.2026): ana menü hangi MODÜLDE, şerit hangi
       ALT BÖLÜMDE olunduğunu göstermeli ve sayfa vurgusu tek olmalı.
     */
+    /*
+      ÜRÜN İÇİ BÖLÜM ADRESLE AYNI OLMALI (26.11.2026, ürün kararı).
+      Sekme seçimi bileşenin kendi durumundayken adres bir şey, ekran
+      başka bir şey söyleyebiliyordu: paylaşılan bağlantı Genel Bakış'ı
+      açıyordu. Ölçü dörtlü: adresteki bölüm, seçili sekme, GÖRÜNEN
+      panelin işareti ve ürün başlığı.
+    */
+    urunBolumu: (() => {
+      const kart = document.querySelector("main.urun-sayfa .talep-akis");
+      if (!kart) return null;
+      const adres = (location.hash.slice(1) || "").split("?")[1] || "";
+      const istenen = new URLSearchParams(adres).get("bolum") || "genel-bakis";
+      const panel = [...kart.querySelectorAll('[role="tabpanel"]')].find((p) => !p.hidden);
+      const isaretli = panel?.querySelector("[data-bolum]") ?? (panel?.firstElementChild?.hasAttribute?.("data-bolum") ? panel.firstElementChild : null);
+      return {
+        istenen,
+        gorunen: isaretli?.getAttribute("data-bolum") ?? null,
+        seciliSekme: [...kart.querySelectorAll('.talep-akis-sekmeler [aria-selected="true"]')].map((e) => e.textContent.trim()),
+        baslik: document.querySelector("main.urun-sayfa h1")?.textContent.trim() ?? null,
+        /* Sekmeler bağlantı mı: adres paylaşılabilir olmalı. */
+        baglantili: Boolean(kart.querySelector(".talep-akis-sekmeler a[href]")),
+      };
+    })(),
     bolumSeridi: (() => {
       const n = document.querySelector(".os-bolumler");
       if (!n) return null;
@@ -1148,7 +1258,7 @@ await tarayici.close();
 if (!process.env.SAKLA) fs.rmSync(dizin, { recursive: true, force: true });
 
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
-const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, yanMenu: o.zincir?.yanMenu, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik, kartHizasi: o.zincir?.kartHizasi, bolumSeridi: o.zincir?.bolumSeridi }));
+const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, yanMenu: o.zincir?.yanMenu, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik, kartHizasi: o.zincir?.kartHizasi, bolumSeridi: o.zincir?.bolumSeridi, urunBolumu: o.zincir?.urunBolumu }));
 const dusen = hukumler.filter((h) => !h.gecti);
 console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);

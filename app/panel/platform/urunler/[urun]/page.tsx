@@ -18,6 +18,7 @@ import { SatirTiklama } from "../../../crm/satir-tiklama";
 import { TalepAkis } from "../../../crm/kayit-detay/kayit-akis";
 import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { donem as donemiCoz, donemKodu } from "@/lib/konsol/donem";
+import { bolumAdresi, bolumSirasi, urunBolumu } from "@/lib/konsol/urun-bolumleri";
 import { urunPerformansi, type Okuma } from "@/lib/konsol/urun-performansi";
 import { UrunGenelBakis, type IslemBekleyen } from "./urun-genel-bakis";
 import "./urun-detay.css";
@@ -61,7 +62,7 @@ const ODEYEN = new Set(["active", "past_due"]);
 
 export default async function UrunPage({ params, searchParams }: {
   params: Promise<{ urun: string }>;
-  searchParams?: Promise<{ donem?: string }>;
+  searchParams?: Promise<{ donem?: string; bolum?: string }>;
 }) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
@@ -71,8 +72,10 @@ export default async function UrunPage({ params, searchParams }: {
   if (!urunTanimi) notFound();
   const cekirdek = urun === "arvoos";
   const bireyselVar = SUBSCRIBER_PRODUCTS.some((p) => p.code === urun);
-  /* Dönem adreste; Genel Bakış'taki tabloyla aynı çözümleyici. */
-  const secilenDonem = donemiCoz(donemKodu((await searchParams)?.donem));
+  /* Dönem ve bölüm adreste: derin bağlantı, yenileme ve geri/ileri. */
+  const sorgu = await searchParams;
+  const secilenDonem = donemiCoz(donemKodu(sorgu?.donem));
+  const secilenBolum = urunBolumu(sorgu?.bolum);
 
   const [{ data: kiraciSatirlari, error: kiraciHatasi }, { data: urunSatirlari, error: urunHatasi }, { data: aboneSatirlari }, fiyatlar, sonAboneSonucu, kopru] = await Promise.all([
     supabase.from("platform_kiraci_liste")
@@ -214,14 +217,24 @@ export default async function UrunPage({ params, searchParams }: {
     okunuyor ve hepsi küçük; adreste sekme tutmak gerekmiyor.
   */
   const uygulama = urun === "arc" ? ARC_APP : (PRODUCT_APPS as Record<string, { url: string; host: string } | undefined>)[urun];
-  const sekmeler = [
-    "Genel Bakış",
-    `Müşteriler · ${sayi(satirlar.length)}`,
-    "Fiyat basamakları",
-    ...(bireyselVar ? [`Abonelikler · ${sayi(acikAbone)}`] : []),
-    "Tahsilat",
-    "Destek",
+  /*
+    SEKME SEÇİMİ ADRESTE (26.11.2026, ürün kararı). Liste koşullu:
+    bireysel aboneliği olmayan üründe "Abonelikler" hiç çizilmiyor, o
+    yüzden anahtar ve etiket birlikte taşınıyor — sıra ikisinden
+    türetiliyor (lib/konsol/urun-bolumleri.ts).
+  */
+  const taban = `/panel/platform/urunler/${urun}`;
+  const bolumler = [
+    { anahtar: "genel-bakis", etiket: "Genel Bakış" },
+    { anahtar: "musteriler", etiket: `Müşteriler · ${sayi(satirlar.length)}` },
+    { anahtar: "fiyat", etiket: "Fiyat basamakları" },
+    ...(bireyselVar ? [{ anahtar: "abonelikler", etiket: `Abonelikler · ${sayi(acikAbone)}` }] : []),
+    { anahtar: "tahsilat", etiket: "Tahsilat" },
+    { anahtar: "destek", etiket: "Destek" },
   ];
+  const sekmeler = bolumler.map((b) => b.etiket);
+  const bolumAdresleri = bolumler.map((b) => bolumAdresi(taban, b.anahtar, secilenDonem.kod === "30g" ? null : secilenDonem.kod));
+  const seciliSira = bolumSirasi(bolumler.map((b) => b.anahtar), secilenBolum);
   const bos = (baslik: string, aciklama: string) => (
     <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>{baslik}</h2><p>{aciklama}</p></div>
   );
@@ -235,7 +248,9 @@ export default async function UrunPage({ params, searchParams }: {
       </div>
       <div className="talep-bas-eylem">
         {/* Dönem seçici başlığın sağında (onaylı mockup); seçim adreste. */}
-        <DonemSecici secili={secilenDonem.kod} taban={`/panel/platform/urunler/${urun}`} />
+        {/* Dönem seçici BÖLÜMÜ korur: iki parametre birbirini silmiyor. */}
+        <DonemSecici secili={secilenDonem.kod} taban={taban}
+          ek={secilenBolum === "genel-bakis" ? undefined : `bolum=${secilenBolum}`} />
         <details className="os-menu talep-menu">
           <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
           <div className="os-menu-list" role="menu">
@@ -269,7 +284,8 @@ export default async function UrunPage({ params, searchParams }: {
         birinci sütuna sıkıştırıyordu (urun-detay.css). ekip-izgara duruyor:
         kart kendi içinde kayıyor (kayit-detay.css :not(.ekip-izgara)). */}
     <div className="talep-izgara ekip-izgara">
-      <TalepAkis kimlik="urun-kart" sinif="sy-kart" darSecici etiket={`${urunTanimi.name} kartı`} sekmeler={sekmeler}>
+      <TalepAkis kimlik="urun-kart" sinif="sy-kart" darSecici etiket={`${urunTanimi.name} kartı`}
+        sekmeler={sekmeler} adresler={bolumAdresleri} baslangic={seciliSira}>
         {/*
           Sekmeler onaylı mockup'a göre: Genel Bakış · Müşteriler ·
           Fiyat basamakları · Abonelikler · Tahsilat · Destek. Mockup'ta
