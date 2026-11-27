@@ -99,14 +99,19 @@ export function sahteIstemci() {
     rpc: (ad: string) => {
       if (!(ad in ORNEK_RPC) && !SESSIZ) console.warn(`[onizleme] örnek RPC yok: ${ad}`);
       const sonuc = { data: (ORNEK_RPC as Record<string, unknown>)[ad] ?? null, error: null };
-      const kurucu = {
-        single: () => kurucu,
-        maybeSingle: () => kurucu,
-        select: () => kurucu,
-        eq: () => kurucu,
-        order: () => kurucu,
+      /*
+        RPC zinciri de sorgu zinciri gibi uzayabiliyor
+        (`.select().order().order().range()` — bildirim listesi böyle
+        okuyor). Bilinmeyen her yöntem vekille zinciri sürdürüyor;
+        eskiden `range` yoktu ve Bildirimler ekranı düşüyordu.
+      */
+      const ham: Record<string, unknown> = {};
+      const kurucu: Record<string, unknown> = new Proxy(ham, {
+        get: (h, ad) => (ad in h ? h[ad as string] : () => kurucu),
+      });
+      Object.assign(ham, {
         then: (coz: (s: typeof sonuc) => unknown) => Promise.resolve(sonuc).then(coz),
-      };
+      });
       return kurucu;
     },
     auth: {
@@ -117,6 +122,28 @@ export function sahteIstemci() {
       signOut: async () => ({ error: null }),
       signInWithPassword: async () => ({ data: { user: ORNEK_KULLANICI }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+      /*
+        YÖNETİCİ UÇLARI (admin). Kullanıcılar ekranı
+        `auth.admin.listUsers` çağırıyor; sahte istemcide yoktu ve
+        sayfa "Bir sorun oluştu" ile düşüyordu — HTTP 200 döndüğü ve
+        hata istemcide çizildiği için kabul betiği de temiz
+        sanıyordu (27.11.2026). Örnek kullanıcılar ORNEK.auth_users
+        satırlarından.
+      */
+      admin: {
+        listUsers: async ({ page = 1 } = {}) => ({
+          data: { users: page === 1 ? ((ORNEK.auth_users ?? []) as unknown[]) : [] },
+          error: null,
+        }),
+        getUserById: async (id: string) => ({
+          data: { user: ((ORNEK.auth_users ?? []) as { id: string }[]).find((u) => u.id === id) ?? null },
+          error: null,
+        }),
+        inviteUserByEmail: async () => ({ data: { user: null }, error: null }),
+        generateLink: async () => ({ data: { properties: { action_link: "#" } }, error: null }),
+        updateUserById: async () => ({ data: { user: null }, error: null }),
+        deleteUser: async () => ({ data: null, error: null }),
+      },
     },
     storage: {
       from: () => ({

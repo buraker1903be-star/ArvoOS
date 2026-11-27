@@ -50,6 +50,21 @@ export function rotaKusurlari(is, durum, olcum) {
   if (is.icerik && olcum?.metin !== undefined && !new RegExp(is.icerik).test(olcum.metin)) {
     k.push(`beklenen içerik yok: /${is.icerik}/`);
   }
+  /*
+    YUMUŞAK ÇÖKME (27.11.2026). Sunucu bileşeni düşünce Next hatayı
+    İSTEMCİDEKİ hata sınırında çiziyor: HTTP 200, `pageerror` yok,
+    ekranda "Bir sorun oluştu · Hata kodu: …". Kullanıcılar ekranı
+    önizlemede tam böyle düşüyordu ve kabul betiği temiz sanıyordu —
+    tam sayfa rotalarında düzen ölçütleri de aranmadığı için hiçbir
+    şey bakmıyordu. Depodaki duman testi de aynı sınıfı arıyor.
+
+    İki işaret: hata metni ve BOŞ ana içerik. Kabul edilebilir en kısa
+    konsol ekranı bile başlık + bir cümle taşıyor.
+  */
+  if (olcum?.metin !== undefined) {
+    if (/Bir sorun oluştu|Hata kodu/i.test(olcum.metin)) k.push("ekran hata sınırında (yumuşak çökme)");
+    else if (olcum.metin.trim().length < 80) k.push(`ana içerik neredeyse boş (${olcum.metin.trim().length} karakter)`);
+  }
   if (!olcum) return k.concat("ölçüm yok");
   if (olcum.tasma > 0) k.push(`düzen ${olcum.tasma}px taşıyor`);
   if (olcum.yatayTasma) k.push("yatay kaydırma var");

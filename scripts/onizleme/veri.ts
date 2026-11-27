@@ -60,12 +60,12 @@ const DOLGU = Array.from({ length: 20 }, (_, i) => {
 export const ORNEK: Record<string, Record<string, unknown>[]> = {
   /* Kurucunun kendi kurumu listede yok (konsol onu göstermiyor). */
   platform_kiraci_liste: [...DOLGU.map((d, i) => ({
-    id: d.id, name: d.name, display_name: null, kind: "kurumsal",
+    id: d.id, name: d.name, display_name: null, slug: `ornek-${i + 1}`, kind: "kurumsal",
     provisioning_state: "ready", license_status: d.durum, plan_code: d.plan_code,
     monthly_fee: d.ucret, current_period_end: gun(10 + i), trial_ends_at: d.durum === "trialing" ? gun(5) : null,
     user_limit: 10 + i, aktif_uye: 3 + (i % 8), contact_phone: null, grup_markasi: null, davet_eposta: null,
   })), ...KURUMLAR.map((k, i) => ({
-    id: k.id, name: k.name, display_name: k.display_name, kind: k.kind,
+    id: k.id, name: k.name, display_name: k.display_name, slug: k.slug, kind: k.kind,
     provisioning_state: i === 3 ? "pending" : "ready",
     license_status: i === 1 ? "past_due" : i === 2 ? "trialing" : "active",
     plan_code: k.plan_code, monthly_fee: k.monthly_fee,
@@ -213,6 +213,16 @@ export const ORNEK: Record<string, Record<string, unknown>[]> = {
   */
   sozlesme_onaylari: [
     { id: "o1", user_id: KURUCU, belge: "kullanim_sozlesmesi", surum: SOZLESME_SURUMU, onaylandi: gun(-30), ip: null, kullanici_araci: null },
+  ],
+  /*
+    auth.users karşılığı: Kullanıcılar ekranı yönetici ucundan
+    (auth.admin.listUsers) okuyor, tablodan değil.
+  */
+  auth_users: [
+    { id: KURUCU, email: "kurucu@ornek.test", created_at: gun(-900), last_sign_in_at: gun(-1), user_metadata: { full_name: "Kurucu" } },
+    { id: "cccccccc-0000-4000-8000-000000000001", email: "ayse@akademi.test", created_at: gun(-300), last_sign_in_at: gun(-3), user_metadata: { full_name: "Ayşe Yılmaz" } },
+    { id: "cccccccc-0000-4000-8000-000000000002", email: "mehmet@ege.test", created_at: gun(-200), last_sign_in_at: gun(-40), user_metadata: { full_name: "Mehmet Kaya" } },
+    { id: "cccccccc-0000-4000-8000-000000000003", email: "zeynep@deniz.test", created_at: gun(-120), last_sign_in_at: null, user_metadata: { full_name: "Zeynep Ak" } },
   ],
   /* Ortak posta kutusu kurulu değil: kabuktaki okunmamış sayacı sıfır. */
   mail_accounts: [],

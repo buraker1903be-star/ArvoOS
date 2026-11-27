@@ -97,3 +97,32 @@ test("gerekçe yoksa hiçbir şey düşmez", () => {
   const k = ["sayfa hatası: X"];
   assert.deepEqual(kusurlariAyikla(k, undefined), { kusurlar: k, bilinenler: [] });
 });
+
+test("yumuşak çökme kusur: HTTP 200 ama ekran hata sınırında", () => {
+  /*
+    Sunucu bileşeni düşünce Next hatayı istemcide çiziyor: 200 döner,
+    pageerror çıkmaz. Kullanıcılar ekranı önizlemede tam böyle
+    düşüyordu ve "temiz" sayılıyordu.
+  */
+  const k = rotaKusurlari({ ...MASAUSTU, tamSayfa: true }, 200, {
+    ...IYI, liste: null, panel: null, tasma: null,
+    metin: "Bir sorun oluştu · Hata kodu: 3223241041",
+  });
+  assert.deepEqual(k, ["ekran hata sınırında (yumuşak çökme)"]);
+});
+
+test("boş ana içerik kusur", () => {
+  const k = rotaKusurlari({ ...MASAUSTU, tamSayfa: true }, 200, {
+    ...IYI, liste: null, panel: null, tasma: null, metin: "   ",
+  });
+  assert.equal(k.length, 1);
+  assert.match(k[0], /neredeyse boş/);
+});
+
+test("dolu bir ekran kusursuz", () => {
+  const k = rotaKusurlari({ ...MASAUSTU, tamSayfa: true }, 200, {
+    ...IYI, liste: null, panel: null, tasma: null,
+    metin: "Kullanıcılar · Aktif 12 · Pasif 3 · Bekleyen davet 1 · bütün kullanıcıları anlatan kart burada duruyor",
+  });
+  assert.deepEqual(k, []);
+});
