@@ -122,6 +122,8 @@ import { useSearchParams } from "next/navigation";
 import { MobilSatir } from "@/app/panel/crm/table-cells";
 import Link from "next/link";
 import { konsolUygulamalari } from ${a("app/panel/os/konsol-apps.ts")};
+import { otomasyonlar } from ${a("lib/konsol/otomasyonlar.ts")};
+import { cronDurumlari } from ${a("lib/cron-isleri.ts")};
 import { etkinUygulama } from ${a("app/panel/os/os-apps.ts")};
 import { etkinBolum } from ${a("app/panel/os/os-bolumler.ts")};
 import { usePathname } from "next/navigation";
@@ -315,11 +317,37 @@ function Konsol() {
     { anahtar: "k2", urun: "ArvoCal", baslik: "Yaklaşan yenileme", alt: "#Y-56390 · Yıldız Eğitim · 12 müşteri · 7 gün içinde", href: "/panel/platform/musteriler/1" },
     { anahtar: "k3", urun: "ArvoOS", baslik: "Yanıt bekleyen talep", alt: "#T-91877 · Ege Akademi · Kurumsal plan · 18 saattir yanıtsız", zaman: new Date(Date.now() - 86400000).toISOString().slice(0, 11) + "11:27:00Z", href: "/panel/platform/destek/1", eylem: "Görüntüle" },
   ];
-  const OTOMASYONLAR = [
-    { anahtar: "tahsilat", ad: "Otomatik tahsilat", detay: "Son çalışma başarılı.", durum: "tamamlandi", etiket: "Tamamlandı", ton: "success", sonCalisma: new Date() },
-    { anahtar: "belgeler", ad: "Proforma ve hatırlatmalar", detay: "2 iş de başarılı.", durum: "gonderildi", etiket: "Gönderildi", ton: "success", sonCalisma: new Date() },
-    { anahtar: "esitleme", ad: "Veri senkronizasyonu", detay: "Bir ürüne ulaşılamıyor; eşitleme on dakikada bir yeniden deniyor.", durum: "yeniden", etiket: "Yeniden deneniyor", ton: "warning", sonCalisma: new Date() },
-  ];
+  /*
+    OTOMASYON SATIRLARI ARTIK ELLE YAZILMIYOR (27.11.2026, inceleme
+    bulgusu). Eskiden üç satır sabit metin ve sabit etiketle duruyordu;
+    kural değişince (köprü kopuk → "Yeniden deneniyor" yerine
+    "Bağlantı kesildi") fixture eski hâlinde kaldı ve düzenek,
+    ÜRETİMİN ÜRETEMEYECEĞİ bir durumu çizdi. Telefon kaydındaki
+    "Yeniden deneniyor + bağlantı kopukluğu" satırı buydu: örnek veri
+    kusuru, eşleme mantığı değil.
+
+    Artık düzenek de gerçek kuralı (lib/konsol/otomasyonlar) çağırıyor;
+    fixture yalnızca GİRDİ veriyor (cron kayıtları, köprü durumu,
+    deneme kuyruğu). Kuralın yazamayacağı bir etiket ekranda
+    görünemez.
+
+    OTOMASYON=<senaryo> ile girdi değişiyor:
+      saglikli (varsayılan) · kopuk (köprü kopuk, kuyruk boş)
+      · kuyruk (deneme hakkı süren 2 abonelik)
+  */
+  const SIMDI = new Date();
+  const cronKaydi = (yol) => ({ is_adi: yol, son_calisma: SIMDI.toISOString(), son_basarili: SIMDI.toISOString(), sonuc: "tamam", sure_ms: 420, ayrinti: null });
+  const CRON_KAYITLARI = [
+    "/api/cron/otomatik-yenileme", "/api/cron/otomatik-proforma", "/api/cron/abonelik-hatirlatma",
+    "/api/cron/arvolab-sync", "/api/cron/arc-sync", "/api/cron/randevu-sync",
+    "/api/cron/posta-esitleme", "/api/cron/adim-terminleri",
+  ].map(cronKaydi);
+  const OTOMASYON_SENARYO = new URLSearchParams(location.search).get("otomasyon") || "saglikli";
+  const KOPRULER = OTOMASYON_SENARYO === "kopuk"
+    ? [{ yapilandirilmamis: false, kopuk: false }, { yapilandirilmamis: false, kopuk: true }, { yapilandirilmamis: false, kopuk: false }]
+    : [{ yapilandirilmamis: false, kopuk: false }];
+  const KUYRUKLAR = OTOMASYON_SENARYO === "kuyruk" ? [{ grup: "tahsilat", bekleyen: 2 }] : [];
+  const OTOMASYONLAR = otomasyonlar(cronDurumlari(CRON_KAYITLARI, SIMDI, new Date(SIMDI.getTime() - 86400000)), KOPRULER, KUYRUKLAR);
   const URUN_SAGLIK = [
     { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
     { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
@@ -877,6 +905,24 @@ const olc = () => {
       ürün kartıyla hizalı. Dar ekranda alt alta geçiyorlar; o zaman
       hiza ölçülmüyor, "alt alta mı" ölçülüyor.
     */
+    /*
+      OTOMASYON SATIRLARI: ad, etiket ve açıklama BİRLİKTE okunuyor
+      (27.11.2026, inceleme talebi). Üçünü ayrı ayrı doğrulamak, 390
+      px'te etiketi doğru ama açıklaması başka bir duruma ait bir
+      satırı geçiriyordu — telefon kaydındaki bulgu tam buydu.
+    */
+    otomasyonSatirlari: [...document.querySelectorAll(".kak-otomasyon .kak-satir")].map((r) => ({
+      ad: r.querySelector(".kak-govde b")?.textContent?.trim() ?? null,
+      etiket: r.querySelector(".kak-rozet")?.textContent?.trim() ?? null,
+      aciklama: r.querySelector(".kak-govde small")?.textContent?.trim() ?? null,
+      ton: r.querySelector(".kak-rozet")?.getAttribute("data-tone") ?? null,
+      /* Telefonda satır kırpılmadan okunuyor mu: açıklama kutusu
+         içeriğini taşırıyorsa durum yarım okunur. */
+      aciklamaKirpik: (() => {
+        const k = r.querySelector(".kak-govde small");
+        return k ? k.scrollWidth > k.clientWidth + 1 : null;
+      })(),
+    })),
     ustKartlar: (() => {
       const g = document.querySelector(".kak-ust");
       if (!g) return null;
@@ -1248,7 +1294,10 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          (modülün bölümleri) yalnızca bir modülün içindeyken çiziliyor;
          Ana Sayfa'da açılan bir ölçüm onu hiç görmezdi. */
       const yolEki = process.env.YOL ? `&yol=${encodeURIComponent(process.env.YOL)}` : "";
-      await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}${menuEki}${yolEki}${bolumEki}`);
+      /* OTOMASYON=<senaryo>: otomasyon kartının GİRDİSİ (köprü durumu,
+         deneme kuyruğu). Etiketi kural üretiyor, düzenek değil. */
+      const otomasyonEki = process.env.OTOMASYON ? `&otomasyon=${encodeURIComponent(process.env.OTOMASYON)}` : "";
+      await sayfa.goto(`file://${path.join(dizin, `${tema}-${s}.html`)}?sayfa=${s}${menuEki}${yolEki}${otomasyonEki}${bolumEki}`);
       await sayfa.waitForTimeout(300);
       const o = await sayfa.evaluate(olc);
       if (sayfaHatalari.length) o.sayfaHatasi = sayfaHatalari;
@@ -1516,6 +1565,28 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         await sayfa.waitForTimeout(bekle + 120);
         kat.tarayiciGeri = { adres: await adres(), ...(await durum()) };
         o.katGezinme = kat;
+      }
+
+      /*
+        OTOMASYON KARTININ KENDİ KARESİ (27.11.2026). Telefonda kart
+        ilk görünümün altında kalıyor; "satırı göster" denen kanıt
+        sayfanın tepesinden alınan bir kareyle verilemez. Kart görünür
+        hâle getirilip ayrı bir kare alınıyor, ardından sayfa başa
+        döndürülüyor (sonraki ölçümler ilk görünümü bekliyor).
+      */
+      if (s === "konsol" && process.env.EKRAN && process.env.OTOMASYON) {
+        await sayfa.evaluate(() => {
+          document.querySelector(".kak-otomasyon")?.scrollIntoView({ block: "center" });
+        });
+        await sayfa.waitForTimeout(150);
+        fs.mkdirSync(process.env.EKRAN, { recursive: true });
+        await sayfa.screenshot({ path: path.join(process.env.EKRAN, `otomasyon-${process.env.OTOMASYON}-${w}x${h}-${tema}.png`) });
+        await sayfa.evaluate(() => {
+          const kok = document.querySelector(".panel-content");
+          if (kok) kok.scrollTop = 0;
+          document.scrollingElement.scrollTop = 0;
+        });
+        await sayfa.waitForTimeout(100);
       }
 
       /*

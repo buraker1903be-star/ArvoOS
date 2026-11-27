@@ -754,3 +754,54 @@ test("menü, adres ve sayfa içeriği aynı akışı göstermeli", () => {
   assert.equal(bayat.gecti, false);
   assert.ok(bayat.eksik.some((m: string) => m.includes("içerikte hâlâ Ana Sayfa")), bayat.eksik.join(" | "));
 });
+
+test("otomasyon satırı: ad, etiket ve açıklama birlikte doğrulanır", () => {
+  /*
+    27.11.2026 inceleme bulgusu. Telefon kaydında "Veri
+    senkronizasyonu" satırı, bağlantı kopukluğunu anlatan bir
+    açıklamayla birlikte "Yeniden deneniyor" gösteriyordu. Etiket tek
+    başına geçerli bir etiket, açıklama tek başına doğru bir cümle;
+    yanlış olan EŞLEŞMEYDİ. Ölçüt bu yüzden üçünü birlikte okuyor.
+  */
+  const temel = { sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 700, dockUstu: 781 };
+
+  /* Köprü kopuk, kuyruk boş: ölçülen sağlam hâl. */
+  const kopuk = [
+    { ad: "Otomatik tahsilat", etiket: "Tamamlandı", aciklama: "Son çalışma başarılı.", ton: "success", aciklamaKirpik: false },
+    { ad: "Proforma ve hatırlatmalar", etiket: "Gönderildi", aciklama: "2 iş de başarılı.", ton: "success", aciklamaKirpik: false },
+    { ad: "Veri senkronizasyonu", etiket: "Bağlantı kesildi", aciklama: "Bir ürüne ulaşılamıyor; kopya eskiyor.", ton: "danger", aciklamaKirpik: false },
+  ];
+  assert.deepEqual(tekEkranHukmu("390x844 acik konsol", { ...temel, otomasyonSatirlari: kopuk }).eksik, []);
+
+  /* Deneme kuyruğu dolu: ölçülen sağlam hâl. */
+  const kuyruk = [
+    { ad: "Otomatik tahsilat", etiket: "Yeniden deneniyor", aciklama: "2 abonelikte çekim düştü; deneme hakkı sürüyor.", ton: "warning", aciklamaKirpik: false },
+    { ad: "Proforma ve hatırlatmalar", etiket: "Gönderildi", aciklama: "2 iş de başarılı.", ton: "success", aciklamaKirpik: false },
+    { ad: "Veri senkronizasyonu", etiket: "Tamamlandı", aciklama: "3 iş de başarılı.", ton: "success", aciklamaKirpik: false },
+  ];
+  assert.deepEqual(tekEkranHukmu("390x844 acik konsol", { ...temel, otomasyonSatirlari: kuyruk }).eksik, []);
+
+  /* 26.11.2026'da ekranda GERÇEKTEN duran yanlış eşleşme. */
+  const eskiHata = tekEkranHukmu("390x844 acik konsol", {
+    ...temel,
+    otomasyonSatirlari: [{ ad: "Veri senkronizasyonu", etiket: "Yeniden deneniyor", aciklama: "Bir ürüne ulaşılamıyor; eşitleme on dakikada bir yeniden deniyor.", ton: "warning", aciklamaKirpik: false }],
+  });
+  assert.equal(eskiHata.gecti, false);
+  assert.ok(eskiHata.eksik.some((m: string) => m.includes("açıklamasıyla uyuşmuyor")), eskiHata.eksik.join(" | "));
+
+  /* Ton da etikete bağlı: "Bağlantı kesildi" sarı çizilemez. */
+  assert.ok(tekEkranHukmu("390x844 acik konsol", {
+    ...temel, otomasyonSatirlari: [{ ...kopuk[2], ton: "warning" }],
+  }).eksik.some((m: string) => m.includes("tonu warning")));
+
+  /* Sözlükte olmayan bir etiket sessizce geçmez: yeni durum eklenince
+     ölçüt de güncellenmeli. */
+  assert.ok(tekEkranHukmu("390x844 acik konsol", {
+    ...temel, otomasyonSatirlari: [{ ad: "Veri senkronizasyonu", etiket: "Bilinmeyen", aciklama: "…", ton: "success", aciklamaKirpik: false }],
+  }).eksik.some((m: string) => m.includes("bilinmeyen durum etiketi")));
+
+  /* Telefonda açıklama kırpılırsa durum yarım okunur. */
+  assert.ok(tekEkranHukmu("390x844 acik konsol", {
+    ...temel, otomasyonSatirlari: [{ ...kuyruk[0], aciklamaKirpik: true }],
+  }).eksik.some((m: string) => m.includes("açıklama kırpılıyor")));
+});

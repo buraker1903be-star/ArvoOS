@@ -305,6 +305,41 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    OTOMASYON SATIRLARI: AD + ETİKET + AÇIKLAMA BİRLİKTE (27.11.2026,
+    inceleme talebi). Telefon kaydında "Veri senkronizasyonu" satırı
+    bağlantı kopukluğunu anlatan bir açıklamayla birlikte "Yeniden
+    deneniyor" gösteriyordu: etiket tek başına, açıklama tek başına
+    yanlış değildi — ÇİFT yanlıştı.
+
+    Ölçüt sözlüğü kuralın kendisinden (lib/konsol/otomasyonlar):
+    hangi etiket hangi cümleyle gidebilir, burada sabit. Yeni bir
+    durum eklenince bu listeye de satır eklenmeli; eklenmezse
+    "bilinmeyen etiket" düşürür.
+  */
+  if (o.otomasyonSatirlari?.length) {
+    /* Etiket → açıklamada GEÇMESİ gereken ipucu ve beklenen ton. */
+    const SOZLUK = {
+      "Tamamlandı": { ton: "success", ipucu: /başarılı/i },
+      "Gönderildi": { ton: "success", ipucu: /başarılı/i },
+      "Yeniden deneniyor": { ton: "warning", ipucu: /deneme hakkı sürüyor/i },
+      "Bağlantı kesildi": { ton: "danger", ipucu: /ulaşılamıyor/i },
+      "Bağlı değil": { ton: "neutral", ipucu: /anahtar/i },
+      "Müdahale gerekiyor": { ton: "danger", ipucu: /düştü|gecikti|koşmadı/i },
+      "Kayıt yok": { ton: "neutral", ipucu: /kayıt/i },
+    };
+    for (const satir of o.otomasyonSatirlari) {
+      if (!satir.ad) { eksik.push("otomasyon satırının adı yok"); continue; }
+      const kural = SOZLUK[satir.etiket];
+      if (!kural) { eksik.push(`${satir.ad}: bilinmeyen durum etiketi (${satir.etiket ?? "yok"})`); continue; }
+      if (satir.ton !== kural.ton) eksik.push(`${satir.ad}: "${satir.etiket}" tonu ${satir.ton} (${kural.ton} olmalı)`);
+      if (!kural.ipucu.test(satir.aciklama ?? "")) {
+        eksik.push(`${satir.ad}: "${satir.etiket}" etiketi açıklamasıyla uyuşmuyor ("${satir.aciklama ?? ""}")`);
+      }
+      if (satir.aciklamaKirpik) eksik.push(`${satir.ad}: açıklama kırpılıyor`);
+    }
+  }
+
+  /*
     RAY ÇEKMECESİ (26.11.2026, inceleme talebi). 64 px'lik rayda ikinci
     kat menüye sığmıyor (ad gizli, bölümlerin ikonu yok), o yüzden
     pencereye taşındı. Çekmece aynı sözleşmeyi taşımalı: başında

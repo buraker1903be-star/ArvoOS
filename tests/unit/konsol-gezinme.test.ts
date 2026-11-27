@@ -332,3 +332,23 @@ test("'Yeniden deneniyor' kaynağı kodda deneme kuyruğu", () => {
   assert.match(sayfa, /paytr_otomatik_yenileme[\s\S]{0,160}count: "exact", head: true/);
   assert.match(sayfa, /lt\("deneme_sayisi", AZAMI_DENEME\)/);
 });
+
+test("ölçüm düzeneği otomasyon satırlarını kuraldan üretiyor", () => {
+  /*
+    27.11.2026 inceleme bulgusu: düzenekte üç satır SABİT metin ve
+    sabit etiketle duruyordu. Kural değişince (köprü kopuk →
+    "Yeniden deneniyor" yerine "Bağlantı kesildi") fixture eski
+    hâlinde kaldı ve düzenek, üretimin üretemeyeceği bir durumu
+    çizdi. Fixture artık yalnızca GİRDİ veriyor; etiketi kural
+    yazıyor, yani düzenek üretimden sapamaz.
+  */
+  const duzenek = oku("scripts/genel-bakis-yerlesim-tarayici.mjs");
+  assert.match(duzenek, /const OTOMASYONLAR = otomasyonlar\(cronDurumlari\(/);
+  assert.match(duzenek, /import \{ otomasyonlar \} from/);
+  /* Elle yazılmış etiket kalmadı. */
+  assert.doesNotMatch(duzenek, /etiket: "Yeniden deneniyor"/);
+  assert.doesNotMatch(duzenek, /etiket: "Tamamlandı"/);
+  /* İki senaryo adresten: köprü kopuk ve deneme kuyruğu. */
+  assert.match(duzenek, /OTOMASYON_SENARYO === "kopuk"/);
+  assert.match(duzenek, /OTOMASYON_SENARYO === "kuyruk"/);
+});
