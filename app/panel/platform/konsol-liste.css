@@ -225,3 +225,14 @@
   color: var(--ink);
   font-size: var(--fs-sm);
 }
+
+/*
+  TELEFONDA DETAY EKRANI SAHİPLENİR (27.11.2026). Kayıt seçiliyken
+  sayfa başlığı ve "+ Yeni müşteri" detayın ÜSTÜNDE kalıyordu: 390
+  px'te ekranın üçte biri listeye ait bir başlık ve listeye ait bir
+  eylemle doluydu, oysa kullanıcı bir kaydın detayına bakıyor.
+  Bağlam zaten "Listeye dön" ve kaydın adıyla veriliyor.
+*/
+@media (max-width: 860px) {
+  .os-root main:has(.kl-duzen[data-secim="var"]) > .talep-bas { display: none; }
+}
