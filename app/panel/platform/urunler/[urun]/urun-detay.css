@@ -198,3 +198,39 @@
 .urd-kunye > div { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
 .urd-kunye dt { color: var(--muted); font-size: var(--fs-sm); }
 .urd-kunye dd { margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); }
+
+/*
+  MÜŞTERİ SATIRI: AVATAR SOLDA (27.11.2026, inceleme bulgusu).
+
+  Kural finans.css'te var ama seçicisi sayfa sınıfına bağlı
+  (.finans-sayfa, .urun-sayfa, .sistem-sayfa, .kisi-sayfa,
+  .musteri-karti). Ürün detayı 27.11.2026'da `urun-detay-sayfa`
+  sınıfına geçince hiçbirine uymaz oldu: avatar adın SOLUNDA değil
+  ÜSTÜNDE çiziliyordu ve satır iki kat yükseliyordu. Kural sayfanın
+  kendi CSS'ine yazılıyor — paylaşılan seçiciye bir sınıf daha
+  eklemek, o listeyi her yeni sayfada güncellemek demek.
+*/
+.os-root .urun-detay-sayfa .talep-tablo .crm-data-table td[data-label="Müşteri"] .crm-row-link.ek-kisi {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sp-3);
+  text-align: left;
+  min-width: 0;
+}
+.urun-detay-sayfa .ek-kisi-metin { display: flex; flex-direction: column; min-width: 0; }
+/* Kurum avatarı kare köşeli: bireysel abone yuvarlak kalıyor. */
+.urun-detay-sayfa .ek-avatar:not([data-tur="bireysel"]) { border-radius: var(--r-md); }
+
+/*
+  SON SATIRIN ODAK HALKASI (27.11.2026). Tablo kabı kırpıyor
+  (overflow) ve dıştaki 2 px'lik halka son satırda kesiliyordu —
+  klavyeyle gezen kullanıcı nerede olduğunu göremiyordu. Halka
+  İÇERİ alınıyor; kesilecek bir taşma kalmıyor.
+*/
+.urun-detay-sayfa .talep-tablo .crm-data-table .crm-row-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
+}

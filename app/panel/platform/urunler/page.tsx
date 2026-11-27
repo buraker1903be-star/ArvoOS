@@ -28,7 +28,10 @@ import "../finans.css";
 
   Fiyatlandırma 14.10.2026'ya kadar burada ikinci sekmeydi; konsol sekiz
   ana menüye geçince "Ücret ve Paketler" kendi sayfası oldu
-  (/panel/platform/fiyatlar). Eski ?bolum=fiyat bağlantıları oraya gidiyor.
+  (/panel/platform/fiyatlar). 27.11.2026'da ürün fiyatları oradan da
+  ürünün kendi "Fiyat basamakları" sekmesine indi; Fiyatlar ekranında
+  ürünler arası karşılaştırma ile ürüne ait OLMAYAN ek hizmet
+  fiyatları kaldı.
 
   Ürün başına sayılar bugüne kadar hiçbir ekranda YAN YANA değildi:
   modül matrisi hangi modülün hangi kiracıda açık olduğunu gösteriyordu
@@ -58,8 +61,15 @@ export default async function UrunlerPage({ searchParams }: {
   konsolAlaniniAc(konsolKapsami, "urunler");
 
   const { bolum, gorunum, suzgec, donem } = await searchParams;
-  // Fiyatlandırma kendi sayfasına taşındı; eski bağlantılar kırılmasın.
-  if (bolum === "fiyat") redirect("/panel/platform/fiyatlar");
+  /*
+    ESKİ ?bolum=fiyat ARTIK LİSTEYE DÜŞÜYOR (27.11.2026). Fiyatlandırma
+    14.10.2026'da kendi sayfasına taşınmıştı ve bu bağlantı oraya
+    gidiyordu; 27.11.2026'da ürün fiyatları ürünün kendi sekmesine
+    indi. Listenin "fiyat" diye bir bölümü yok, o yüzden bağlantı
+    listenin kendisine düşüyor — oradan ürün seçilip sekmesine
+    giriliyor.
+  */
+  if (bolum === "fiyat") redirect("/panel/platform/urunler");
   /* Modül matrisi 02.11.2026'dan beri bu sayfanın sekmesi; sorguları
      ayrı, özetinkiler boşuna çalışmasın diye erken dönüyor. */
   if (gorunum === "moduller") return <ModulMatrisi suzgec={suzgec} />;

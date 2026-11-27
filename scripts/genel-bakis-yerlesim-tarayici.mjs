@@ -354,7 +354,18 @@ function Konsol() {
     kuyruğun bir kalemi okunamamış durumda. Üçü de üretimde tek tek
     çizilebilen hâller ve ekranda farklı metinler üretiyor.
   */
-  const bosDurum = new URLSearchParams(location.search).get("durum") === "bos";
+  /*
+    KARAR KUYRUĞUNUN ÜÇ HÂLİ (27.11.2026). Üçü AYRI ekran metni üretiyor
+    (lib/konsol/karar-kuyrugu) ve üçü de kanıtlanmalı:
+      ?durum=bos      → kaynaklardan biri okunamadı, kayıt yok  ("Karar listesi eksik")
+      ?durum=tam-bos  → her kaynak okundu, kayıt yok            ("Bekleyen karar yok")
+      (varsayılan)    → kayıt var
+    Düzenekte bir süre yalnızca ilki vardı ve "gerçekten boş" hâli hiç
+    çizilmiyordu — ekranda en çok görülecek iyi haber oydu.
+  */
+  const DURUM = new URLSearchParams(location.search).get("durum");
+  const bosDurum = DURUM === "bos" || DURUM === "tam-bos";
+  const okunamayanKaynaklar = DURUM === "bos" ? ["Destek talepleri"] : [];
   /* Ana Sayfa kartlarının örnek verisi: yapı üretimdekiyle aynı
      (KararKalemi / Otomasyon tipleri), değerler örnek. */
   const KARARLAR = [
@@ -391,17 +402,35 @@ function Konsol() {
     "/api/cron/posta-esitleme", "/api/cron/adim-terminleri",
   ].map(cronKaydi);
   const OTOMASYON_SENARYO = new URLSearchParams(location.search).get("otomasyon") || "saglikli";
-  const KOPRULER = OTOMASYON_SENARYO === "kopuk"
-    ? [{ yapilandirilmamis: false, kopuk: false }, { yapilandirilmamis: false, kopuk: true }, { yapilandirilmamis: false, kopuk: false }]
-    : [{ yapilandirilmamis: false, kopuk: false }];
-  const KUYRUKLAR = OTOMASYON_SENARYO === "kuyruk" ? [{ grup: "tahsilat", bekleyen: 2 }] : [];
-  const OTOMASYONLAR = otomasyonlar(cronDurumlari(CRON_KAYITLARI, SIMDI, new Date(SIMDI.getTime() - 86400000)), KOPRULER, KUYRUKLAR);
+  /*
+    ÜRÜN SAĞLIĞI TEK KAYNAK (27.11.2026, inceleme bulgusu).
+
+    Düzenekte iki ayrı fixture aynı dünyayı anlatıyordu ve
+    ÇELİŞİYORLARDI: ürün tablosu ArvoCal'i "Sorunlu" gösterirken,
+    otomasyon kartına verilen köprü listesi "hepsi sağlıklı" diyordu
+    ve "Veri senkronizasyonu · Tamamlandı" çıkıyordu. Üretimde böyle
+    bir hâl olamaz — kural zaten köprü kopuksa satırı "Bağlantı
+    kesildi" yapıyor (lib/konsol/otomasyonlar). Kusur örnek
+    verideydi, eşleme mantığında değil.
+
+    Köprü durumu artık ürün sağlığından TÜRETİLİYOR. ArvoOS'un köprüsü
+    yok (konsolun kendisi), o yüzden listenin ilki atlanıyor —
+    üretimdeki kuralın aynısı (konsol-ana-sayfa.tsx · urunSagligi).
+  */
   const URUN_SAGLIK = [
     { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
     { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
-    { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
+    OTOMASYON_SENARYO === "bagli_degil"
+      ? { durum: "bagli_degil", etiket: "Bağlı değil", ton: "neutral", not: "Köprü anahtarı tanımlı değil." }
+      : { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
     { durum: "sorunlu", etiket: "Sorunlu", ton: "danger", not: "Köprü yanıt vermiyor." },
   ];
+  const KOPRULER = URUN_SAGLIK.slice(1).map((s) => ({
+    yapilandirilmamis: s.durum === "bagli_degil",
+    kopuk: s.durum !== "saglikli",
+  }));
+  const KUYRUKLAR = OTOMASYON_SENARYO === "kuyruk" ? [{ grup: "tahsilat", bekleyen: 2 }] : [];
+  const OTOMASYONLAR = otomasyonlar(cronDurumlari(CRON_KAYITLARI, SIMDI, new Date(SIMDI.getTime() - 86400000)), KOPRULER, KUYRUKLAR);
   /* Dönüşümün payda-sıfır hâli: oran null → "Dönemde deneme yok". */
   const URUN_DURUMLARI = URUN_SATIRLARI.map((r) =>
     r.kod === "arvolab" ? { ...r, donusum: { durum: "var", deger: { denemeye: 0, ucretliye: 0, oran: null } } } : r);
@@ -422,7 +451,7 @@ function Konsol() {
             para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
             secici={<DonemSecici secili="30g" taban="/panel" />}
             olcutSecici={<OlcutSecici secili="musteri" taban="/panel" />} />
-          <KararBekleyenlerKarti kalemler={bosDurum ? [] : KARARLAR} okunamayan={bosDurum ? ["Destek kuyruğu"] : []} />
+          <KararBekleyenlerKarti kalemler={bosDurum ? [] : KARARLAR} okunamayan={okunamayanKaynaklar} />
         </div>
       ) },
     { anahtar: "isler", etiket: "Bugünün İşleri", yer: "liste", icerik: islerPaneli },
@@ -466,7 +495,7 @@ function Konsol() {
         </p>
       }>
       <div className="kak-ust">
-        <KararBekleyenlerKarti kalemler={bosDurum ? [] : KARARLAR} okunamayan={bosDurum ? ["Destek talepleri"] : []} />
+        <KararBekleyenlerKarti kalemler={bosDurum ? [] : KARARLAR} okunamayan={okunamayanKaynaklar} />
         <OtomasyonlarKarti isler={OTOMASYONLAR} href="/panel/platform/saglik?sekme=isler" />
       </div>
       <UrunPerformansiKarti satirlar={(bosDurum ? URUN_DURUMLARI : URUN_SATIRLARI).map((u, i) => ({ ...u, saglik: URUN_SAGLIK[i] }))} olcut="musteri"

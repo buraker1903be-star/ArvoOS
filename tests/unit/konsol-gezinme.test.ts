@@ -377,7 +377,16 @@ test("ölçüm düzeneği otomasyon satırlarını kuraldan üretiyor", () => {
   /* Elle yazılmış etiket kalmadı. */
   assert.doesNotMatch(duzenek, /etiket: "Yeniden deneniyor"/);
   assert.doesNotMatch(duzenek, /etiket: "Tamamlandı"/);
-  /* İki senaryo adresten: köprü kopuk ve deneme kuyruğu. */
-  assert.match(duzenek, /OTOMASYON_SENARYO === "kopuk"/);
   assert.match(duzenek, /OTOMASYON_SENARYO === "kuyruk"/);
+
+  /*
+    27.11.2026, ikinci bulgu: iki ayrı fixture aynı dünyayı anlatıp
+    ÇELİŞİYORDU. Ürün tablosu ArvoCal'i "Sorunlu" gösterirken otomasyon
+    kartına verilen köprü listesi "hepsi sağlıklı" diyor ve
+    "Veri senkronizasyonu · Tamamlandı" çıkıyordu — üretimde olamayacak
+    bir hâl. Köprü durumu artık ürün sağlığından TÜRETİLİYOR; elle
+    yazılmış köprü listesi kalmadı.
+  */
+  assert.match(duzenek, /const KOPRULER = URUN_SAGLIK\.slice\(1\)\.map\(/);
+  assert.doesNotMatch(duzenek, /KOPRULER = OTOMASYON_SENARYO/);
 });

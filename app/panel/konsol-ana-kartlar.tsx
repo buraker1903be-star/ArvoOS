@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Otomasyon } from "@/lib/konsol/otomasyonlar";
 import { istanbulDateTime, todayInIstanbul } from "@/lib/istanbul-date";
+import { kuyrukDurumu, kuyrukMetni } from "@/lib/konsol/karar-kuyrugu";
 import "./konsol-ana-kartlar.css";
 
 /*
@@ -67,12 +68,30 @@ export function KararBekleyenlerKarti({ kalemler, okunamayan }: {
     koymaktansa kalemlerin kendisi listede duruyor.
   */
   const [one, ...kalan] = kalemler;
+  /*
+    BOŞ İLE EKSİK AYRI (27.11.2026, inceleme bulgusu). Kart iki bilgiyi
+    birbirinden bağımsız yazıyordu ve ikisi aynı anda çıkınca ekran
+    kendi kendiyle çelişiyordu: "Bekleyen karar yok." hemen altında
+    "Destek talepleri okunamadı". Karar artık tek ve saf bir yerde
+    (lib/konsol/karar-kuyrugu), ekran yalnızca çiziyor.
+  */
+  const durum = kuyrukDurumu({ kalemSayisi: kalemler.length, okunamayan });
+  const metin = kuyrukMetni(durum);
   return (
     <article className="kak-kart" aria-labelledby="kak-karar-baslik">
       <header className="kak-bas">
         <h2 id="kak-karar-baslik">Karar bekleyenler</h2>
         {kalan.length ? <span className="kak-sayac">{kalemler.length} iş</span> : null}
       </header>
+      {/* Eksik kaynak uyarısı LİSTENİN ÜSTÜNDE: altta dururken,
+          kalemleri okuyup kapatan kullanıcı listenin eksik olduğunu
+          hiç görmüyordu. */}
+      {metin && durum.tur !== "bos" ? (
+        <p className="kak-eksik" data-tone="uyari">
+          <b>{metin.baslik}</b>
+          {metin.aciklama ? <span>{metin.aciklama}</span> : null}
+        </p>
+      ) : null}
       {one ? (
         <>
           <div className="kak-one">
@@ -108,13 +127,8 @@ export function KararBekleyenlerKarti({ kalemler, okunamayan }: {
             </ul>
           ) : null}
         </>
-      ) : (
-        <p className="kak-bos">Bekleyen karar yok.</p>
-      )}
-      {okunamayan.length ? (
-        <p className="kak-bos" data-tone="danger">
-          {okunamayan.join(", ")} okunamadı; bu kalemler listede eksik olabilir.
-        </p>
+      ) : durum.tur === "bos" ? (
+        <p className="kak-bos">{metin?.baslik}</p>
       ) : null}
     </article>
   );
@@ -125,6 +139,11 @@ export function OtomasyonlarKarti({ isler, href }: { isler: Otomasyon[]; href: s
     <article className="kak-kart" aria-labelledby="kak-otomasyon-baslik">
       <header className="kak-bas">
         <h2 id="kak-otomasyon-baslik">Otomasyonlar</h2>
+        {/* KAPSAM BAŞLIKTA (27.11.2026). Bu kartın durumu SON KOŞMANIN
+            sonucu; ürün tablosundaki sağlık ise ŞU ANKİ köprü
+            yoklaması. İkisi aynı ekranda yan yana duruyor ve
+            kapsamları yazılmadığında çelişiyormuş gibi okunuyordu. */}
+        <span className="kak-sayac">son koşma</span>
       </header>
       <ul className="kak-liste kak-otomasyon">
         {isler.map((is) => (

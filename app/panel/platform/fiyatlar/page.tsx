@@ -1,20 +1,20 @@
 import { konsolAlaniniAc } from "../konsol-alani";
 import Link from "next/link";
 import { Fragment } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { sayfaliSonuc } from "@/lib/rapor-okuma";
-import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi } from "@/lib/site/pricing";
+import { PLANS, ADD_ONS, YILLIK_ODENEN_AY, urunAdi } from "@/lib/site/pricing";
 import { karsilastirmaSatirlari, suzgecVarMi, FATURA_DONEMLERI, FIYAT_DURUMLARI, type KarsilastirmaPlani } from "@/lib/konsol/fiyat-karsilastirma";
 import "./fiyat-karsilastirma.css";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
-import { fiyatlariYayimla, koddakiDegerleriTaslagaAl, taslagiGeriAl, taslagiKaydet, yayindanKaldir } from "../urunler/actions";
+import { FiyatDuzenleme, EK_KALEM_ADI, type FiyatUrunu } from "./fiyat-duzenleme";
 import { paketLimitleriOku } from "../paket-limitleri-oku";
 import { paketLimitiniKaydet } from "./paket-actions";
 import { PAKET_ADI, depolama, para, sayi, tarihSaat } from "../bicim";
-import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi, type FiyatKaydi } from "@/lib/fiyat-dogrulama";
+import { bekleyenDegisiklikler, fiyatKaydi } from "@/lib/fiyat-dogrulama";
 import { YAYIN_KODU } from "@/lib/paket-ucreti";
-import { KKart, KListe, KNot, KOge } from "../konsol-ui";
+import { KKart, KNot } from "../konsol-ui";
 import { MobilSatir } from "../../crm/table-cells";
 import "../platform.css";
 import "../../hr/hr.css";
@@ -39,90 +39,7 @@ import "../finans.css";
   aynı okuyucudan (lib/site/fiyat-oku).
 */
 
-/*
-  Ek kalemlerin konsoldaki adı. Pazarlama metni (app/(site)/_content)
-  BURAYA IMPORT EDİLMİYOR: o ağacı panel rotasına çekmek site sınıflarını
-  da sürüklüyor ve CSS denetimi haklı olarak kırılıyor. RAKAM yine tek
-  kaynakta (lib/site/pricing → ADD_ONS); burada yalnızca kısa ad var.
-*/
-const EK_KALEM_ADI: Record<string, string> = {
-  "ek-kullanici": "Ek kullanıcı",
-  "ek-sube": "Ek şube",
-  "veri-aktarimi": "Veri aktarımı ve kurulum",
-  "ozel-gelistirme": "Kuruma özel geliştirme",
-};
 
-/*
-  Fiyat satırı: yayındaki tutar, yıllık karşılığı, taslak kutusu ve iki
-  düğme. Taslak ile yayın AYRI: tek adım olsaydı yanlış yazılan bir rakam
-  yazıldığı anda sitede görünürdü.
-*/
-function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
-  kod: string;
-  ad: string;
-  birim: string;
-  /** Sitede şu an geçerli tutar (kod + yayımlanmış veritabanı değeri). */
-  cozulmus: number | null;
-  kayit?: FiyatKaydi;
-  yillik?: boolean;
-}) {
-  const konsoldan = Boolean(kayit?.yayimlandi_at);
-  const taslak = kayit?.taslak_kurus ?? null;
-  const bekliyor = Boolean(kayit?.taslak_bekliyor);
-  /*
-    TABLO SATIRI (29.10.2026, konsol yeniden kurulurken). 14.10.2026'dan
-    beri iOS satırıydı; yayındaki tutar ile taslak kutusu aynı satırın
-    iki ucundaydı ve beş basamağın tutarları alt alta hizalanmıyordu —
-    "Profesyonel, Başlangıç'ın kaç katı" sorusu göz kaydırarak okunuyordu.
-    Artık yayındaki aylık ve yıllık kendi sütununda; taslak formu satır
-    sonunda. Telefonda MobilSatir yalnızca özet; taslak formu düğme
-    hücresinde kaldığı için telefonda da düzenlenebiliyor.
-  */
-  const durum = bekliyor ? { etiket: `Yayım bekliyor: ${taslak === null ? "Teklif" : para(taslak)}`, ton: "warning" } : null;
-  return (
-    <tr>
-      <td data-label="Basamak">
-        <span className="crm-table-title">{ad}</span>
-        <span className="crm-table-sub">{birim} · <span className="plt-mono">{kod}</span></span>
-      </td>
-      <td data-label="Kaynak">
-        <span className="crm-table-sub">{konsoldan ? "konsoldan yayımlı" : "koddaki değer"}</span>
-        {durum ? <span className="status-pill" data-tone="warning">{durum.etiket}</span> : null}
-      </td>
-      <td className="crm-col-amount" data-label="Yayında">
-        <span className="crm-table-title">{cozulmus === null ? "Teklif" : para(cozulmus)}</span>
-        {/* Yıllıkta 10 ay bedeli ödeniyor; ek kalemler aylık, orada yıllık yok. */}
-        <small>{yillik ? (cozulmus === null ? "yıllık teklif" : `${para(cozulmus * YILLIK_ODENEN_AY)} / yıl`) : "aylık"}</small>
-      </td>
-      <td className="crm-table-actions">
-        {/* Yayım satır başına değil, yukarıdaki önizlemeden TOPLU
-            (14.10.2026): liste ya tamamen eski ya tamamen yeni. */}
-        <div className="plt-fiyat-eylem">
-          <form action={taslagiKaydet} className="plt-fiyat-form">
-            <input type="hidden" name="kod" value={kod} />
-            <input type="text" name="tutar" inputMode="decimal"
-              defaultValue={taslak === null ? "" : String(taslak / 100)}
-              placeholder="boş = teklif" aria-label={`${ad} taslak tutar`} />
-            <button className="panel-secondary" type="submit">Kaydet</button>
-          </form>
-          {bekliyor ? (
-            <form action={taslagiGeriAl}>
-              <input type="hidden" name="kod" value={kod} />
-              <button className="panel-secondary" type="submit">Geri al</button>
-            </form>
-          ) : null}
-          {konsoldan ? (
-            <form action={yayindanKaldir}>
-              <input type="hidden" name="kod" value={kod} />
-              <button className="panel-secondary" type="submit">Koda dön</button>
-            </form>
-          ) : null}
-        </div>
-      </td>
-      <MobilSatir baslik={ad} durum={durum} alt={[cozulmus === null ? "Teklif" : para(cozulmus), birim, konsoldan ? "konsoldan yayımlı" : "koddaki değer"]} />
-    </tr>
-  );
-}
 
 const GECMIS_ISLEMI: Record<string, string> = {
   taslak: "Taslak",
@@ -157,6 +74,21 @@ export default async function FiyatlarPage({ searchParams }: {
     Eski bağlantılar (?urun=arvoos) aynı ekranı açmaya devam ediyor.
   */
   const seciliUrun = (LISTE_URUNLERI as readonly string[]).includes(urun ?? "") ? urun! : "tumu";
+  /*
+    ESKİ ÜRÜNLÜ BAĞLANTI ÜRÜNÜN SEKMESİNE (27.11.2026).
+
+    Fiyat düzenleme artık ürünün kendi "Fiyat basamakları" bölümünde
+    (urunler/[urun]/page.tsx → FiyatDuzenleme) ve yan menüdeki bağımsız
+    Fiyatlar girişi kalktı. Kaydedilmiş/paylaşılmış ?urun=<kod>
+    bağlantıları bu yüzden ürünün sekmesine yönlendiriliyor; aynı
+    düzenleme, aynı yetki, bir ekran daha az.
+
+    "ek" YÖNLENDİRİLMİYOR: ek hizmetler bir ürün değil, gideceği bir
+    ürün detayı yok. Erişimi Ürünler listesinin ⋯ menüsünde.
+  */
+  if (seciliUrun !== "tumu" && seciliUrun !== "ek") {
+    redirect(`/panel/platform/urunler/${seciliUrun}?bolum=fiyat`);
+  }
   const karsilastirma = seciliUrun === "tumu";
 
   const [{ data: kiraciSatirlari, error: kiraciHatasi }, { data: fiyatSatirlari, error: fiyatHatasi }] = await Promise.all([
@@ -197,7 +129,6 @@ export default async function FiyatlarPage({ searchParams }: {
   */
   const degisiklikler = bekleyenDegisiklikler(fiyatKayitlari, cozulmus);
   const bekleyenTaslak = degisiklikler.length;
-  const denetim = fiyatDenetimi(yayimSonrasi(cozulmus, degisiklikler), degisiklikler);
   /* Mevcut kiracıların ücreti listeyle KENDİLİĞİNDEN değişmez (yürürlükteki
      dönem). Değişen ArvoOS basamağından liste fiyatıyla ödeyen kiracı
      sayısı yazılıyor: yayımdan sonra Kurulumlar'da "listeden farklı"
@@ -452,127 +383,16 @@ export default async function FiyatlarPage({ searchParams }: {
               )}
             </>
           ) : (
-          <div className="talep-tablo">
-          <table className="crm-data-table" data-cols="ur-fiyat">
-            <thead><tr><th>Basamak</th><th>Kaynak</th><th className="crm-col-amount">Yayında</th><th className="fn-eylem-bas">Taslak</th></tr></thead>
-            <tbody>
-            {seciliUrun === "ek"
-              ? ADD_ONS.map((kalem) => (
-                  <FiyatSatiri key={kalem.code} kod={kalem.code} ad={EK_KALEM_ADI[kalem.code] ?? kalem.code}
-                    birim="ek kalem" cozulmus={cozulmus.get(kalem.code) ?? null} kayit={kayitlar.get(kalem.code)} />
-                ))
-              : planlar(seciliUrun as Parameters<typeof planlar>[0]).map((plan) => (
-                  <FiyatSatiri key={plan.code} kod={plan.code} ad={plan.ad.tr}
-                    birim={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
-                    cozulmus={cozulmus.get(plan.code) ?? null} kayit={kayitlar.get(plan.code)} yillik />
-                ))}
-            </tbody>
-          </table>
-          </div>
+          /*
+            TEK BİLEŞEN, İKİ ROTA (27.11.2026). Taslak tablosu ve yayım
+            önizlemesi buradan ÇIKARILDI (fiyat-duzenleme.tsx); ürün
+            detayının "Fiyat basamakları" sekmesi de aynı bileşeni
+            çiziyor. İki kopya olsaydı biri ötekinden sapardı — bu
+            depoda tam olarak bu sınıf hata birkaç kez yaşandı.
+          */
+          <FiyatDuzenleme urun={seciliUrun as FiyatUrunu} etkilenenKiraci={etkilenenKiraci} />
           )}
         </section>
-
-        <div className="liste-sag">
-          {degisiklikler.length ? (
-            /*
-              Yayım formu kartın başlık satırında: panel tablosunun alt kenar
-              boşluğu eksi (kartın kenarına yaslanıyor, konsol-ui.css); altına
-              konan form onun üstüne biniyordu. Notlar tablonun ardında
-              (.k-tablo + .k-not boşluğu konsol-ui.css'te).
-            */
-            <KKart
-              baslik={`Yayım önizlemesi · ${sayi(degisiklikler.length)} değişiklik`}
-              aciklama={<>
-                Yayımlanınca ücretler sayfasında (TR ve EN), arama motorlarına giden fiyat bilgisinde (JSON-LD), llms-full.txt&apos;de
-                (en geç on dakika içinde), kurulumun &quot;liste fiyatını uygula&quot; tutarında ve ArvoLab bireysel aboneliğinde
-                geçerli olur. Liste tek seferde, birlikte yayımlanır.
-              </>}
-              sag={(
-                <form action={fiyatlariYayimla} className="plt-fiyat-yayim">
-                  {denetim.uyarilar.length ? (
-                    <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
-                  ) : null}
-                  <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
-                    {sayi(degisiklikler.length)} değişikliği yayımla
-                  </button>
-                </form>
-              )}
-            >
-              {/* iOS satırı (14.10.2026): sağda yeni tutar, altında önceki ve
-                  yüzde. Eskiden dört sütunlu tabloydu; dar yan sütunda
-                  "Şu an / Yayımlanınca" başlıkları satırın kendisinden uzundu.
-                  %50 ve üstü değişim yine uyarı renginde. */}
-              <KListe>
-                {degisiklikler.map((d) => {
-                  const degisim = d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`;
-                  const buyuk = d.yuzde !== null && Math.abs(d.yuzde) >= 50;
-                  return (
-                    <KOge
-                      key={d.kod}
-                      baslik={basamakAdi(d.kod)}
-                      alt={<span className="plt-mono">{d.kod}</span>}
-                      deger={tutarYazi(d.yeni)}
-                      degerAlt={<>önce {tutarYazi(d.eski)} · <span className={buyuk ? "talep-uyari" : undefined}>{degisim}</span></>}
-                    />
-                  );
-                })}
-              </KListe>
-              {denetim.hatalar.length ? (
-                <KNot ton="tehlike">
-                    <b>Bu liste yayımlanamaz.</b>
-                    {denetim.hatalar.map((h) => <Fragment key={h}><br />{h}</Fragment>)}
-                  </KNot>
-              ) : null}
-              {denetim.uyarilar.length ? (
-                <KNot ton="uyari">
-                  <b>Yayımlamadan önce kontrol edin.</b>
-                  {denetim.uyarilar.map((u) => <Fragment key={u}><br />{u}</Fragment>)}
-                </KNot>
-              ) : null}
-              {etkilenenKiraci ? (
-                <KNot>
-                  Liste fiyatından ödeyen {sayi(etkilenenKiraci)} ArvoOS kiracısının ücreti kendiliğinden değişmez (yürürlükteki
-                  dönem korunur); yayımdan sonra Kurulumlar&apos;da &quot;listeden farklı&quot; görünürler.
-                </KNot>
-              ) : null}
-            </KKart>
-          ) : null}
-          <KKart baslik="Yayın" aciklama="Taslak hiçbir yerde görünmez; bekleyenler önizlemede birlikte yayımlanır.">
-            {/* 14.10.2026: iki sayı kutusu (istat-kutular) yerine iki iOS
-                satırı; şerit bu ikisinden yalnızca birini yazıyor. */}
-            <KListe>
-              <KOge baslik="Konsoldan yayımlı" alt="kalanı koddaki değer" deger={sayi(yayimliSayisi)} />
-              <KOge baslik="Yayım bekleyen" alt="taslak"
-                durum={bekleyenTaslak ? { etiket: "Önizlemede", ton: "warning" } : null} deger={sayi(bekleyenTaslak)} />
-            </KListe>
-            {/*
-              LİSTEYİ SAHİPLENME ADIMI (14.10.2026). Hiçbir tutar yayımlı
-              değilken site koddaki yedek değerlerle çalışıyor: rakamlar
-              doğru ama bir fiyatı değiştirmek hâlâ dağıtım istiyor, oysa
-              bu ekranın amacı bunu kaldırmak. On altı tutarı elle girmek
-              üretim fiyatlarında boşuna yazım hatası riski olurdu;
-              işlem her kodun BUGÜN GEÇERLİ değerini taslağa alıyor,
-              yayımlandığında sitede hiçbir rakam değişmiyor.
-
-              Yalnızca gerçekten gerektiğinde görünüyor: yayımlı tutar
-              da bekleyen taslak da yoksa.
-            */}
-            {!yayimliSayisi && !bekleyenTaslak ? (
-              <form action={koddakiDegerleriTaslagaAl}>
-                <KNot ton="uyari">
-                  Hiçbir tutar konsoldan yayımlı değil: site koddaki yedek değerleri okuyor ve fiyat değişikliği dağıtım
-                  gerektiriyor. Koddaki değerleri taslağa alıp yayımlarsanız liste bu ekranın sahipliğine geçer —
-                  sitedeki rakamlar aynı kalır.
-                </KNot>
-                <button type="submit" className="panel-secondary">Koddaki değerleri taslağa al</button>
-              </form>
-            ) : null}
-            <KNot>
-              Yıllıkta {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava). TL tutarlar KDV dahil. Ücretler
-              sayfası, JSON-LD, llms-full.txt, kurulum ve ArvoLab bireysel aboneliği bu listeyi okur.
-            </KNot>
-          </KKart>
-        </div>
       </div>
     ) : null}
 

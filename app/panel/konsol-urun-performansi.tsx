@@ -97,10 +97,17 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
                 başlıkta tekrar edilmiyor.
               */}
               <th scope="col" data-olcut="musteri">Aktif müşteri <small>bugün</small></th>
-              <th scope="col" data-olcut="tahsilat">Tahsilat</th>
+              {/* 27.11.2026: dönemin HANGİ sütunu etkilediği başlıkta
+                  yazıyor. "Aktif müşteri bugün" anlık, "Tahsilat" ise
+                  seçili dönemin toplamı; ikisi yan yana dururken
+                  seçicinin neyi değiştirdiği okunmuyordu. */}
+              <th scope="col" data-olcut="tahsilat">Tahsilat <small>{donem.etiket.toLocaleLowerCase("tr")}</small></th>
               {/* Durum sütunu köprü yoklamasından (26.11.2026): ölçüm
                   değil, ürünün ulaşılabilirliği. */}
-              <th scope="col" className="kup-durum-bas">Durum</th>
+              {/* Sağlık ŞU ANKİ köprü yoklamasından; otomasyon kartındaki
+                  durum ise SON KOŞMANIN sonucu. İki farklı kaynak yan
+                  yana durduğu için kapsamı başlıkta yazıyor. */}
+              <th scope="col" className="kup-durum-bas">Durum <small>şu an</small></th>
               <th scope="col"><span className="kup-gizli">Aç</span></th>
             </tr>
           </thead>

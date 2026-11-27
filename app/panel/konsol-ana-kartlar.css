@@ -191,14 +191,28 @@ a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 4
 }
 
 /*
-  TELEFON: ürün etiketi ile zaman ikincil satıra iniyor, eylem sağda
-  kalıyor. Satır 52 px'ten 64 px'e çıkıyor; dokunma hedefi büyüyor.
+  TELEFON: satır iki hatta yayılıyor, eylem sağda kalıyor. Satır
+  52 px'ten 64 px'e çıkıyor; dokunma hedefi büyüyor.
+
+  ÜRÜN ETİKETİ GİZLENMİYOR (27.11.2026, inceleme bulgusu). Kural
+  `display:none` yazıyordu: telefonda üç karar satırı üç FARKLI ürüne
+  ait olduğu hâlde ekranda hangisinin hangi ürün olduğu yazmıyordu —
+  "Yaklaşan yenileme" tek başına hangi üründe olduğunu söylemiyor.
+  Üstelik kural öne çıkan işin rozetini de götürüyordu. Rozet artık
+  satırın ilk hattında, iş adıyla birlikte sarıyor.
+
+  Zaman hâlâ gizli: o ikincil bir bilgi ve ürün etiketiyle aynı yere
+  sığmıyor; öne çıkan işte ise kendi satırında duruyor.
 */
 @media (max-width: 560px) {
   .kak-kart { padding: var(--sp-4); }
-  .kak-satir { align-items: flex-start; min-height: 64px; }
-  .kak-urun { display: none; }
-  .kak-zaman { display: none; }
+  /* TEK HAT: rozet · gövde · ok. flex-wrap denendi ve ok alt satıra
+     düşüp satırı 130 px'e çıkardı; gövde daralıp metni sarsın yeter. */
+  .kak-satir { align-items: flex-start; min-height: 64px; gap: var(--sp-2); }
+  .kak-urun { align-self: flex-start; margin-top: 2px; }
+  .kak-urun-bos { display: none; }
+  .kak-govde { min-width: 0; flex: 1 1 auto; }
+  .kak-satir > .kak-zaman { display: none; }
   .kak-govde b { white-space: normal; }
   .kak-govde small { white-space: normal; }
   .kak-eylem { align-self: center; }
@@ -270,3 +284,31 @@ a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 4
   .kak-one { align-items: stretch; }
   .kak-one-eylem { width: 100%; justify-content: center; }
 }
+
+/*
+  EKSİK KAYNAK UYARISI (27.11.2026, inceleme bulgusu).
+
+  Eskiden kartın ALTINDA, boş durum metniyle aynı sınıfta duruyordu ve
+  ikisi aynı anda çıkabiliyordu: "Bekleyen karar yok." hemen altında
+  "Destek talepleri okunamadı". Yönetici "iş yok mu, bilmiyor muyuz?"
+  diye soruyordu. Artık iki hâl birbirini dışlıyor (karar-kuyrugu.ts)
+  ve uyarı LİSTENİN ÜSTÜNDE: altta dururken, kalemleri okuyup kapatan
+  kullanıcı listenin eksik olduğunu hiç görmüyordu.
+
+  Ton UYARI, hata değil: okuma düşmüş olabilir ama ekranda yanlış bir
+  sayı yok — eksik olan bilgi.
+*/
+.kak-eksik {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--warning-soft);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+}
+.kak-eksik b { font-weight: var(--fw-semibold); }
+.kak-eksik span { color: var(--ink-soft); }
