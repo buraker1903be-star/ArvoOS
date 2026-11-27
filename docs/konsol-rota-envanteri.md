@@ -220,6 +220,21 @@ işlem yetkili bir test ortamı istiyor.
 | `konsol-akis-kabulu.mjs` (15 senaryo) | KULLANICI GİBİ TIKLAR: kaydır → kayıt aç → tam kart → tarayıcı geri → paneli kapat → yeni süzgeç. Süzgeç, sıralama ve kaydırma konumunu her adımda doğrular. | Yazan işlemlerin gerçekten yazdığını. |
 | `konsol-panel-erisimi.mjs` | Sağ panelin SON EYLEMİNE üç yoldan erişimi: bilgi sırası, kaydırınca görünürlük + üstünü örten bir şey olup olmadığı, klavyeyle ulaşma. | Eylemin sonucunu. |
 
+### Ara kontrol düzeltmeleri (27.11.2026)
+
+| Ne | Nerede |
+| --- | --- |
+| Üst etiket, başlık altı sayaçlar ve şeritteki tür sayaçları tekrarı kaldırıldı; liste yukarı geldi | Müşteriler |
+| Birincil araç satırı: arama · tür · Filtreler · birincil eylem | `konsol-liste.tsx` (ortak) |
+| Etkin süzgeç çipleri; her çip kendi süzgecini kaldırıyor | ortak |
+| Seçime bağlı toplu eylemler yalnızca seçimle görünüyor; CSV seçimsiz de çalışıyor | Müşteriler |
+| Kaydırma konumu korunuyor; yeni süzgeçte baştan başlıyor | üç liste ekranı |
+| Telefonda satır da seçiyor (eskiden doğrudan tam karta gidiyordu) | Müşteriler |
+| Ödeme uyarısı: "uyuşmuyor" / "doğrulanamadı" ayrıldı | `lib/abonelik-tutari.ts` |
+| Karar kuyruğu ilgili KAYDA açılıyor | Ana Sayfa |
+| İki tablonun üst üste binmesi | Ayarlar → Bağlantılar ve sırlar |
+| Önizlemede yazma SİMÜLASYON olarak işaretlendi (ekran + günlük) | önizleme |
+
 ### Önizlemede görülen, canlıda doğrulanmamış
 
 **Yönlendiren rotalarda istemci hatası.** Beş eski adresin hepsi
