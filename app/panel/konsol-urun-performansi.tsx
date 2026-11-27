@@ -26,6 +26,13 @@ function Deger({ olcum, bicim }: { olcum: Olcum<number>; bicim: (n: number) => s
   return <>{bicim(olcum.deger)}</>;
 }
 
+/*
+  DÖNÜŞÜM ANA SAYFADA YOK (26.11.2026, onaylı mockup): tablo Ürün /
+  Aktif müşteri / Tahsilat / Durum. Deneme dönüşümü ürünün KENDİ
+  ekranında (urun-genel-bakis.tsx) duruyor; kurucunun ana sayfada
+  sorduğu "yaşıyor mu, para geliyor mu, ayakta mı".
+  Bileşen duruyor: dar karttaki ölçüt seçicisi hâlâ kullanıyor.
+*/
 /** Dönüşüm: payda sıfırsa yüzde yazılmaz, "deneme yok" denir. */
 function Donusum({ olcum }: { olcum: UrunSatiri["donusum"] }) {
   if (olcum.durum === "kaynak_yok") return <span className="kup-yok">Veri bağlı değil</span>;
@@ -81,8 +88,10 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
                 başlıkta tekrar edilmiyor.
               */}
               <th scope="col" data-olcut="musteri">Aktif müşteri <small>bugün</small></th>
-              <th scope="col" data-olcut="donusum">Denemeden ücretliye</th>
               <th scope="col" data-olcut="tahsilat">Tahsilat</th>
+              {/* Durum sütunu köprü yoklamasından (26.11.2026): ölçüm
+                  değil, ürünün ulaşılabilirliği. */}
+              <th scope="col" className="kup-durum-bas">Durum</th>
               <th scope="col"><span className="kup-gizli">Aç</span></th>
             </tr>
           </thead>
@@ -91,8 +100,10 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
               <tr key={s.kod}>
                 <th scope="row">{s.ad}</th>
                 <td data-olcut="musteri" data-label="Aktif müşteri"><Deger olcum={s.aktifMusteri} bicim={sayi} /></td>
-                <td data-olcut="donusum" data-label="Denemeden ücretliye"><Donusum olcum={s.donusum} /></td>
                 <td data-olcut="tahsilat" data-label={`${donem.etiket} tahsilat`}><Deger olcum={s.tahsilat} bicim={para} /></td>
+                <td className="kup-durum" data-label="Durum">
+                  {s.saglik ? <span className="kup-saglik" data-tone={s.saglik.ton} title={s.saglik.not}>{s.saglik.etiket}</span> : <span className="kup-yok">—</span>}
+                </td>
                 <td className="kup-ac">
                   <Link href={`/panel/platform/urunler/${s.kod}`}>Aç</Link>
                 </td>
@@ -113,6 +124,7 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
             <li key={s.kod}>
               <Link href={`/panel/platform/urunler/${s.kod}`}>
                 <span className="kup-mobil-ad">{s.ad}</span>
+                {s.saglik ? <span className="kup-saglik" data-tone={s.saglik.ton}>{s.saglik.etiket}</span> : null}
                 <span className="kup-mobil-deger">
                   {olcut === "donusum" ? <Donusum olcum={s.donusum} />
                     : olcut === "tahsilat" ? <Deger olcum={s.tahsilat} bicim={para} />

@@ -545,3 +545,263 @@ test("menüdeki marka kırıksa, ezikse ya da yoksa düşer", () => {
     ...temel, yanMenu: { ...menu, marka: { dosya: "arvoos-320.png", yuklendi: true, genislik: 150, oranSapmasi: 0.014 } },
   }).eksik, []);
 });
+
+test("iki katlı menü: alt kat yanlış kurulmuşsa düşer", () => {
+  /*
+    26.11.2026, onaylı mockup. Dört ölçüt birlikte aranıyor; üçü tek
+    başına yanıltıcı. Aşağıdaki "sağlam" değerler 1440×900'de GERÇEKTEN
+    ölçülenler (Finans → Tahsilatlar).
+  */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const menu = {
+    ortuyor: false, oge: 5, adsiz: 0, ipucusuz: 0, odaklanamayan: 0, sag: 240, icerikSol: 264, pencereAcik: false,
+    secili: ["Tahsilatlar"],
+    marka: { dosya: "arvoos-320.png", yuklendi: true, genislik: 116, oranSapmasi: 0.002 },
+    seritGorunur: false,
+  };
+  const saglam = {
+    modul: "Finans", geriDugme: true, geriMetin: "Ana menüye dön", bolum: 3, baglantili: true,
+    adlar: ["Tahsilatlar", "Ödeme onayları", "Abonelikler"], secili: ["Tahsilatlar"], anaListeGizli: true,
+  };
+  assert.deepEqual(tekEkranHukmu("1440x900 acik konsol", { ...temel, yanMenu: { ...menu, altKat: saglam } }).eksik, []);
+
+  /* Geri dönüş bağlantı olursa adres değişir: açık sayfa ve süzgeçler gider. */
+  const baglanti = tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, yanMenu: { ...menu, altKat: { ...saglam, geriDugme: false } },
+  });
+  assert.equal(baglanti.gecti, false);
+  assert.ok(baglanti.eksik.some((m: string) => m.includes("düğme değil")), baglanti.eksik.join(" | "));
+
+  /* Bölümler düğme olursa adres paylaşılamaz. */
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, yanMenu: { ...menu, altKat: { ...saglam, baglantili: false } },
+  }).eksik.some((m: string) => m.includes("bağlantı değil")));
+
+  /* Ana liste ile alt menü aynı anda: 240 px'lik panel taşar. */
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, yanMenu: { ...menu, altKat: { ...saglam, anaListeGizli: false } },
+  }).eksik.some((m: string) => m.includes("aynı anda")));
+
+  /* Yatay şerit de çiziliyorsa aynı bağlantı iki yerde "seçili" görünür. */
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, yanMenu: { ...menu, seritGorunur: true, altKat: saglam },
+  }).eksik.some((m: string) => m.includes("şeridi alt menüyle birlikte")));
+});
+
+test("iki katlı gezinme: geri dönüş adresi değiştirirse düşer", () => {
+  /* 1440×900'de tıklamayla ölçülen sağlam yol. */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const saglam = {
+    baslangic: { adres: "/panel", kat: "ana", odak: "Aç", secili: ["Ana Sayfa"] },
+    modulAcildi: { adres: "/panel/platform/tahsilat", kat: "alt", odak: "Ana menüye dön", secili: ["Tahsilatlar"] },
+    bolumSecildi: { adres: "/panel/platform/billing", kat: "alt", odak: "Abonelikler", secili: ["Abonelikler"] },
+    anaMenuyeDonuldu: { adres: "/panel/platform/billing", kat: "ana", odak: "Finans4", secili: ["Finans4"] },
+    tarayiciGeri: { adres: "/panel/platform/tahsilat", kat: "ana", odak: "Finans4", secili: ["Finans4"] },
+  };
+  assert.deepEqual(tekEkranHukmu("1440x900 acik konsol", { ...temel, katGezinme: saglam }).eksik, []);
+
+  /* Geri dönüş bir bağlantı olsaydı ölçüm tam olarak böyle görünürdü:
+     ana liste gelir ama adres de modülün girişine atlar. */
+  const adresKaydi = tekEkranHukmu("1440x900 acik konsol", {
+    ...temel,
+    katGezinme: { ...saglam, anaMenuyeDonuldu: { ...saglam.anaMenuyeDonuldu, adres: "/panel/platform/tahsilat" } },
+  });
+  assert.equal(adresKaydi.gecti, false);
+  assert.ok(adresKaydi.eksik.some((m: string) => m.includes("adresi değiştiriyor")), adresKaydi.eksik.join(" | "));
+
+  /* Odak eski düğmede kalırsa klavye kullanıcısı listenin başına döner. */
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, katGezinme: { ...saglam, modulAcildi: { ...saglam.modulAcildi, odak: "Finans4" } },
+  }).eksik.some((m: string) => m.includes("Ana menüye dön")));
+
+  /* Tarayıcı geri tuşu bölüm değişikliğini geri almalı. */
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, katGezinme: { ...saglam, tarayiciGeri: { ...saglam.tarayiciGeri, adres: "/panel/platform/billing" } },
+  }).eksik.some((m: string) => m.includes("geri tuşu")));
+});
+
+test("üst iki kart kaymış, dar ya da hizasızsa düşer", () => {
+  /* 1440×900'de ölçülen sağlam değerler: 58/42, 16 px boşluk, üst
+     kenarlar aynı hatta, sağ/sol kenar alttaki ürün kartıyla hizalı. */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const saglam = { yanYana: true, ustFarki: 0, bosluk: 16, oran: 58, sagFarki: 0, solFarki: 0 };
+  assert.deepEqual(tekEkranHukmu("1440x900 acik konsol", { ...temel, ustKartlar: saglam }).eksik, []);
+
+  const kaymis = tekEkranHukmu("1440x900 acik konsol", { ...temel, ustKartlar: { ...saglam, ustFarki: 12 } });
+  assert.equal(kaymis.gecti, false);
+  assert.ok(kaymis.eksik.some((m: string) => m.includes("üst kenarı 12 px")), kaymis.eksik.join(" | "));
+
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", { ...temel, ustKartlar: { ...saglam, oran: 50 } })
+    .eksik.some((m: string) => m.includes("%50")));
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", { ...temel, ustKartlar: { ...saglam, bosluk: 24 } })
+    .eksik.some((m: string) => m.includes("24 px")));
+  /* PR #330'da ölçülen hata sınıfı: kart ızgarayı bitirmiyor. */
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", { ...temel, ustKartlar: { ...saglam, sagFarki: 296 } })
+    .eksik.some((m: string) => m.includes("hizalı değil")));
+
+  /* Dar ekran: kartlar alt alta, oran ve üst hizası ölçülmüyor — ama
+     sol/sağ kenar hizası orada da geçerli. */
+  assert.deepEqual(tekEkranHukmu("390x844 acik konsol", {
+    sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 700, dockUstu: 781,
+    ustKartlar: { yanYana: false, ustFarki: 313, bosluk: 16, oran: 50, sagFarki: 0, solFarki: 0 },
+  }).eksik, []);
+});
+
+test("kaplama odağı içeri almıyor, Esc kapatmıyor ya da odak dönmüyorsa düşer", () => {
+  /* 1440×900'de ölçülen sağlam değerler (komut paleti, dönem seçici,
+     Uygulamalar penceresi). */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const saglam = {
+    komutPaleti: { acik: true, odakIcinde: true, acikkenOdak: "Ara", kapandi: true, beklenenOdak: "Aç", odakDondu: "Aç" },
+    donemSecici: { acik: true, odakIcinde: true, acikkenOdak: "Dönem seç", kapandi: true, beklenenOdak: "Dönem seç", odakDondu: "Dönem seç" },
+    uygulamalar: { acik: true, odakIcinde: true, acikkenOdak: "Kapat", kapandi: true, beklenenOdak: "Uygulamalar", odakDondu: "Uygulamalar" },
+  };
+  assert.deepEqual(tekEkranHukmu("1440x900 acik konsol", { ...temel, kaplamalar: saglam }).eksik, []);
+
+  /* Odak <body>'de kalırsa klavye kullanıcısı sayfanın başına düşer. */
+  const odaksiz = tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, kaplamalar: { ...saglam, uygulamalar: { ...saglam.uygulamalar, odakDondu: "" } },
+  });
+  assert.equal(odaksiz.gecti, false);
+  assert.ok(odaksiz.eksik.some((m: string) => m.includes("odak dönmüyor")), odaksiz.eksik.join(" | "));
+
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, kaplamalar: { ...saglam, komutPaleti: { ...saglam.komutPaleti, kapandi: false } },
+  }).eksik.some((m: string) => m.includes("Esc ile kapanmıyor")));
+
+  assert.ok(tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, kaplamalar: { ...saglam, komutPaleti: { ...saglam.komutPaleti, odakIcinde: false } },
+  }).eksik.some((m: string) => m.includes("odak içeri girmiyor")));
+});
+
+test("ray çekmecesi: geri ve kapat ayrı, bölümler bağlantı, şerit gizli", () => {
+  /* 768×600'de ölçülen sağlam değerler (Finans ikonu → çekmece). */
+  const temel = { sayfaDikey: "600/600", sayfaYatay: "768/768", dockOrtuyor: false, icerikAlt: 500, dockUstu: 540 };
+  const saglam = {
+    acik: true, baslik: "Finans", geriMetin: "Ana menüye dön", kapatVar: true,
+    adlar: ["Tahsilatlar", "Ödeme onayları", "Abonelikler"], baglantili: true,
+    odakIcinde: true, odak: "Ana menüye dön", seritGorunur: false,
+    kapandi: true, odakDondu: "Finans, 4 bekleyen bölümleri",
+  };
+  assert.deepEqual(tekEkranHukmu("768x600 acik konsol", { ...temel, rayCekmece: saglam }).eksik, []);
+
+  const kapali = tekEkranHukmu("768x600 acik konsol", { ...temel, rayCekmece: { acik: false } });
+  assert.equal(kapali.gecti, false);
+  assert.ok(kapali.eksik.some((m: string) => m.includes("çekmeceyi açmıyor")), kapali.eksik.join(" | "));
+
+  /* Şerit de çizilirse aynı sayfa iki yerde "seçili" görünür. */
+  assert.ok(tekEkranHukmu("768x600 acik konsol", { ...temel, rayCekmece: { ...saglam, seritGorunur: true } })
+    .eksik.some((m: string) => m.includes("şerit de çiziliyor")));
+  /* Odak ray düğmesine dönmezse klavye kullanıcısı listenin başına düşer. */
+  assert.ok(tekEkranHukmu("768x600 acik konsol", { ...temel, rayCekmece: { ...saglam, odakDondu: "" } })
+    .eksik.some((m: string) => m.includes("ray düğmesine dönmüyor")));
+  /* Bölümler düğme olursa adres paylaşılamaz. */
+  assert.ok(tekEkranHukmu("768x600 acik konsol", { ...temel, rayCekmece: { ...saglam, baglantili: false } })
+    .eksik.some((m: string) => m.includes("bağlantı değil")));
+});
+
+test("telefon paneli: geri bir üst kata çıkar, kapat paneli kapatır", () => {
+  /* 390×844'te ölçülen sağlam akış. */
+  const temel = { sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 700, dockUstu: 781 };
+  const saglam = {
+    anaKat: { acik: true, kat: "ana", baslik: "Uygulamalar", geriVar: false, kapatVar: true, adlar: ["Ana Sayfa"], odak: "Kapat" },
+    altKat: { acik: true, kat: "alt", baslik: "Finans", geriVar: true, kapatVar: true, adlar: ["Tahsilatlar", "Ödeme onayları", "Abonelikler"], odak: "Ana menüye dön" },
+    geriDonuldu: { acik: true, kat: "ana", baslik: "Uygulamalar", geriVar: false, kapatVar: true, adlar: ["Ana Sayfa"], odak: "Finans4 okunmamış" },
+    kapatildi: { acik: false },
+  };
+  assert.deepEqual(tekEkranHukmu("390x844 acik konsol", { ...temel, telefonPanel: saglam }).eksik, []);
+
+  /*
+    İki denetimi tek düğmeye indirmenin ölçümdeki görüntüsü: geri
+    tuşu paneli kapatıyor. Kullanıcı modül listesine dönmek için
+    paneli yeniden açmak zorunda kalır.
+  */
+  const tekDugme = tekEkranHukmu("390x844 acik konsol", {
+    ...temel, telefonPanel: { ...saglam, geriDonuldu: { acik: false } },
+  });
+  assert.equal(tekDugme.gecti, false);
+  assert.ok(tekDugme.eksik.some((m: string) => m.includes("paneli kapatıyor")), tekDugme.eksik.join(" | "));
+
+  /* Modül açılınca panel içeriği değişmiyorsa ikinci kat yok demektir. */
+  assert.ok(tekEkranHukmu("390x844 acik konsol", {
+    ...temel, telefonPanel: { ...saglam, altKat: { ...saglam.altKat, kat: "ana" } },
+  }).eksik.some((m: string) => m.includes("alt menüyle değişmiyor")));
+
+  assert.ok(tekEkranHukmu("390x844 acik konsol", {
+    ...temel, telefonPanel: { ...saglam, kapatildi: { acik: true } },
+  }).eksik.some((m: string) => m.includes("'Kapat' paneli kapatmıyor")));
+});
+
+test("menü, adres ve sayfa içeriği aynı akışı göstermeli", () => {
+  /*
+    26.11.2026 inceleme bulgusu: paylaşılan karede Finans alt menüsü
+    açıkken sayfa başlığı hâlâ "Ana Sayfa" idi — düzenek rotadan
+    bağımsız tek bir ekran çiziyordu.
+  */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const saglam = {
+    baslangic: { adres: "/panel", kat: "ana", odak: "Uygulamalar", secili: ["Ana Sayfa"], baslik: "Ana Sayfa" },
+    modulAcildi: { adres: "/panel/platform/tahsilat", kat: "alt", odak: "Ana menüye dön", secili: ["Tahsilatlar"], baslik: "Tahsilatlar" },
+    bolumSecildi: { adres: "/panel/platform/payments", kat: "alt", odak: "Ödeme onayları", secili: ["Ödeme onayları"], baslik: "Ödeme onayları" },
+    anaMenuyeDonuldu: { adres: "/panel/platform/payments", kat: "ana", odak: "Finans4", secili: ["Finans4"], baslik: "Ödeme onayları" },
+    tarayiciGeri: { adres: "/panel/platform/tahsilat", kat: "ana", odak: "Finans4", secili: ["Finans4"], baslik: "Tahsilatlar" },
+  };
+  assert.deepEqual(tekEkranHukmu("1440x900 acik konsol", { ...temel, katGezinme: saglam }).eksik, []);
+
+  const bayat = tekEkranHukmu("1440x900 acik konsol", {
+    ...temel, katGezinme: { ...saglam, bolumSecildi: { ...saglam.bolumSecildi, baslik: "Ana Sayfa" } },
+  });
+  assert.equal(bayat.gecti, false);
+  assert.ok(bayat.eksik.some((m: string) => m.includes("içerikte hâlâ Ana Sayfa")), bayat.eksik.join(" | "));
+});
+
+test("otomasyon satırı: ad, etiket ve açıklama birlikte doğrulanır", () => {
+  /*
+    27.11.2026 inceleme bulgusu. Telefon kaydında "Veri
+    senkronizasyonu" satırı, bağlantı kopukluğunu anlatan bir
+    açıklamayla birlikte "Yeniden deneniyor" gösteriyordu. Etiket tek
+    başına geçerli bir etiket, açıklama tek başına doğru bir cümle;
+    yanlış olan EŞLEŞMEYDİ. Ölçüt bu yüzden üçünü birlikte okuyor.
+  */
+  const temel = { sayfaDikey: "844/844", sayfaYatay: "390/390", dockOrtuyor: false, icerikAlt: 700, dockUstu: 781 };
+
+  /* Köprü kopuk, kuyruk boş: ölçülen sağlam hâl. */
+  const kopuk = [
+    { ad: "Otomatik tahsilat", etiket: "Tamamlandı", aciklama: "Son çalışma başarılı.", ton: "success", aciklamaKirpik: false },
+    { ad: "Proforma ve hatırlatmalar", etiket: "Gönderildi", aciklama: "2 iş de başarılı.", ton: "success", aciklamaKirpik: false },
+    { ad: "Veri senkronizasyonu", etiket: "Bağlantı kesildi", aciklama: "Bir ürüne ulaşılamıyor; kopya eskiyor.", ton: "danger", aciklamaKirpik: false },
+  ];
+  assert.deepEqual(tekEkranHukmu("390x844 acik konsol", { ...temel, otomasyonSatirlari: kopuk }).eksik, []);
+
+  /* Deneme kuyruğu dolu: ölçülen sağlam hâl. */
+  const kuyruk = [
+    { ad: "Otomatik tahsilat", etiket: "Yeniden deneniyor", aciklama: "2 abonelikte çekim düştü; deneme hakkı sürüyor.", ton: "warning", aciklamaKirpik: false },
+    { ad: "Proforma ve hatırlatmalar", etiket: "Gönderildi", aciklama: "2 iş de başarılı.", ton: "success", aciklamaKirpik: false },
+    { ad: "Veri senkronizasyonu", etiket: "Tamamlandı", aciklama: "3 iş de başarılı.", ton: "success", aciklamaKirpik: false },
+  ];
+  assert.deepEqual(tekEkranHukmu("390x844 acik konsol", { ...temel, otomasyonSatirlari: kuyruk }).eksik, []);
+
+  /* 26.11.2026'da ekranda GERÇEKTEN duran yanlış eşleşme. */
+  const eskiHata = tekEkranHukmu("390x844 acik konsol", {
+    ...temel,
+    otomasyonSatirlari: [{ ad: "Veri senkronizasyonu", etiket: "Yeniden deneniyor", aciklama: "Bir ürüne ulaşılamıyor; eşitleme on dakikada bir yeniden deniyor.", ton: "warning", aciklamaKirpik: false }],
+  });
+  assert.equal(eskiHata.gecti, false);
+  assert.ok(eskiHata.eksik.some((m: string) => m.includes("açıklamasıyla uyuşmuyor")), eskiHata.eksik.join(" | "));
+
+  /* Ton da etikete bağlı: "Bağlantı kesildi" sarı çizilemez. */
+  assert.ok(tekEkranHukmu("390x844 acik konsol", {
+    ...temel, otomasyonSatirlari: [{ ...kopuk[2], ton: "warning" }],
+  }).eksik.some((m: string) => m.includes("tonu warning")));
+
+  /* Sözlükte olmayan bir etiket sessizce geçmez: yeni durum eklenince
+     ölçüt de güncellenmeli. */
+  assert.ok(tekEkranHukmu("390x844 acik konsol", {
+    ...temel, otomasyonSatirlari: [{ ad: "Veri senkronizasyonu", etiket: "Bilinmeyen", aciklama: "…", ton: "success", aciklamaKirpik: false }],
+  }).eksik.some((m: string) => m.includes("bilinmeyen durum etiketi")));
+
+  /* Telefonda açıklama kırpılırsa durum yarım okunur. */
+  assert.ok(tekEkranHukmu("390x844 acik konsol", {
+    ...temel, otomasyonSatirlari: [{ ...kuyruk[0], aciklamaKirpik: true }],
+  }).eksik.some((m: string) => m.includes("açıklama kırpılıyor")));
+});

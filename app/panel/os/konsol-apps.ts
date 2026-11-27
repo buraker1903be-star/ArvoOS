@@ -58,7 +58,10 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
   const sozlesme = Math.max(0, Math.round(bekleyen?.sozlesme ?? 0));
   const finansRozeti = odeme + sozlesme;
   return [
-    { key: "home", label: "Genel Bakış", href: "/panel", ikon: "home", yollar: [] },
+    /* ADI "ANA SAYFA" (26.11.2026, ürün kararı): ekran artık bir özet
+       listesi değil, kurucunun günü buradan başlıyor. "Genel Bakış"
+       adı modül ekranlarında ve ürün detayının sekmesinde duruyor. */
+    { key: "home", label: "Ana Sayfa", href: "/panel", ikon: "home", yollar: [] },
     {
       key: "musteriler", label: "Müşteriler", href: "/panel/platform/musteriler", ikon: "crm",
       yollar: ["/panel/platform/musteriler", "/panel/platform/kullanicilar", "/panel/platform/subscribers", "/panel/platform/duyuru", "/panel/platform/rapor"],
@@ -111,6 +114,19 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
            Modüller 02.11.2026'dan beri Ürünler'in "Modül matrisi" sekmesi. */
         { key: "fiyatlar", href: "/panel/platform/fiyatlar", label: "Fiyatlar" },
       ],
+    },
+    /*
+      OTOMASYONLAR (26.11.2026): zamanlanmış işlerin kendi girdisi.
+      Hedef sistem sağlığının cron bölümü — işlerin koşma kaydı,
+      gecikmesi ve hata özeti orada duruyor (lib/cron-isleri). Ayrı bir
+      modül AÇILMADI: var olmayan bir ekranı menüye koymak, tıklayınca
+      hiçbir şey açmayan satır demekti.
+    */
+    {
+      key: "otomasyonlar", label: "Otomasyonlar", href: "/panel/platform/saglik?sekme=isler", ikon: "repeat",
+      yollar: [],
+      /* Ekran sistem sağlığının sekmesi: yetki de sistem alanından. */
+      alan: "sistem",
     },
     {
       key: "sistem", label: "Sistem", href: "/panel/platform/kurulumlar", ikon: "settings",
