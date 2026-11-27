@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { productName } from "@/lib/products";
-import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
+import { getPaymentIncidents, incidentLabels, incidentNotes, YENIDEN_ISLENEBILIR } from "@/lib/payment-incidents";
 import { KKart, KNot } from "../konsol-ui";
 import { basHarfleri, ODEME_DURUMU, PAKET_ADI, para, tarih, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
@@ -12,7 +12,7 @@ import { SatirTiklama } from "../../crm/satir-tiklama";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { enCok } from "@/lib/liste-istatistik";
-import { reviewBankTransferPayment } from "./actions";
+import { reprocessPaytrEvent, reviewBankTransferPayment } from "./actions";
 import { KararFormu } from "./karar-formu";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
 // plt-quote, plt-receipt, plt-mono, kiraci-baglanti hâlâ buradan.
@@ -205,7 +205,15 @@ export default async function PaymentApprovalsPage() {
                     return (
                       <tr key={incident.id}>
                         <td data-label="Kurum">{kisi(ad, incident.merchantOid, href)}</td>
-                        <td data-label="Sebep"><span className="status-pill" data-tone="danger">{sebep}</span><small title={incidentNotes[incident.result]}>{incidentNotes[incident.result]}</small></td>
+                        <td data-label="Sebep">
+                          <span className="status-pill" data-tone="danger">{sebep}</span><small title={incidentNotes[incident.result]}>{incidentNotes[incident.result]}</small>
+                          {YENIDEN_ISLENEBILIR.has(incident.result) ? (
+                            <form action={reprocessPaytrEvent}>
+                              <input type="hidden" name="event_id" value={incident.id} />
+                              <button type="submit" className="panel-secondary">Yeniden işle</button>
+                            </form>
+                          ) : null}
+                        </td>
                         <td className="crm-col-date" data-label="Tarih">{tarihSaat(incident.createdAt)}</td>
                         <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{incident.paymentAmount !== null ? para(incident.paymentAmount) : "—"}</span></td>
                         <MobilSatir href={href} baslik={ad} durum={{ etiket: sebep, ton: "danger" }}

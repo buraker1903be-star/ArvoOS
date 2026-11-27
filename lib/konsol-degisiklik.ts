@@ -91,6 +91,8 @@ export const KONSOL_KAYIT_TURU: Record<string, string> = {
   founder_scope: "Kurucu yetkisi",
   package_limits: "Paket limiti",
   proforma: "Proforma",
+  // PayTR bildirimini yeniden işleme (arvo_reprocess_paytr_event, 10.11.2026).
+  payment_event: "Ödeme bildirimi",
 };
 
 /**
@@ -112,6 +114,6 @@ export function konsolKaydiCumlesi(kayit: { action: string; entity_type: string;
   const degisiklikler = Array.isArray(m.degisiklikler) ? (m.degisiklikler as Degisiklik[]) : [];
   const ayrinti = degisiklikler.length ? degisiklikOzeti(degisiklikler) : null;
   /* Askıya alma ve kapatma dikkat ister; gerisi bilgi. */
-  const uyari = degisiklikler.some((d) => /Askıda|Kapalı|İptal|Kapatıldı|Silindi/.test(d.sonra));
+  const uyari = degisiklikler.some((d) => /Askıda|Kapalı|İptal|Kapatıldı|Silindi|lisans kaydı yok/.test(d.sonra));
   return { olay: baslik, ayrinti, ton: uyari ? "warning" : "info" };
 }
