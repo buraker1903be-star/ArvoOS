@@ -3,6 +3,7 @@ import { sureOlcer } from "@/lib/sure-olcumu";
 import { kopruSagliklari } from "@/lib/kopru-sagliklari";
 import MIGRATION_IZLERI from "@/lib/migration-izleri.json";
 import { notFound } from "next/navigation";
+import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arvolabKopyalari } from "@/lib/arvolab";
@@ -142,7 +143,7 @@ type BekleyenSozlesme = { id: string; contract_no: string | null; customer_name:
   seçim paylaşılan bağlantıda korunuyor. İstemci durumu yok.
 */
 export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: { donem?: DonemKodu; olcut?: OlcutKodu } = {}) {
-  const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
+  const { supabase, userId, membership, isPlatformOwner, konsolKapsami } = await getPanelContext();
   /* Kabuk da eliyor (layout.tsx) ama yetki üç yerde birden duruyor
      (AGENTS.md): kabuğun bir gün değişmesi bu sayfayı açmamalı. */
   if (!isPlatformOwner) notFound();
@@ -704,6 +705,9 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
       alt: [kurumAdi.get(o.organization_id) ?? "Kurum", para(Number(o.amount ?? 0), o.currency ?? "TRY")].join(" · "),
       zaman: o.created_at,
       href: "/panel/platform/payments",
+      /* Eylem adı burada yazılıyor: kalemin TÜRÜ yalnızca burada
+         belli. Kartta başlıktan türetmek Türkçe ek uyumunu bozuyor. */
+      eylem: "Ödeme bildirimini incele",
     })),
     ...(sozlesmeler ?? []).map((i) => ({
       anahtar: `sozlesme-${i.id}`,
@@ -711,6 +715,7 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
       alt: [i.customer_name || "Müşteri", i.contract_no].filter(Boolean).join(" · "),
       zaman: i.created_at,
       href: "/panel/platform/sozlesmeler",
+      eylem: "Sözleşmeyi incele",
     })),
     ...hatirlatmalar.map((h) => ({
       anahtar: `yenileme-${h.organizationId}-${h.product}`,
@@ -718,6 +723,7 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
       baslik: h.daysLeft < 0 ? "Dönemi doldu" : "Yaklaşan yenileme",
       alt: [h.organizationName, h.daysLeft < 0 ? `${-h.daysLeft} gün geçti` : `${h.daysLeft} gün kaldı`].join(" · "),
       href: `/panel/platform/musteriler/${h.organizationId}`,
+      eylem: "Müşteriyi aç",
     })),
     ...destekTalepleri.map((t) => ({
       anahtar: `destek-${t.id}`,
@@ -725,7 +731,7 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
       alt: [kurumAdi.get(t.organization_id) ?? "Kurum", t.subject].filter(Boolean).join(" · "),
       zaman: t.last_message_at,
       href: `/panel/platform/destek/${t.id}`,
-      eylem: "Görüntüle",
+      eylem: "Talebi görüntüle",
     })),
   ].slice(0, ONCELIKLI_TAVAN);
   /*
@@ -856,9 +862,23 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
     yalnızca neyi GÖSTERDİĞİNİ değiştirdi, ne yaptığını değil.
   */
   const dikkatSayisi = kopruler.length;
+  /*
+    SELAMLAMA (27.11.2026). Ad VARSA "İyi günler, Ayşe", yoksa
+    "Ana Sayfa". Ad üst çubukta zaten yazıyor ama orası kimlik alanı;
+    başlıkta selam, ekranı kişinin günlük işine bağlıyor.
+
+    Okuma düşerse ad yok sayılır ve başlık "Ana Sayfa" olur: bir adın
+    okunamaması ekranı bozmamalı. Hata YUTULMUYOR, "ad yok" ile aynı
+    sonuca varıyor — gösterilecek yanlış bir şey yok.
+  */
+  const { data: kendiKaydi, error: adHatasi } = await supabase
+    .from("hr_employees").select("full_name")
+    .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
+  if (adHatasi) console.error("konsol ana sayfa: ad okunamadı", adHatasi.message);
+  const ad = formatPersonName((kendiKaydi as { full_name?: string | null } | null)?.full_name);
   return (
     <GenelBakis
-      baslik="Ana Sayfa"
+      baslik={ad ? `${selamlama().selam}, ${ad}` : "Ana Sayfa"}
       sinif="dash-sabit konsol-ana"
       eylem={<DonemSecici secili={secilenDonem.kod} taban="/panel" ek={`olcut=${secilenOlcut}`} />}
       durum={

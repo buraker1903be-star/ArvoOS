@@ -51,29 +51,65 @@ export function KararBekleyenlerKarti({ kalemler, okunamayan }: {
   /** Okunamayan kaynaklar: "iş yok" ile "bilmiyoruz" aynı şey değil. */
   okunamayan: string[];
 }) {
+  /*
+    SAYFANIN EN BELİRGİN ALANI: ÖNE ÇIKAN TEK İŞ (27.11.2026).
+
+    Eskiden kuyruğun dört kalemi de eşit ağırlıkta satırlardı ve her
+    birinin sağında bir düğme vardı: ekranda dört "birincil" eylem
+    yan yana duruyor, hangisinin önce yapılacağını yönetici kendisi
+    ayıklıyordu. Kuyruğun zaten bir öncelik sırası var (çağıran taraf
+    sıralıyor); ilk kalem öne çıkarılıyor, TEK birincil düğmeyle.
+
+    Kalanlar ALTTA kompakt satırlar olarak duruyor — kaybolmuyorlar.
+    "Tüm bekleyen işler" diye tek bir ekran YOK: kuyruk dört ayrı
+    kaynaktan geliyor (ödeme, sözleşme, yenileme, destek) ve her
+    kalem kendi ekranına açılıyor. Var olmayan bir rotaya bağlantı
+    koymaktansa kalemlerin kendisi listede duruyor.
+  */
+  const [one, ...kalan] = kalemler;
   return (
     <article className="kak-kart" aria-labelledby="kak-karar-baslik">
       <header className="kak-bas">
         <h2 id="kak-karar-baslik">Karar bekleyenler</h2>
+        {kalan.length ? <span className="kak-sayac">{kalemler.length} iş</span> : null}
       </header>
-      {kalemler.length ? (
-        <ul className="kak-liste">
-          {kalemler.map((k) => (
-            <li key={k.anahtar}>
-              <Link className="kak-satir" href={k.href}>
-                {k.urun ? <span className="kak-urun">{k.urun}</span> : <span className="kak-urun kak-urun-bos" aria-hidden="true" />}
-                <span className="kak-govde">
-                  <b>{k.baslik}</b>
-                  {k.alt ? <small>{k.alt}</small> : null}
-                </span>
-                {kisaZaman(k.zaman) ? <time className="kak-zaman">{kisaZaman(k.zaman)}</time> : null}
-                <span className="kak-eylem">{k.eylem ?? "İncele"}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+      {one ? (
+        <>
+          <div className="kak-one">
+            <div className="kak-one-metin">
+              <p className="kak-one-tur">
+                {one.urun ? <span className="kak-urun">{one.urun}</span> : null}
+                <span>{one.baslik}</span>
+              </p>
+              {one.alt ? <p className="kak-one-kayit">{one.alt}</p> : null}
+              {kisaZaman(one.zaman) ? <time className="kak-zaman">{kisaZaman(one.zaman)}</time> : null}
+            </div>
+            {/* TEK BİRİNCİL EYLEM, doğrudan ilgili kayda. Eylem adını
+                KAYNAK veriyor (konsol-ana-sayfa): başlıktan türetmek
+                Türkçe'de ek uyumunu bozuyor — "sözleşme onayıni
+                incele" gibi. Burada yalnızca yedek var. */}
+            <Link className="panel-primary kak-one-eylem" href={one.href}>{one.eylem ?? "İncele"}</Link>
+          </div>
+          {kalan.length ? (
+            <ul className="kak-liste">
+              {kalan.map((k) => (
+                <li key={k.anahtar}>
+                  <Link className="kak-satir" href={k.href}>
+                    {k.urun ? <span className="kak-urun">{k.urun}</span> : <span className="kak-urun kak-urun-bos" aria-hidden="true" />}
+                    <span className="kak-govde">
+                      <b>{k.baslik}</b>
+                      {k.alt ? <small>{k.alt}</small> : null}
+                    </span>
+                    {kisaZaman(k.zaman) ? <time className="kak-zaman">{kisaZaman(k.zaman)}</time> : null}
+                    <span className="kak-eylem" aria-hidden="true">→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       ) : (
-        <p className="kak-bos">Karar bekleyen iş yok.</p>
+        <p className="kak-bos">Bekleyen karar yok.</p>
       )}
       {okunamayan.length ? (
         <p className="kak-bos" data-tone="danger">

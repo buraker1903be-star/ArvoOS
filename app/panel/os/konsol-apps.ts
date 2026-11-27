@@ -104,16 +104,24 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
       yollar: ["/panel/platform/destek"],
     },
     {
-      key: "urunler", label: "Ürünler ve Fiyatlar", kisaEtiket: "Ürünler", href: "/panel/platform/urunler", ikon: "box",
+      key: "urunler", label: "Ürünler", href: "/panel/platform/urunler", ikon: "box",
       yollar: ["/panel/platform/urunler", "/panel/platform/moduller", "/panel/platform/fiyatlar"],
-      /* Dört ürünün kendi sayfası Ürünler özetinin kartlarından açılıyor;
-         şeritte yer kaplamıyorlar (14.10.2026'da yedi bölüm kalabalıktı). */
-      bolumler: [
-        { key: "urunler", href: "/panel/platform/urunler", label: "Ürünler" },
-        /* Paket limitleri ve fiyat geçmişi Fiyatlar sayfasının kendi bölümleri;
-           Modüller 02.11.2026'dan beri Ürünler'in "Modül matrisi" sekmesi. */
-        { key: "fiyatlar", href: "/panel/platform/fiyatlar", label: "Fiyatlar" },
-      ],
+      /*
+        İKİNCİ KAT KALDIRILDI (27.11.2026).
+
+        Modülün adı "Ürünler ve Fiyatlar"dı ve ikinci katında yine
+        "Ürünler" yazıyordu: menü "Ürünler → Ürünler" diye okunuyordu,
+        yani bir tık hiçbir yere götürmüyordu. İkinci kat yalnızca
+        İKİ hedef taşıyordu ve ikincisi (Fiyatlar) artık ürünün kendi
+        "Fiyat basamakları" bölümü — fiyat yönetimine ürün bağlamından
+        giriliyor. Tek hedefi kalan bir modülün ikinci katı yok.
+
+        Ürün dışı EK HİZMET fiyatları bir ürüne ait olmadığı için
+        oraya taşınamıyor; erişimi Ürünler listesinin ⋯ menüsünde,
+        yani yine Ürünler bağlamında duruyor (urunler/page.tsx).
+        /panel/platform/fiyatlar `yollar`da kalıyor: o adres
+        açıldığında sol menüde Ürünler etkin kalmalı.
+      */
     },
     /*
       OTOMASYONLAR (26.11.2026): zamanlanmış işlerin kendi girdisi.

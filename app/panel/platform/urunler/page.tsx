@@ -171,7 +171,12 @@ export default async function UrunlerPage({ searchParams }: {
       <details className="os-menu talep-menu">
         <summary className="panel-secondary" aria-label="Diğer ekranlar">⋯</summary>
         <div className="os-menu-list" role="menu">
-          <Link className="os-menu-item" role="menuitem" href="/panel/platform/fiyatlar">Fiyat listesi</Link>
+          {/* EK HİZMETLER bir ürün değil (lib/site/pricing · ADD_ONS):
+              taşınacağı bir ürün detayı yok. Yan menüdeki bağımsız
+              Fiyatlar girişi kalktığı için erişimi buraya, yani yine
+              Ürünler bağlamına alındı. Ürün fiyatları artık ürünün
+              kendi "Fiyat basamakları" bölümünde. */}
+          <Link className="os-menu-item" role="menuitem" href="/panel/platform/fiyatlar?urun=ek">Ek hizmet fiyatları</Link>
           <Link className="os-menu-item" role="menuitem" href="/panel/platform/subscribers">Bireysel abone planları</Link>
           <Link className="os-menu-item" role="menuitem" href="/panel/platform/saglik">Sistem sağlığı</Link>
         </div>

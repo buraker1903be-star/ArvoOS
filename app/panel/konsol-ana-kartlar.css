@@ -219,3 +219,38 @@ a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 4
 */
 .os-root .panel-content:has(> .dash-sabit.konsol-ana){overflow-y:auto;overscroll-behavior:contain}
 .konsol-ana.dash-sabit{flex:0 0 auto}
+
+/*
+  ÖNE ÇIKAN İŞ (27.11.2026). Kuyruğun ilk kalemi sayfanın en belirgin
+  alanı: tür ve kayıt büyük, altında zaman, sağda TEK birincil düğme.
+  Eskiden dört kalem eşit ağırlıkta satırlardı ve dördünün de sağında
+  bir düğme vardı — ekranda dört "birincil" eylem yan yana duruyordu.
+
+  Kaynak ArvoLab'ın ana sayfasındaki "Kaldığınız yer" bloğu
+  (app/dashboard/ana-sayfa-icerik.tsx, .pw-devam): solda metin, sağda
+  eylem, düz yüzey, kart içinde kart yok.
+*/
+.kak-one {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding: var(--sp-3) 0 var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+.kak-one-metin { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 260px; }
+.kak-one-tur { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: 0; }
+.kak-one-tur > span:last-child { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--ink); }
+.kak-one-kayit { margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); }
+.kak-one .kak-zaman { color: var(--muted); font-size: var(--fs-micro); }
+.kak-one-eylem { flex: none; }
+/* Sayaç: kaç iş beklediğini başlıkta söyler, kalan satırlar altta. */
+.kak-sayac { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  /* Telefonda düğme tam genişlik: 120 px'lik bir düğme metnin yanında
+     sıkışıp iki satıra sarıyordu. */
+  .kak-one { align-items: stretch; }
+  .kak-one-eylem { width: 100%; justify-content: center; }
+}

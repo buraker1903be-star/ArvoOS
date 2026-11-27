@@ -56,6 +56,8 @@ const cssler = {
   urundetay: rotaCss("panel/platform/urunler/[urun]"),
   urunler: birlesik("panel/platform/urunler", "panel/platform/urunler/[urun]"),
   fiyatlar: birlesik("panel/platform/fiyatlar", "panel/platform/urunler/[urun]"),
+  /* MOCKUP tek sayfada dört rotayı dolaşıyor: hepsinin CSS'i gerekli. */
+  mockup: birlesik("panel", "panel/platform/urunler", "panel/platform/urunler/[urun]", "panel/platform/fiyatlar"),
 };
 const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol,urundetay,urunler,fiyatlar").split(",");
 
@@ -164,7 +166,11 @@ import { etkinUygulama } from ${a("app/panel/os/os-apps.ts")};
 import { etkinBolum } from ${a("app/panel/os/os-bolumler.ts")};
 import { usePathname } from "next/navigation";
 ${yeniKurulum ? `import { KurulumOzeti } from ${a("app/panel/os/kurulum-ozeti.tsx")};` : ""}
-const sayfa = new URLSearchParams(location.search).get("sayfa") || "ana";
+/* Senaryo sorgu dizesinden; tek dosyalık sürümde sorgu dizesi YOK
+   (file:// ile paylaşılıyor) ve senaryo sayfaya gömülüyor. Gömme
+   olmadan dışa aktarılan dosya "ana"ya düşüp kiracı ekranını
+   çiziyordu — ölçülen değil, bambaşka bir sayfa. */
+const sayfa = new URLSearchParams(location.search).get("sayfa") || window.__SENARYO || "ana";
 /* ?menu=dar: masaüstü sol menünün DARALTILMIŞ hâli. Üretimde bu
    özniteliği ön boyama betiği yazıyor (lib/konsol/gezinme.ts); burada
    aynı öznitelik elle veriliyor ki iki durum da görüntülenebilsin. */
@@ -352,10 +358,13 @@ function Konsol() {
   /* Ana Sayfa kartlarının örnek verisi: yapı üretimdekiyle aynı
      (KararKalemi / Otomasyon tipleri), değerler örnek. */
   const KARARLAR = [
-    { anahtar: "k1", urun: "ArvoLab", baslik: "Ödeme bildirimi", alt: "#P-87421 · Akademik Merkez · ₺28.900 · 3 gün gecikmede", zaman: new Date().toISOString().slice(0, 11) + "09:15:00Z", href: "/panel/platform/payments" },
-    { anahtar: "k2", urun: "ArvoCal", baslik: "Yaklaşan yenileme", alt: "#Y-56390 · Yıldız Eğitim · 12 müşteri · 7 gün içinde", href: "/panel/platform/musteriler/1" },
-    { anahtar: "k3", urun: "ArvoOS", baslik: "Yanıt bekleyen talep", alt: "#T-91877 · Ege Akademi · Kurumsal plan · 18 saattir yanıtsız", zaman: new Date(Date.now() - 86400000).toISOString().slice(0, 11) + "11:27:00Z", href: "/panel/platform/destek/1", eylem: "Görüntüle" },
+    { anahtar: "k1", urun: "ArvoLab", baslik: "Ödeme bildirimi", alt: "#P-87421 · Akademik Merkez · ₺28.900 · 3 gün gecikmede", zaman: new Date().toISOString().slice(0, 11) + "09:15:00Z", href: "/panel/platform/payments", eylem: "Ödeme bildirimini incele" },
+    { anahtar: "k2", urun: "ArvoCal", baslik: "Yaklaşan yenileme", alt: "#Y-56390 · Yıldız Eğitim · 12 müşteri · 7 gün içinde", href: "/panel/platform/musteriler/1", eylem: "Müşteriyi aç" },
+    { anahtar: "k3", urun: "ArvoOS", baslik: "Yanıt bekleyen talep", alt: "#T-91877 · Ege Akademi · Kurumsal plan · 18 saattir yanıtsız", zaman: new Date(Date.now() - 86400000).toISOString().slice(0, 11) + "11:27:00Z", href: "/panel/platform/destek/1", eylem: "Talebi görüntüle" },
   ];
+  /* AD örnek girdi: ADSIZ=1 ile boş geçilir ve başlık "Ana Sayfa"ya
+     düşer — iki hâl de görüntülenebilsin. */
+  const ORNEK_AD = ${JSON.stringify(process.env.ADSIZ ? "" : "Burak")};
   /*
     OTOMASYON SATIRLARI ARTIK ELLE YAZILMIYOR (27.11.2026, inceleme
     bulgusu). Eskiden üç satır sabit metin ve sabit etiketle duruyordu;
@@ -445,7 +454,10 @@ function Konsol() {
     ölçüm var olmayan bir sayfayı ölçer.
   */
   return (
-    <GenelBakis baslik="Ana Sayfa" sinif="dash-sabit konsol-ana"
+    /* BAŞLIK ÜRETİMDEKİ KURALLA (27.11.2026): oturumda ad varsa
+       "İyi günler, <ad>", yoksa "Ana Sayfa" (konsol-ana-sayfa.tsx).
+       Düzenek adı örnek girdiden alıyor, metni kural üretiyor. */
+    <GenelBakis baslik={ORNEK_AD ? "İyi günler, " + ORNEK_AD : "Ana Sayfa"} sinif="dash-sabit konsol-ana"
       eylem={<DonemSecici secili="30g" taban="/panel" />}
       durum={
         <p className="kak-durum">
@@ -823,7 +835,8 @@ function UrunDetay() {
 /* ?yol=<rota>: bağlamlı gezinmenin kanıtı için rota dışarıdan verilebilir
    (ör. /panel/platform/billing → ana menüde Finans, şeritte Abonelikler). */
 window.__yol = new URLSearchParams(location.search).get("yol")
-  || (sayfa === "urundetay" ? "/panel/platform/urunler/arvolab"
+  || (sayfa === "mockup" ? "/panel"
+    : sayfa === "urundetay" ? "/panel/platform/urunler/arvolab"
     : sayfa === "urunler" ? "/panel/platform/urunler"
     : sayfa === "fiyatlar" ? "/panel/platform/fiyatlar"
     : sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel");
@@ -838,7 +851,7 @@ function Kabuk() {
   /* Konsol senaryoları yeni kabuğu kullanıyor (.os-konsol): masaüstü ve
      tablette sol menü, telefonda alt çubuk. Kiracı senaryoları (ana,
      crm) dock'ta kalıyor — üretimdeki ayrımın aynısı. */
-  const konsolMu = sayfa === "konsol" || sayfa === "urundetay" || sayfa === "urunler" || sayfa === "fiyatlar";
+  const konsolMu = sayfa === "konsol" || sayfa === "urundetay" || sayfa === "urunler" || sayfa === "fiyatlar" || sayfa === "mockup";
   return <div className={konsolMu ? "panel-root os-root os-konsol" : "panel-root os-root"}><main className="panel-frame os-frame">
     {/*
       ÜST ÇUBUK. Kiracı senaryolarında olduğu gibi sade; KONSOL
@@ -870,7 +883,7 @@ function Kabuk() {
         </div>
       ) : null}
     </header>
-    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? (urunDetayiMi ? <UrunDetay /> : <FiyatlarKarsilastirma />) : <Ana />}</div></section>
+    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "mockup" ? (urunDetayiMi ? <UrunDetay /> : yolSimdi.startsWith("/panel/platform/urunler") ? <UrunlerListesi /> : yolSimdi.startsWith("/panel/platform/fiyatlar") ? <FiyatlarKarsilastirma /> : <KonsolRota />) : sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? (urunDetayiMi ? <UrunDetay /> : <FiyatlarKarsilastirma />) : <Ana />}</div></section>
     {/* Komut paleti ve menü kapatıcı GERÇEK bileşenler: kaplamaların
         odak/Esc davranışı ölçülebilsin diye (26.11.2026). */}
     {konsolMu ? <OsKomutPaleti uygulamalar={konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 })} cikis={async () => {}} /> : null}
@@ -894,6 +907,19 @@ createRoot(document.getElementById("kok")).render(<Kabuk />);
 const KAMU_YOL = "file://" + ${JSON.stringify(path.join(KOK, "public"))};
 function kokYollariCevir() {
   for (const g of document.querySelectorAll('img[src^="/"]')) {
+    /* Tek dosyalık sürümde marka görselleri data URI olarak gömülü
+       (window.__MARKA); orada disk yolu yok. */
+    if (window.__MARKA) {
+      const sr0 = g.getAttribute("srcset");
+      if (sr0) g.setAttribute("srcset", sr0.split(",").map((x) => x.trim()).map((x) => {
+        const bos = x.indexOf(" ");
+        const yol = bos === -1 ? x : x.slice(0, bos);
+        return (window.__MARKA[yol] || yol) + (bos === -1 ? "" : x.slice(bos));
+      }).join(", "));
+      const y = g.getAttribute("src");
+      if (window.__MARKA[y]) g.setAttribute("src", window.__MARKA[y]);
+      continue;
+    }
     const sr = g.getAttribute("srcset");
     /* Düzenli ifade YOK: bu kaynak önce .mjs şablonuna, sonra üretilen
        dosyaya giriyor ve ters bölü iki kez yutuluyor (bir kez yaşandı:
@@ -912,8 +938,88 @@ await build({
   alias: { "next/link": path.join(shim, "link.tsx"), "next/navigation": path.join(shim, "navigation.ts"), "next/image": path.join(shim, "image.tsx"), "@": KOK },
   loader: { ".css": "empty" },
 });
+/*
+  TEK DOSYALIK TIKLANABİLİR SÜRÜM (DISAAKTAR=<dosya>, 27.11.2026).
+
+  Ölçüm düzeneği file:// sayfaları üretiyor: CSS ve marka görselleri
+  diskten bağlanıyor, yani bu dosyalar başka bir yere taşındığında
+  stilsiz ve logosuz açılıyor. Yerleşim kararı için paylaşılan
+  önizleme bunu kaldırmaz.
+
+  Burada aynı paket, CSS'i <style> içine ve marka görselleri data
+  URI'sine gömülmüş tek bir HTML olarak yazılıyor. Çizilen şey
+  DEĞİŞMİYOR: aynı gerçek bileşenler, aynı derlenmiş rota CSS'i.
+  Değişen yalnızca kaynakların nereden geldiği.
+*/
+function disaAktar(hedef, s) {
+  /*
+    GÖRELİ url() GÖMÜLÜYOR. Derlenmiş CSS fontlara "../media/x.woff2"
+    diye başvuruyor; tek dosyalık sürümde o dizin yok ve tarayıcı
+    sessizce yedek fonta düşüyordu — yerleşim kararı yanlış tipografiyle
+    veriliyordu. Yol, CSS dosyasının KENDİ dizinine göre çözülüyor.
+  */
+  const TURLER = { woff2: "font/woff2", woff: "font/woff", ttf: "font/ttf", svg: "image/svg+xml", png: "image/png", webp: "image/webp", jpg: "image/jpeg", gif: "image/gif" };
+  const gomVarlik = (metin, dizinAdi) => metin.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (tam, _t, yol) => {
+    if (/^(data:|https?:|\/\/)/.test(yol)) return tam;
+    const tamYol = path.resolve(dizinAdi, yol.split("?")[0].split("#")[0]);
+    if (!fs.existsSync(tamYol)) return tam;
+    const tur = TURLER[path.extname(tamYol).slice(1).toLowerCase()];
+    if (!tur) return tam;
+    return `url(data:${tur};base64,${fs.readFileSync(tamYol).toString("base64")})`;
+  });
+  const stil = cssler[s].map((d) => gomVarlik(fs.readFileSync(d, "utf8"), path.dirname(d))).join("\n");
+  const paket = fs.readFileSync(path.join(dizin, "paket.js"), "utf8");
+  /* Marka görselleri data URI: üretilen sayfada "/brand/..." adresi
+     yok ve file:// kökü de taşınınca kayboluyor. */
+  const markaDizin = path.join(KOK, "public/brand");
+  const marka = {};
+  for (const ad of fs.existsSync(markaDizin) ? fs.readdirSync(markaDizin) : []) {
+    const uzanti = path.extname(ad).slice(1).toLowerCase();
+    const tur = uzanti === "svg" ? "image/svg+xml" : uzanti === "png" ? "image/png" : uzanti === "webp" ? "image/webp" : null;
+    if (!tur) continue;
+    marka["/brand/" + ad] = `data:${tur};base64,` + fs.readFileSync(path.join(markaDizin, ad)).toString("base64");
+  }
+  /*
+    İSKELETSİZ: yayımlanan sayfa <!doctype>, <html> ve <body>'yi kendisi
+    ekliyor, dosya yalnızca başlık + stil + gövde taşıyor. Tam bir belge
+    yazmak iki kabuk iç içe geçiriyordu.
+
+    TEMA ELLE: panelin CSS'i html[data-theme] bekliyor ve
+    prefers-color-scheme yedeği YOK (app/panel/*.css). Öznitelik
+    yazılmazsa koyu temadaki ziyaretçi açık temayı görür. Üretimde
+    bunu kök yerleşimdeki betik yazıyor; burada aynı işi tek satır
+    yapıyor, sonrasını sayfanın kendi tema düğmesi devralıyor.
+  */
+  const basla = "<script>(function(){var k=document.documentElement;"
+    + "if(!k.getAttribute('data-theme'))k.setAttribute('data-theme',"
+    + "window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');"
+    + "window.__SENARYO=" + JSON.stringify(s) + ";window.__MARKA=" + JSON.stringify(marka) + ";})();<\/script>";
+  fs.writeFileSync(hedef,
+    /* CHARSET: yayımlanan sayfanın iskeleti bunu zaten veriyor, ama
+       dosya tek başına da (file://) açılıyor ve bildirimsiz Chromium
+       UTF-8'i windows-1252 sanıp paketteki Unicode aralıklarını
+       bozuyor: "Invalid regular expression: Range out of order".
+       Uygulama hiç çizilmiyordu. İlk 1024 baytta olmalı. */
+    "<meta charset=\"utf-8\">\n"
+    + "<title>Yönetim Merkezi Önizleme</title>\n"
+    + `<style>\n${stil}\n</style>\n`
+    + '<div id="kok"></div>\n'
+    + basla + "\n"
+    + `<script>${paket}<\/script>\n`);
+  return fs.statSync(hedef).size;
+}
+
 const html = (tema, s) => `<!doctype html><html lang="tr" data-theme="${tema}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${cssler[s].map((d) => `<link rel="stylesheet" href="file://${d}">`).join("")}</head><body><div id="kok"></div><script src="paket.js"></script></body></html>`;
 for (const tema of ["acik", "koyu"]) for (const s of SENARYOLAR) fs.writeFileSync(path.join(dizin, `${tema}-${s}.html`), html(tema === "acik" ? "light" : "dark", s));
+
+/* DISAAKTAR=<dosya>: tek dosyalık tıklanabilir sürüm yazılır ve çıkılır.
+   Tarayıcı açılmıyor — bu mod ölçüm değil, paylaşılabilir önizleme. */
+if (process.env.DISAAKTAR) {
+  const s = SENARYOLAR[0];
+  const boyut = disaAktar(process.env.DISAAKTAR, s);
+  console.log(JSON.stringify({ disaAktarildi: process.env.DISAAKTAR, senaryo: s, bayt: boyut }));
+  process.exit(0);
+}
 
 const olc = () => {
   const r = (e) => e ? Math.round(e.getBoundingClientRect().height) : null;

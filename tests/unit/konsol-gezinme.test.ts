@@ -74,11 +74,32 @@ test("sol menünün birincil sırası onaylı mockup'takiyle aynı", () => {
   assert.match(yerlesim, /yanMenuSirasi=\{\["home", "urunler", "musteriler", "finans", "destek", "otomasyonlar"\]\}/);
 });
 
-test("Ürünler menüde kısa adıyla, başlatıcıda tam adıyla", () => {
-  /* Menüde yer dar; "Ürünler ve Fiyatlar" Ctrl+K'da ve başlatıcıda
-     aynen kalmalı, iki ad tek kayıttan gelmeli. */
+test("Ürünler modülünün ikinci katı yok, adı tek kelime", () => {
+  /*
+    27.11.2026: modülün adı "Ürünler ve Fiyatlar", ikinci katının ilk
+    girdisi yine "Ürünler"di — menü "Ürünler → Ürünler" diye okunuyor
+    ve o tık hiçbir yere götürmüyordu. İkinci katın öteki girdisi
+    (Fiyatlar) ürünün kendi "Fiyat basamakları" bölümüne taşındı, yani
+    modülün tek hedefi kaldı.
+
+    Menüde kısa/uzun ad ayrımı da bitti; ayrımın KENDİSİ hâlâ
+    kullanılıyor (başka modüller için), onu ayrı bir test tutuyor.
+  */
   const apps = oku("app/panel/os/konsol-apps.ts");
-  assert.match(apps, /label: "Ürünler ve Fiyatlar", kisaEtiket: "Ürünler"/);
+  const kayit = apps.slice(apps.indexOf('key: "urunler"'), apps.indexOf('key: "otomasyonlar"'));
+  assert.match(kayit, /label: "Ürünler"/);
+  /* Etiketin kendisine bakılıyor, kayıttaki YORUMA değil: gerekçe
+     eski adı anlatmak için onu yazıyor. */
+  assert.doesNotMatch(kayit, /label: "Ürünler ve Fiyatlar"/);
+  assert.doesNotMatch(kayit, /bolumler:/);
+  /* /panel/platform/fiyatlar hâlâ bu modüle düşmeli: ek hizmet
+     fiyatları o adreste ve sol menüde Ürünler etkin kalmalı. */
+  assert.match(kayit, /"\/panel\/platform\/fiyatlar"/);
+});
+
+test("kısa etiket düzeneği duruyor", () => {
+  /* Ürünler artık kullanmıyor ama kural menünün kendisinde: dar
+     menüde kisaEtiket, başlatıcıda tam ad. */
   const nav = oku("app/panel/os/os-navigasyon.tsx");
   assert.match(nav, /u\.kisaEtiket \?\? u\.label/);
 });
@@ -225,10 +246,13 @@ test("bağlamlı gezinme: rota → modül + alt bölüm", async () => {
   };
 
   /* Brifteki akış: Ürünler → ArvoLab → Abonelikler → ürün listesine dönüş. */
-  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", "urunler"]);
-  assert.deepEqual(coz("/panel/platform/urunler/arvolab"), ["urunler", "urunler"]);
+  /* Ürünler'in ikinci katı yok (27.11.2026): alt bölüm undefined.
+     Ürün içi bölümler İÇERİKTE, sol menüde değil. */
+  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", undefined]);
+  assert.deepEqual(coz("/panel/platform/urunler/arvolab"), ["urunler", undefined]);
+  assert.deepEqual(coz("/panel/platform/fiyatlar"), ["urunler", undefined]);
   assert.deepEqual(coz("/panel/platform/billing"), ["finans", "abonelikler"]);
-  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", "urunler"]);
+  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", undefined]);
 
   /* Finans'ta alt bölüm geçişi. */
   assert.deepEqual(coz("/panel/platform/tahsilat"), ["finans", "tahsilatlar"]);
