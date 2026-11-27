@@ -739,6 +739,10 @@ window.__yol = new URLSearchParams(location.search).get("yol")
 function Kabuk() {
   /* Şimin ÇÖZDÜĞÜ yol: ölçüm bunu senaryonun niyetiyle karşılaştırıyor. */
   const yolSimdi = usePathname();
+  /* Düzenli ifade YOK: bu kaynak önce .mjs şablonuna, sonra üretilen
+     dosyaya giriyor ve ters bölü iki kez yutuluyor (bu dosyada bir kez
+     yaşandı). Ürün detayı = /panel/platform/urunler/<kod>, beş parça. */
+  const urunDetayiMi = yolSimdi.startsWith("/panel/platform/urunler/") && yolSimdi.split("/").length === 5;
   /* Konsol senaryoları yeni kabuğu kullanıyor (.os-konsol): masaüstü ve
      tablette sol menü, telefonda alt çubuk. Kiracı senaryoları (ana,
      crm) dock'ta kalıyor — üretimdeki ayrımın aynısı. */
@@ -774,7 +778,7 @@ function Kabuk() {
         </div>
       ) : null}
     </header>
-    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? <UrunlerListesi /> : sayfa === "fiyatlar" ? <FiyatlarKarsilastirma /> : <Ana />}</div></section>
+    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? <FiyatlarKarsilastirma /> : <Ana />}</div></section>
     {/* Komut paleti ve menü kapatıcı GERÇEK bileşenler: kaplamaların
         odak/Esc davranışı ölçülebilsin diye (26.11.2026). */}
     {konsolMu ? <OsKomutPaleti uygulamalar={konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 })} cikis={async () => {}} /> : null}
@@ -1666,6 +1670,38 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
           return sonuc;
         });
       }
+      /*
+        ÜRÜN AKIŞI (27.11.2026, inceleme talebi): Ürünler → ArvoLab →
+        Abonelikler → Tahsilat → ürün listesine dönüş. Dönüş İÇERİKTEKİ
+        yoldan (Ürünler › ArvoLab); sol menüdeki "Ana menüye dön" ayrı
+        bir iş yapıyor ve o da ayrıca ölçülüyor.
+      */
+      if (s === "urunler" && w >= 1200 && process.env.MENU !== "dar") {
+        const bekle = process.env.KAYIT ? 900 : 80;
+        const oku = () => sayfa.evaluate(() => ({
+          adres: location.hash.slice(1) || window.__yol || "/panel",
+          baslik: document.querySelector(".panel-content h1")?.textContent?.trim() ?? null,
+          sekme: document.querySelector(".urd-serit .talep-akis-sekmeler .is-active")?.textContent?.trim() ?? null,
+          secili: [...document.querySelectorAll('.os-yan-oge[aria-current="page"]')].map((e) => e.textContent.trim()),
+        }));
+        const akis = {};
+        await sayfa.waitForTimeout(bekle);
+        akis.liste = await oku();
+        await sayfa.locator('.url-tablo tbody tr', { hasText: "ArvoLab" }).locator(".url-ac a").click();
+        await sayfa.waitForTimeout(bekle);
+        akis.urunDetayi = await oku();
+        await sayfa.locator('.urd-serit .talep-akis-sekmeler a', { hasText: "Abonelikler" }).click();
+        await sayfa.waitForTimeout(bekle);
+        akis.abonelikler = await oku();
+        await sayfa.locator('.urd-serit .talep-akis-sekmeler a', { hasText: "Tahsilat" }).click();
+        await sayfa.waitForTimeout(bekle);
+        akis.tahsilat = await oku();
+        await sayfa.locator('.urd-yol a', { hasText: "Ürünler" }).click();
+        await sayfa.waitForTimeout(bekle);
+        akis.listeyeDonus = await oku();
+        o.urunAkisi = akis;
+      }
+
       /*
         FİYATLAR AKIŞI (27.11.2026, inceleme talebi). İki süzgecin
         BİRLİKTE çalıştığı ve plan bağlantısının DOĞRU ürünün Fiyat

@@ -351,6 +351,43 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    ÜRÜN AKIŞI (27.11.2026, inceleme talebi): Ürünler → ArvoLab →
+    Abonelikler → Tahsilat → listeye dönüş. Her adımda ADRES, AÇIK
+    SAYFA ve SOL MENÜ birlikte doğru olmalı; biri ötekinden kopunca
+    kullanıcı nerede olduğunu ekrandan okuyamaz.
+  */
+  if (o.urunAkisi) {
+    const a2 = o.urunAkisi;
+    const adim = (ad, beklenenBaslik, beklenenSekme) => {
+      const x = a2[ad];
+      if (!x) { eksik.push(`ürün akışında ${ad} adımı yok`); return; }
+      if (beklenenBaslik && x.baslik !== beklenenBaslik) eksik.push(`${ad}: açık sayfa "${x.baslik}" (${beklenenBaslik} olmalı)`);
+      if (beklenenSekme && x.sekme !== beklenenSekme) eksik.push(`${ad}: seçili sekme "${x.sekme}" (${beklenenSekme} olmalı)`);
+      /* Sol menü ÜRÜNLER bağlamında kalmalı: ürün detayı Ürünler
+         modülünün içi, ayrı bir modül değil. */
+      if (!(x.secili ?? []).some((e) => e.startsWith("Ürünler"))) {
+        eksik.push(`${ad}: sol menüde Ürünler bağlamı etkin değil (${(x.secili ?? []).join(", ") || "yok"})`);
+      }
+    };
+    adim("liste", "Ürünler", null);
+    adim("urunDetayi", "ArvoLab", "Genel Bakış");
+    adim("abonelikler", "ArvoLab", "Abonelikler");
+    adim("tahsilat", "ArvoLab", "Tahsilat");
+    adim("listeyeDonus", "Ürünler", null);
+    /* Bölüm adreste: sekme değişimi URL'ye yazılmalı. */
+    if (a2.abonelikler && !/bolum=abonelikler/.test(a2.abonelikler.adres)) {
+      eksik.push(`Abonelikler sekmesi adrese yazılmıyor (${a2.abonelikler.adres})`);
+    }
+    if (a2.tahsilat && !/bolum=tahsilat/.test(a2.tahsilat.adres)) {
+      eksik.push(`Tahsilat sekmesi adrese yazılmıyor (${a2.tahsilat.adres})`);
+    }
+    /* Listeye dönüş ürün detayından ÇIKMALI. */
+    if (a2.listeyeDonus && a2.listeyeDonus.adres !== a2.liste?.adres) {
+      eksik.push(`listeye dönüş başka adrese gidiyor (${a2.listeyeDonus.adres})`);
+    }
+  }
+
+  /*
     FİYATLAR SÜZGEÇLERİ BİRLİKTE (27.11.2026, inceleme talebi). İki
     süzgeç birbirini SİLMEMELİ: dönemi seçip durumu değiştiren
     kullanıcı dönemi kaybetmez. Plan bağlantısı da DOĞRU ürünün Fiyat
