@@ -390,3 +390,24 @@ test("ölçüm düzeneği otomasyon satırlarını kuraldan üretiyor", () => {
   assert.match(duzenek, /const KOPRULER = URUN_SAGLIK\.slice\(1\)\.map\(/);
   assert.doesNotMatch(duzenek, /KOPRULER = OTOMASYON_SENARYO/);
 });
+
+test("konsol kontrol ailesi ArvoLab'ın os5 ölçülerinde", () => {
+  /*
+    27.11.2026, Tur 2 · madde 4. İki aile aynı ölçekte yan yana
+    çizilip ÖLÇÜLDÜ (scripts/bilesen-karsilastirma.mjs) ve iki sapma
+    çıktı: kontrol yarıçapı 10 px (ArvoLab 4) ve kontrol yazısı 13 px
+    (ArvoLab 14). Dosyanın kendi notu "düşük yarıçap" diyordu — not
+    ile değer ayrışmıştı.
+
+    Kaynak: ArvoLab c7a6b92 · app/styles/os5-tokens.css
+      --os5-kontrol-h: 40px · --os5-kontrol-r: 4px · --os5-kontrol-dolgu: 12px
+    ArvoLab deposu CI'da yok, o yüzden değerler burada sabitleniyor.
+  */
+  const css = oku("app/panel/konsol-bilesen.css");
+  assert.match(css, /--kb-r:4px/);
+  assert.match(css, /--kb-h:40px/);
+  assert.match(css, /--kb-dolgu:12px/);
+  /* Kontrol yazısı 14 px (--fs-base); 13 px (--fs-sm) ArvoLab'dan küçüktü. */
+  assert.doesNotMatch(css, /font-size:var\(--fs-sm\)/);
+  assert.match(css, /font-size:var\(--fs-base\)/);
+});

@@ -234,3 +234,17 @@
   outline-offset: -2px;
   border-radius: var(--r-sm);
 }
+
+/*
+  MÜŞTERİ SÜTUNU AD KADAR GENİŞ (27.11.2026). Avatar adın soluna
+  geçince ilk sütunun içine iki öğe birden girdi ve tablo sütunu
+  otomatik genişlikte bırakınca ad kırpıldı: "Akademik Merkez…",
+  "Boğaziçi Araştırma…" iki satıra sarıp satırı yükseltiyordu —
+  oysa sağda 400 px boş yer vardı. Kurum adları uzun; ilk sütun
+  tabanını alıyor, kalan sütunlar sayı taşıdığı için dar kalabilir.
+*/
+.os-root .urun-detay-sayfa .talep-tablo .crm-data-table[data-cols="ur-kiraci"] td[data-label="Müşteri"],
+.os-root .urun-detay-sayfa .talep-tablo .crm-data-table[data-cols="ur-kiraci"] thead th:first-child {
+  min-width: 280px;
+  width: 34%;
+}
