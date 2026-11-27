@@ -186,7 +186,7 @@ Her rota için dört ayrı ölçü; biri ötekinin yerine geçmez.
 
 | Rota | Erişim | Tasarım | Gezinme | İşlem |
 | --- | --- | --- | --- | --- |
-| `/panel` | ✓ | ✓ açık+koyu | ✓ kuyruk kalemi kayda açılıyor | — (okuma) |
+| `/panel` | ✓ | ✓ açık+koyu · 768/390 | ✓ kuyruk kalemi kayda açılıyor | — (okuma) |
 | `/panel/platform` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
 | `/panel/platform/musteriler` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | UNVERIFIED (yeni müşteri) |
 | `/panel/platform/musteriler/[id]` | ✓ | ✓ | ✓ panelden tam kart | UNVERIFIED (lisans, üye, not) |
@@ -206,15 +206,15 @@ Her rota için dört ayrı ölçü; biri ötekinin yerine geçmez.
 | `/panel/platform/destek/hazir` | ✓ | ✓ | ✓ | UNVERIFIED (yanıt ekle) |
 | `/panel/platform/urunler` | ✓ | ✓ açık+koyu | ✓ | — (okuma) |
 | `/panel/platform/urunler?gorunum=moduller` | ✓ | ✓ | ✓ | UNVERIFIED (modül aç/kapat) |
-| `/panel/platform/urunler/[urun]` | ✓ | ✓ | ✓ fiyat ürünün içinde | **✓ ARAYÜZDEN yayım + eşzamanlı taslak değişikliğinde ret** |
+| `/panel/platform/urunler/[urun]` | ✓ | ✓ · 768/390 | ✓ fiyat ürünün içinde | **✓ ARAYÜZDEN yayım + eşzamanlı taslak değişikliğinde ret** |
 | `/panel/platform/moduller` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
 | `/panel/platform/fiyatlar?urun=ek` | ✓ | ✓ | ✓ | **✓ toplu yayım kapsamı** |
 | `/panel/platform/fiyatlar?gorunum=karsilastirma` | ✓ | ✓ | ✓ | — (okuma) |
 | `/panel/platform/fiyatlar` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
-| `/panel/platform/saglik` | ✓ | ✓ | ✓ | UNVERIFIED (işi elle çalıştır) |
-| `/panel/platform/saglik/is` | ✓ | ✓ | ✓ | UNVERIFIED |
+| `/panel/platform/saglik` | ✓ | ✓ · 768/390 | ✓ | UNVERIFIED (işi elle çalıştır) |
+| `/panel/platform/saglik/is` | ✓ | ✓ · 768/390 (telefonda bağlantı eklendi) | ✓ | UNVERIFIED |
 | `/panel/platform/kurulumlar` | ✓ (çökme düzeltildi) | ✓ | ✓ | UNVERIFIED (kurulumu tamamla) |
-| `/panel/platform/ayarlar` | ✓ | ✓ | ✓ | UNVERIFIED (ayar kaydet) |
+| `/panel/platform/ayarlar` | ✓ | ✓ · 768/390 | ✓ | UNVERIFIED (ayar kaydet) |
 | `/panel/platform/ara` | ✓ | ✓ | ✓ | — (okuma) |
 | `/panel/notifications` | ✓ (çökme düzeltildi) | ✓ | ✓ | — (okuma) |
 | `/panel/kilavuz` | ✓ | ✓ | ✓ | — (okuma) |
