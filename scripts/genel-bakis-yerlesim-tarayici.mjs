@@ -154,6 +154,7 @@ import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
 import { ArvoOsIsareti, ArvoOsLogosu } from "@/app/panel/os/arvoos-markasi";
 import { bolumAdresi, bolumSirasi, urunBolumu } from "@/lib/konsol/urun-bolumleri";
 import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-bakis";
+import { YayimOnizlemesi } from "@/app/panel/platform/fiyatlar/fiyat-yayim-onizlemesi";
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
 import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
 import { useSearchParams } from "next/navigation";
@@ -710,6 +711,18 @@ function UrunDetay() {
     Finans'taki ÖDEME ONAYLARINA, abone ödemesi TAHSİLAT ekranına
     gidiyor (üretimdeki hedeflerin aynısı).
   */
+  /* Örnek fiyat taslakları: İKİ ürüne yayılıyor (ArvoLab + ArvoOS) ki
+     toplu yayımın kapsam uyarısı çizilsin. */
+  const FIYAT_DEGISIKLIKLERI = [
+    { kod: "arvolab-arastirmaci", eski: 49900000, yeni: 54900000, yuzde: 10 },
+    { kod: "arvolab-ekip", eski: 89900000, yeni: 94900000, yuzde: 6 },
+    { kod: "arvoos-baslangic", eski: 23900000, yeni: 25900000, yuzde: 8 },
+  ];
+  const FIYAT_ADLARI = {
+    "arvolab-arastirmaci": "Araştırmacı",
+    "arvolab-ekip": "Ekip",
+    "arvoos-baslangic": "Başlangıç",
+  };
   const MUSTERI_SATIRLARI = [
     { ad: "Akademik Merkez Danışmanlık", bas: "AM", tur: "Kurumsal", paket: "Profesyonel", kullanici: "48", donem: "14 Ara 2026", ucret: "₺28.900" },
     { ad: "Yıldız Eğitim Kurumları", bas: "YE", tur: "Grup markası", paket: "Kurumsal", kullanici: "126", donem: "02 Şub 2027", ucret: "₺94.600" },
@@ -829,9 +842,31 @@ function UrunDetay() {
               </table>
             </div>
           </section>
-          {basitPanel("fiyat", kunye.ad + " fiyat basamakları", (
-            <p className="ugb-bos">Standart ₺790 · Plus ₺1.190 · Pro ₺1.490</p>
-          ))}
+          {/*
+            FİYAT BASAMAKLARI: YAYIM ÖNİZLEMESİ GERÇEK BİLEŞENLE
+            (27.11.2026, kapanış turu · madde 4/5). Bölüm tek satırlık
+            bir vekildi; toplu yayımın kapsam uyarısı ve onay kutusu
+            ölçülemiyordu. Satırlar örnek GİRDİ, çizen üretim bileşeni
+            (fiyatlar/fiyat-duzenleme · YayimOnizlemesi).
+
+            Örnek bilerek İKİ ÜRÜNE yayılıyor: ArvoLab'ın içinden
+            bakarken ArvoOS'un taslağının da yayımlanacağı uyarısı
+            tam da bu durumda çıkıyor.
+          */}
+          <section className="urd-bolum" data-bolum="fiyat">
+            <header className="urd-bolum-bas">
+              <div><h2>Fiyat basamakları</h2><small>Yalnızca {kunye.ad}; KDV dahil, yıllıkta 10 ay bedeli.</small></div>
+            </header>
+            <YayimOnizlemesi
+              degisiklikler={FIYAT_DEGISIKLIKLERI}
+              denetim={{ hatalar: [], uyarilar: ["Araştırmacı ile Ekip arasındaki fark %10'un altına indi."] }}
+              baskaUrunler={["ArvoOS"]}
+              basamakAdi={(kod) => FIYAT_ADLARI[kod] ?? kod}
+              kodunUrunu={(kod) => (kod.startsWith("arvolab") ? "ArvoLab" : "ArvoOS")}
+              kendiKodlari={new Set(FIYAT_DEGISIKLIKLERI.map((d) => d.kod).filter((k) => k.startsWith("arvolab")))}
+              etkilenenKiraci={2}
+            />
+          </section>
           {basitPanel("abonelikler", kunye.ad + " abonelikleri", (
             /*
               ÜRETİMDEKİ TABLO KALIBI (26.11.2026, ölçümle düzeltildi).

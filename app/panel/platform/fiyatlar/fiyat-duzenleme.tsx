@@ -7,6 +7,7 @@ import { fiyatlariYayimla, koddakiDegerleriTaslagaAl, taslagiGeriAl, taslagiKayd
 import { para, sayi } from "../bicim";
 import { KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { MobilSatir } from "../../crm/table-cells";
+import { YayimOnizlemesi } from "./fiyat-yayim-onizlemesi";
 
 /*
   FİYAT DÜZENLEME — İKİ ROTANIN PAYLAŞTIĞI BÖLÜM (27.11.2026).
@@ -178,7 +179,6 @@ export async function FiyatDuzenleme({ urun, etkilenenKiraci }: {
     }
     return kod;
   };
-  const tutarYazi = (kurus: number | null) => (kurus === null ? "Teklif" : para(Number(kurus)));
 
   return (
     <>
@@ -200,90 +200,9 @@ export async function FiyatDuzenleme({ urun, etkilenenKiraci }: {
         </table>
       </div>
 
-      {degisiklikler.length ? (
-        <KKart
-          baslik={`Yayım önizlemesi · ${sayi(degisiklikler.length)} değişiklik`}
-          aciklama={<>
-            Yayımlanınca ücretler sayfasında (TR ve EN), arama motorlarına giden fiyat bilgisinde (JSON-LD), llms-full.txt&apos;de
-            (en geç on dakika içinde), kurulumun &quot;liste fiyatını uygula&quot; tutarında ve ArvoLab bireysel aboneliğinde
-            geçerli olur. Liste tek seferde, birlikte yayımlanır.
-          </>}
-          sag={(
-            <form action={fiyatlariYayimla} className="plt-fiyat-yayim">
-              {denetim.uyarilar.length ? (
-                <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
-              ) : null}
-              {/*
-                BAŞKA ÜRÜN VARSA AYRI ONAY (27.11.2026, kapanış turu ·
-                madde 4). Toplu yayım kuralı DEĞİŞMEDİ, ama bölüm artık
-                bir ürünün içinde duruyor: ArvoLab'ı düzenleyen kurucu
-                başka ürünün taslağını farkında olmadan yayımlayabilir.
-                Etkilenen ürünler yukarıda tek tek listeleniyor ve bu
-                kutu işaretlenmeden düğme çalışmıyor.
-              */}
-              {baskaUrunler.length ? (
-                <label className="plt-fiyat-onay">
-                  <input type="checkbox" name="kapsam-onayi" value="evet" required />{" "}
-                  {baskaUrunler.join(", ")} değişikliklerinin de yayımlanacağını anladım.
-                </label>
-              ) : null}
-              <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
-                {sayi(degisiklikler.length)} değişikliği yayımla
-              </button>
-            </form>
-          )}
-        >
-          {/*
-            BAŞKA ÜRÜNÜN TASLAĞI DA YAYIMLANIR (27.11.2026). Bölüm artık
-            ürünün içinde duruyor ve düğme "3 değişikliği yayımla"
-            diyor; o üçün biri başka üründe olabilir. Kural
-            değiştirilmedi (toplu yayım bilerek böyle, 14.10.2026),
-            ekranda YAZILIYOR.
-          */}
-          {baskaUrunler.length ? (
-            <KNot ton="uyari">
-              <b>Bu liste tek seferde yayımlanır.</b> Yayımlayınca aşağıdaki ürünlerin bekleyen değişiklikleri de canlıya çıkar:
-              <br />
-              {/* Ürün başına KAÇ değişiklik: "başka ürünler de var"
-                  cümlesi tek başına kapsamı söylemiyor. */}
-              {baskaUrunler.map((u) => `${u} (${sayi(degisiklikler.filter((d) => kodunUrunu(d.kod) === u).length)})`).join(" · ")}
-            </KNot>
-          ) : null}
-          <KListe>
-            {degisiklikler.map((d) => {
-              const degisim = d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`;
-              const buyuk = d.yuzde !== null && Math.abs(d.yuzde) >= 50;
-              return (
-                <KOge
-                  key={d.kod}
-                  baslik={basamakAdi(d.kod)}
-                  alt={<span className="plt-mono">{kendiKodlari.has(d.kod) ? d.kod : `${kodunUrunu(d.kod)} · ${d.kod}`}</span>}
-                  deger={tutarYazi(d.yeni)}
-                  degerAlt={<>önce {tutarYazi(d.eski)} · <span className={buyuk ? "talep-uyari" : undefined}>{degisim}</span></>}
-                />
-              );
-            })}
-          </KListe>
-          {denetim.hatalar.length ? (
-            <KNot ton="tehlike">
-              <b>Bu liste yayımlanamaz.</b>
-              {denetim.hatalar.map((h) => <Fragment key={h}><br />{h}</Fragment>)}
-            </KNot>
-          ) : null}
-          {denetim.uyarilar.length ? (
-            <KNot ton="uyari">
-              <b>Yayımlamadan önce kontrol edin.</b>
-              {denetim.uyarilar.map((u) => <Fragment key={u}><br />{u}</Fragment>)}
-            </KNot>
-          ) : null}
-          {etkilenenKiraci ? (
-            <KNot>
-              Liste fiyatından ödeyen {sayi(etkilenenKiraci)} ArvoOS kiracısının ücreti kendiliğinden değişmez (yürürlükteki
-              dönem korunur); yayımdan sonra Kurulumlar&apos;da &quot;listeden farklı&quot; görünürler.
-            </KNot>
-          ) : null}
-        </KKart>
-      ) : null}
+      <YayimOnizlemesi degisiklikler={degisiklikler} denetim={denetim} baskaUrunler={baskaUrunler}
+        basamakAdi={basamakAdi} kodunUrunu={kodunUrunu} kendiKodlari={kendiKodlari} etkilenenKiraci={etkilenenKiraci}
+        eylem={fiyatlariYayimla} />
 
       <KKart baslik="Yayın" aciklama="Taslak hiçbir yerde görünmez; bekleyenler önizlemede birlikte yayımlanır.">
         {/* 14.10.2026: iki sayı kutusu yerine iki iOS satırı; şerit
