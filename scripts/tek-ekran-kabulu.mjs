@@ -307,11 +307,19 @@ export function tekEkranHukmu(ad, o) {
       bağımsız tek bir ekran çiziyordu ve kanıt aslında hiçbir şeyi
       kanıtlamıyordu.
     */
+    /*
+      27.11.2026: /panel'in başlığı artık sabit "Ana Sayfa" değil —
+      oturumda ad varsa "İyi günler, <ad>", yoksa "Ana Sayfa"
+      (konsol-ana-sayfa.tsx). Ölçüt eski sabiti arıyordu ve doğru
+      davranışı düşürüyordu. Aranan şey değişmedi: /panel'de ANA
+      SAYFA içeriği, başka adreste BAŞKA içerik.
+    */
+    const anaSayfaBasligi = (b) => b === "Ana Sayfa" || /^(Günaydın|İyi günler|İyi akşamlar|İyi geceler), /.test(b);
     for (const [ad, adim] of Object.entries(k)) {
       if (!adim || adim.baslik === undefined) continue;
       const anaSayfada = adim.adres === "/panel";
-      if (anaSayfada && adim.baslik !== "Ana Sayfa") eksik.push(`${ad}: adres /panel ama içerik "${adim.baslik}"`);
-      if (!anaSayfada && adim.baslik === "Ana Sayfa") eksik.push(`${ad}: adres ${adim.adres} ama içerikte hâlâ Ana Sayfa`);
+      if (anaSayfada && !anaSayfaBasligi(adim.baslik)) eksik.push(`${ad}: adres /panel ama içerik "${adim.baslik}"`);
+      if (!anaSayfada && anaSayfaBasligi(adim.baslik)) eksik.push(`${ad}: adres ${adim.adres} ama içerikte hâlâ Ana Sayfa`);
     }
   }
 
@@ -557,6 +565,20 @@ export function tekEkranHukmu(ad, o) {
     if (t.geriDonuldu?.kat !== "ana" || t.geriDonuldu?.acik !== true) eksik.push("'Ana menüye dön' paneli kapatıyor (bir üst kata çıkmalı)");
     if (t.geriDonuldu?.acik && !(t.geriDonuldu.odak || "").startsWith("Finans")) eksik.push(`üst kata çıkınca odak modül satırına dönmüyor (${t.geriDonuldu.odak || "yok"})`);
     if (t.kapatildi?.acik) eksik.push("'Kapat' paneli kapatmıyor");
+    /*
+      ODAK İADESİ (27.11.2026, Tur 2 · madde 5). Panel kapanınca odak
+      onu AÇAN düğmeye dönmeli. Ölçülmüyordu: dönmediğinde klavye ve
+      ekran okuyucu kullanıcısı sayfanın başına savruluyor ve panele
+      geri dönmek için baştan geziniyor.
+    */
+    if (t.kapatildi && !t.kapatildi.acik && t.odakDondu !== undefined) {
+      /* Düğmenin metni iki parça taşıyor ("Uygulamalar" + "Daha
+         fazla"), o yüzden baştan eşleşme aranmıyor: içinde geçmesi
+         yeter. Baş harfe bakan ilk sürüm doğru davranışı düşürdü. */
+      if (!(t.odakDondu || "").includes("Daha fazla")) {
+        eksik.push(`panel kapanınca odak "Daha fazla" düğmesine dönmüyor (${t.odakDondu || "hiçbir yere"})`);
+      }
+    }
   }
 
   /*

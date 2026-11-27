@@ -1837,6 +1837,9 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          dock. Listede olmadığı için sona kaydırma ölçümü hiç koşmuyor,
          dock örtmesi de ilk görünümde aranıyordu — telefonda kaydırarak
          ulaşılan son satır "örtülü" sayılıyordu. */
+      /* Gezinme sözleşmesini ölçen senaryolar: ikisi de aynı kabuğu
+         (sol menü + dock + "Daha fazla" paneli) çiziyor. */
+      const KABUK_SENARYOSU = new Set(["konsol", "mockup"]);
       const konsolSenaryosu = s === "konsol" || s === "urundetay" || s === "urunler" || s === "fiyatlar" || s === "mockup";
       if (s === "konsol") {
         o.erisim = await sayfa.evaluate(() => {
@@ -2187,7 +2190,8 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         Adres hash'te taşınıyor (file:// sayfasında pushState bir yolu
         yazamıyor); şim onu gerçek adres gibi okuyor.
       */
-      if (s === "konsol" && w >= 1200 && process.env.MENU !== "dar") {
+      /* "mockup" aynı kabuğu kullanıyor: gezinme sözleşmesi onda da ölçülmeli. */
+      if (KABUK_SENARYOSU.has(s) && w >= 1200 && process.env.MENU !== "dar") {
         const adres = () => sayfa.evaluate(() => location.hash.slice(1) || new URLSearchParams(location.search).get("yol") || "/panel");
         const durum = () => sayfa.evaluate(() => ({
           kat: document.querySelector(".os-yan-kat") ? "alt" : "ana",
@@ -2255,7 +2259,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         "Ana menüye dön" var mı, bölümler METİN ETİKETİYLE duruyor mu,
         Esc kapatınca odak ray düğmesine dönüyor mu.
       */
-      if (s === "konsol" && w >= 761 && (w < 1200 || process.env.MENU === "dar")) {
+      if (KABUK_SENARYOSU.has(s) && w >= 761 && (w < 1200 || process.env.MENU === "dar")) {
         const dugme = sayfa.locator('.os-yan-oge[data-modul="finans"]');
         if (await dugme.isVisible()) {
           await dugme.click();
@@ -2296,7 +2300,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         AYNI panelin içeriği alt menüyle değişiyor. "Ana menüye dön"
         bir üst kata çıkar, "Kapat" paneli kapatır — iki ayrı denetim.
       */
-      if (s === "konsol" && w <= 760) {
+      if (KABUK_SENARYOSU.has(s) && w <= 760) {
         const dahaFazla = sayfa.locator('.os-dock button[aria-haspopup="dialog"]');
         if (await dahaFazla.isVisible()) {
           const oku = () => sayfa.evaluate(() => {
@@ -2330,6 +2334,14 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
           await sayfa.locator('dialog.os-uygulamalar .os-icon-btn[aria-label="Kapat"]').click();
           await sayfa.waitForTimeout(150);
           panel.kapatildi = await oku();
+          /* ODAK İADESİ (27.11.2026, Tur 2 · madde 5). Panel kapanınca
+             odak onu AÇAN düğmeye dönmeli; dönmezse klavye/ekran
+             okuyucu kullanıcısı sayfanın başına savruluyor. Ölçülmüyordu. */
+          panel.odakDondu = await sayfa.evaluate(() => {
+            const e = document.activeElement;
+            if (!e || e === document.body) return null;
+            return (e.getAttribute("aria-label") || e.textContent || "").trim().slice(0, 40);
+          });
           o.telefonPanel = panel;
         }
       }
