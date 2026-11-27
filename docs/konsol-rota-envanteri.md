@@ -219,6 +219,109 @@ Her rota için dört ayrı ölçü; biri ötekinin yerine geçmez.
 | `/panel/notifications` | ✓ (çökme düzeltildi) | ✓ | ✓ | — (okuma) |
 | `/panel/kilavuz` | ✓ | ✓ | ✓ | — (okuma) |
 
+### Rota başına: hangi tasarım, hangi akış ölçüldü
+
+Matristeki "✓" neyin ✓'si olduğunu söylemiyordu. Aşağıda her rotanın
+HANGİ tasarım kalıbına göre kurulduğu ve gezinme sütununun HANGİ
+tıklama dizisiyle ölçüldüğü yazıyor. Kalıplar:
+
+- **liste–panel** — `kl-duzen`: solda liste, sağda seçili kayıt
+  (onaylı Müşteriler görseli). Telefonda tek sütun.
+- **detay + sekme** — üstte künye, altında sekme şeridi (geniş ekranda
+  bağlantı rayı, dar ekranda açılır liste).
+- **kart ızgarası** — eşit ağırlıklı kartlar (Ana Sayfa, Ürünler).
+- **rapor** — dönem seçimli özet, dağılım ve tablolar; seçilecek kayıt yok.
+- **sorun panosu** — sekmelerde açık sorunlar, satırın "detayı" başka kayıt.
+- **form** — tek kolonlu form kartları.
+- **yönlendirme** — içerik yok, ara katmanda 308.
+- **kabuk yüzeyi** — konsolun ortak kabuğu (arama, bildirim, kılavuz).
+
+| Rota | Tasarım kalıbı | Ölçülen akış |
+| --- | --- | --- |
+| `/panel` | kart ızgarası (karar kuyruğu + ürün kartları) | kuyruk kalemine tıkla → ilgili KAYIT açılıyor (1440/768/390) |
+| `/panel/platform` | yönlendirme | üç giriş yolu (doğrudan, uygulama içi, geri/ileri) → 308 |
+| `…/musteriler` | liste–panel | süzgeç → kaydır → kayıt aç → tam kart → geri → kapat → yeni süzgeç |
+| `…/musteriler/[id]` | detay + sekme | panelden tam karta geçiş ve geri dönüşte süzgecin korunması |
+| `…/kullanicilar` | liste–panel | evre süzgeci → kaydır → kayıt aç → kapat → yeni süzgeç |
+| `…/kullanicilar/[id]` | detay + sekme | listeden detay, geri dönüş |
+| `…/subscribers` | liste (satır içi düzenleme) | adresten açılış + düzen ölçümü |
+| `…/duyuru` | form | adresten açılış + düzen ölçümü |
+| `…/rapor` | rapor | adresten açılış + düzen ölçümü |
+| `…/tahsilat` | rapor | adresten açılış + düzen ölçümü |
+| `…/tahsilat/proforma/[id]` | detay | listeden detaya geçiş |
+| `…/payments` | liste–panel | kaydır → ödeme aç → uyarı ve tutar oku → karar formu → kapat |
+| `…/billing` | sorun panosu | adresten açılış + düzen ölçümü |
+| `…/yenilemeler` | yönlendirme | üç giriş yolu → 308 |
+| `…/sozlesmeler` | liste–panel | kaydır → kayıt aç → kapat |
+| `…/destek` | liste–panel | sekme → kaydır → görüşme aç → yanıt kutusuna eriş → kapat → yeni sekme |
+| `…/destek/[id]` | liste–panel (tam sayfa) | paylaşılmış bağlantıdan açılış |
+| `…/destek/hazir` | form | adresten açılış + düzen ölçümü |
+| `…/urunler` | kart ızgarası | ürün kartına tıkla → ürün detayı (1440/768/390) |
+| `…/urunler?gorunum=moduller` | matris tablosu | sekme değişimi adresten |
+| `…/urunler/[urun]` | detay + sekme | ürün aç → "Fiyat basamakları" sekmesi → taslak kutusu ve Kaydet erişimi (768/390) |
+| `…/moduller` | yönlendirme | üç giriş yolu → 308 |
+| `…/fiyatlar?urun=ek` | detay + sekme | taslak kaydet → yayım önizlemesi → onay |
+| `…/fiyatlar?gorunum=karsilastirma` | rapor | adresten açılış + düzen ölçümü |
+| `…/fiyatlar` | yönlendirme | üç giriş yolu → 308 |
+| `…/saglik` | sorun panosu | "Zamanlanmış işler" sekmesi → iş satırı → iş detayı (768/390) |
+| `…/saglik/is` | detay | sağlık ekranından geçiş |
+| `…/kurulumlar` | liste (tablo) | adresten açılış + düzen ölçümü |
+| `…/ayarlar` | form (bölüm sekmeli) | bölüm sekmesine tıkla → adres `?bolum=` → içerik geldi (768/390) |
+| `…/ara` | kabuk yüzeyi | üst bar aramasından sonuç listesi |
+| `/panel/notifications` | liste | adresten açılış + düzen ölçümü |
+| `/panel/kilavuz` | kabuk yüzeyi | adresten açılış + düzen ölçümü |
+
+Ortak kaplama yüzeyleri (rota değil, her ekranda var):
+
+| Yüzey | Tasarım | Ölçülen akış |
+| --- | --- | --- |
+| Komut paleti (Ctrl+K) | `<dialog>` kaplama | üst bar aramasıyla aç → yaz → sonuç listesi ekranın içinde → ilk sonuca eriş → Esc kapatıyor (768/390) |
+| Uygulamalar penceresi | kaplama | telefonda alt çubuğun "Daha fazla" gözünden, tablette sol rayın altından aç → pencere ekranın içinde, bağlantıları var |
+| Tema | üst bar düğmesi / palet komutu | 768'de düğmeyle, 390'da palet komutuyla (düğme 520 px altında bilerek gizli) — `data-theme` gerçekten değişiyor |
+| Alt çubuk (dock) | sabit şerit | telefonda son eylemin üstünü örtmüyor (ürün detayında "Kaydet" ölçüldü) |
+
+### Tablet ve telefonda kritik akışlar (28.11.2026)
+
+Akış kabulü (`konsol-akis-kabulu.mjs`) BEŞ liste ekranını tıklıyor;
+konsolun geri kalanı o kalıba girmiyor. Liste dışındaki kritik
+akışlar ayrı bir betikte:
+
+```
+GENISLIK=768 YUKSEKLIK=1024 node scripts/konsol-mobil-akis.mjs
+GENISLIK=390 YUKSEKLIK=844  node scripts/konsol-mobil-akis.mjs
+```
+
+Ölçülen: hedef gerçekten geldi mi, yatay kaydırma doğdu mu ve eylem
+ERİŞİLEBİLİR mi — görünür, ekranın içinde ve üstünü örten bir şey yok
+(`elementFromPoint`). "Görünür" tek başına yetmiyor: alt çubuk sabit
+ve son eylemin üstüne binen bir düğme ekranda durur ama tıklanmaz.
+
+| Akış | 768×1024 | 390×844 |
+| --- | --- | --- |
+| Ana Sayfa karar kuyruğu → kayıt | ✓ | ✓ |
+| Ürünler → ürün detayı → Fiyat basamakları → taslak kutusu + Kaydet | ✓ | ✓ (sekme açılır listeden) |
+| Ayarlar → bölüm sekmesi (`?bolum=`) | ✓ | ✓ |
+| Sistem sağlığı → zamanlanmış iş detayı | ✓ | ✓ (düzeltmeden sonra) |
+| Komut paleti: aç → yaz → sonuç → Esc | ✓ | ✓ |
+| Uygulamalar penceresi | ✓ (sol ray) | ✓ (alt çubuk) |
+| Tema değişimi | ✓ (üst bar) | ✓ (palet komutu) |
+
+**Telefonda çıkan ürün hatası:** Sistem sağlığı → "Zamanlanmış işler"
+satırının mobil özeti (`MobilSatir`) `href` ALMIYORDU. 760 px'in
+altında tablonun öteki hücreleri gizleniyor, iş adının bağlantısı da
+onlarla birlikte gizleniyor — bağlantı sayfada duruyor, genişliği
+sıfır. Sonuç: zamanlanmış bir işin detayı telefondan hiç açılamıyordu.
+Sağlıktaki öteki tabloların hepsi `href` veriyordu, yalnızca bu
+vermiyordu; ekran doğru göründüğü için önceki turlar görmemişti.
+Düzeltildi ve ölçüm yeşil.
+
+**Ölçümün kendisinde iki yanlış alarm çıktı** ve ikisi de betikte
+kapatıldı: `:visible` / `has-text` Playwright'ın sözde sınıfları,
+tarayıcının `querySelector`'ı onları bilmiyor (biri masaüstünün gizli
+hücresini ölçüp "boyut 0" diyordu); Next'in geliştirme göstergesi
+(`nextjs-portal`) sol alt köşede durup sol rayın en alttaki düğmesinin
+tıklamasını yutuyordu. İkisi de üründe olmayan şeyler.
+
 ### Liste–panel düzeni NEREDE var, nerede YOK
 
 Düzen beş ekranda: Müşteriler, Ödeme onayları, Destek, Sözleşme
@@ -300,13 +403,15 @@ taslak kümesi değişirse eski onayla yayım YAPILMIYOR.
 PGlite'ta depolama yok) ve arayüzden uçtan uca yazma (önizlemede
 yazma simülasyon). Bunlar yetkili bir test ortamı ister.
 
-### Üç kabul betiği ne ölçüyor
+### Beş kabul betiği ne ölçüyor
 
 | Betik | Ne yapıyor | Ne SÖYLEMİYOR |
 | --- | --- | --- |
 | `konsol-rota-kabulu.mjs` (23 görsel) | Bir adresi açar, düzeni ÖLÇER (taşma, sütun sırası, yatay kaydırma, seçili satır, telefonda tek sütun) ve görüntüsünü alır. | Tıklama dizisinin ne yaptığını; ekranın durumu adresten mi geldiğini. |
 | `konsol-akis-kabulu.mjs` (15 senaryo) | KULLANICI GİBİ TIKLAR: kaydır → kayıt aç → tam kart → tarayıcı geri → paneli kapat → yeni süzgeç. Süzgeç, sıralama ve kaydırma konumunu her adımda doğrular. | Yazan işlemlerin gerçekten yazdığını. |
 | `konsol-panel-erisimi.mjs` | Sağ panelin SON EYLEMİNE üç yoldan erişimi: bilgi sırası, kaydırınca görünürlük + üstünü örten bir şey olup olmadığı, klavyeyle ulaşma. | Eylemin sonucunu. |
+| `konsol-mobil-akis.mjs` (7 akış × 2 genişlik) | LİSTE DIŞINDAKİ kritik akışları tablet ve telefonda tıklar: karar kuyruğu, ürün sekmeleri, Ayarlar bölümleri, iş detayı, komut paleti, Uygulamalar penceresi, tema. Eylemin üstünü örten bir şey olup olmadığına bakar. | Yazan işlemlerin sonucunu; masaüstü düzenini. |
+| `konsol-islem-kabulu.mjs` (6 senaryo) | GERÇEK veritabanının üstünde, oturum çereziyle: arayüzden onay/ret/yanıt/yayım, yenileyince kalıcılık, yetkisiz hesabın reddi, dekont erişimi, eşzamanlı yayım çakışması. | Supabase Storage'ın gerçek kova politikasını; e-posta/WhatsApp gönderimini. |
 
 ### Ara kontrol düzeltmeleri (27.11.2026)
 
