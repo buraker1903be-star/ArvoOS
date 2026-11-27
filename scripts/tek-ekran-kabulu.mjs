@@ -307,11 +307,19 @@ export function tekEkranHukmu(ad, o) {
       bağımsız tek bir ekran çiziyordu ve kanıt aslında hiçbir şeyi
       kanıtlamıyordu.
     */
+    /*
+      27.11.2026: /panel'in başlığı artık sabit "Ana Sayfa" değil —
+      oturumda ad varsa "İyi günler, <ad>", yoksa "Ana Sayfa"
+      (konsol-ana-sayfa.tsx). Ölçüt eski sabiti arıyordu ve doğru
+      davranışı düşürüyordu. Aranan şey değişmedi: /panel'de ANA
+      SAYFA içeriği, başka adreste BAŞKA içerik.
+    */
+    const anaSayfaBasligi = (b) => b === "Ana Sayfa" || /^(Günaydın|İyi günler|İyi akşamlar|İyi geceler), /.test(b);
     for (const [ad, adim] of Object.entries(k)) {
       if (!adim || adim.baslik === undefined) continue;
       const anaSayfada = adim.adres === "/panel";
-      if (anaSayfada && adim.baslik !== "Ana Sayfa") eksik.push(`${ad}: adres /panel ama içerik "${adim.baslik}"`);
-      if (!anaSayfada && adim.baslik === "Ana Sayfa") eksik.push(`${ad}: adres ${adim.adres} ama içerikte hâlâ Ana Sayfa`);
+      if (anaSayfada && !anaSayfaBasligi(adim.baslik)) eksik.push(`${ad}: adres /panel ama içerik "${adim.baslik}"`);
+      if (!anaSayfada && anaSayfaBasligi(adim.baslik)) eksik.push(`${ad}: adres ${adim.adres} ama içerikte hâlâ Ana Sayfa`);
     }
   }
 
@@ -369,6 +377,26 @@ export function tekEkranHukmu(ad, o) {
     }
     for (const tur of Object.keys(HEDEFLER)) {
       if (!olculen.some((t) => t.tur === tur)) eksik.push(`tahsilat tablosunda "${tur}" satırı ölçülmedi`);
+    }
+  }
+
+  /*
+    MÜŞTERİ SATIRI (27.11.2026, inceleme talebi). Üç kural:
+      1. Avatar adın SOLUNDA. finans.css'teki kural sayfa sınıfına
+         bağlıydı ve ürün detayı `urun-detay-sayfa`ya geçince
+         eşleşmez olmuştu: avatar adın ÜSTÜNDE çiziliyordu.
+      2. Tablo kabı AYRICA kaymamalı. Sayfa zaten kayıyor; iki
+         kaydırıcı iç içe olunca fare tekerleği hangisini
+         kaydıracağı belirsiz oluyor.
+      3. Son satır kırpılmamalı.
+  */
+  if (o.musteriSatiri) {
+    const m = o.musteriSatiri;
+    if (!m.bulundu) eksik.push("müşteri satırı bulunamadı");
+    else {
+      if (!m.avatarSolda) eksik.push(`avatar adın solunda değil (yön ${m.yon})`);
+      if (m.kapKaydiriyor) eksik.push("müşteri tablosu ayrıca kayıyor (iç içe kaydırma)");
+      if (m.sonSatirKirpik) eksik.push("son müşteri satırı kırpık");
     }
   }
 
@@ -474,16 +502,24 @@ export function tekEkranHukmu(ad, o) {
   */
   if (o.urunBaglami?.dogrudanGiris) {
     const g = o.urunBaglami.dogrudanGiris;
-    if (g.kat !== "alt" || g.modul !== "Ürünler") {
-      eksik.push(`doğrudan girişte Ürünler bağlamı etkin değil (kat ${g.kat}, modül ${g.modul ?? "yok"})`);
+    /*
+      27.11.2026: Ürünler modülünün İKİNCİ KATI KALKTI. Ölçüt eskiden
+      "kat alt + modül Ürünler" bekliyordu, çünkü menü "Ürünler →
+      Ürünler" diye iki kat açıyordu ve o tık hiçbir yere
+      götürmüyordu. Yeni kural: doğrudan girişte sol menü ANA KATTA
+      kalır ve Ürünler satırı ETKİN olur. İkinci kat olmadığı için
+      "Ana menüye dön" de yok — dönülecek bir yer yok.
+
+      İki seviyeli menü Finans gibi ÇOK HEDEFLİ modüllerde duruyor;
+      onun sözleşmesini ray çekmecesi ve telefon paneli ölçütleri
+      sınıyor.
+    */
+    if (g.kat !== "ana") eksik.push(`doğrudan girişte sol menü ana katta değil (kat ${g.kat})`);
+    if (!(g.secili ?? []).some((e) => e.startsWith("Ürünler"))) {
+      eksik.push(`doğrudan girişte Ürünler etkin değil (${(g.secili ?? []).join(", ") || "yok"})`);
     }
-    const d = o.urunBaglami.anaMenuyeDonuldu;
-    if (!d) eksik.push("'Ana menüye dön' bulunamadı");
-    else {
-      if (d.kat !== "ana") eksik.push("'Ana menüye dön' ana listeyi getirmiyor");
-      if (d.adres !== g.adres) eksik.push(`ana menüye dönmek adresi değiştiriyor (${g.adres} → ${d.adres})`);
-      if (d.baslik !== g.baslik) eksik.push(`ana menüye dönmek açık sayfayı değiştiriyor (${g.baslik} → ${d.baslik})`);
-      if (!(d.odak || "").startsWith("Ürünler")) eksik.push(`ana menüye dönünce odak Ürünler satırına dönmüyor (${d.odak || "yok"})`);
+    if (o.urunBaglami.anaMenuyeDonuldu?.kat === "alt") {
+      eksik.push("Ürünler hâlâ ikinci kat açıyor (tekrarlanan Ürünler → Ürünler katmanı)");
     }
   }
 
@@ -529,6 +565,20 @@ export function tekEkranHukmu(ad, o) {
     if (t.geriDonuldu?.kat !== "ana" || t.geriDonuldu?.acik !== true) eksik.push("'Ana menüye dön' paneli kapatıyor (bir üst kata çıkmalı)");
     if (t.geriDonuldu?.acik && !(t.geriDonuldu.odak || "").startsWith("Finans")) eksik.push(`üst kata çıkınca odak modül satırına dönmüyor (${t.geriDonuldu.odak || "yok"})`);
     if (t.kapatildi?.acik) eksik.push("'Kapat' paneli kapatmıyor");
+    /*
+      ODAK İADESİ (27.11.2026, Tur 2 · madde 5). Panel kapanınca odak
+      onu AÇAN düğmeye dönmeli. Ölçülmüyordu: dönmediğinde klavye ve
+      ekran okuyucu kullanıcısı sayfanın başına savruluyor ve panele
+      geri dönmek için baştan geziniyor.
+    */
+    if (t.kapatildi && !t.kapatildi.acik && t.odakDondu !== undefined) {
+      /* Düğmenin metni iki parça taşıyor ("Uygulamalar" + "Daha
+         fazla"), o yüzden baştan eşleşme aranmıyor: içinde geçmesi
+         yeter. Baş harfe bakan ilk sürüm doğru davranışı düşürdü. */
+      if (!(t.odakDondu || "").includes("Daha fazla")) {
+        eksik.push(`panel kapanınca odak "Daha fazla" düğmesine dönmüyor (${t.odakDondu || "hiçbir yere"})`);
+      }
+    }
   }
 
   /*

@@ -74,7 +74,16 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
         <div>
           <h2>Ürün performansı</h2>
         </div>
-        <div className="kup-secici">{olcutSecici}{secici}</div>
+        {/* "Tüm ürünler →" BAŞLIĞIN SAĞINDA (27.11.2026). Bağlantı
+            kartın en altındaydı ve yalnızca "Ürünler" yazıyordu: dört
+            satırın altında, dönem seçicisinin uzağında, listeye mi
+            yoksa bir ürüne mi gittiği belirsizdi. Kaynak ArvoLab'ın
+            "Son kaynaklar" bölümü (ana-sayfa-icerik.tsx,
+            .pw-bolum-bas + .pw-bolum-baglanti): bölüm bağlantısı
+            başlığın hizasında durur. */}
+        <div className="kup-secici">{olcutSecici}{secici}
+          <Link className="kup-tumu" href="/panel/platform/urunler">Tüm ürünler →</Link>
+        </div>
       </header>
       <div className="dash-col-govde kup-govde">
         <table className="crm-data-table kup-tablo" data-olcut={olcut}>
@@ -88,10 +97,17 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
                 başlıkta tekrar edilmiyor.
               */}
               <th scope="col" data-olcut="musteri">Aktif müşteri <small>bugün</small></th>
-              <th scope="col" data-olcut="tahsilat">Tahsilat</th>
+              {/* 27.11.2026: dönemin HANGİ sütunu etkilediği başlıkta
+                  yazıyor. "Aktif müşteri bugün" anlık, "Tahsilat" ise
+                  seçili dönemin toplamı; ikisi yan yana dururken
+                  seçicinin neyi değiştirdiği okunmuyordu. */}
+              <th scope="col" data-olcut="tahsilat">Tahsilat <small>{donem.etiket.toLocaleLowerCase("tr")}</small></th>
               {/* Durum sütunu köprü yoklamasından (26.11.2026): ölçüm
                   değil, ürünün ulaşılabilirliği. */}
-              <th scope="col" className="kup-durum-bas">Durum</th>
+              {/* Sağlık ŞU ANKİ köprü yoklamasından; otomasyon kartındaki
+                  durum ise SON KOŞMANIN sonucu. İki farklı kaynak yan
+                  yana durduğu için kapsamı başlıkta yazıyor. */}
+              <th scope="col" className="kup-durum-bas">Durum <small>şu an</small></th>
               <th scope="col"><span className="kup-gizli">Aç</span></th>
             </tr>
           </thead>
@@ -135,7 +151,6 @@ export function UrunPerformansiKarti({ satirlar, donem, olcut = "musteri", para,
           ))}
         </ul>
       </div>
-      <Link className="dash-card-link" href="/panel/platform/urunler">Ürünler</Link>
     </article>
   );
 }

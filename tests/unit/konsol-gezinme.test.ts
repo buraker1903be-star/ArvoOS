@@ -74,11 +74,32 @@ test("sol menünün birincil sırası onaylı mockup'takiyle aynı", () => {
   assert.match(yerlesim, /yanMenuSirasi=\{\["home", "urunler", "musteriler", "finans", "destek", "otomasyonlar"\]\}/);
 });
 
-test("Ürünler menüde kısa adıyla, başlatıcıda tam adıyla", () => {
-  /* Menüde yer dar; "Ürünler ve Fiyatlar" Ctrl+K'da ve başlatıcıda
-     aynen kalmalı, iki ad tek kayıttan gelmeli. */
+test("Ürünler modülünün ikinci katı yok, adı tek kelime", () => {
+  /*
+    27.11.2026: modülün adı "Ürünler ve Fiyatlar", ikinci katının ilk
+    girdisi yine "Ürünler"di — menü "Ürünler → Ürünler" diye okunuyor
+    ve o tık hiçbir yere götürmüyordu. İkinci katın öteki girdisi
+    (Fiyatlar) ürünün kendi "Fiyat basamakları" bölümüne taşındı, yani
+    modülün tek hedefi kaldı.
+
+    Menüde kısa/uzun ad ayrımı da bitti; ayrımın KENDİSİ hâlâ
+    kullanılıyor (başka modüller için), onu ayrı bir test tutuyor.
+  */
   const apps = oku("app/panel/os/konsol-apps.ts");
-  assert.match(apps, /label: "Ürünler ve Fiyatlar", kisaEtiket: "Ürünler"/);
+  const kayit = apps.slice(apps.indexOf('key: "urunler"'), apps.indexOf('key: "otomasyonlar"'));
+  assert.match(kayit, /label: "Ürünler"/);
+  /* Etiketin kendisine bakılıyor, kayıttaki YORUMA değil: gerekçe
+     eski adı anlatmak için onu yazıyor. */
+  assert.doesNotMatch(kayit, /label: "Ürünler ve Fiyatlar"/);
+  assert.doesNotMatch(kayit, /bolumler:/);
+  /* /panel/platform/fiyatlar hâlâ bu modüle düşmeli: ek hizmet
+     fiyatları o adreste ve sol menüde Ürünler etkin kalmalı. */
+  assert.match(kayit, /"\/panel\/platform\/fiyatlar"/);
+});
+
+test("kısa etiket düzeneği duruyor", () => {
+  /* Ürünler artık kullanmıyor ama kural menünün kendisinde: dar
+     menüde kisaEtiket, başlatıcıda tam ad. */
   const nav = oku("app/panel/os/os-navigasyon.tsx");
   assert.match(nav, /u\.kisaEtiket \?\? u\.label/);
 });
@@ -225,10 +246,13 @@ test("bağlamlı gezinme: rota → modül + alt bölüm", async () => {
   };
 
   /* Brifteki akış: Ürünler → ArvoLab → Abonelikler → ürün listesine dönüş. */
-  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", "urunler"]);
-  assert.deepEqual(coz("/panel/platform/urunler/arvolab"), ["urunler", "urunler"]);
+  /* Ürünler'in ikinci katı yok (27.11.2026): alt bölüm undefined.
+     Ürün içi bölümler İÇERİKTE, sol menüde değil. */
+  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", undefined]);
+  assert.deepEqual(coz("/panel/platform/urunler/arvolab"), ["urunler", undefined]);
+  assert.deepEqual(coz("/panel/platform/fiyatlar"), ["urunler", undefined]);
   assert.deepEqual(coz("/panel/platform/billing"), ["finans", "abonelikler"]);
-  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", "urunler"]);
+  assert.deepEqual(coz("/panel/platform/urunler"), ["urunler", undefined]);
 
   /* Finans'ta alt bölüm geçişi. */
   assert.deepEqual(coz("/panel/platform/tahsilat"), ["finans", "tahsilatlar"]);
@@ -329,9 +353,15 @@ test("'Yeniden deneniyor' kaynağı kodda deneme kuyruğu", () => {
   */
   const kural = oku("lib/konsol/otomasyonlar.ts");
   assert.match(kural, /baglanti_kesildi: \{ etiket: "Bağlantı kesildi"/);
-  /* Köprü kopuk dalı artık "yeniden" yazmıyor. */
-  const esitleme = kural.slice(kural.indexOf('if (kopruler.some((k) => k.kopuk))'));
-  assert.match(esitleme.slice(0, 300), /"baglanti_kesildi"/);
+  /* Köprü kopuk dalı artık "yeniden" yazmıyor. Çapa 27.11.2026'da
+     değişti: dal ürün ADLARINI toplamak için filter'a geçti. */
+  const esitleme = kural.slice(kural.indexOf("const kopuk = kopruler.filter"));
+  assert.match(esitleme.slice(0, 400), /"baglanti_kesildi"/);
+  assert.doesNotMatch(esitleme.slice(0, 400), /"yeniden"/);
+  /* Ürün adı elimizdeyse satırda adıyla yazılıyor. */
+  assert.match(kural, /ürününe ulaşılamıyor/);
+  /* Köprüden gelen satırın kapsamı "şu an" — öteki satırlar son çalışma. */
+  assert.match(esitleme.slice(0, 400), /"su_an"/);
 
   const sayfa = oku("app/panel/konsol-ana-sayfa.tsx");
   assert.match(sayfa, /paytr_otomatik_yenileme[\s\S]{0,160}count: "exact", head: true/);
@@ -353,7 +383,37 @@ test("ölçüm düzeneği otomasyon satırlarını kuraldan üretiyor", () => {
   /* Elle yazılmış etiket kalmadı. */
   assert.doesNotMatch(duzenek, /etiket: "Yeniden deneniyor"/);
   assert.doesNotMatch(duzenek, /etiket: "Tamamlandı"/);
-  /* İki senaryo adresten: köprü kopuk ve deneme kuyruğu. */
-  assert.match(duzenek, /OTOMASYON_SENARYO === "kopuk"/);
   assert.match(duzenek, /OTOMASYON_SENARYO === "kuyruk"/);
+
+  /*
+    27.11.2026, ikinci bulgu: iki ayrı fixture aynı dünyayı anlatıp
+    ÇELİŞİYORDU. Ürün tablosu ArvoCal'i "Sorunlu" gösterirken otomasyon
+    kartına verilen köprü listesi "hepsi sağlıklı" diyor ve
+    "Veri senkronizasyonu · Tamamlandı" çıkıyordu — üretimde olamayacak
+    bir hâl. Köprü durumu artık ürün sağlığından TÜRETİLİYOR; elle
+    yazılmış köprü listesi kalmadı.
+  */
+  assert.match(duzenek, /const KOPRULER = URUN_SAGLIK\.slice\(1\)\.map\(/);
+  assert.doesNotMatch(duzenek, /KOPRULER = OTOMASYON_SENARYO/);
+});
+
+test("konsol kontrol ailesi ArvoLab'ın os5 ölçülerinde", () => {
+  /*
+    27.11.2026, Tur 2 · madde 4. İki aile aynı ölçekte yan yana
+    çizilip ÖLÇÜLDÜ (scripts/bilesen-karsilastirma.mjs) ve iki sapma
+    çıktı: kontrol yarıçapı 10 px (ArvoLab 4) ve kontrol yazısı 13 px
+    (ArvoLab 14). Dosyanın kendi notu "düşük yarıçap" diyordu — not
+    ile değer ayrışmıştı.
+
+    Kaynak: ArvoLab c7a6b92 · app/styles/os5-tokens.css
+      --os5-kontrol-h: 40px · --os5-kontrol-r: 4px · --os5-kontrol-dolgu: 12px
+    ArvoLab deposu CI'da yok, o yüzden değerler burada sabitleniyor.
+  */
+  const css = oku("app/panel/konsol-bilesen.css");
+  assert.match(css, /--kb-r:4px/);
+  assert.match(css, /--kb-h:40px/);
+  assert.match(css, /--kb-dolgu:12px/);
+  /* Kontrol yazısı 14 px (--fs-base); 13 px (--fs-sm) ArvoLab'dan küçüktü. */
+  assert.doesNotMatch(css, /font-size:var\(--fs-sm\)/);
+  assert.match(css, /font-size:var\(--fs-base\)/);
 });

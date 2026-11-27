@@ -1212,3 +1212,10 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
 .urun-saglik[data-tone="success"]{background:var(--success-soft);color:var(--success)}
 .urun-saglik[data-tone="danger"]{background:var(--warning-soft);color:var(--warning)}
 .urun-saglik[data-tone="neutral"]{background:var(--surface-2);color:var(--muted)}
+/*
+  KAPSAM ONAYI (27.11.2026): etkilenen ürünlerin hemen altında, uyarı
+  kutusunun içinde. Başlık satırındayken kartın açıklamasını kırpıyordu
+  ve "neyi onaylıyorum" sorusunun cevabı uzaktaydı. Form'a `form`
+  özniteliğiyle bağlı.
+*/
+.plt-fiyat-kapsam{margin-top:var(--sp-2);font-weight:var(--fw-medium)}

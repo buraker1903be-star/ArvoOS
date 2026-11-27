@@ -63,7 +63,9 @@
   overflow: visible;
 }
 .urd-serit > .talep-akis-sekmeler {
-  gap: var(--sp-5);
+  /* Aralık 20 → 2 px: dolgu sekmenin KENDİSİNE verildiği için
+     etiketler arası boşluk korunuyor (14+14+2 = 30 px). */
+  gap: 2px;
   padding: 0;
   border-bottom: 1px solid var(--line);
   background: none;
@@ -71,7 +73,19 @@
 .urd-serit > .talep-akis-sekmeler > a,
 .urd-serit > .talep-akis-sekmeler > button {
   position: relative;
-  padding: 0 0 var(--sp-3);
+  /*
+    YATAY DOLGU 14 px (27.11.2026, kapanış turu · madde 1). ArvoLab'ın
+    Analiz Merkezi şeridi gerçek ekranda ölçüldü
+    (scripts/arvolab-referans.mjs): sekme 40 px yüksek, 14 px yatay
+    dolgulu, aralık 2 px, seçilide 2 px alt çizgi. ArvoOS'ta dolgu
+    SIFIRDI: tıklama ve dokunma hedefi yalnızca metin kadardı, iki
+    sekme arasındaki 20 px boşluk hiçbir sekmeye ait değildi.
+
+    İlk sekmenin SOL dolgusu yok: başlık, şerit ve liste aynı içerik
+    hizasında başlamalı (gezinme sözleşmesi); 14 px sola kaçan bir
+    şerit o hizayı bozuyordu.
+  */
+  padding: 0 14px var(--sp-3);
   border: 0;
   border-radius: 0;
   background: none;
@@ -80,6 +94,7 @@
   font-weight: var(--fw-medium);
   white-space: nowrap;
 }
+.urd-serit > .talep-akis-sekmeler > :first-child { padding-left: 0; }
 .urd-serit > .talep-akis-sekmeler > a:hover,
 .urd-serit > .talep-akis-sekmeler > button:hover { color: var(--ink); }
 /* Seçili sekme: KALIN YAZI + ALT ÇİZGİ. Renk tek başına durumu
@@ -198,3 +213,53 @@
 .urd-kunye > div { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
 .urd-kunye dt { color: var(--muted); font-size: var(--fs-sm); }
 .urd-kunye dd { margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); }
+
+/*
+  MÜŞTERİ SATIRI: AVATAR SOLDA (27.11.2026, inceleme bulgusu).
+
+  Kural finans.css'te var ama seçicisi sayfa sınıfına bağlı
+  (.finans-sayfa, .urun-sayfa, .sistem-sayfa, .kisi-sayfa,
+  .musteri-karti). Ürün detayı 27.11.2026'da `urun-detay-sayfa`
+  sınıfına geçince hiçbirine uymaz oldu: avatar adın SOLUNDA değil
+  ÜSTÜNDE çiziliyordu ve satır iki kat yükseliyordu. Kural sayfanın
+  kendi CSS'ine yazılıyor — paylaşılan seçiciye bir sınıf daha
+  eklemek, o listeyi her yeni sayfada güncellemek demek.
+*/
+.os-root .urun-detay-sayfa .talep-tablo .crm-data-table td[data-label="Müşteri"] .crm-row-link.ek-kisi {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sp-3);
+  text-align: left;
+  min-width: 0;
+}
+.urun-detay-sayfa .ek-kisi-metin { display: flex; flex-direction: column; min-width: 0; }
+/* Kurum avatarı kare köşeli: bireysel abone yuvarlak kalıyor. */
+.urun-detay-sayfa .ek-avatar:not([data-tur="bireysel"]) { border-radius: var(--r-md); }
+
+/*
+  SON SATIRIN ODAK HALKASI (27.11.2026). Tablo kabı kırpıyor
+  (overflow) ve dıştaki 2 px'lik halka son satırda kesiliyordu —
+  klavyeyle gezen kullanıcı nerede olduğunu göremiyordu. Halka
+  İÇERİ alınıyor; kesilecek bir taşma kalmıyor.
+*/
+.urun-detay-sayfa .talep-tablo .crm-data-table .crm-row-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
+}
+
+/*
+  MÜŞTERİ SÜTUNU AD KADAR GENİŞ (27.11.2026). Avatar adın soluna
+  geçince ilk sütunun içine iki öğe birden girdi ve tablo sütunu
+  otomatik genişlikte bırakınca ad kırpıldı: "Akademik Merkez…",
+  "Boğaziçi Araştırma…" iki satıra sarıp satırı yükseltiyordu —
+  oysa sağda 400 px boş yer vardı. Kurum adları uzun; ilk sütun
+  tabanını alıyor, kalan sütunlar sayı taşıdığı için dar kalabilir.
+*/
+.os-root .urun-detay-sayfa .talep-tablo .crm-data-table[data-cols="ur-kiraci"] td[data-label="Müşteri"],
+.os-root .urun-detay-sayfa .talep-tablo .crm-data-table[data-cols="ur-kiraci"] thead th:first-child {
+  min-width: 280px;
+  width: 34%;
+}

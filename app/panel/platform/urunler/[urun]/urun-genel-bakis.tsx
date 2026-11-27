@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Donem } from "@/lib/konsol/donem";
 import type { Olcum, UrunSatiri } from "@/lib/konsol/urun-performansi";
-import { OsSimge } from "../../../os/os-icons";
 import "./urun-genel-bakis.css";
 
 /*
@@ -41,31 +40,22 @@ export function UrunGenelBakis({ satir, donem, para, sayi, bekleyenler }: {
     <section className="ugb">
       <dl className="ugb-serit" aria-label={`${satir.ad} · ${donem.etiket}`}>
         <div>
-          <i aria-hidden="true"><OsSimge ad="crm" boyut={20} /></i>
-          <div>
-            <dt>Aktif müşteri <small>bugün</small></dt>
-            <dd><Deger olcum={satir.aktifMusteri} bicim={sayi} /></dd>
-          </div>
+          <dt>Aktif müşteri <small>bugün</small></dt>
+          <dd><Deger olcum={satir.aktifMusteri} bicim={sayi} /></dd>
         </div>
         <div>
-          <i aria-hidden="true"><OsSimge ad="pulse" boyut={20} /></i>
-          <div>
-            <dt>Denemeden ücretliye <small>{donem.etiket}</small></dt>
-            <dd>
-              {donusum.durum === "var"
-                ? donusum.deger.oran === null
-                  ? <span className="ugb-yok">Dönemde deneme yok</span>
-                  : <>%{Math.round(donusum.deger.oran * 100)}</>
-                : <Deger olcum={donusum.durum === "kaynak_yok" ? { durum: "kaynak_yok" } : { durum: "okunamadi" }} bicim={sayi} />}
-            </dd>
-          </div>
+          <dt>Denemeden ücretliye <small>{donem.etiket}</small></dt>
+          <dd>
+            {donusum.durum === "var"
+              ? donusum.deger.oran === null
+                ? <span className="ugb-yok">Dönemde deneme yok</span>
+                : <>%{Math.round(donusum.deger.oran * 100)}</>
+              : <Deger olcum={donusum.durum === "kaynak_yok" ? { durum: "kaynak_yok" } : { durum: "okunamadi" }} bicim={sayi} />}
+          </dd>
         </div>
         <div>
-          <i aria-hidden="true"><OsSimge ad="wallet" boyut={20} /></i>
-          <div>
-            <dt>Tahsilat <small>{donem.etiket}</small></dt>
-            <dd><Deger olcum={satir.tahsilat} bicim={para} /></dd>
-          </div>
+          <dt>Tahsilat <small>{donem.etiket}</small></dt>
+          <dd><Deger olcum={satir.tahsilat} bicim={para} /></dd>
         </div>
       </dl>
 
@@ -73,12 +63,17 @@ export function UrunGenelBakis({ satir, donem, para, sayi, bekleyenler }: {
         <article className="panel-card ugb-kart">
           <header className="fn-alt-bas"><h2>Deneme dönüşümü</h2><small>{donem.etiket} · bireysel aboneler</small></header>
           {donusum.durum === "kaynak_yok" ? (
+            /* ÖLÇÜTTEKİ DURUM BURADA TEKRARLANMIYOR (27.11.2026).
+               Üstteki ölçüt zaten "Veri bağlı değil" yazıyor; kart da
+               kalın harflerle aynı cümleyle başlayınca ekranda aynı
+               hüküm iki kez okunuyordu. Ölçütte kısa durum, burada
+               yalnızca NEDENİ. */
             <p className="ugb-bos">
-              <b>Veri bağlı değil.</b> Bu üründe bireysel abone yok; kurum lisansında
-              durum geçmişi tutulmadığı için &quot;deneme → ücretli&quot; geçişi ölçülemiyor.
+              Bu üründe bireysel abone yok; kurum lisansında durum geçmişi
+              tutulmadığı için &quot;deneme → ücretli&quot; geçişi ölçülemiyor.
             </p>
           ) : donusum.durum === "okunamadi" ? (
-            <p className="ugb-bos" data-tone="danger"><b>Veri okunamadı.</b> Abone kayıtları ya da ödemeler bu açılışta okunamadı.</p>
+            <p className="ugb-bos" data-tone="danger">Abone kayıtları ya da ödemeler bu açılışta okunamadı.</p>
           ) : (
             <>
               <ol className="ugb-huni">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Otomasyon } from "@/lib/konsol/otomasyonlar";
 import { istanbulDateTime, todayInIstanbul } from "@/lib/istanbul-date";
+import { kuyrukDurumu, kuyrukMetni } from "@/lib/konsol/karar-kuyrugu";
 import "./konsol-ana-kartlar.css";
 
 /*
@@ -51,34 +52,83 @@ export function KararBekleyenlerKarti({ kalemler, okunamayan }: {
   /** Okunamayan kaynaklar: "iş yok" ile "bilmiyoruz" aynı şey değil. */
   okunamayan: string[];
 }) {
+  /*
+    SAYFANIN EN BELİRGİN ALANI: ÖNE ÇIKAN TEK İŞ (27.11.2026).
+
+    Eskiden kuyruğun dört kalemi de eşit ağırlıkta satırlardı ve her
+    birinin sağında bir düğme vardı: ekranda dört "birincil" eylem
+    yan yana duruyor, hangisinin önce yapılacağını yönetici kendisi
+    ayıklıyordu. Kuyruğun zaten bir öncelik sırası var (çağıran taraf
+    sıralıyor); ilk kalem öne çıkarılıyor, TEK birincil düğmeyle.
+
+    Kalanlar ALTTA kompakt satırlar olarak duruyor — kaybolmuyorlar.
+    "Tüm bekleyen işler" diye tek bir ekran YOK: kuyruk dört ayrı
+    kaynaktan geliyor (ödeme, sözleşme, yenileme, destek) ve her
+    kalem kendi ekranına açılıyor. Var olmayan bir rotaya bağlantı
+    koymaktansa kalemlerin kendisi listede duruyor.
+  */
+  const [one, ...kalan] = kalemler;
+  /*
+    BOŞ İLE EKSİK AYRI (27.11.2026, inceleme bulgusu). Kart iki bilgiyi
+    birbirinden bağımsız yazıyordu ve ikisi aynı anda çıkınca ekran
+    kendi kendiyle çelişiyordu: "Bekleyen karar yok." hemen altında
+    "Destek talepleri okunamadı". Karar artık tek ve saf bir yerde
+    (lib/konsol/karar-kuyrugu), ekran yalnızca çiziyor.
+  */
+  const durum = kuyrukDurumu({ kalemSayisi: kalemler.length, okunamayan });
+  const metin = kuyrukMetni(durum);
   return (
     <article className="kak-kart" aria-labelledby="kak-karar-baslik">
       <header className="kak-bas">
         <h2 id="kak-karar-baslik">Karar bekleyenler</h2>
+        {kalan.length ? <span className="kak-sayac">{kalemler.length} iş</span> : null}
       </header>
-      {kalemler.length ? (
-        <ul className="kak-liste">
-          {kalemler.map((k) => (
-            <li key={k.anahtar}>
-              <Link className="kak-satir" href={k.href}>
-                {k.urun ? <span className="kak-urun">{k.urun}</span> : <span className="kak-urun kak-urun-bos" aria-hidden="true" />}
-                <span className="kak-govde">
-                  <b>{k.baslik}</b>
-                  {k.alt ? <small>{k.alt}</small> : null}
-                </span>
-                {kisaZaman(k.zaman) ? <time className="kak-zaman">{kisaZaman(k.zaman)}</time> : null}
-                <span className="kak-eylem">{k.eylem ?? "İncele"}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="kak-bos">Karar bekleyen iş yok.</p>
-      )}
-      {okunamayan.length ? (
-        <p className="kak-bos" data-tone="danger">
-          {okunamayan.join(", ")} okunamadı; bu kalemler listede eksik olabilir.
+      {/* Eksik kaynak uyarısı LİSTENİN ÜSTÜNDE: altta dururken,
+          kalemleri okuyup kapatan kullanıcı listenin eksik olduğunu
+          hiç görmüyordu. */}
+      {metin && durum.tur !== "bos" ? (
+        <p className="kak-eksik" data-tone="uyari">
+          <b>{metin.baslik}</b>
+          {metin.aciklama ? <span>{metin.aciklama}</span> : null}
         </p>
+      ) : null}
+      {one ? (
+        <>
+          <div className="kak-one">
+            <div className="kak-one-metin">
+              <p className="kak-one-tur">
+                {one.urun ? <span className="kak-urun">{one.urun}</span> : null}
+                <span>{one.baslik}</span>
+              </p>
+              {one.alt ? <p className="kak-one-kayit">{one.alt}</p> : null}
+              {kisaZaman(one.zaman) ? <time className="kak-zaman">{kisaZaman(one.zaman)}</time> : null}
+            </div>
+            {/* TEK BİRİNCİL EYLEM, doğrudan ilgili kayda. Eylem adını
+                KAYNAK veriyor (konsol-ana-sayfa): başlıktan türetmek
+                Türkçe'de ek uyumunu bozuyor — "sözleşme onayıni
+                incele" gibi. Burada yalnızca yedek var. */}
+            <Link className="panel-primary kak-one-eylem" href={one.href}>{one.eylem ?? "İncele"}</Link>
+          </div>
+          {kalan.length ? (
+            <ul className="kak-liste">
+              {kalan.map((k) => (
+                <li key={k.anahtar}>
+                  <Link className="kak-satir" href={k.href}>
+                    {k.urun ? <span className="kak-urun">{k.urun}</span> : <span className="kak-urun kak-urun-bos" aria-hidden="true" />}
+                    <span className="kak-govde">
+                      <b>{k.baslik}</b>
+                      {k.alt ? <small>{k.alt}</small> : null}
+                    </span>
+                    {kisaZaman(k.zaman) ? <time className="kak-zaman">{kisaZaman(k.zaman)}</time> : null}
+                    <span className="kak-eylem" aria-hidden="true">→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      ) : durum.tur === "bos" ? (
+        <p className="kak-bos">{metin?.baslik}</p>
       ) : null}
     </article>
   );
@@ -89,6 +139,13 @@ export function OtomasyonlarKarti({ isler, href }: { isler: Otomasyon[]; href: s
     <article className="kak-kart" aria-labelledby="kak-otomasyon-baslik">
       <header className="kak-bas">
         <h2 id="kak-otomasyon-baslik">Otomasyonlar</h2>
+        {/* KAPSAM BAŞLIKTA (27.11.2026). Kartın varsayılan kapsamı SON
+            ÇALIŞMANIN sonucu; ürün tablosundaki sağlık ise ŞU ANKİ
+            köprü yoklaması. İkisi aynı ekranda yan yana duruyor ve
+            kapsamları yazılmadığında çelişiyormuş gibi okunuyordu.
+            Köprüden gelen satırlar bu varsayılanın DIŞINDA ve kendi
+            rozetini taşıyor (aşağıda). */}
+        <span className="kak-sayac">Son çalışma</span>
       </header>
       <ul className="kak-liste kak-otomasyon">
         {isler.map((is) => (
@@ -100,8 +157,26 @@ export function OtomasyonlarKarti({ isler, href }: { isler: Otomasyon[]; href: s
               <span className="kak-govde">
                 <b>{is.ad}</b>
                 <small>{is.detay}</small>
+                {/*
+                  SON BAŞARILI ÇALIŞMANIN ZAMANI (27.11.2026). Güncel
+                  sağlık satırında ("Bağlantı kesildi") en önemli ikinci
+                  soru "peki en son ne zaman çalıştı": kopyanın ne kadar
+                  eskidiğini ancak bu söylüyor. Zaman elde yoksa satır
+                  yazılmıyor — "hiç" ile "bilinmiyor" aynı şey değil.
+                */}
+                {is.sonCalisma ? (
+                  <small className="kak-zaman-alt">
+                    {is.kapsam === "su_an" ? "Son başarılı çalışma: " : "Son çalışma: "}
+                    {kisaZaman(is.sonCalisma.toISOString())}
+                  </small>
+                ) : null}
               </span>
-              <span className="kak-rozet" data-tone={is.ton}>{is.etiket}</span>
+              <span className="kak-rozet-yigin">
+                <span className="kak-rozet" data-tone={is.ton}>{is.etiket}</span>
+                {/* Kapsam SATIRDA: bu satır son çalışmanın sonucunu
+                    değil, ŞU ANKİ bağlantı sağlığını söylüyor. */}
+                {is.kapsam === "su_an" ? <span className="kak-kapsam">şu anki durum</span> : null}
+              </span>
             </span>
           </li>
         ))}

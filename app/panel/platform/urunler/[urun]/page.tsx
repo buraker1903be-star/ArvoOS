@@ -7,6 +7,7 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { planlar, type PricedProduct } from "@/lib/site/pricing";
+import { FiyatDuzenleme, type FiyatUrunu } from "../../fiyatlar/fiyat-duzenleme";
 import { planTutari, planYillikTutari } from "@/lib/site/fiyat-kaynagi";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { basHarfleri, LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
@@ -218,6 +219,9 @@ export default async function UrunPage({ params, searchParams }: {
     sayi,
   });
   const basamaklar = planlar(urun as PricedProduct);
+  /* Düzenleme yalnızca fiyat kataloğunda basamağı olan üründe: basamağı
+     olmayan bir üründe boş bir taslak tablosu çizmek anlamsız. */
+  const fiyatliUrun = basamaklar.length > 0;
   /* Liste düşerse sekme "abone yok" demesin: hata kendi satırında yazılıyor. */
   const aboneListesiHatasi = (sonAboneSonucu as { error: { message: string } | null }).error?.message ?? null;
   const sonAboneler = ((sonAboneSonucu as { data: unknown[] | null }).data ?? []) as {
@@ -459,7 +463,6 @@ export default async function UrunPage({ params, searchParams }: {
             hangi bölümü etkilediği belli değildi. Yetki değişmedi. */}
         <header className="urd-bolum-bas">
           <div><h2>Fiyat basamakları</h2><small>Yalnızca {urunTanimi.name}; KDV dahil, yıllıkta 10 ay bedeli.</small></div>
-          <Link className="panel-primary" href={`/panel/platform/fiyatlar?urun=${urun}`}>Fiyatları düzenle</Link>
         </header>
         {basamaklar.length ? (
           <div className="talep-tablo fn-ic-tablo">
@@ -487,6 +490,19 @@ export default async function UrunPage({ params, searchParams }: {
             </table>
           </div>
         ) : bos("Yayımlanmış basamak yok", `${urunTanimi.name} için fiyat basamağı tanımlı değil. Fiyat listesinde tanımlandığında burada görünür.`)}
+
+        {/*
+          DÜZENLEME ÜRÜN BAĞLAMINDA (27.11.2026). Bölüm salt okunurdu ve
+          "Fiyatları düzenle" düğmesi kurucuyu üründen çıkarıp Fiyatlar
+          ekranına atıyordu: fiyat değiştirmek için ürünü terk etmek
+          gerekiyordu. Taslak–yayım akışının AYNISI artık burada
+          (fiyat-duzenleme.tsx); iki rota tek bileşeni çiziyor.
+
+          Yetki değişmedi: yazma işlemleri aynı sunucu işlemleri ve
+          hepsi isPlatformOwner + konsolAlaniniDogrula(..., "urunler")
+          kapısından geçiyor.
+        */}
+        {fiyatliUrun ? <FiyatDuzenleme urun={urun as FiyatUrunu} /> : null}
       </section>
 
       {bireyselVar ? (
