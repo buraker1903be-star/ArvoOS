@@ -46,6 +46,10 @@ function sorgu(tablo: string) {
   /* Bilinmeyen süzgeçler zinciri bozmasın: her yöntem bu vekili döndürür. */
   const kurucu: Record<string, unknown> = new Proxy(ham, { get: (h, ad) => (ad in h ? h[ad as string] : () => kurucu) });
   const zincir = (f: (s: Satir[]) => Satir[]) => { satirlar = f(satirlar); return kurucu; };
+  const simulasyon = (islem: string) => {
+    console.warn(`[onizleme] SİMÜLASYON — ${islem} ${tablo}: hiçbir şey yazılmadı, çağrı başarılı görünecek.`);
+    return kurucu;
+  };
   /* Gömülü seçimde sütun adı "organizations(name)" gibi gelebiliyor. */
   const deger = (s: Satir, sutun: string) => s[sutun.split("->")[0]];
   Object.assign(ham, {
@@ -67,13 +71,18 @@ function sorgu(tablo: string) {
     range: (a: number, b: number) => zincir((s) => s.slice(a, b + 1)),
     single: () => ((tek = "single"), kurucu),
     maybeSingle: () => ((tek = "maybe"), kurucu),
-    /* Yazmalar: önizlemede kalıcı değil, başarılı görünür. Gerçek
-       tahsilat, fiyat yayımı, destek yanıtı ve otomasyon önizlemede
-       BU YÜZDEN tetiklenmiyor. */
-    insert: () => kurucu,
-    update: () => kurucu,
-    upsert: () => kurucu,
-    delete: () => kurucu,
+    /*
+      YAZMALAR SİMÜLASYON. Önizlemede hiçbir şey kaydedilmiyor; çağrı
+      yalnızca "başarılı" görünüyor. Bu sessiz başarı KANIT DEĞİL:
+      "ödeme onaylandı" diye görünen bir ekran, gerçekte onaylanmış
+      bir ödeme anlamına gelmiyor. Bu yüzden her yazma sunucu
+      günlüğüne SİMÜLASYON damgasıyla yazılıyor ve ekranda da
+      önizleme şeridi duruyor (app/panel/onizleme-serit.tsx).
+    */
+    insert: () => simulasyon("insert"),
+    update: () => simulasyon("update"),
+    upsert: () => simulasyon("upsert"),
+    delete: () => simulasyon("delete"),
     then: (coz: (s: Sonuc) => unknown) => {
       const sonuc: Sonuc = yalnizSayim
         ? { data: null, error: null, count: satirlar.length }

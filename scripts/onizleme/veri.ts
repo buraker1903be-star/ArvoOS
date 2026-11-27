@@ -43,6 +43,9 @@ const KURUMLAR = [
   sınanamıyordu. Bu yirmi kayıt yalnızca hacim için: adlar ve
   tutarlar uydurma, durumlar sırayla dağıtılıyor.
 */
+/* Ürün kodları veritabanı kısıtındakilerle aynı: arvoos | arvolab |
+   arc | randevu. "core" yazılmıştı ve beklenen tutar hiçbir zaman
+   bulunamıyordu — ekran her bildirimde "doğrulanamadı" diyordu. */
 const DOLGU = Array.from({ length: 20 }, (_, i) => {
   const n = i + 1;
   return {
@@ -114,17 +117,20 @@ export const ORNEK: Record<string, Record<string, unknown>[]> = {
     /* Listeyi kaydıracak kadar sonuçlanmış bildirim (yalnızca hacim). */
     ...DOLGU.map((d, i) => ({
       id: `eeeeeeee-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
-      organization_id: d.id, plan_code: d.plan_code, product: "core", amount: d.ucret, currency: "TRY",
+      organization_id: d.id, plan_code: d.plan_code, product: "arvoos", amount: d.ucret, currency: "TRY",
       status: i % 4 === 0 ? "rejected" : "approved", payment_method: "bank_transfer",
       receipt_path: null, reference_no: `ARV-2026-${String(1000 + i)}`, customer_note: null,
       review_note: i % 4 === 0 ? "Dekont gelmedi." : "Hesapta görüldü.",
       created_at: gun(-40 + i), reviewed_at: gun(-39 + i),
       organizations: { name: d.name, slug: `ornek-${i + 1}` }, platform_bank_accounts: null,
     })),
-    { id: "bbbbbbb1-0000-4000-8000-000000000001", organization_id: K1, plan_code: "kurumsal", product: "core", amount: 450_000, currency: "TRY", status: "pending", payment_method: "bank_transfer", receipt_path: "dekont/p1.pdf", reference_no: "ARV-2026-0141", customer_note: "Havale bugün yapıldı, dekont ekte.", review_note: null, created_at: gun(-1), reviewed_at: null, organizations: { name: "Akademi Yayıncılık", slug: "akademi" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
+    { id: "bbbbbbb1-0000-4000-8000-000000000001", organization_id: K1, plan_code: "kurumsal", product: "arvoos", amount: 450_000, currency: "TRY", status: "pending", payment_method: "bank_transfer", receipt_path: "dekont/p1.pdf", reference_no: "ARV-2026-0141", customer_note: "Havale bugün yapıldı, dekont ekte.", review_note: null, created_at: gun(-1), reviewed_at: null, organizations: { name: "Akademi Yayıncılık", slug: "akademi" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
+    /* Tutarı beklenenden FARKLI bekleyen bildirim: "Beklenen tutarla
+       uyuşmuyor" başlığının örneği. */
+    { id: "bbbbbbb1-0000-4000-8000-000000000005", organization_id: K2, plan_code: "baslangic", product: "arvoos", amount: 180_000, currency: "TRY", status: "pending", payment_method: "bank_transfer", receipt_path: "dekont/p5.pdf", reference_no: "ARV-2026-0143", customer_note: "Bu ay indirimli konuşmuştuk.", review_note: null, created_at: gun(-1), reviewed_at: null, organizations: { name: "Ege Danışmanlık", slug: "ege" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
     { id: "bbbbbbb1-0000-4000-8000-000000000002", organization_id: K4, plan_code: "kurumsal", product: "arvolab", amount: 150_000, currency: "TRY", status: "pending", payment_method: "bank_transfer", receipt_path: null, reference_no: "ARV-2026-0142", customer_note: null, review_note: null, created_at: gun(-2), reviewed_at: null, organizations: { name: "Deniz Eğitim Kurumları", slug: "deniz" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
-    { id: "bbbbbbb1-0000-4000-8000-000000000003", organization_id: K2, plan_code: "baslangic", product: "core", amount: 180_000, currency: "TRY", status: "approved", payment_method: "bank_transfer", receipt_path: "dekont/p3.pdf", reference_no: "ARV-2026-0120", customer_note: null, review_note: "Hesapta görüldü.", created_at: gun(-20), reviewed_at: gun(-19), organizations: { name: "Ege Danışmanlık", slug: "ege" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
-    { id: "bbbbbbb1-0000-4000-8000-000000000004", organization_id: K3, plan_code: "profesyonel", product: "core", amount: 320_000, currency: "TRY", status: "rejected", payment_method: "bank_transfer", receipt_path: null, reference_no: "ARV-2026-0118", customer_note: "Dekontu sonra yükleyeceğim.", review_note: "Dekont gelmedi.", created_at: gun(-26), reviewed_at: gun(-24), organizations: { name: "Kuzey Mimarlık", slug: "kuzey" }, platform_bank_accounts: null },
+    { id: "bbbbbbb1-0000-4000-8000-000000000003", organization_id: K2, plan_code: "baslangic", product: "arvoos", amount: 180_000, currency: "TRY", status: "approved", payment_method: "bank_transfer", receipt_path: "dekont/p3.pdf", reference_no: "ARV-2026-0120", customer_note: null, review_note: "Hesapta görüldü.", created_at: gun(-20), reviewed_at: gun(-19), organizations: { name: "Ege Danışmanlık", slug: "ege" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
+    { id: "bbbbbbb1-0000-4000-8000-000000000004", organization_id: K3, plan_code: "profesyonel", product: "arvoos", amount: 320_000, currency: "TRY", status: "rejected", payment_method: "bank_transfer", receipt_path: null, reference_no: "ARV-2026-0118", customer_note: "Dekontu sonra yükleyeceğim.", review_note: "Dekont gelmedi.", created_at: gun(-26), reviewed_at: gun(-24), organizations: { name: "Kuzey Mimarlık", slug: "kuzey" }, platform_bank_accounts: null },
   ],
   platform_subscription_requests: [
     { id: "a1", organization_id: K4, status: "pending", plan_code: "kurumsal", created_at: gun(-3) },
@@ -184,8 +190,17 @@ export const ORNEK: Record<string, Record<string, unknown>[]> = {
     { module_code: "finance", is_enabled: true, organization_id: ARVO, arvo_modules: { name: "Finans", description: "", sort_order: 2 } },
     { module_code: "support", is_enabled: true, organization_id: ARVO, arvo_modules: { name: "Destek Merkezi", description: "", sort_order: 3 } },
   ],
+  /*
+    Çekirdek lisanslar: beklenen tutarın kaynağı (lib/beklenen-odeme).
+    K1'in ücreti BİLEREK yok — "Beklenen tutar doğrulanamadı" hâli
+    örnek veriyle de görülebilsin; K2'ninki bildirimden farklı, yani
+    "Beklenen tutarla uyuşmuyor".
+  */
   organization_licenses: [
-    { organization_id: ARVO, license_status: "active", suspension_reason: null },
+    { organization_id: ARVO, license_status: "active", suspension_reason: null, plan_code: "kurumsal", monthly_fee: null, user_limit: null, extra_user_fee: 0 },
+    { organization_id: K1, license_status: "active", suspension_reason: null, plan_code: "kurumsal", monthly_fee: null, user_limit: 25, extra_user_fee: 0 },
+    { organization_id: K2, license_status: "past_due", suspension_reason: null, plan_code: "baslangic", monthly_fee: 240_000, user_limit: 10, extra_user_fee: 0 },
+    { organization_id: K4, license_status: "active", suspension_reason: null, plan_code: "kurumsal", monthly_fee: 540_000, user_limit: 40, extra_user_fee: 0 },
   ],
   /* Kapsam satırı YOK: kurucunun altı alanı da açık (lib/konsol-alanlari). */
   platform_kurucu_alanlari: [],

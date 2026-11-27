@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { donemTutari, havaleFarklari } from "@/lib/abonelik-tutari";
+import { donemTutari, farkMetinleri, havaleFarklari, havaleUyariBasligi } from "@/lib/abonelik-tutari";
 
 /* Bir dönemin beklenen tutarı ve havale bildirimiyle karşılaştırması. */
 
@@ -18,10 +18,37 @@ test("havale: uyumlu bildirimde fark yok; eksik tutar ve paket değişimi yazıl
   assert.deepEqual(havaleFarklari({ bildirilenTutar: 199_000, beklenenTutar: 199_000, bildirilenPaket: "starter", mevcutPaket: "starter" }), []);
   const farklar = havaleFarklari({ bildirilenTutar: 199_000, beklenenTutar: 599_000, bildirilenPaket: "professional", mevcutPaket: "starter" });
   assert.equal(farklar.length, 2);
-  assert.match(farklar[0], /eksik/);
-  assert.match(farklar[1], /pakete geçirir/);
+  assert.equal(farklar[0].tur, "tutar");
+  assert.match(farklar[0].metin, /eksik/);
+  assert.equal(farklar[1].tur, "paket");
+  assert.match(farklar[1].metin, /pakete geçirir/);
 });
 
 test("havale: ücret girilmemişse doğrulanamadığı söyleniyor", () => {
-  assert.match(havaleFarklari({ bildirilenTutar: 1, beklenenTutar: 0, bildirilenPaket: null, mevcutPaket: null })[0], /doğrulanamıyor/);
+  const farklar = havaleFarklari({ bildirilenTutar: 1, beklenenTutar: 0, bildirilenPaket: null, mevcutPaket: null });
+  assert.equal(farklar[0].tur, "dogrulanamadi");
+  assert.match(farklar[0].metin, /karşılaştırılamıyor/);
+});
+
+test("başlık farkın türünden: olmayan karşılaştırma 'uyuşmuyor' diye sunulmaz", () => {
+  /*
+    27.11.2026 ara kontrolü: üç hâl de "Beklenenle uyuşmuyor" diye
+    gösteriliyordu. Beklenen ücret hiç girilmemişse karşılaştırılacak
+    iki tutar yok; kurucu var olmayan bir farkı aramaya gönderiliyordu.
+  */
+  const yok = havaleFarklari({ bildirilenTutar: 1, beklenenTutar: null, bildirilenPaket: null, mevcutPaket: null });
+  assert.equal(havaleUyariBasligi(yok), "Beklenen tutar doğrulanamadı.");
+
+  const farkli = havaleFarklari({ bildirilenTutar: 199_000, beklenenTutar: 599_000, bildirilenPaket: null, mevcutPaket: null });
+  assert.equal(havaleUyariBasligi(farkli), "Beklenen tutarla uyuşmuyor.");
+
+  const yalnizPaket = havaleFarklari({ bildirilenTutar: 199_000, beklenenTutar: 199_000, bildirilenPaket: "professional", mevcutPaket: "starter" });
+  assert.equal(havaleUyariBasligi(yalnizPaket), "Bildirim kiracının kaydından farklı.");
+
+  assert.equal(havaleUyariBasligi([]), null);
+});
+
+test("düz metin listesi sırayı koruyor", () => {
+  const farklar = havaleFarklari({ bildirilenTutar: 199_000, beklenenTutar: 599_000, bildirilenPaket: "professional", mevcutPaket: "starter" });
+  assert.deepEqual(farkMetinleri(farklar), farklar.map((f) => f.metin));
 });

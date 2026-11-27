@@ -31,15 +31,16 @@ import { rotaKusurlari } from "./konsol-rota-olcutleri.mjs";
 const { chromium } = createRequire(import.meta.url)("playwright");
 
 /*
-  GERÇEK HOST'TAN istenir: konsolun sol gezinmesi, ikinci kat menüsü ve
-  /panel/platform kapısı `isManagementHost` kararına bağlı
-  (lib/site/host-rules). localhost'tan istenince kabuk KİRACI panelini
-  çiziyor ve ekran onaylı tasarımdan bambaşka görünüyordu. Adres
-  tarayıcıda yerele eşleniyor (--host-resolver-rules), yani üretim
-  koduna dokunmadan gerçek host'la çalışıyoruz.
+  LOCALHOST'TAN istenir. Konsolun kabuğu (sol gezinme, ikinci kat
+  menü, /panel/platform kapısı) `isManagementHost` kararına bağlı;
+  önizlemede localhost da yönetim host'u sayılıyor
+  (scripts/onizleme/host-rules.ts). Bir süre gerçek host tarayıcıda
+  yerele eşlenerek kullanıldı, ama Next'in geliştirme sunucusu
+  localhost DIŞINDAKİ bir host'ta istemci paketini bağlamıyor: sayfa
+  doğru görünüyor, hiçbir istemci bileşeni çalışmıyor ve hata da yok.
 */
 const PORT = process.env.PORT ?? "3124";
-const TABAN = process.env.TABAN ?? `http://yonetim.arvo-os.com:${PORT}`;
+const TABAN = process.env.TABAN ?? `http://localhost:${PORT}`;
 const DIZIN = process.env.DIZIN ?? "kanit/konsol";
 const K1 = process.env.ORNEK_KURUM ?? "11111111-1111-4111-8111-111111111111";
 

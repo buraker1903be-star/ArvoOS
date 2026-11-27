@@ -10,10 +10,10 @@
   diye yazılıyor (AGENTS.md: engelin sorgusu hata yutmaz).
 */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { donemTutari, havaleFarklari } from "./abonelik-tutari";
+import { donemTutari, havaleFarklari, type HavaleFarki } from "./abonelik-tutari";
 
 export type HavaleBildirimi = { id: string; organization_id: string; product: string | null; plan_code: string | null; amount: number };
-export type HavaleDenetimi = { beklenen: number | null; farklar: string[] };
+export type HavaleDenetimi = { beklenen: number | null; farklar: HavaleFarki[] };
 
 export async function havaleDenetimleri(supabase: SupabaseClient, bildirimler: readonly HavaleBildirimi[]): Promise<Map<string, HavaleDenetimi>> {
   const sonuc = new Map<string, HavaleDenetimi>();
@@ -26,7 +26,11 @@ export async function havaleDenetimleri(supabase: SupabaseClient, bildirimler: r
   ]);
   const hata = cekirdek.error ?? urunler.error ?? uyeler.error;
   if (hata) {
-    for (const b of bildirimler) sonuc.set(b.id, { beklenen: null, farklar: [`Lisans okunamadı (${hata.message}); tutar doğrulanamıyor.`] });
+    /* Lisans okunamadı: karşılaştırılacak beklenen tutar YOK —
+       "uyuşmuyor" değil, "doğrulanamadı". */
+    for (const b of bildirimler) {
+      sonuc.set(b.id, { beklenen: null, farklar: [{ tur: "dogrulanamadi", metin: `Lisans okunamadı (${hata.message}); beklenen tutar doğrulanamıyor.` }] });
+    }
     return sonuc;
   }
   type Cekirdek = { organization_id: string; plan_code: string | null; monthly_fee: number | null; user_limit: number | null; extra_user_fee: number | null };

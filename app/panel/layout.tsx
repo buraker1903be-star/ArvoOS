@@ -53,6 +53,7 @@ import { OsPostaDugmesi } from "./os/os-posta-dugmesi";
 import { OsPostaUyarisi } from "./os/os-posta-uyarisi";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 import { sozlesmeOnayGerekli } from "@/lib/sozlesme/onay-durumu";
+import { OnizlemeSerit } from "./onizleme-serit";
 import { SozlesmeOnayi } from "./sozlesme-onayi";
 
 /*
@@ -435,7 +436,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     const benimAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
     sure.bitir();
-    return <div className="panel-root os-root" style={tenantStyle}>{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
+    return <div className="panel-root os-root" style={tenantStyle}><OnizlemeSerit />{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
       <PresenceHeartbeat />
       <NavProgress />
       <GlobalActionFeedback />
@@ -546,7 +547,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
   sure.bitir();
-  return <div className="panel-root os-root os-konsol">{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
+  return <div className="panel-root os-root os-konsol"><OnizlemeSerit />{sozlesmeGerekli ? <SozlesmeOnayi cikis={logout} /> : null}<main className="panel-frame os-frame" inert={sozlesmeGerekli || undefined}>
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />

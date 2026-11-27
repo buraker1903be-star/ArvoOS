@@ -18,6 +18,7 @@ import { enCok } from "@/lib/liste-istatistik";
 import { reviewBankTransferPayment } from "./actions";
 import { KararFormu } from "./karar-formu";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
+import { farkMetinleri, havaleUyariBasligi, type HavaleFarki } from "@/lib/abonelik-tutari";
 // plt-quote, plt-receipt, plt-mono, kiraci-baglanti hâlâ buradan.
 import "../platform.css";
 import "../../hr/hr.css";
@@ -200,7 +201,7 @@ export default async function PaymentApprovalsPage({ searchParams }: {
          aynı yetki. Yalnızca bulunduğu yer değişti. */
       karar: bekleyen ? (
         <div className="talep-not">
-          <KararFormu paymentId={payment.id} kurumAdi={ad} tutar={tutar} farklar={farklar} kaydet={reviewBankTransferPayment} />
+          <KararFormu paymentId={payment.id} kurumAdi={ad} tutar={tutar} farklar={farkMetinleri(farklar)} kaydet={reviewBankTransferPayment} />
         </div>
       ) : null,
     };
@@ -213,7 +214,7 @@ export default async function PaymentApprovalsPage({ searchParams }: {
     durum: incidentLabels[incident.result] ?? incident.result,
     ton: "danger" as const,
     kurumId: incident.organizationId ?? null,
-    farklar: [] as string[],
+    farklar: [] as HavaleFarki[],
     not: null as string | null,
     alanlar: [
       { ad: "Tutar", deger: incident.paymentAmount !== null ? para(incident.paymentAmount) : <em>bilinmiyor</em> },
@@ -370,8 +371,12 @@ export default async function PaymentApprovalsPage({ searchParams }: {
             <KonsolPanelAlanlar alanlar={secili.alanlar} />
             {secili.dekont}
             {secili.not ? <div className="talep-not"><p className="plt-quote">&ldquo;{secili.not}&rdquo;</p></div> : null}
+            {/* BAŞLIK FARKIN TÜRÜNE GÖRE: beklenen ücret girilmemişse
+                karşılaştırılacak iki tutar yok, "uyuşmuyor" demek
+                olmayan bir karşılaştırmayı iddia ederdi
+                (lib/abonelik-tutari → havaleUyariBasligi). */}
             {secili.farklar.length ? (
-              <KNot ton="tehlike"><b>Beklenenle uyuşmuyor.</b>{secili.farklar.map((f) => <span key={f}><br />{f}</span>)}</KNot>
+              <KNot ton="tehlike"><b>{havaleUyariBasligi(secili.farklar)}</b>{secili.farklar.map((f) => <span key={f.metin}><br />{f.metin}</span>)}</KNot>
             ) : null}
             {secili.karar}
             <div className="kl-panel-eylem">
