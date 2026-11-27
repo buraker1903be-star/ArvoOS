@@ -71,3 +71,34 @@ test("okunamayan ad listesi çökmüyor, boş dönüyor (çağıran yedeğini ya
   assert.equal(adlar.size, 0);
   assert.equal(adlar.get(SAHIP), undefined);
 });
+
+/*
+  BÜYÜK KURUM (F6 PR7). Eskiden bütün kimlikler tek `in.(…)` süzgecindeydi;
+  1100 akademisyenli kurumda adres sınırı aşılıyor, istek boş hatayla
+  düşüyor ve herkes "Üye xxxxxxxx" görünüyordu (gerçek PostgREST'te ölçüldü).
+  Artık her istek en fazla KISI_PARCA kimlik taşıyor ve hepsinin adı geliyor.
+*/
+test("1100 kimlik: her istek en fazla KISI_PARCA kimlik taşıyor, bütün adlar geliyor", async () => {
+  const { KISI_PARCA } = await import("@/lib/kisi-adlari");
+  const kimlikler = Array.from({ length: 1100 }, (_, i) => `00000000-0000-4000-9000-${String(i).padStart(12, "0")}`);
+  const istekBoylari: number[] = [];
+  const istemci = {
+    from(tablo: string) {
+      let secili: string[] = [];
+      const zincir = {
+        select: () => zincir,
+        eq: () => zincir,
+        in: (_s: string, liste: string[]) => { secili = liste; istekBoylari.push(liste.length); return zincir; },
+        then: (coz: (d: unknown) => unknown) => Promise.resolve(coz({
+          data: tablo === "profiles" ? secili.map((id) => ({ id, full_name: `kişi ${id.slice(-4)}` })) : [],
+          error: secili.length > KISI_PARCA ? { message: "" } : null,
+        })),
+      };
+      return zincir;
+    },
+  } as unknown as SupabaseClient;
+  const adlar = await kisiAdlari(istemci, KURUM, kimlikler);
+  assert.equal(adlar.size, 1100);
+  assert.ok(istekBoylari.every((n) => n <= KISI_PARCA), `en büyük istek ${Math.max(...istekBoylari)}`);
+  assert.equal(istekBoylari.length, 2 * Math.ceil(1100 / KISI_PARCA));
+});

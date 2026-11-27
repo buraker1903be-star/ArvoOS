@@ -45,6 +45,12 @@ const PATH_PREFIX_TO_MODULE_KEY: Record<string, string> = {
   "/panel/documents": "documents",
   "/panel/posta": "posta",
   "/panel/analitik": "analitik",
+  /* Kişi ya da rol düzeyinde modül gizleme veritabanında da geçerli
+     (private.arvo_modul_acik, modul_kurumda_acik'in parçası); burada da
+     aynı anahtar. Modül matrisine (PERMISSION_MODULES) bilerek eklenmedi:
+     o liste her kurumda gösteriliyor ve hazır yetki profilleri onu her
+     kişiye yazıyor (lib/yetki-profilleri → profilModulKararlari). */
+  "/panel/docentlik": "docentlik",
 };
 
 export function modulesKeyForPath(pathname: string): string | null {

@@ -1,6 +1,6 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
-import { YETKI_GRUPLARI, acilabilirMi, gizliModulleriHesapla, varsayilanAcikMi } from "@/lib/yetkiler";
+import { acilabilirMi, gizliModulleriHesapla, gorunurYetkiGruplari, varsayilanAcikMi } from "@/lib/yetkiler";
 import { departmanaUygunProfiller, departmanTuru, profilUygulandiMi } from "@/lib/yetki-profilleri";
 import { applyPermissionProfile, updateMemberPermissions } from "./actions";
 import { StgIcon, StgSection } from "../settings-ui";
@@ -42,7 +42,7 @@ function UcDurum({ ad, deger, rolDegeri, etiket }: { ad: string; deger: "rolden"
 }
 
 export async function KisiYetkileri({ hedef }: { hedef: string }) {
-  const { supabase, membership, izin } = await getPanelContext();
+  const { supabase, membership, izin, modules } = await getPanelContext();
   if (!izin("settings.yetki.yonet")) {
     return <div className="stg-empty"><StgIcon name="lock" size={22} /><p>Kişi yetkilerini görüntüleme yetkiniz yok.</p></div>;
   }
@@ -175,7 +175,7 @@ export async function KisiYetkileri({ hedef }: { hedef: string }) {
         </div>
       </StgSection>
 
-      {YETKI_GRUPLARI.map((grup) => (
+      {gorunurYetkiGruplari(modules.map((modul) => modul.code)).map((grup) => (
         <StgSection
           key={grup.baslik} id={`kisi-${grup.baslik}`} wide icon="shield" tone="neutral"
           kicker="KİŞİYE ÖZEL YETKİ" title={grup.baslik}

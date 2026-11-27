@@ -83,6 +83,11 @@ const TANIM: Record<string, { ad: string; aciklama: string; eklendi: string }> =
     aciklama: "Durursa kartını kaydedip otomatik yenilemeyi seçen kurumlardan çekim yapılmaz ve hatırlatma gitmez; dönemleri dolar ve ödemeleri gecikmiş görünür.",
     eklendi: "2026-10-28",
   },
+  "/api/cron/docentlik-belge-temizligi": {
+    ad: "Doçentlik belge temizliği",
+    aciklama: "Durursa yüklenip kayda bağlanmamış PDF'ler (kişisel veri) kovada birikir; kimse okuyamaz ama silinmez. Bekleyen başarısız silmeler ayrıntıda sayılır.",
+    eklendi: "2026-11-15",
+  },
   "/api/cron/otomatik-proforma": {
     ad: "Otomatik proforma",
     aciklama: "Durursa dönemi dolan müşteriye proforma kesilmez ve e-postayla gitmez; ödeme belgesi kurucunun elle kesmesine kalır.",
@@ -96,9 +101,9 @@ const TANIM: Record<string, { ad: string; aciklama: string; eklendi: string }> =
 };
 
 /**
- * Cron ifadesinden beklenen aralığı (dakika) çıkarır. Yalnızca iki biçim:
- * dakika alanı "yıldız bölü N" ise N dakikada bir, dakika ve saat sabitse
- * her gün (1440 dk). Ötekiler için null — uydurulmuş bir aralıkla
+ * Cron ifadesinden beklenen aralığı (dakika) çıkarır. Üç biçim: dakika
+ * alanı "yıldız bölü N" ise N dakikada bir, yalnızca dakika sabitse saatte
+ * bir (60 dk), dakika ve saat sabitse her gün (1440 dk). Ötekiler için null — uydurulmuş bir aralıkla
  * "gecikme yok" demektense ekran "aralık çıkarılamadı" yazıyor.
  */
 export function cronAraligiDk(zamanlama: string): number | null {
@@ -112,6 +117,8 @@ export function cronAraligiDk(zamanlama: string): number | null {
     const n = Number(nDakikada[1]);
     return n >= 1 && n <= 59 ? n : null;
   }
+  // Saatte bir, sabit dakikada ("35 * * * *"; doçentlik belge temizliği, 15.11.2026).
+  if (/^\d{1,2}$/.test(dakika) && saat === "*") return Number(dakika) <= 59 ? 60 : null;
   if (/^\d{1,2}$/.test(dakika) && /^\d{1,2}$/.test(saat)) return 24 * 60;
   return null;
 }

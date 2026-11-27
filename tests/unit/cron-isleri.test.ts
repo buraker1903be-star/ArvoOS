@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { cronAralikMetni, cronAraligiDk, cronDurumlari, cronIsleri, cronSorunlari, cronUyarisi, gecikmeEsigiDk, type CronKaydi } from "@/lib/cron-isleri";
 
-test("cron aralığı yalnızca bu depodaki iki biçimden çıkarılır", () => {
+test("cron aralığı yalnızca bu depodaki üç biçimden çıkarılır", () => {
   assert.equal(cronAraligiDk("*/2 * * * *"), 2);
   assert.equal(cronAraligiDk("*/10 * * * *"), 10);
   assert.equal(cronAraligiDk("0 6 * * *"), 24 * 60);
+  assert.equal(cronAraligiDk("35 * * * *"), 60, "saatte bir, sabit dakika");
+  assert.equal(cronAraligiDk("75 * * * *"), null);
   assert.equal(cronAraligiDk("50 4 * * *"), 24 * 60);
   // Tanınmayan biçimde null: uydurulmuş bir aralık "gecikme yok" derken
   // işin saatlerce durduğunu örtebilirdi.

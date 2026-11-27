@@ -1,0 +1,144 @@
+/*
+  DOÇENTLİK ÇALIŞMA ALANI (F6 PR6a).
+
+  Düzenin iskeleti panelin kendi parçaları: başlık (.talep-bas), özet
+  şeridi (.kayit-serit), kart (.panel-card), tablo (.crm-data-table +
+  .crm-table-wrap — telefonda kart görünümü ona bağlı), form
+  (.panel-form.kayit-formu). Burada yalnızca bu modüle özgü olanlar var.
+  Renk ve ölçü YALNIZCA token: açık/koyu tema panel-tokens.css'ten geliyor,
+  buradaki hiçbir değer temaya göre ayrıca yazılmıyor.
+*/
+
+.docentlik-sayfa{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+
+/* Bölüm sekmeleri: modülün içindeki üç ekran (ikinci bir menü değil). */
+.docentlik-sekmeler{display:flex;gap:var(--sp-1);max-width:100%;overflow-x:auto;padding:var(--sp-1);border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);align-self:flex-start}
+.docentlik-sekmeler a{display:inline-flex;align-items:center;min-height:36px;padding:0 var(--sp-3);border-radius:var(--r-sm);color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap}
+.docentlik-sekmeler a:hover{color:var(--ink)}
+.docentlik-sekmeler a.is-active{background:var(--surface-2);color:var(--ink);font-weight:var(--fw-semibold)}
+.docentlik-sekmeler a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* İki sütun masaüstünde, tek sütun tablet/telefonda. */
+.docentlik-izgara{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:var(--sp-4);align-items:start}
+
+.docentlik-kart{display:flex;flex-direction:column;gap:var(--sp-3);min-width:0}
+.docentlik-dar{max-width:760px}
+.docentlik-kart-bas h2{margin:0;color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+.docentlik-kart-bas p{margin:var(--sp-1) 0 0;color:var(--muted);font-size:var(--fs-sm)}
+.docentlik-kart-bas-eylem{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
+
+.docentlik-bos{min-height:0;padding:var(--sp-5) var(--sp-4);text-align:center}
+.docentlik-bos b{display:block;color:var(--ink)}
+.docentlik-bos p{margin:var(--sp-1) 0 0;color:var(--muted)}
+
+/* Eksik profil uyarısı: dikkat çeksin ama alarm gibi bağırmasın. */
+.docentlik-uyari{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;border-color:color-mix(in srgb,var(--warning) 45%,var(--line))}
+.docentlik-uyari h2{margin:0;color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+.docentlik-uyari ul{margin:var(--sp-2) 0 0;padding-left:var(--sp-5);color:var(--ink-soft);font-size:var(--fs-sm);line-height:1.5}
+.docentlik-uyari-satir{color:var(--ink)}
+
+/* Hedef listesi: başlık + durum, ilerleme çubuğu, rakamlar. */
+.docentlik-hedefler{display:flex;flex-direction:column;gap:var(--sp-3);margin:0;padding:0;list-style:none}
+.docentlik-hedefler li{display:flex;flex-direction:column;gap:var(--sp-1)}
+.docentlik-hedefler small{color:var(--muted);font-size:var(--fs-sm)}
+.docentlik-hedef-bas{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);flex-wrap:wrap}
+.docentlik-hedef-bas b{color:var(--ink);font-weight:var(--fw-semibold)}
+.docentlik-etiket{display:inline-block;margin-left:var(--sp-2);padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-pill);color:var(--ink-soft);font-size:var(--fs-micro);font-weight:var(--fw-medium);vertical-align:middle}
+
+/*
+  İlerleme çubuğu yerel <progress>: genişlik için satır içi stil gerekmiyor
+  (TSX'te satır içi stil yazılmıyor) ve ekran okuyucu değeri kendisi okuyor.
+  Tarayıcıların kendi görünümü temaya uymadığı için kapatılıyor.
+*/
+.docentlik-cubuk{display:block;inline-size:100%;block-size:6px;border:0;border-radius:var(--r-pill);background:var(--surface-2);overflow:hidden;appearance:none;-webkit-appearance:none}
+.docentlik-cubuk::-webkit-progress-bar{background:var(--surface-2);border-radius:var(--r-pill)}
+.docentlik-cubuk::-webkit-progress-value{background:var(--primary);border-radius:var(--r-pill)}
+.docentlik-cubuk::-moz-progress-bar{background:var(--primary);border-radius:var(--r-pill)}
+.docentlik-cubuk.is-tamam::-webkit-progress-value{background:var(--success)}
+.docentlik-cubuk.is-tamam::-moz-progress-bar{background:var(--success)}
+
+/* Tablolar kartın içinde; panelin tablo kuralları geçerli. */
+/* crm.css tablet aralığında sarmalı kenardan kenara açıyor (margin −16px,
+   width 100%+32px) — dolgusuz liste sayfaları için. Bu tablolar KARTIN
+   içinde: o kural son sütunu kartın dışına 14 px taşırıyordu (768 px ölçümü). */
+.docentlik-sayfa .docentlik-tablo-sarmal{margin-inline:0;inline-size:auto}
+/*
+  Panelin tablosu `min-width:920px` taşıyor (crm.css, geniş CRM listeleri
+  için). Burada tablo yarım genişlikteki kartta: o alt sınır son sütunu
+  (Azami) kartın kaydırma kabının dışına itiyordu — tarayıcı ölçümünde
+  1440 px'te sütun görünmüyordu, sayfa taşması da sayılmıyordu. Sütunlar
+  az ve kısa; tablo kartın genişliğine uyar.
+*/
+.docentlik-sayfa .docentlik-tablo{min-width:0}
+/* Satırlar iki-üç satırlık hücre taşıyor (başlık + kriter + not); sayılar üstte hizalı kalsın. */
+.docentlik-tablo td{vertical-align:top}
+.docentlik-grup,.docentlik-faaliyet{display:flex;flex-direction:column;gap:2px;min-width:0}
+.docentlik-grup b,.docentlik-faaliyet b{color:var(--ink);font-weight:var(--fw-semibold);overflow-wrap:anywhere}
+.docentlik-grup small,.docentlik-faaliyet small{color:var(--muted);font-size:var(--fs-sm);overflow-wrap:anywhere}
+.docentlik-grup .docentlik-cubuk{margin-top:var(--sp-1);max-inline-size:220px}
+.docentlik-alt{display:block;color:var(--muted);font-size:var(--fs-micro)}
+.docentlik-deger{display:inline-flex;flex-direction:column;align-items:flex-end}
+.docentlik-not-satir{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.docentlik-eylem-hucre{inline-size:1%;white-space:nowrap}
+.docentlik-eylemler{display:flex;gap:var(--sp-2);justify-content:flex-end;flex-wrap:nowrap}
+.docentlik-sil{margin:0;display:inline-flex}
+/*
+  Silme düğmesi panelin ikincil düğmesi + tehlike rengi. Tek sınıfla
+  yazılmıştı ve panelin kendi kuralları onu eziyordu: panel-premium.css
+  `.panel-secondary{color:var(--ink)}` ve koyu temada
+  `html[data-theme="dark"] .panel-secondary{color:var(--ink)}` (0,2,1) ve
+  `html[data-theme="dark"] .os-root .panel-secondary` (0,3,1) — düğme iki
+  temada da sıradan gri bir düğme gibi görünüyordu (ilk düzeltme 0,3,0
+  idi ve koyu temada hâlâ yeniliyordu; tarayıcı ölçümü yakaladı). Özgüllük
+  (0,4,0) bilerek o kuralların üstünde; renk yine token (--danger açık ve
+  koyu temada ayrı tanımlı, panel-tokens.css).
+*/
+.docentlik-sayfa .docentlik-sil .panel-secondary.docentlik-tehlike{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
+.docentlik-sayfa .docentlik-sil .panel-secondary.docentlik-tehlike:hover{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--surface))}
+.docentlik-sayfalama{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding-top:var(--sp-2);color:var(--muted);font-size:var(--fs-sm)}
+
+/* Ekranda görünmeyen ama ekran okuyucunun okuduğu başlık (işlem sütunu). */
+.docentlik-gizli{position:absolute;inline-size:1px;block-size:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* Form: panelin kayıt formu; yalnızca ipucu metni ve başlıca yazar seçimi. */
+/* Pencere dar telefonda tek sütun: panel-form iki sütunlu ızgara, alanlar taşmasın. */
+.docentlik-form{min-width:0}
+.docentlik-ipucu{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.docentlik-secim{display:flex;align-items:center;gap:var(--sp-2) var(--sp-4);flex-wrap:wrap;margin:0;padding:var(--sp-2) var(--sp-3);border:1px solid var(--line);border-radius:var(--r-md);min-width:0}
+.docentlik-secim legend{padding:0 var(--sp-1);color:var(--ink-soft);font-size:13px;font-weight:600}
+.docentlik-secim > label{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:32px;color:var(--ink);font-size:var(--fs-sm)}
+.docentlik-secim > small{flex-basis:100%}
+.docentlik-secim:disabled{opacity:.75}
+
+.docentlik-not{margin:0;color:var(--muted);font-size:var(--fs-sm);line-height:1.5}
+.docentlik-bilgi{padding:var(--sp-3) var(--sp-4);border:1px dashed var(--line);border-radius:var(--r-md)}
+
+/* PR6b: tarayıcıdaki ön elemenin ve yükleme hatasının formdaki yeri (sunucu hatası panel bildiriminde). */
+.docentlik-hata{margin:0;padding:var(--sp-2) var(--sp-3);border:1px solid color-mix(in srgb,var(--danger) 40%,var(--line));border-radius:var(--r-md);color:var(--danger);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+
+/* Onay kutusu + uzun açıklama: kutu satırın başında kalsın, metin sarılsın. */
+.docentlik-onay{align-items:flex-start;gap:var(--sp-2)}
+.docentlik-onay > span{color:var(--ink);font-size:var(--fs-sm);line-height:1.4}
+
+/*
+  ÜAK durum rozeti. Üç durum üç ayrı tonda: "Öneri hazır" uyarı rengi,
+  çünkü doğrulanmamış bir öneri "onaylandı" ile aynı yeşili taşırsa
+  uygulanıyormuş gibi okunur.
+*/
+.docentlik-rozet{display:inline-flex;align-items:center;align-self:flex-start;padding:2px var(--sp-2);border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-micro);font-weight:var(--fw-semibold);white-space:nowrap}
+.docentlik-rozet[data-ton="uyari"]{border-color:color-mix(in srgb,var(--warning) 45%,var(--line));color:var(--warning);background:color-mix(in srgb,var(--warning) 10%,var(--surface))}
+.docentlik-rozet[data-ton="basari"]{border-color:color-mix(in srgb,var(--success) 45%,var(--line));color:var(--success);background:color-mix(in srgb,var(--success) 10%,var(--surface))}
+
+@media (max-width:760px){
+  .docentlik-sekmeler{align-self:stretch}
+  /*
+    Telefonda panelin tablosu karta dönüyor (crm.css) ve her hücreyi sağa
+    yaslıyor — etiketli sayı satırları için doğru, ama ilk hücre kartın
+    başlığı: faaliyet adı ve grup çubuğu sağa yaslanınca okunmuyordu.
+  */
+  .docentlik-sayfa .docentlik-tablo td:first-child{display:block;text-align:left}
+  .docentlik-sayfa .docentlik-tablo :is(.docentlik-grup,.docentlik-faaliyet){align-items:stretch}
+  .docentlik-sayfa .docentlik-tablo .docentlik-grup .docentlik-cubuk{max-inline-size:none}
+  .docentlik-eylemler{justify-content:flex-start}
+  .docentlik-uyari .panel-secondary{inline-size:100%;justify-content:center}
+}
