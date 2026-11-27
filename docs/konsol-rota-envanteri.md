@@ -197,16 +197,16 @@ Her rota için dört ayrı ölçü; biri ötekinin yerine geçmez.
 | `/panel/platform/rapor` | ✓ | ✓ | ✓ | — (okuma) |
 | `/panel/platform/tahsilat` | ✓ | ✓ rapor ekranı | ✓ | — (okuma) |
 | `/panel/platform/tahsilat/proforma/[id]` | ✓ | ✓ | ✓ | UNVERIFIED (proforma gönder) |
-| `/panel/platform/payments` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | **✓ onay/ret, yetki, çifte karar** |
+| `/panel/platform/payments` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | **✓ ARAYÜZDEN onay + ret, kalıcı, yetkisizde reddediliyor, dekont erişimi** |
 | `/panel/platform/billing` | ✓ | ✓ sorun panosu (gerekçe aşağıda) | ✓ | — (okuma) |
 | `/panel/platform/yenilemeler` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
-| `/panel/platform/sozlesmeler` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | UNVERIFIED (abonelik onayı) |
-| `/panel/platform/destek` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | **✓ yanıt, durum, yetki** |
+| `/panel/platform/sozlesmeler` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | UNVERIFIED (abonelik onayı — izole ortamda sıraya alınmadı) |
+| `/panel/platform/destek` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | **✓ ARAYÜZDEN yanıt, kalıcı, talep "Müşteri bekleniyor"a geçiyor** |
 | `/panel/platform/destek/[id]` | ✓ | ✓ | ✓ paylaşılmış bağlantı | **✓ (aynı bileşen)** |
 | `/panel/platform/destek/hazir` | ✓ | ✓ | ✓ | UNVERIFIED (yanıt ekle) |
 | `/panel/platform/urunler` | ✓ | ✓ açık+koyu | ✓ | — (okuma) |
 | `/panel/platform/urunler?gorunum=moduller` | ✓ | ✓ | ✓ | UNVERIFIED (modül aç/kapat) |
-| `/panel/platform/urunler/[urun]` | ✓ | ✓ | ✓ fiyat ürünün içinde | **✓ yayım yetkisi + kapsam kilidi** |
+| `/panel/platform/urunler/[urun]` | ✓ | ✓ | ✓ fiyat ürünün içinde | **✓ ARAYÜZDEN yayım + eşzamanlı taslak değişikliğinde ret** |
 | `/panel/platform/moduller` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
 | `/panel/platform/fiyatlar?urun=ek` | ✓ | ✓ | ✓ | **✓ toplu yayım kapsamı** |
 | `/panel/platform/fiyatlar?gorunum=karsilastirma` | ✓ | ✓ | ✓ | — (okuma) |
@@ -232,6 +232,47 @@ bir künyesi ve orada yapılacak bir işi var.
 | Bireysel aboneler | Kayıtlar satır içinde düzenleniyor (`AboneListesi`); panele taşımak aynı düzenleyiciyi iki yerde tutmak olurdu. |
 | Abonelikler (billing) | Kayıt listesi değil SORUN PANOSU: ödeme sorunları ve dönem sonu yaklaşanlar. Satırın "detayı" müşterinin kendi kartı. |
 | Tahsilatlar | Rapor ekranı: dönem seçimli özet ve dağılımlar. Seçilecek bir kayıt yok. |
+
+### Oturumlu tarayıcı kabulü (28.11.2026)
+
+Önizlemenin ikinci kipi: altında GERÇEK bir veritabanı (PGlite,
+canlı şemanın tamamı — tetikleyiciler, işlevler, RLS). Oturum
+çerezden geliyor, yani yetkili ve yetkisiz hesap aynı turda
+sınanıyor.
+
+```
+npm run onizleme:db                   # port 3126
+node scripts/konsol-islem-kabulu.mjs  # altı senaryo
+```
+
+| Senaryo | Sonuç |
+| --- | --- |
+| Ödeme ONAYI arayüzden; yenileyince "Onaylandı", not kayıtta, lisans dönemi uzamış | ✓ |
+| Ödeme REDDİ arayüzden; yenileyince "Reddedildi" | ✓ |
+| Uyarı ("Beklenen tutarla uyuşmuyor") karardan ÖNCE okunuyor | ✓ |
+| Destek yanıtı arayüzden; mesaj kayıtta, talep "Müşteri bekleniyor" | ✓ |
+| Yetkisiz hesap: ekran kapalı, karar formu yok, KAYIT DEĞİŞMİYOR | ✓ |
+| Dekont bağlantısı yetkilide var, yetkisizde yok | ✓ |
+| Fiyat yayımı: ikinci oturum taslağı değiştirince ESKİ onay reddediliyor | ✓ |
+| Güncel kapsam gösteriliyor ve yeniden onayla yayım geçiyor | ✓ |
+
+**Arayüzden çıkan ürün hatası:** ödeme karar formunda onay penceresi
+formun içinde çiziliyordu (iç içe form). Tarayıcı iç formu düşürüyor,
+"Onayla" kararı GÖNDERMİYOR ve panel hata durumuna düşüyordu. Ekran
+doğru çizildiği ve düğme erişilebilir olduğu için önceki kabuller
+görmemişti; ancak tıklanınca ortaya çıktı.
+
+**Kapsam kontrolü ile yazma aynı işlemde mi?** Değildi: sunucu
+işlemi listeyi okuyup imzayı karşılaştırıyor, sonra RPC'yi
+çağırıyordu — arada bir aralık var. Kontrol veritabanına indi
+(migration 20261127182525): işlev bekleyen satırları `for update`
+ile kilitliyor, imzayı kendi içinde hesaplıyor ve ancak ondan sonra
+yazıyor.
+
+**Önizlemenin bu kipinin sınırı:** Supabase Storage yok; dekont
+bağlantısı yetkiye bakan bir TAKLİT. "Yetkisiz hesap dekonta
+ulaşamıyor" kuralının arayüzdeki karşılığı sınanıyor, gerçek kova
+politikası DEĞİL.
 
 ### İzole ortamda doğrulanan işlemler
 
