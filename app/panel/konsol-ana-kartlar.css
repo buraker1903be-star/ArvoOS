@@ -217,7 +217,23 @@ a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 4
 
   Kaydırmayı içeriğe vermek üst çubuğu ve sol menüyü de yerinde tutuyor.
 */
-.os-root .panel-content:has(> .dash-sabit.konsol-ana){overflow-y:auto;overscroll-behavior:contain}
+/*
+  27.11.2026: kural overflow-y veriyordu ama YÜKSEKLİK ve DOCK PAYI
+  yoktu. Kap içerik kadar uzadığı için overflow'un kaydıracağı bir
+  taşma oluşmuyor; 390×844'te içerik 844 px'e çıkıp alt çubuğun
+  (dock üstü 781) altında 63 px kalıyordu — "Otomasyonlar"ın son
+  satırı hiçbir yoldan okunamıyordu. Öteki konsol ekranlarındaki
+  kalıbın aynısı (urun-detay.css, urun-listesi.css, fiyat-karsilastirma.css).
+*/
+.os-root .panel-content:has(> .dash-sabit.konsol-ana){
+  height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+  padding-bottom:var(--os-dock-space);
+  display:flex;
+  flex-direction:column;
+  box-sizing:border-box;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
 .konsol-ana.dash-sabit{flex:0 0 auto}
 
 /*

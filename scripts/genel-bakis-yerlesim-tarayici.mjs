@@ -1753,7 +1753,11 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         üstünü başka bir şey örtmüyor), klavyeyle odaklanabiliyor mu ve
         dock'un üstünde mi.
       */
-      const konsolSenaryosu = s === "konsol" || s === "urundetay" || s === "urunler" || s === "fiyatlar";
+      /* "mockup" da bir konsol senaryosu (27.11.2026): aynı kabuk, aynı
+         dock. Listede olmadığı için sona kaydırma ölçümü hiç koşmuyor,
+         dock örtmesi de ilk görünümde aranıyordu — telefonda kaydırarak
+         ulaşılan son satır "örtülü" sayılıyordu. */
+      const konsolSenaryosu = s === "konsol" || s === "urundetay" || s === "urunler" || s === "fiyatlar" || s === "mockup";
       if (s === "konsol") {
         o.erisim = await sayfa.evaluate(() => {
           const gorunur2 = (el) => {

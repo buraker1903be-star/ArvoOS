@@ -474,16 +474,24 @@ export function tekEkranHukmu(ad, o) {
   */
   if (o.urunBaglami?.dogrudanGiris) {
     const g = o.urunBaglami.dogrudanGiris;
-    if (g.kat !== "alt" || g.modul !== "Ürünler") {
-      eksik.push(`doğrudan girişte Ürünler bağlamı etkin değil (kat ${g.kat}, modül ${g.modul ?? "yok"})`);
+    /*
+      27.11.2026: Ürünler modülünün İKİNCİ KATI KALKTI. Ölçüt eskiden
+      "kat alt + modül Ürünler" bekliyordu, çünkü menü "Ürünler →
+      Ürünler" diye iki kat açıyordu ve o tık hiçbir yere
+      götürmüyordu. Yeni kural: doğrudan girişte sol menü ANA KATTA
+      kalır ve Ürünler satırı ETKİN olur. İkinci kat olmadığı için
+      "Ana menüye dön" de yok — dönülecek bir yer yok.
+
+      İki seviyeli menü Finans gibi ÇOK HEDEFLİ modüllerde duruyor;
+      onun sözleşmesini ray çekmecesi ve telefon paneli ölçütleri
+      sınıyor.
+    */
+    if (g.kat !== "ana") eksik.push(`doğrudan girişte sol menü ana katta değil (kat ${g.kat})`);
+    if (!(g.secili ?? []).some((e) => e.startsWith("Ürünler"))) {
+      eksik.push(`doğrudan girişte Ürünler etkin değil (${(g.secili ?? []).join(", ") || "yok"})`);
     }
-    const d = o.urunBaglami.anaMenuyeDonuldu;
-    if (!d) eksik.push("'Ana menüye dön' bulunamadı");
-    else {
-      if (d.kat !== "ana") eksik.push("'Ana menüye dön' ana listeyi getirmiyor");
-      if (d.adres !== g.adres) eksik.push(`ana menüye dönmek adresi değiştiriyor (${g.adres} → ${d.adres})`);
-      if (d.baslik !== g.baslik) eksik.push(`ana menüye dönmek açık sayfayı değiştiriyor (${g.baslik} → ${d.baslik})`);
-      if (!(d.odak || "").startsWith("Ürünler")) eksik.push(`ana menüye dönünce odak Ürünler satırına dönmüyor (${d.odak || "yok"})`);
+    if (o.urunBaglami.anaMenuyeDonuldu?.kat === "alt") {
+      eksik.push("Ürünler hâlâ ikinci kat açıyor (tekrarlanan Ürünler → Ürünler katmanı)");
     }
   }
 
