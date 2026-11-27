@@ -1,0 +1,159 @@
+/*
+  ÜRÜNLER LİSTESİ (27.11.2026, onaylı mockup).
+
+  Tek kompakt tablo yüzeyi: başlık ve tablo ortak SOL kenarda, tablo ile
+  üstteki dönem seçicisi ortak SAĞ kenarda. Ölçüler Ana Sayfa'nın kart
+  dilinden (konsol-ana-kartlar.css): ince kenarlık, --r-xl köşe, yumuşak
+  gölge; renk ve boşluk token'dan (panel-tokens.css), ham renk yok.
+*/
+
+.url-kat { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+
+.url-bas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.url-bas h1 {
+  margin: 0;
+  /* Ana Sayfa'nın h1'iyle AYNI ölçü (dashboard.css .dash-hero h1):
+     iki ekran arasında başlık boyu değişmesin. */
+  font-size: clamp(26px, 2.2vw, var(--fs-2xl));
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.url-bas-eylem { display: flex; align-items: center; gap: var(--sp-2); }
+
+.url-kart {
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.url-tablo { width: 100%; border-collapse: collapse; table-layout: auto; }
+.url-tablo thead th {
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+.url-tablo thead th small { margin-left: 4px; color: var(--dim); font-size: var(--fs-micro); font-weight: 400; }
+.url-tablo tbody tr + tr > * { border-top: 1px solid var(--line-soft); }
+.url-tablo tbody th,
+.url-tablo tbody td {
+  padding: var(--sp-3) var(--sp-5);
+  font-size: var(--fs-base);
+  text-align: left;
+  vertical-align: middle;
+}
+.url-tablo tbody th {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+}
+.url-ad { white-space: nowrap; }
+
+/*
+  SAYILAR VE BAŞLIKLARI SAĞDA, ikisi birlikte. Metin sola, sayı sağa
+  hizalanınca göz sütunu tek hatta okuyor; başlık solda kalsaydı başlık
+  ile değer iki ayrı hatta düşerdi.
+*/
+.url-sag { text-align: right !important; }
+/* Rakamlar tabular: basamaklar alt alta hizalansın (1.248 / 892). */
+.url-sayi { font-variant-numeric: tabular-nums; font-weight: var(--fw-medium); color: var(--ink); }
+.url-yok { color: var(--muted); font-size: var(--fs-sm); }
+.url-yok[data-tone="danger"] { color: var(--danger); }
+
+/* Sağlık rozeti iki ekranda ortak: platform.css (.urun-saglik). */
+
+.url-adres {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--accent);
+  font-size: var(--fs-base);
+  text-decoration: none;
+}
+/* Uzun adres satırı TAŞIRMASIN: kırpılır, tamamı title/aria-label'da. */
+.url-adres > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.url-adres > svg { flex: none; }
+.url-adres:hover { text-decoration: underline; }
+
+.url-ac { text-align: right; white-space: nowrap; }
+.url-ac a { color: var(--accent); font-weight: var(--fw-medium); text-decoration: none; }
+.url-ac a:hover { text-decoration: underline; }
+
+.url-tablo a:focus-visible,
+.url-mobil a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+
+.url-gizli {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Telefon: tablo yerine liste ---------- */
+.url-mobil { display: none; margin: 0; padding: 0; list-style: none; }
+
+@media (max-width: 760px) {
+  .url-tablo { display: none; }
+  .url-mobil { display: flex; flex-direction: column; }
+  .url-mobil > li { padding: var(--sp-3) var(--sp-4); }
+  .url-mobil > li + li { border-top: 1px solid var(--line-soft); }
+  .url-mobil a { display: block; color: inherit; text-decoration: none; }
+  .url-mobil-bas { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+  .url-mobil-bas b { font-size: var(--fs-base); font-weight: var(--fw-semibold); color: var(--ink); }
+  .url-mobil-deger { display: flex; gap: var(--sp-5); margin-top: var(--sp-2); }
+  .url-mobil-deger > span { display: flex; flex-direction: column; gap: 2px; }
+  .url-mobil-deger small { color: var(--muted); font-size: var(--fs-micro); }
+  .url-mobil-adres { margin-top: var(--sp-2); font-size: var(--fs-sm); }
+}
+
+/*
+  SAYFA KABUĞU. Ana Sayfa'nın içerik kenar boşluklarıyla aynı hatta
+  dursun diye ızgara değil tek sütun: ekranda tek bir yüzey var.
+*/
+.urun-liste-sayfa { display: flex; flex-direction: column; gap: var(--sp-4); }
+/* Sekme şeridinin sağındaki "⋯" menüsü: şerit ile aynı satırda. */
+.urun-arac { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+
+/*
+  KAYDIRMA ANA İÇERİKTE (27.11.2026). Sayfa içerik boyunda: 768×600'de
+  924 px, 390×844'te 1354 px oluyor. Sayfanın KENDİSİ kaydırılamıyor —
+  html ve body'de overflow-x:clip var (panel.css, yatay taşmayı kesmek
+  için) ve Chromium o durumda dikey kaydırmayı da kapatıyor; taşan
+  içerik kaydırılamadan KIRPILIYOR (ölçüldü: 324 px ve 510 px kırpık,
+  son satır alt çubuğun altında). Ana Sayfa'da aynı kural var
+  (konsol-ana-kartlar.css); kaydırmayı içeriğe vermek üst çubuğu ve
+  sol menüyü de yerinde tutuyor.
+*/
+.os-root .panel-content:has(> .urun-liste-sayfa) {
+  height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+  padding-bottom: var(--os-dock-space);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* Sayfa içeriği kadar: flex çocuğu varsayılanı KISALMAK, o zaman kap
+   taşmıyor ve overflow:auto hiçbir şey yapmıyor. */
+.urun-liste-sayfa { flex: 0 0 auto; }

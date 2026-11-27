@@ -1,107 +1,200 @@
 /*
-  ÜRÜN DETAYI TEK EKRAN (26.11.2026, ürün kararı).
+  ÜRÜN DETAYI (27.11.2026, onaylı mockup).
 
-  Yönetim ekranlarında sayfa iki eksende de kaymaz; kaydırma yalnızca
-  kartın içindedir. Sayfa daha önce kayıt sayfası sayıldığı için
-  390×844'te 1254/844 kayıyordu. Yükseklik os-shell.css'teki
-  .liste-sayfa sözleşmesinden geliyor (üst çubuk, boşluk ve dock payı
-  oradan türetiliyor); burada yalnızca kartın içindeki zincir kuruluyor.
-  Zincirin HER halkasında min-height:0 — biri eksik kalırsa kart
-  içeriği kadar uzar ve sayfa yine kayar.
+  Ekran 26.11.2026'ya kadar kayıt sayfası kalıbındaydı: başlıkta kicker,
+  altında beş kutuluk sayı şeridi, solda sekmeli bir KART ve sağda
+  ikinci bir sütun (ürün bilgisi + istatistikler). Mockup tek sütun
+  istiyor: yol → başlık → sekme şeridi → bölüm. Kart kabuğu ve sağ
+  sütun kalktı; taşıdıkları bilgi ait oldukları bölümün başlığına
+  geçti, kaybolmadı.
+
+  Sekme bileşeni DEĞİŞMEDİ (crm/kayit-detay/kayit-akis · TalepAkis):
+  adresli sekmeler, ok tuşları ve dar ekrandaki seçici aynı. Burada
+  yalnızca görünüm var — ince ayırıcı ve seçili sekmenin alt çizgisi.
+
+  Renk ve boşluk token'dan (panel-tokens.css); ham renk yok.
 */
-.os-root main.urun-sayfa.liste-sayfa>.talep-izgara{flex:1 1 auto;min-height:0}
+
+.urun-detay-sayfa { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+/* ---------- Başlık ---------- */
+.urd-bas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.urd-bas-metin { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.urd-bas-eylem { display: flex; align-items: center; gap: var(--sp-2); }
+
+/* Yol: ürün listesine dönüş İÇERİKTEN. Sol menüdeki "Ana menüye dön"
+   yalnızca menü katını değiştiriyor; ikisinin işi ayrı. */
+.urd-yol { display: flex; align-items: center; gap: var(--sp-2); color: var(--muted); font-size: var(--fs-sm); }
+.urd-yol a { color: var(--muted); text-decoration: none; }
+.urd-yol a:hover { color: var(--ink); text-decoration: underline; }
+.urd-yol a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+.urd-yol [aria-current="page"] { color: var(--ink); }
+
+.urd-ad { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.urd-ad h1 {
+  margin: 0;
+  /* Ana Sayfa ve Ürünler listesiyle AYNI ölçü (dashboard.css .dash-hero h1). */
+  font-size: clamp(26px, 2.2vw, var(--fs-2xl));
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.urd-alt { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+/* ---------- Sekme şeridi ---------- */
 /*
-  KART İÇERİK GENİŞLİĞİNİ KULLANIR (26.11.2026, inceleme bulgusu).
-
-  Izgaranın TEK çocuğu var (ürün kartı), ama sınıfı iki sütun
-  kuruyordu (.talep-izgara.personel-iki: 1fr + 2fr) ve kart birinci
-  sütunda kalıyordu: 768x600'de 680 px'in 384'ünü kullanıp sağda 296 px
-  boşluk bırakıyordu, 1440'ta sağ kenarı dönem seçicisinden 350 px
-  geride bitiyordu. Dar kart metrik ızgaralarını da katlıyordu
-  (.ugb-serit üç sütun yerine bir, .ugb-izgara iki yerine bir).
-
-  Sınıf sayfadan kaldırıldı; buradaki kural .talep-izgara'nın ÜÇ
-  sütunluk varsayılanına (kayit-detay.css) karşı tek sütunu sabitliyor.
-  Kart artık rayın/menünün ardında kalan genişliği bitiriyor, yani sağ
-  kenarı başlıktaki dönem seçicisiyle aynı hatta.
+  Kart kabuğu sıfırlanıyor: TalepAkis varsayılanı .panel-card (kenarlık,
+  zemin, gölge). Mockup'ta sekmeler sayfanın üstünde, ince bir ayırıcı
+  üzerinde duruyor; bölümler ayrı kartlar.
 */
-.os-root main.urun-sayfa>.talep-izgara{grid-template-columns:minmax(0,1fr)}
+.urd-serit.talep-akis.panel-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+.urd-serit > .talep-akis-sekmeler {
+  gap: var(--sp-5);
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+}
+.urd-serit > .talep-akis-sekmeler > a,
+.urd-serit > .talep-akis-sekmeler > button {
+  position: relative;
+  padding: 0 0 var(--sp-3);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+.urd-serit > .talep-akis-sekmeler > a:hover,
+.urd-serit > .talep-akis-sekmeler > button:hover { color: var(--ink); }
+/* Seçili sekme: KALIN YAZI + ALT ÇİZGİ. Renk tek başına durumu
+   taşımasın (renk körlüğü ve düşük kontrastlı ekran). */
+.urd-serit > .talep-akis-sekmeler > .is-active {
+  color: var(--ink);
+  font-weight: var(--fw-semibold);
+}
+.urd-serit > .talep-akis-sekmeler > .is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--primary);
+}
+.urd-serit > .talep-akis-sekmeler > a:focus-visible,
+.urd-serit > .talep-akis-sekmeler > button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+.urd-serit > .talep-akis-panel { padding: var(--sp-4) 0 0; }
 
-.os-root .urun-sayfa .talep-akis.sy-kart{display:flex;flex-direction:column;min-height:0;max-height:100%}
-.os-root .urun-sayfa .talep-akis.sy-kart>.talep-akis-sekmeler{flex:0 0 auto}
-.os-root .urun-sayfa .talep-akis.sy-kart>div[role="tabpanel"],
-.os-root .urun-sayfa .talep-akis.sy-kart>section{
-  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+/* Dar alanda şerit yerine seçici (TalepAkis · darSecici). Eşik
+   sekmelerin sarmaya başladığı genişlik. */
+.urd-serit > .talep-akis-sec { display: none; }
+@media (max-width: 900px) {
+  .urd-serit > .talep-akis-sekmeler { display: none; }
+  .urd-serit > .talep-akis-sec { display: block; }
+}
+
+/* ---------- Bölüm ---------- */
+.urd-bolum {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+.urd-bolum-bas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.urd-bolum-bas h2 { margin: 0; font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--ink); }
+.urd-bolum-bas small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--fs-sm); }
+
+.urd-ozet { margin: 0; color: var(--ink-soft); font-size: var(--fs-base); }
+.urd-not { margin: 0; color: var(--muted); font-size: var(--fs-micro); }
+
+/* ---------- Müşteriler süzgeci ---------- */
+.urd-suzgec { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.urd-ara,
+.urd-suzgec select {
+  min-height: var(--ctl-h-sm);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+.urd-ara { min-width: 200px; flex: 1 1 200px; max-width: 320px; }
+.urd-ara:focus-visible,
+.urd-suzgec select:focus-visible { outline: 2px solid var(--primary); outline-offset: -1px; }
+.urd-suzgec-sifirla { color: var(--muted); font-size: var(--fs-sm); text-decoration: none; }
+.urd-suzgec-sifirla:hover { color: var(--ink); text-decoration: underline; }
+
+@media (max-width: 560px) {
+  .urd-bolum { padding: var(--sp-4); }
+  .urd-ara { max-width: none; }
 }
 
 /*
-  BÖLÜMLER YATAY KAYMADAN SEÇİLİR. finans.css dar ekranda bu şeridi
-  nowrap + overflow-x:auto yapıyor ve kaydırma çubuğunu gizliyor:
-  390 px'de son iki bölüm kutunun dışında kalıyor ve varlıkları ekranda
-  hiç belli olmuyordu (konsolun kuyruk sekmelerinde ölçülen aynı kusur).
-  Burada şerit sarıyor.
+  KAYDIRMA ANA İÇERİKTE (27.11.2026). Sayfa içerik boyunda: 768×600'de
+  924 px, 390×844'te 1354 px oluyor. Sayfanın KENDİSİ kaydırılamıyor —
+  html ve body'de overflow-x:clip var (panel.css, yatay taşmayı kesmek
+  için) ve Chromium o durumda dikey kaydırmayı da kapatıyor; taşan
+  içerik kaydırılamadan KIRPILIYOR (ölçüldü: 324 px ve 510 px kırpık,
+  son satır alt çubuğun altında). Ana Sayfa'da aynı kural var
+  (konsol-ana-kartlar.css); kaydırmayı içeriğe vermek üst çubuğu ve
+  sol menüyü de yerinde tutuyor.
 */
-.os-root .urun-sayfa .sy-kart .talep-akis-sekmeler{flex-wrap:wrap;overflow-x:visible;row-gap:0}
-.os-root .urun-sayfa .sy-kart .talep-akis-sekmeler>*{flex:0 1 auto}
-
-/* Fiyat bölümünün kendi eylemi: başlığın sağında. */
-.urun-fiyat-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
+.os-root .panel-content:has(> .urun-detay-sayfa) {
+  height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+  padding-bottom: var(--os-dock-space);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* Sayfa içeriği kadar: flex çocuğu varsayılanı KISALMAK, o zaman kap
+   taşmıyor ve overflow:auto hiçbir şey yapmıyor. */
+.urun-detay-sayfa { flex: 0 0 auto; }
 
 /*
-  DAR EKRANDA SAYFA KAYAR (26.11.2026, ürün kararı — önceki kural
-  tersiydi ve ölçümle düştü).
-
-  26.11.2026 sabahına kadar burada "dar ekranda da tek ekran" kuralı
-  vardı: 1200 px altında sayfaya 100dvh'den türetilmiş sabit bir
-  yükseklik veriliyor, kart o yüksekliğe sıkıştırılıyordu. Ölçüldü:
-  390×844'te Deneme dönüşümü ve İşlem bekleyenler bölümlerinin sonuna
-  HİÇBİR yoldan ulaşılamıyordu (kart içi kaydırma alanı sekmeyle
-  paylaşıldığı için son kart gövdenin dışında kalıyor), 768×600'de
-  satır ortasından kesiliyordu. Dar ekranda doğru davranış, ana
-  içeriğin kayması: kart içeriği kadar uzuyor, sayfa kayıyor.
-
-  Masaüstünde (≥1200 px) tek ekran kuralı duruyor: üstteki zincir
-  (kart kendi gövdesinde kayar) orada geçerli.
+  ÜRÜN KÜNYESİ (27.11.2026). Kaldırılan sağ sütunun taşıdığı iki bilgi
+  (Kod, Veritabanı) ekranda hiçbir yerde kalmamıştı; köprünün NOTU da
+  başlıktaki rozette yalnızca title olarak vardı. Üçü Genel Bakış'ın
+  altında tek satırda; kart değil, ince bir künye.
 */
-@media (max-width:1199px){
-  /* Kaydırma kartın içinden ANA İÇERİĞE geçiyor: kart içeriği kadar
-     uzuyor, bölüm sonuna kaydırarak ulaşılıyor. Sayfanın kendisi
-     kaydırılamıyor (html/body overflow-x:clip, panel.css). */
-  .os-root .panel-content:has(> main.urun-sayfa){
-    height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
-    box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;
-  }
-  .os-root main.urun-sayfa.liste-sayfa{display:flex;height:auto;min-height:0}
-  .os-root main.urun-sayfa.liste-sayfa>.talep-izgara{min-height:0}
-  .os-root main.urun-sayfa .talep-akis.sy-kart{max-height:none}
-  .os-root main.urun-sayfa .talep-akis.sy-kart>div[role="tabpanel"],
-  .os-root main.urun-sayfa .talep-akis.sy-kart>section{overflow-y:visible}
+.urd-kunye {
+  display: flex;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  margin: 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
 }
-
-/*
-  DAR PENCEREDE TEK BÖLÜM SEÇİCİSİ (26.11.2026, ölçümle).
-
-  Altı bölüm sekmesi 1099 px'e kadar tek satırda duruyor; 901 ve
-  768'de iki, 390'da ÜÇ satıra sarıyor ve kartın gövdesinden 133 px
-  yiyordu. Yatay kaydırma çözüm değil: şeridi kaydırmak sekmenin
-  varlığını gizler (kuyruk sekmelerinde yaşandı). Dar pencerede aynı
-  seçim tek bir açılır listeden yapılıyor — altı bölümün hepsi tek
-  dokunuşla ve klavyeyle seçilebiliyor, kaydırma yok.
-
-  Eşik ölçümle: 1000 px. Şerit 1099'da tek satır, 901'de iki satır.
-*/
-@media (max-width:1000px){
-  .os-root .urun-sayfa .sy-kart>.talep-akis-sekmeler{display:none}
-  .os-root .urun-sayfa .talep-akis-sec{
-    display:block;flex:0 0 auto;padding:var(--sp-3) var(--sp-4) 0;
-  }
-  .os-root .urun-sayfa .talep-akis-sec select{
-    width:100%;min-height:44px;padding:0 var(--sp-3);
-    border:1px solid var(--line);border-radius:var(--r-sm);
-    background:var(--surface);color:var(--ink);
-    font-size:var(--fs-sm);font-weight:var(--fw-semibold);
-  }
-  .os-root .urun-sayfa .talep-akis-sec select:focus-visible{
-    outline:none;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary);
-  }
-}
+.urd-kunye > div { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.urd-kunye dt { color: var(--muted); font-size: var(--fs-sm); }
+.urd-kunye dd { margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); }

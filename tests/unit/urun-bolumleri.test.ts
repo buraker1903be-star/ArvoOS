@@ -51,3 +51,51 @@ test("bölüm adresi dönemi korur, varsayılanı adrese yazmaz", () => {
     assert.equal(urunBolumu(ham), anahtar);
   }
 });
+
+test("URL ile sekme eşleşmesi: her bölüm kendi adresinden çözülüyor", () => {
+  /*
+    27.11.2026, brief §7. Adres → bölüm → adres turu kendi üzerine
+    kapanmalı: derin bağlantı, yenileme ve geri/ileri aynı paneli
+    açıyor. Tur kapanmazsa "?bolum=abonelikler ile aç" maddesi
+    sessizce Genel Bakış gösterir.
+  */
+  const taban = "/panel/platform/urunler/arvolab";
+  for (const anahtar of URUN_BOLUM_ANAHTARLARI) {
+    const adres = bolumAdresi(taban, anahtar);
+    const sorgu = new URLSearchParams(adres.split("?")[1] ?? "");
+    assert.equal(urunBolumu(sorgu.get("bolum") ?? undefined), anahtar, `${anahtar} turu kapanmıyor`);
+  }
+});
+
+test("bölüm ve dönem birbirini silmiyor", () => {
+  /*
+    İki parametre aynı adreste yaşıyor: dönemi seçip bölüm değiştiren
+    kullanıcı "Son 90 gün"ü, bölümü seçip dönem değiştiren kullanıcı
+    bölümü kaybetmiyor (brief §7, derin bağlantı ve dönem).
+  */
+  const taban = "/panel/platform/urunler/arvolab";
+  const adres = bolumAdresi(taban, "abonelikler", "90g");
+  const sorgu = new URLSearchParams(adres.split("?")[1]);
+  assert.equal(sorgu.get("bolum"), "abonelikler");
+  assert.equal(sorgu.get("donem"), "90g");
+
+  /* Varsayılan dönem adrese YAZILMIYOR (kısa adres), ama bölüm duruyor. */
+  const varsayilan = bolumAdresi(taban, "tahsilat", null);
+  assert.equal(varsayilan, `${taban}?bolum=tahsilat`);
+
+  /* Varsayılan bölüm + dönem: yalnızca dönem yazılıyor. */
+  assert.equal(bolumAdresi(taban, "genel-bakis", "365g"), `${taban}?donem=365g`);
+});
+
+test("ürün kapsamı: bölüm adresi tabanı değiştirmiyor", () => {
+  /*
+    Bir üründe seçili sekme ya da süzgeç BAŞKA ürüne taşınmamalı
+    (brief §2). Taban adres ürünün kendisi olduğu için bölüm
+    değişimi ürünü değiştiremez; bu test o sözleşmeyi sabitliyor.
+  */
+  const lab = bolumAdresi("/panel/platform/urunler/arvolab", "abonelikler", "90g");
+  const arc = bolumAdresi("/panel/platform/urunler/arc", "abonelikler", "90g");
+  assert.ok(lab.startsWith("/panel/platform/urunler/arvolab?"));
+  assert.ok(arc.startsWith("/panel/platform/urunler/arc?"));
+  assert.notEqual(lab, arc);
+});
