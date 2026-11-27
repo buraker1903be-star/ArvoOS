@@ -35,8 +35,22 @@ import {
   yetkiSatirlari,
 } from "../db/ortam.mjs";
 
-const PG_BIN = ["/usr/lib/postgresql/16/bin", "/usr/lib/postgresql/15/bin", "/usr/pgsql-16/bin", "/usr/bin"]
-  .find((d) => fs.existsSync(path.join(d, "initdb")));
+/*
+  SÜRÜM DİZİNİ ARANARAK bulunuyor: Debian/Ubuntu kurulumu
+  /usr/lib/postgresql/<sürüm>/bin altına koyuyor ve sürüm makineden
+  makineye değişiyor. Sabit bir liste 16'yı bulup 17'yi kaçırıyordu.
+*/
+const ADAY_DIZINLER = [
+  ...(fs.existsSync("/usr/lib/postgresql")
+    ? fs.readdirSync("/usr/lib/postgresql").sort().reverse().map((s) => `/usr/lib/postgresql/${s}/bin`)
+    : []),
+  "/usr/pgsql-17/bin",
+  "/usr/pgsql-16/bin",
+  "/opt/homebrew/bin",
+  "/usr/bin",
+  "/usr/local/bin",
+];
+const PG_BIN = ADAY_DIZINLER.find((d) => fs.existsSync(path.join(d, "initdb")));
 
 /** Postgres bulunmadığında testler atlanacak; sebebi burada. */
 export const POSTGRES_YOK = PG_BIN ? null : "initdb bulunamadı (PostgreSQL kurulu değil)";
