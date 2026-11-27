@@ -616,10 +616,14 @@ function FiyatlarKarsilastirma() {
   adres artık rotadaki koddan.
 */
 const URUN_KUNYELERI = {
-  arvoos: { ad: "ArvoOS", aciklama: "Çok kiracılı kurumsal panel", host: "app.arvo-os.com" },
-  arvolab: { ad: "ArvoLab", aciklama: "Akademik yazım ve editöryal kontrol", host: "lab.arvo-os.com" },
-  arc: { ad: "ArvoARC", aciklama: "Mağaza ve sipariş yönetimi", host: "arc.arvo-os.com" },
-  randevu: { ad: "ArvoCal", aciklama: "Salon ve randevu yönetimi", host: "cal.arvo-os.com" },
+  arvoos: { ad: "ArvoOS", aciklama: "Çok kiracılı kurumsal panel", host: "app.arvo-os.com",
+    donusum: { durum: "kaynak_yok" } },
+  arvolab: { ad: "ArvoLab", aciklama: "Akademik yazım ve editöryal kontrol", host: "lab.arvo-os.com",
+    donusum: { durum: "var", deger: { denemeye: 200, ucretliye: 36, oran: 0.18 } } },
+  arc: { ad: "ArvoARC", aciklama: "Mağaza ve sipariş yönetimi", host: "arc.arvo-os.com",
+    donusum: { durum: "okunamadi" } },
+  randevu: { ad: "ArvoCal", aciklama: "Salon ve randevu yönetimi", host: "cal.arvo-os.com",
+    donusum: { durum: "kaynak_yok" } },
 };
 
 function UrunDetay() {
@@ -629,7 +633,12 @@ function UrunDetay() {
   const satir = {
     kod: urunKodu, ad: kunye.ad,
     aktifMusteri: { durum: "var", deger: 892 },
-    donusum: { durum: "var", deger: { denemeye: 200, ucretliye: 36, oran: 0.18 } },
+    /* DÖNÜŞÜM ÜRÜNE GÖRE (27.11.2026). Eskiden burada her ürün için
+       "var" yazılıydı; Ürünler listesindeki fixture ise ArvoOS, ArvoARC
+       ve ArvoCal icin kaynak_yok/okunamadi diyordu. Aynı düzenek iki
+       ekranda iki farklı şey gösteriyordu ve ölçülemeyen dönüşümün
+       Genel Bakış'taki hâli hiç çizilmiyordu. */
+    donusum: kunye.donusum,
     tahsilat: { durum: "var", deger: 128450 },
   };
   const donem = { kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" };

@@ -8,23 +8,38 @@
 .ugb{display:flex;flex-direction:column;gap:var(--sp-4)}
 
 /*
-  ÜÇ EŞİT METRİK KARTI (27.11.2026, onaylı mockup). Eskiden tek bir
-  kutunun içinde üç sütundu; mockup üç AYRI yüzey istiyor — ikon solda,
-  etiket ve kapsam üstte, değer altta. ÜÇÜ DE EŞİT: 1fr, yoksa uzun
-  etiketli olan ("Denemeden ücretliye") ötekileri daraltıyor.
+  ANA ÖLÇÜTLER TEK HİZALI GRUPTA (27.11.2026).
+
+  Kaynak ArvoLab'ın ana sayfası (app/styles/os5-ana-sayfa.css,
+  .os5-ana-olcumler): "kutu değil, ince çizgilerle ayrılmış sütunlar".
+  Eskiden üç AYRI kart vardı — ikon kutusu, kenarlık, gölge. Üç kutu
+  ölçüleri birbirinden kopartıyordu: ekranda üç yüzey, üstlerinde bir
+  yüzey daha (sekme şeridi) ve altlarında iki kart daha; sayfa yedi
+  ayrı çerçeveye bölünüyordu. Ölçüler artık tek grup: üstte ince bir
+  çizgi, sütunlar arasında dikey ayırıcı.
+
+  İkon kutuları kalktı: ArvoLab'ın ölçü satırında ikon yok ve üç
+  ikonun taşıdığı bilgi zaten etiketin kendisinde yazıyor.
 */
-.ugb-serit{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-4);margin:0}
-.ugb-serit>div{display:flex;align-items:center;gap:var(--sp-3);min-width:0;
-  padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);box-shadow:var(--shadow-xs)}
-.ugb-serit>div>div{display:flex;flex-direction:column;gap:2px;min-width:0}
-.ugb-serit i{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:var(--r-lg);
-  background:var(--surface-2);color:var(--ink-soft)}
+.ugb-serit{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;
+  padding-top:var(--sp-4);border-top:1px solid var(--line)}
+.ugb-serit>div{display:flex;flex-direction:column;min-width:0;
+  padding:0 var(--sp-5);border-left:1px solid var(--line-soft)}
+.ugb-serit>div:first-child{padding-left:0;border-left:0}
 .ugb-serit dt{color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
 .ugb-serit small{color:var(--dim);font-size:var(--fs-micro);font-weight:400}
-.ugb-serit dd{margin:0;font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--ink);font-variant-numeric:tabular-nums}
-/* Dar alanda alt alta: üç kart 900 px'in altında 170 px'e iniyor ve
-   "Denemeden ücretliye" iki satıra sarıp değeri aşağı itiyordu. */
-@media (max-width:900px){.ugb-serit{grid-template-columns:minmax(0,1fr)}}
+.ugb-serit dd{display:flex;align-items:baseline;gap:var(--sp-2);margin:var(--sp-2) 0 0;
+  font-size:var(--fs-xl);font-weight:var(--fw-semibold);color:var(--ink);
+  line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+/* Dar alanda alt alta: üç sütun 900 px'in altında 170 px'e iniyor ve
+   "Denemeden ücretliye" iki satıra sarıp değeri aşağı itiyordu. Alt
+   alta geçince dikey ayırıcı yatay olur, yoksa sütun çizgisi havada
+   kalıyordu. */
+@media (max-width:900px){
+  .ugb-serit{grid-template-columns:minmax(0,1fr);gap:var(--sp-4)}
+  .ugb-serit>div{padding:0 0 var(--sp-4);border-left:0;border-bottom:1px solid var(--line-soft)}
+  .ugb-serit>div:last-child{padding-bottom:0;border-bottom:0}
+}
 
 .ugb-izgara{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:var(--sp-4)}
 .ugb-kart{display:flex;flex-direction:column;gap:var(--sp-3);min-width:0;margin:0}
