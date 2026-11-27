@@ -163,54 +163,95 @@ telefonda detayın tam genişlikte açılması ve listenin gizlenmesi.
 durum değiştirme, fiyat yayımı). Önizlemede yazmalar sahte; gerçek
 işlem yetkili bir test ortamı istiyor.
 
-## Rota matrisi (27.11.2026 ara kontrolü)
+## Rota matrisi — dört sonuç (27.11.2026)
 
-Üç ölçü AYRI tutuluyor; biri ötekinin yerine geçmiyor.
+Her rota için dört ayrı ölçü; biri ötekinin yerine geçmez.
 
-- **URL** — rota gerçek önizleme sunucusunda açılıyor mu (HTTP 200,
-  sayfa hatası yok). 30 rotanın 30'u ✓.
-- **Görsel + gezinme** — tarayıcıda ölçüldü: taşma 0, yatay kaydırma
-  yok, iki sütunlu ekranlarda liste solda · panel sağda, telefonda
-  detay tam genişlikte, seçili satır işaretli
-  (`scripts/konsol-rota-kabulu.mjs`).
-- **Yazan işlem** — onay/ret, yayım, yanıt, durum değişikliği gerçek
-  bir veritabanına yazılarak denendi mi. Önizlemede YAZILMIYOR
-  (simülasyon), bu yüzden hepsi UNVERIFIED.
+- **Erişim** — rota açılıyor mu: HTTP durumu, sayfa hatası yok, ekran
+  hata sınırında değil, ana içerik boş değil.
+- **Tasarım** — düzen ölçüldü: taşma yok, yatay kaydırma yok, iki
+  sütunlu ekranlarda liste solda · panel sağda, telefonda detay tam
+  genişlikte. Açık VE koyu temada alındı.
+- **Gezinme** — kullanıcı gibi tıklandı: kaydır → kayıt aç → tam kart
+  → tarayıcı geri → paneli kapat → yeni süzgeç; süzgeç, sıralama ve
+  kaydırma konumu korunuyor mu.
+- **İşlem** — yazan işlem gerçek bir veritabanında denendi mi.
+  İzole ortam `tests/db` (PGlite, gerçek fonksiyon ve tetikleyiciler).
 
-| Rota | URL | Görsel + gezinme | Yazan işlem |
-| --- | --- | --- | --- |
-| `/panel` | ✓ | ✓ karar kuyruğu gerçek kayıtlara bağlı | — (okuma) |
-| `/panel/platform` | ✓ → `/musteriler` | ✓ yönlendirme | — |
-| `/panel/platform/musteriler` | ✓ | ✓ 1440 · 768 · 390, açık+koyu | UNVERIFIED (yeni müşteri) |
-| `/panel/platform/musteriler/[id]` | ✓ | ✓ | UNVERIFIED (lisans, üye, not) |
-| `/panel/platform/kullanicilar` | ✓ | ✓ | — (okuma) |
-| `/panel/platform/kullanicilar/[id]` | ✓ | ✓ | — (okuma) |
-| `/panel/platform/subscribers` | ✓ | ✓ | UNVERIFIED (plan düzenleme) |
-| `/panel/platform/duyuru` | ✓ | ✓ | UNVERIFIED (duyuru yayımla) |
-| `/panel/platform/rapor` | ✓ | ✓ | — (okuma) |
-| `/panel/platform/tahsilat` | ✓ | ✓ | — (okuma) |
-| `/panel/platform/tahsilat/proforma/[id]` | ✓ | ✓ | UNVERIFIED (proforma gönder) |
-| `/panel/platform/payments` | ✓ | ✓ 1440 · 768 · 390 | UNVERIFIED (onay / ret) |
-| `/panel/platform/billing` | ✓ | ✓ | — (okuma) |
-| `/panel/platform/yenilemeler` | ✓ → `/billing?gorunum=takvim` | ✓ yönlendirme | — |
-| `/panel/platform/sozlesmeler` | ✓ | ✓ | UNVERIFIED (sözleşme onayı) |
-| `/panel/platform/destek` | ✓ | ✓ 1440 · 768 · 390 | UNVERIFIED (yanıt, durum) |
-| `/panel/platform/destek/[id]` | ✓ | ✓ | UNVERIFIED (yanıt, durum) |
-| `/panel/platform/destek/hazir` | ✓ | ✓ | UNVERIFIED (yanıt ekle/düzenle) |
-| `/panel/platform/urunler` | ✓ | ✓ | — (okuma) |
-| `/panel/platform/urunler?gorunum=moduller` | ✓ | ✓ | UNVERIFIED (modül aç/kapat) |
-| `/panel/platform/urunler/[urun]` | ✓ | ✓ | UNVERIFIED (fiyat taslağı) |
-| `/panel/platform/moduller` | ✓ → `/urunler?gorunum=moduller` | ✓ yönlendirme | — |
-| `/panel/platform/fiyatlar?urun=ek` | ✓ | ✓ | UNVERIFIED (taslak, yayım) |
-| `/panel/platform/fiyatlar?gorunum=karsilastirma` | ✓ | ✓ | — (okuma) |
-| `/panel/platform/fiyatlar` | ✓ → `/urunler` | ✓ yönlendirme | — |
-| `/panel/platform/saglik` | ✓ | ✓ | — (okuma) |
-| `/panel/platform/saglik/is` | ✓ | ✓ | UNVERIFIED (işi elle çalıştır) |
-| `/panel/platform/kurulumlar` | ✓ | ✓ | UNVERIFIED (kurulumu tamamla) |
-| `/panel/platform/ayarlar` | ✓ | ✓ | UNVERIFIED (ayar kaydet) |
-| `/panel/platform/ara` | ✓ | ✓ | — (okuma) |
-| `/panel/notifications` | ✓ | ✓ | — (okuma) |
-| `/panel/kilavuz` | ✓ | ✓ | — (okuma) |
+| Rota | Erişim | Tasarım | Gezinme | İşlem |
+| --- | --- | --- | --- | --- |
+| `/panel` | ✓ | ✓ açık+koyu | ✓ kuyruk kalemi kayda açılıyor | — (okuma) |
+| `/panel/platform` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
+| `/panel/platform/musteriler` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | UNVERIFIED (yeni müşteri) |
+| `/panel/platform/musteriler/[id]` | ✓ | ✓ | ✓ panelden tam kart | UNVERIFIED (lisans, üye, not) |
+| `/panel/platform/kullanicilar` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | — (okuma) |
+| `/panel/platform/kullanicilar/[id]` | ✓ | ✓ | ✓ | UNVERIFIED (erişim aç/kapat) |
+| `/panel/platform/subscribers` | ✓ | ✓ liste–panel YOK (gerekçe aşağıda) | ✓ | UNVERIFIED (plan düzenleme) |
+| `/panel/platform/duyuru` | ✓ | ✓ | ✓ | UNVERIFIED (duyuru yayımla) |
+| `/panel/platform/rapor` | ✓ | ✓ | ✓ | — (okuma) |
+| `/panel/platform/tahsilat` | ✓ | ✓ rapor ekranı | ✓ | — (okuma) |
+| `/panel/platform/tahsilat/proforma/[id]` | ✓ | ✓ | ✓ | UNVERIFIED (proforma gönder) |
+| `/panel/platform/payments` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | **✓ onay/ret, yetki, çifte karar** |
+| `/panel/platform/billing` | ✓ | ✓ sorun panosu (gerekçe aşağıda) | ✓ | — (okuma) |
+| `/panel/platform/yenilemeler` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
+| `/panel/platform/sozlesmeler` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | UNVERIFIED (abonelik onayı) |
+| `/panel/platform/destek` | ✓ | ✓ açık+koyu · 1440/768/390 | ✓ tam akış | **✓ yanıt, durum, yetki** |
+| `/panel/platform/destek/[id]` | ✓ | ✓ | ✓ paylaşılmış bağlantı | **✓ (aynı bileşen)** |
+| `/panel/platform/destek/hazir` | ✓ | ✓ | ✓ | UNVERIFIED (yanıt ekle) |
+| `/panel/platform/urunler` | ✓ | ✓ açık+koyu | ✓ | — (okuma) |
+| `/panel/platform/urunler?gorunum=moduller` | ✓ | ✓ | ✓ | UNVERIFIED (modül aç/kapat) |
+| `/panel/platform/urunler/[urun]` | ✓ | ✓ | ✓ fiyat ürünün içinde | **✓ yayım yetkisi + kapsam kilidi** |
+| `/panel/platform/moduller` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
+| `/panel/platform/fiyatlar?urun=ek` | ✓ | ✓ | ✓ | **✓ toplu yayım kapsamı** |
+| `/panel/platform/fiyatlar?gorunum=karsilastirma` | ✓ | ✓ | ✓ | — (okuma) |
+| `/panel/platform/fiyatlar` | ✓ 308 | ✓ | ✓ üç giriş yolu | — |
+| `/panel/platform/saglik` | ✓ | ✓ | ✓ | UNVERIFIED (işi elle çalıştır) |
+| `/panel/platform/saglik/is` | ✓ | ✓ | ✓ | UNVERIFIED |
+| `/panel/platform/kurulumlar` | ✓ (çökme düzeltildi) | ✓ | ✓ | UNVERIFIED (kurulumu tamamla) |
+| `/panel/platform/ayarlar` | ✓ | ✓ | ✓ | UNVERIFIED (ayar kaydet) |
+| `/panel/platform/ara` | ✓ | ✓ | ✓ | — (okuma) |
+| `/panel/notifications` | ✓ (çökme düzeltildi) | ✓ | ✓ | — (okuma) |
+| `/panel/kilavuz` | ✓ | ✓ | ✓ | — (okuma) |
+
+### Liste–panel düzeni NEREDE var, nerede YOK
+
+Düzen beş ekranda: Müşteriler, Ödeme onayları, Destek, Sözleşme
+onayları, Kullanıcılar. Ortak yanları: kaydın panelde gösterilecek
+bir künyesi ve orada yapılacak bir işi var.
+
+Üç ekranda BİLEREK yok:
+
+| Ekran | Neden |
+| --- | --- |
+| Bireysel aboneler | Kayıtlar satır içinde düzenleniyor (`AboneListesi`); panele taşımak aynı düzenleyiciyi iki yerde tutmak olurdu. |
+| Abonelikler (billing) | Kayıt listesi değil SORUN PANOSU: ödeme sorunları ve dönem sonu yaklaşanlar. Satırın "detayı" müşterinin kendi kartı. |
+| Tahsilatlar | Rapor ekranı: dönem seçimli özet ve dağılımlar. Seçilecek bir kayıt yok. |
+
+### İzole ortamda doğrulanan işlemler
+
+`tests/db/konsol-kritik-islemler.test.mjs` (PGlite, gerçek fonksiyon
+ve tetikleyiciler, canlıya dokunmadan):
+
+| Senaryo | Sonuç |
+| --- | --- |
+| Ödeme onayı lisansı açıyor, dönemi uzatıyor, notu yazıyor | ✓ |
+| Ödeme reddi lisansa DOKUNMUYOR | ✓ |
+| Karar kurucuya özel (başka kurumun sahibi reddediliyor) | ✓ |
+| Aynı bildirime ikinci kez karar verilemiyor | ✓ |
+| Geçersiz karar sözcüğü reddediliyor | ✓ |
+| Destek yanıtı talebi "müşteri bekleniyor"a çeviriyor + kuruma bildirim | ✓ |
+| Başka kurumun talebine yanıt yazılamıyor | ✓ |
+
+`tests/db/fiyat-toplu-yayim-yetkisi.test.mjs`: toplu yayım iki ürünü
+birden yayımlıyor, kurucu olmayan reddediliyor, anon'a yetki yok,
+iptal yalnızca kurucuda.
+
+Kapsam kilidi (`tests/unit/fiyat-dogrulama`): önizlemeden sonra
+taslak kümesi değişirse eski onayla yayım YAPILMIYOR.
+
+**UNVERIFIED kalan:** imzalı dekont bağlantısı (Supabase Storage;
+PGlite'ta depolama yok) ve arayüzden uçtan uca yazma (önizlemede
+yazma simülasyon). Bunlar yetkili bir test ortamı ister.
 
 ### Üç kabul betiği ne ölçüyor
 
@@ -237,9 +278,10 @@ işlem yetkili bir test ortamı istiyor.
 
 ### Önizlemede görülen, canlıda doğrulanmamış
 
-**Yönlendiren rotalarda istemci hatası.** Beş eski adresin hepsi
-doğru hedefe iniyor, ama tarayıcı konsoluna "Rendered more hooks than
-during the previous render" düşüyor. Yığının tamamı Next'in kendi
-`Router` bileşeninde (`node_modules/next/dist/client`); ArvoOS
-bileşeni yok. Geliştirme sunucusunda ölçüldü, üretim derlemesinde
-sınanmadı — önizleme bayrağı üretim derlemesini durduruyor.
+**Yönlendirme hatası KAPATILDI (27.11.2026).** Sebep: sayfa
+`redirect()`ten önce bir şey beklediğinde `app/panel/loading.tsx`
+Suspense sınırının altında kalıyor ve yönlendirme HTTP değil istemci
+tarafı oluyordu. Dört eski adres artık ara katmanda
+(`lib/konsol/eski-adresler.ts`), gerçek 308. Doğrulama: dört adres ×
+üç giriş yolu (doğrudan, uygulama içi, geri/ileri), hem geliştirme
+önizlemesinde hem İZOLE ÜRETİM DERLEMESİNDE — 12/12 temiz.
