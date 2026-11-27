@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
-import { YETKI_GRUPLARI, acilabilirMi, varsayilanAcikMi } from "@/lib/yetkiler";
+import { acilabilirMi, gorunurYetkiGruplari, varsayilanAcikMi } from "@/lib/yetkiler";
 import { updateCapabilityPermissions, updateModulePermissions } from "./actions";
 import { StgIcon, StgSection } from "../settings-ui";
 import "../settings.css";
@@ -42,7 +42,9 @@ type Personel = { user_id: string | null; full_name: string; job_title: string |
 */
 export default async function PermissionsPage({ searchParams }: { searchParams: Promise<{ bolum?: string }> }) {
   const { bolum: istenenBolum } = await searchParams;
-  const { supabase, membership, userId, izin } = await getPanelContext();
+  const { supabase, membership, userId, izin, modules } = await getPanelContext();
+  /* Kuruma özel grup (Doçentlik) yalnızca modülü açık kurumda (lib/yetkiler.ts). */
+  const yetkiGruplari = gorunurYetkiGruplari(modules.map((modul) => modul.code));
 
   if (!izin("settings.yetki.yonet")) {
     return <div className="stg">
@@ -90,7 +92,7 @@ export default async function PermissionsPage({ searchParams }: { searchParams: 
   */
   const BOLUMLER = [
     { id: "modul", label: "Modül erişimi", icon: "shield" },
-    ...YETKI_GRUPLARI.map((grup) => ({
+    ...yetkiGruplari.map((grup) => ({
       id: `yetki-${grup.id}`,
       label: grup.baslik,
       icon: moduleMeta[grup.modul ?? ""]?.icon ?? "lock",
@@ -98,7 +100,7 @@ export default async function PermissionsPage({ searchParams }: { searchParams: 
     { id: "kisiler", label: "Kişiler", icon: "users" },
   ];
   const bolum = BOLUMLER.some((aday) => aday.id === istenenBolum) ? istenenBolum! : "modul";
-  const seciliGrup = YETKI_GRUPLARI.find((grup) => `yetki-${grup.id}` === bolum) ?? null;
+  const seciliGrup = yetkiGruplari.find((grup) => `yetki-${grup.id}` === bolum) ?? null;
 
   return <main className="talep cari stg ayar-duzen">
     <header className="talep-bas ayar-bas">

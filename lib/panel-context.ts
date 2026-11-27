@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
 import { createClient } from "@/lib/supabase/server";
 import { erisimKapaliMi } from "@/lib/erisim-kapisi";
-import { etkinYetkiler, gizliModulleriHesapla, type ModulKurali, type YetkiKurali } from "@/lib/yetkiler";
+import { etkinYetkiler, gizliModulleriHesapla, kurumaOzelYetkileriSuz, type ModulKurali, type YetkiKurali } from "@/lib/yetkiler";
 
 export type PanelModule = { code: string; name: string; description: string };
 export const panelModules: Record<string, PanelModule & { icon: string }> = {
@@ -18,6 +18,8 @@ export const panelModules: Record<string, PanelModule & { icon: string }> = {
   documents: { code: "documents", name: "Belgeler", description: "Kurumsal belge merkezi", icon: "BL" },
   support: { code: "support", name: "Destek Merkezi", description: "Destek talepleri ve çözüm takibi", icon: "DS" },
   analitik: { code: "analitik", name: "Analitik", description: "Web sitesi trafiği, kaynaklar ve dönüşüm", icon: "AN" },
+  // Yalnızca izin listesindeki kurumda açılabilir (20261114190657, 20261114200939).
+  docentlik: { code: "docentlik", name: "Doçentlik", description: "Doçentlik başvurusu için akademik faaliyet puanlaması", icon: "DÇ" },
 };
 
 export const WORKSPACE_COOKIE = "arvo_workspace_v2";
@@ -280,6 +282,10 @@ const panelBaglaminiKur = cache(async () => {
       kisiKurallari: (kisiYetkileri.data ?? []) as YetkiKurali[],
     });
   }
+
+  /* Kuruma özel modülün (Doçentlik) yetkileri modül kurumda kapalıyken
+     yok: Kurum Sahibi dahil (lib/yetkiler.ts → kurumaOzelYetkileriSuz). */
+  yetkiler = kurumaOzelYetkileriSuz(yetkiler, modules.map((modul) => modul.code));
 
   /** Tek yetenek sorusu. Sayfalarda `izin("crm.teklif.sil")` biçiminde okunur. */
   const izin = (key: string) => yetkiler.has(key);

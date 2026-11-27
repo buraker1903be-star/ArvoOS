@@ -62,9 +62,20 @@ export function FlashToast() {
         }
       }, 400);
     }
+    /*
+      İstemciden doğrudan çağrılan işlem, yanıtı gelince bu olayı yayar
+      (lib/panel-bildirim-yokla). Eskiden yalnızca "submit"ten sonraki 15
+      saniye yoklanıyordu: doçentlik belge yüklemesi (dosya tarayıcıdan
+      kovaya, sonra kayıt işlemi) yavaş bağlantıda 15 saniyeyi aşınca
+      kayıt işleminin hatası ("Dosya PDF değil") çerezde kalıyor, ekrana
+      hiç çıkmıyordu. Yanıt geldiği an çerez yazılmış olur; beklemeye gerek yok.
+    */
+    const yokla = () => { check(); };
     document.addEventListener("submit", handleSubmit);
+    window.addEventListener("arvo:flash-check", yokla);
     return () => {
       document.removeEventListener("submit", handleSubmit);
+      window.removeEventListener("arvo:flash-check", yokla);
       if (pollTimer.current) window.clearInterval(pollTimer.current);
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
     };
