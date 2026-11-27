@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error — saf .mjs modül, tip bildirimi yok.
-import { rotaKusurlari } from "../../scripts/konsol-rota-olcutleri.mjs";
+import { kusurlariAyikla, rotaKusurlari } from "../../scripts/konsol-rota-olcutleri.mjs";
 
 const MASAUSTU = { ad: "x", yol: "/panel/platform/musteriler?secili=kurum:1", w: 1440, h: 900 };
 const TELEFON = { ad: "x", yol: "/panel/platform/musteriler?secili=kurum:1", w: 390, h: 844 };
@@ -76,4 +76,24 @@ test("tam sayfa bayrağı liste rotasını bağışlamaz", () => {
      bayrak bir muafiyet değil, başka bir ekran türü. */
   const k = rotaKusurlari({ ...MASAUSTU, tamSayfa: true }, 200, IYI);
   assert.deepEqual(k, ["tam sayfa rotada liste–panel düzeni var"]);
+});
+
+test("bilinen gözlem listeden düşer ama kaybolmaz", () => {
+  /*
+    Yönlendiren rotalarda Next'in kendi Router'ı "Rendered more hooks"
+    atıyor; ArvoOS bileşeni yığında yok. Gözlemi görmezden gelmek
+    yerine gerekçesiyle ayırıyoruz — susturmanın bedeli sebebi yazmak.
+  */
+  const sonuc = kusurlariAyikla(
+    ["sayfa hatası: Rendered more hooks than during the previous render.", "düzen 12px taşıyor"],
+    { desen: "Rendered more hooks", sebep: "Next Router, yönlendirme sonrası; hedef doğru" },
+  );
+  assert.deepEqual(sonuc.kusurlar, ["düzen 12px taşıyor"]);
+  assert.equal(sonuc.bilinenler.length, 1);
+  assert.match(sonuc.bilinenler[0], /bilinen: Next Router/);
+});
+
+test("gerekçe yoksa hiçbir şey düşmez", () => {
+  const k = ["sayfa hatası: X"];
+  assert.deepEqual(kusurlariAyikla(k, undefined), { kusurlar: k, bilinenler: [] });
 });

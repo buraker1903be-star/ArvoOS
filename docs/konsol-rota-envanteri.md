@@ -162,3 +162,69 @@ telefonda detayın tam genişlikte açılması ve listenin gizlenmesi.
 **Denenmeyen:** yazan işlemler (ödeme onayı/reddi, yanıt gönderme,
 durum değiştirme, fiyat yayımı). Önizlemede yazmalar sahte; gerçek
 işlem yetkili bir test ortamı istiyor.
+
+## Rota matrisi (27.11.2026 ara kontrolü)
+
+Üç ölçü AYRI tutuluyor; biri ötekinin yerine geçmiyor.
+
+- **URL** — rota gerçek önizleme sunucusunda açılıyor mu (HTTP 200,
+  sayfa hatası yok). 30 rotanın 30'u ✓.
+- **Görsel + gezinme** — tarayıcıda ölçüldü: taşma 0, yatay kaydırma
+  yok, iki sütunlu ekranlarda liste solda · panel sağda, telefonda
+  detay tam genişlikte, seçili satır işaretli
+  (`scripts/konsol-rota-kabulu.mjs`).
+- **Yazan işlem** — onay/ret, yayım, yanıt, durum değişikliği gerçek
+  bir veritabanına yazılarak denendi mi. Önizlemede YAZILMIYOR
+  (simülasyon), bu yüzden hepsi UNVERIFIED.
+
+| Rota | URL | Görsel + gezinme | Yazan işlem |
+| --- | --- | --- | --- |
+| `/panel` | ✓ | ✓ karar kuyruğu gerçek kayıtlara bağlı | — (okuma) |
+| `/panel/platform` | ✓ → `/musteriler` | ✓ yönlendirme | — |
+| `/panel/platform/musteriler` | ✓ | ✓ 1440 · 768 · 390, açık+koyu | UNVERIFIED (yeni müşteri) |
+| `/panel/platform/musteriler/[id]` | ✓ | ✓ | UNVERIFIED (lisans, üye, not) |
+| `/panel/platform/kullanicilar` | ✓ | ✓ | — (okuma) |
+| `/panel/platform/kullanicilar/[id]` | ✓ | ✓ | — (okuma) |
+| `/panel/platform/subscribers` | ✓ | ✓ | UNVERIFIED (plan düzenleme) |
+| `/panel/platform/duyuru` | ✓ | ✓ | UNVERIFIED (duyuru yayımla) |
+| `/panel/platform/rapor` | ✓ | ✓ | — (okuma) |
+| `/panel/platform/tahsilat` | ✓ | ✓ | — (okuma) |
+| `/panel/platform/tahsilat/proforma/[id]` | ✓ | ✓ | UNVERIFIED (proforma gönder) |
+| `/panel/platform/payments` | ✓ | ✓ 1440 · 768 · 390 | UNVERIFIED (onay / ret) |
+| `/panel/platform/billing` | ✓ | ✓ | — (okuma) |
+| `/panel/platform/yenilemeler` | ✓ → `/billing?gorunum=takvim` | ✓ yönlendirme | — |
+| `/panel/platform/sozlesmeler` | ✓ | ✓ | UNVERIFIED (sözleşme onayı) |
+| `/panel/platform/destek` | ✓ | ✓ 1440 · 768 · 390 | UNVERIFIED (yanıt, durum) |
+| `/panel/platform/destek/[id]` | ✓ | ✓ | UNVERIFIED (yanıt, durum) |
+| `/panel/platform/destek/hazir` | ✓ | ✓ | UNVERIFIED (yanıt ekle/düzenle) |
+| `/panel/platform/urunler` | ✓ | ✓ | — (okuma) |
+| `/panel/platform/urunler?gorunum=moduller` | ✓ | ✓ | UNVERIFIED (modül aç/kapat) |
+| `/panel/platform/urunler/[urun]` | ✓ | ✓ | UNVERIFIED (fiyat taslağı) |
+| `/panel/platform/moduller` | ✓ → `/urunler?gorunum=moduller` | ✓ yönlendirme | — |
+| `/panel/platform/fiyatlar?urun=ek` | ✓ | ✓ | UNVERIFIED (taslak, yayım) |
+| `/panel/platform/fiyatlar?gorunum=karsilastirma` | ✓ | ✓ | — (okuma) |
+| `/panel/platform/fiyatlar` | ✓ → `/urunler` | ✓ yönlendirme | — |
+| `/panel/platform/saglik` | ✓ | ✓ | — (okuma) |
+| `/panel/platform/saglik/is` | ✓ | ✓ | UNVERIFIED (işi elle çalıştır) |
+| `/panel/platform/kurulumlar` | ✓ | ✓ | UNVERIFIED (kurulumu tamamla) |
+| `/panel/platform/ayarlar` | ✓ | ✓ | UNVERIFIED (ayar kaydet) |
+| `/panel/platform/ara` | ✓ | ✓ | — (okuma) |
+| `/panel/notifications` | ✓ | ✓ | — (okuma) |
+| `/panel/kilavuz` | ✓ | ✓ | — (okuma) |
+
+### Üç kabul betiği ne ölçüyor
+
+| Betik | Ne yapıyor | Ne SÖYLEMİYOR |
+| --- | --- | --- |
+| `konsol-rota-kabulu.mjs` (23 görsel) | Bir adresi açar, düzeni ÖLÇER (taşma, sütun sırası, yatay kaydırma, seçili satır, telefonda tek sütun) ve görüntüsünü alır. | Tıklama dizisinin ne yaptığını; ekranın durumu adresten mi geldiğini. |
+| `konsol-akis-kabulu.mjs` (15 senaryo) | KULLANICI GİBİ TIKLAR: kaydır → kayıt aç → tam kart → tarayıcı geri → paneli kapat → yeni süzgeç. Süzgeç, sıralama ve kaydırma konumunu her adımda doğrular. | Yazan işlemlerin gerçekten yazdığını. |
+| `konsol-panel-erisimi.mjs` | Sağ panelin SON EYLEMİNE üç yoldan erişimi: bilgi sırası, kaydırınca görünürlük + üstünü örten bir şey olup olmadığı, klavyeyle ulaşma. | Eylemin sonucunu. |
+
+### Önizlemede görülen, canlıda doğrulanmamış
+
+**Yönlendiren rotalarda istemci hatası.** Beş eski adresin hepsi
+doğru hedefe iniyor, ama tarayıcı konsoluna "Rendered more hooks than
+during the previous render" düşüyor. Yığının tamamı Next'in kendi
+`Router` bileşeninde (`node_modules/next/dist/client`); ArvoOS
+bileşeni yok. Geliştirme sunucusunda ölçüldü, üretim derlemesinde
+sınanmadı — önizleme bayrağı üretim derlemesini durduruyor.

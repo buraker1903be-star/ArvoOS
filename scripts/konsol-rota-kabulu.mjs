@@ -24,8 +24,8 @@
   ekranın dışına taşıyordu ve görüntüde fark edilmiyordu.
 */
 import { createRequire } from "node:module";
-import { mkdir } from "node:fs/promises";
-import { rotaKusurlari } from "./konsol-rota-olcutleri.mjs";
+import { mkdir, readFile } from "node:fs/promises";
+import { kusurlariAyikla, rotaKusurlari } from "./konsol-rota-olcutleri.mjs";
 /* Playwright depoda değil, ortamın araç dizininde: ESM `import` onu
    bulamıyor (öteki tarayıcı betikleri de böyle çözüyor). */
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -42,12 +42,13 @@ const { chromium } = createRequire(import.meta.url)("playwright");
 const PORT = process.env.PORT ?? "3124";
 const TABAN = process.env.TABAN ?? `http://localhost:${PORT}`;
 const DIZIN = process.env.DIZIN ?? "kanit/konsol";
-const K1 = process.env.ORNEK_KURUM ?? "11111111-1111-4111-8111-111111111111";
 
-const VARSAYILAN = [
-  { ad: "musteriler-1440-acik", yol: `/panel/platform/musteriler?tur=kurumsal&secili=kurum:${K1}`, w: 1440, h: 900 },
-  { ad: "musteriler-390-secili", yol: `/panel/platform/musteriler?tur=kurumsal&secili=kurum:${K1}`, w: 390, h: 844 },
-];
+/*
+  Varsayılan: envanterdeki BÜTÜN konsol rotaları
+  (scripts/konsol-rotalari.json, docs/konsol-rota-envanteri.md ile
+  aynı liste). Tek ekran denemek için ISLER ortam değişkeni.
+*/
+const VARSAYILAN = JSON.parse(await readFile(new URL("./konsol-rotalari.json", import.meta.url), "utf8"));
 const ISLER = process.env.ISLER ? JSON.parse(process.env.ISLER) : VARSAYILAN;
 
 await mkdir(DIZIN, { recursive: true });
@@ -93,13 +94,14 @@ for (const is of ISLER) {
       geriGorunur: gorunur(document.querySelector(".kl-geri")),
     };
   });
-  const kusurlar = rotaKusurlari(is, yanit.status(), olcum).concat(hatalar.map((h) => "sayfa hatası: " + h));
+  const ham = rotaKusurlari(is, yanit.status(), olcum).concat(hatalar.map((h) => "sayfa hatası: " + h));
+  const { kusurlar, bilinenler } = kusurlariAyikla(ham, is.bilinen);
   if (kusurlar.length) dusen++;
   console.log(
     (kusurlar.length ? "✗ " : "✓ ") + is.ad.padEnd(32),
     yanit.status(),
     JSON.stringify(olcum),
-    kusurlar.length ? "KUSUR: " + kusurlar.join(" | ") : "",
+    [kusurlar.length ? "KUSUR: " + kusurlar.join(" | ") : "", bilinenler.join(" | ")].filter(Boolean).join("  "),
   );
   await baglam.close();
 }

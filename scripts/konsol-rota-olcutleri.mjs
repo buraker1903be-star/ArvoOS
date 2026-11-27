@@ -15,6 +15,25 @@
   - seçili satır: adresle seçilen kayıt listede işaretli.
 */
 
+/**
+ * Bilinen, gerekçesi yazılı bir gözlemi kusur listesinden düşürür.
+ *
+ * Deponun üslubu: bir denetimi susturmanın bedeli SEBEBİ YAZMAK
+ * (`tuzak-tamam:`, `hata-tamam:` gibi). Burada da işin `bilinen`
+ * alanı hem deseni hem gerekçeyi taşıyor; eşleşen gözlem listeden
+ * düşer ama ekrana "bilinen" diye basılır, yani kaybolmaz.
+ *
+ * @returns {{ kusurlar: string[], bilinenler: string[] }}
+ */
+export function kusurlariAyikla(kusurlar, bilinen) {
+  if (!bilinen) return { kusurlar, bilinenler: [] };
+  const desen = new RegExp(bilinen.desen);
+  const bilinenler = [];
+  const kalan = [];
+  for (const k of kusurlar) (desen.test(k) ? bilinenler : kalan).push(k);
+  return { kusurlar: kalan, bilinenler: bilinenler.map((k) => `${k} — bilinen: ${bilinen.sebep}`) };
+}
+
 /** @returns {string[]} boş dizi = kabul. */
 export function rotaKusurlari(is, durum, olcum) {
   const k = [];

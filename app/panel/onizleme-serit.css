@@ -1,20 +1,32 @@
 /*
-  Önizleme şeridi (onizleme-serit.tsx). Üst çubuğun üstünde, sayfanın
-  en başında: kaydırmayla kaybolmasın diye yapışkan ve kabuğun
-  z-indeksinin üstünde. Renk uyarı token'ından; ham renk yok.
+  Önizleme şeridi (onizleme-serit.tsx).
+
+  AKIŞIN DIŞINDA (position: fixed). Şerit normal akışta durduğunda
+  kabuğun yüksekliğini 26 piksel kaydırıyor ve liste ekranları tam o
+  kadar taşıyordu: önizlemeye özel bir öğe, ölçülen düzeni
+  değiştiriyordu. Dock'un üstünde kalıyor (--os-dock-space), yoksa
+  telefonda alt çubuğun altında kalırdı.
+
+  Renk uyarı token'ından; ham renk yok.
 */
 .onizleme-serit {
-  position: sticky;
-  top: 0;
-  z-index: 70;
+  position: fixed;
+  z-index: 80;
+  left: var(--sp-3);
+  bottom: calc(var(--os-dock-space, 0px) + var(--sp-3));
+  max-width: min(420px, calc(100vw - 2 * var(--sp-3)));
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sp-2);
-  padding: 6px var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  box-sizing: border-box;
+  border: 1px solid var(--warning);
+  border-radius: var(--r-md);
   background: var(--warning-soft);
   color: var(--warning);
   font-size: var(--fs-sm);
   line-height: 1.4;
+  box-shadow: var(--shadow-md);
 }
 .onizleme-serit > b { flex: none; letter-spacing: 0.06em; }
 .onizleme-serit > span { min-width: 0; }
