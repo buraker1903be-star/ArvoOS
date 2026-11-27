@@ -22,6 +22,14 @@ export function rotaKusurlari(is, durum, olcum) {
   if (!olcum) return k.concat("ölçüm yok");
   if (olcum.tasma > 0) k.push(`düzen ${olcum.tasma}px taşıyor`);
   if (olcum.yatayTasma) k.push("yatay kaydırma var");
+  /* `tamSayfa`: liste–panel düzeni OLMAYAN rota (müşteri kartı,
+     paylaşılmış görüşme bağlantısı). İki sütun ölçütleri orada
+     geçersiz; bayrak AÇIKÇA isteniyor, yoksa liste rotasında düzenin
+     hiç çizilmemesi de "kusursuz" sayılırdı. */
+  if (is.tamSayfa) {
+    if (olcum.liste || olcum.panel) k.push("tam sayfa rotada liste–panel düzeni var");
+    return k;
+  }
   const telefon = is.w <= 860;
   const secimVar = Boolean(is.yol.includes("secili="));
   if (telefon) {

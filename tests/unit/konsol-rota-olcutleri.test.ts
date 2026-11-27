@@ -63,3 +63,17 @@ test("süzgeç dışındaki kayıtta işaret beklenmez", () => {
 test("200 olmayan yanıt kusur", () => {
   assert.deepEqual(rotaKusurlari(MASAUSTU, 500, IYI), ["durum 500"]);
 });
+
+test("tam sayfa rotada iki sütun ölçütleri aranmaz", () => {
+  /* Müşteri kartı ve paylaşılmış görüşme bağlantısı liste–panel
+     düzeni çizmiyor; bayrak olmadan "iki sütun yok" diye düşüyordu. */
+  const bos = { ...IYI, liste: null, panel: null, listeGorunur: null, panelGorunur: null, tasma: null, secili: 0, panelBaslik: null };
+  assert.deepEqual(rotaKusurlari({ ...MASAUSTU, yol: "/panel/platform/musteriler/1", tamSayfa: true }, 200, bos), []);
+});
+
+test("tam sayfa bayrağı liste rotasını bağışlamaz", () => {
+  /* Bayrak yanlışlıkla konulursa düzenin VARLIĞI kusur sayılıyor:
+     bayrak bir muafiyet değil, başka bir ekran türü. */
+  const k = rotaKusurlari({ ...MASAUSTU, tamSayfa: true }, 200, IYI);
+  assert.deepEqual(k, ["tam sayfa rotada liste–panel düzeni var"]);
+});
