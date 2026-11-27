@@ -1,0 +1,59 @@
+/*
+  FİYATLAR — ÜRÜNLER ARASI KARŞILAŞTIRMA (27.11.2026, brief §4).
+
+  Süzgeç satırı kompakt: iki segment yan yana, adları solunda. Dar
+  ekranda alt alta geçiyor — üç segment 390 px'de tek satıra sığmıyor
+  ve yatay kaydırma bu ekranda kabul değil.
+
+  Renk ve boşluk token'dan (panel-tokens.css); ham renk yok.
+*/
+
+.fk-suzgec {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-3) 0 0;
+  /*
+    .ek-arac'ın varsayılanı space-between (hr.css): dört çocuk
+    (iki etiket, iki segment) sarınca "Durum" etiketi satırın SAĞ
+    ucuna kaçıyor, segmenti ise alt satıra düşüyordu — ikisi
+    birbirinden kopuyordu. Süzgeç satırı soldan akar.
+  */
+}
+/* İKİ SINIF BİRDEN: .ek-arac'ın space-between kuralı (hr.css) aynı
+   özgüllükte ve SONRA yükleniyor; tek sınıfla yazılan override
+   kaybediyordu — "Durum" etiketi satırın sağ ucunda kalıyordu. */
+.fk-suzgec.ek-arac { justify-content: flex-start; }
+/* Etiket kendi segmentine yapışsın: ikisi bir arada sarsın. */
+.fk-suzgec .fk-suzgec-ad + .ek-segment { margin-right: var(--sp-3); }
+.fk-suzgec-ad { color: var(--muted); font-size: var(--fs-sm); }
+
+.fk-ac { color: var(--accent); font-weight: var(--fw-medium); text-decoration: none; white-space: nowrap; }
+.fk-ac:hover { text-decoration: underline; }
+.fk-ac:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+
+@media (max-width: 760px) {
+  .fk-suzgec { align-items: stretch; flex-direction: column; gap: var(--sp-2); }
+}
+
+/*
+  KAYDIRMA ANA İÇERİKTE (27.11.2026, ölçüm bulgusu). Karşılaştırma
+  tablosu on bir satıra çıkınca sayfa 390×844'te 1489 px oluyor ve
+  html/body'deki overflow-x:clip yüzünden (panel.css) Chromium dikey
+  kaydırmayı da kapatıyor: 645 px kırpık kalıyor, son satır alt
+  çubuğun altında. Ürünler listesi ve ürün detayında aynı kural var.
+
+  Yalnızca KARŞILAŞTIRMA görünümünde: tek ürünün düzenleme tablosu
+  (?urun=<kod>) tek ekrana sabitlenmiş liste kalıbında kalıyor.
+*/
+.os-root .panel-content:has(> .fk-sayfa) {
+  height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+  padding-bottom: var(--os-dock-space);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.fk-sayfa { flex: 0 0 auto; }

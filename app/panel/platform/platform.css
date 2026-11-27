@@ -1198,3 +1198,17 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
 
 /* Uygulanmamış migration satırı (Sistem sağlığı → Veritabanı, 02.11.2026). */
 .sy-sema-eksik{display:block;color:var(--danger);overflow-wrap:anywhere}
+
+/*
+  ÜRÜN SAĞLIK ROZETİ — ÜRÜNLER LİSTESİ VE ÜRÜN DETAYI ORTAK
+  (27.11.2026). İki ekran aynı sözlüğü kullanıyor (Sağlıklı / Dikkat
+  gerektiriyor / Bağlı değil); görünümü de tek yerde olmalı, yoksa aynı
+  durum iki ekranda iki türlü çizilir. Her iki sayfa da platform.css'i
+  import ediyor.
+*/
+.urun-saglik{display:inline-flex;align-items:center;gap:6px;flex:none;padding:2px var(--sp-2);border-radius:var(--r-pill);font-size:var(--fs-micro);font-weight:var(--fw-medium);white-space:nowrap}
+/* Nokta + yazı: durum rengi TEK BAŞINA bilgi taşımasın. */
+.urun-saglik::before{content:"";width:6px;height:6px;border-radius:var(--r-pill);background:currentColor}
+.urun-saglik[data-tone="success"]{background:var(--success-soft);color:var(--success)}
+.urun-saglik[data-tone="danger"]{background:var(--warning-soft);color:var(--warning)}
+.urun-saglik[data-tone="neutral"]{background:var(--surface-2);color:var(--muted)}

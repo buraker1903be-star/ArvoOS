@@ -212,6 +212,17 @@ export function tekEkranHukmu(ad, o) {
       eksik.push(`sol menüde ${m.secili.length} girdi birden seçili (${m.secili.join(", ")})`);
     }
     /*
+      MENÜ DURUMU ROTAYI İZLİYOR (27.11.2026, inceleme bulgusu).
+      Düzenek doğrudan girilen ürün rotasında bile "Ana Sayfa"yı
+      seçili çiziyordu: şim adresi import anında donduruyordu. Ölçüm
+      ekranın yanlış menü durumunu gösterdiğinde kanıt kanıt değildir;
+      bu ölçüt niyet ile çözülen rotayı karşılaştırıyor.
+    */
+    if (m.rota?.niyet && m.rota.cozulen && m.rota.niyet.split("?")[0] !== m.rota.cozulen) {
+      eksik.push(`menü rotayı izlemiyor (niyet ${m.rota.niyet}, çözülen ${m.rota.cozulen})`);
+    }
+
+    /*
       İKİNCİ KAT (26.11.2026, onaylı mockup): modüle girince ana
       listenin yerini bölümler alıyor. Dört koşul birlikte aranıyor,
       çünkü üçü tek başına yanıltıcı:
@@ -336,6 +347,143 @@ export function tekEkranHukmu(ad, o) {
         eksik.push(`${satir.ad}: "${satir.etiket}" etiketi açıklamasıyla uyuşmuyor ("${satir.aciklama ?? ""}")`);
       }
       if (satir.aciklamaKirpik) eksik.push(`${satir.ad}: açıklama kırpılıyor`);
+    }
+  }
+
+  /*
+    TAHSİLAT SATIRI FİNANS'A GİDİYOR (27.11.2026, inceleme talebi).
+    Kurum ödemesi Ödeme onaylarına, abone ödemesi Tahsilat ekranına.
+    Satırın kendi türü hangi hedefe gideceğini söylüyor; ikisini
+    karıştırmak kullanıcıyı yanlış kuyruğa götürür.
+  */
+  if (o.tahsilatHedefi) {
+    /* İki tür iki AYRI hedefe gider; ikisi de ölçülmeli. Tek satıra
+       bakan bir ölçüt, abone satırı yanlış sayfaya gitse de yeşil
+       kalırdı. */
+    const HEDEFLER = { "Kurum ödemesi": "/panel/platform/payments", "Bireysel abone": "/panel/platform/tahsilat" };
+    const olculen = o.tahsilatHedefi;
+    for (const t of olculen) {
+      const beklenen = HEDEFLER[t.tur];
+      if (!beklenen) eksik.push(`tahsilat satırının türü tanınmıyor (${t.tur || "yok"})`);
+      else if (t.adres !== beklenen) eksik.push(`tahsilat satırı yanlış hedefe gidiyor (${t.tur} → ${t.adres})`);
+    }
+    for (const tur of Object.keys(HEDEFLER)) {
+      if (!olculen.some((t) => t.tur === tur)) eksik.push(`tahsilat tablosunda "${tur}" satırı ölçülmedi`);
+    }
+  }
+
+  /*
+    ÜRÜN AKIŞI (27.11.2026, inceleme talebi): Ürünler → ArvoLab →
+    Abonelikler → Tahsilat → listeye dönüş. Her adımda ADRES, AÇIK
+    SAYFA ve SOL MENÜ birlikte doğru olmalı; biri ötekinden kopunca
+    kullanıcı nerede olduğunu ekrandan okuyamaz.
+  */
+  if (o.urunAkisi) {
+    const a2 = o.urunAkisi;
+    const adim = (ad, beklenenBaslik, beklenenSekme) => {
+      const x = a2[ad];
+      if (!x) { eksik.push(`ürün akışında ${ad} adımı yok`); return; }
+      if (beklenenBaslik && x.baslik !== beklenenBaslik) eksik.push(`${ad}: açık sayfa "${x.baslik}" (${beklenenBaslik} olmalı)`);
+      if (beklenenSekme && x.sekme !== beklenenSekme) eksik.push(`${ad}: seçili sekme "${x.sekme}" (${beklenenSekme} olmalı)`);
+      /* Sol menü ÜRÜNLER bağlamında kalmalı: ürün detayı Ürünler
+         modülünün içi, ayrı bir modül değil. */
+      if (!(x.secili ?? []).some((e) => e.startsWith("Ürünler"))) {
+        eksik.push(`${ad}: sol menüde Ürünler bağlamı etkin değil (${(x.secili ?? []).join(", ") || "yok"})`);
+      }
+    };
+    adim("liste", "Ürünler", null);
+    adim("urunDetayi", "ArvoLab", "Genel Bakış");
+    adim("abonelikler", "ArvoLab", "Abonelikler");
+    adim("tahsilat", "ArvoLab", "Tahsilat");
+    adim("listeyeDonus", "Ürünler", null);
+    /* Bölüm adreste: sekme değişimi URL'ye yazılmalı. */
+    if (a2.abonelikler && !/bolum=abonelikler/.test(a2.abonelikler.adres)) {
+      eksik.push(`Abonelikler sekmesi adrese yazılmıyor (${a2.abonelikler.adres})`);
+    }
+    if (a2.tahsilat && !/bolum=tahsilat/.test(a2.tahsilat.adres)) {
+      eksik.push(`Tahsilat sekmesi adrese yazılmıyor (${a2.tahsilat.adres})`);
+    }
+    /* Listeye dönüş ürün detayından ÇIKMALI. */
+    if (a2.listeyeDonus && a2.listeyeDonus.adres !== a2.liste?.adres) {
+      eksik.push(`listeye dönüş başka adrese gidiyor (${a2.listeyeDonus.adres})`);
+    }
+  }
+
+  /*
+    FİYATLAR SÜZGEÇLERİ BİRLİKTE (27.11.2026, inceleme talebi). İki
+    süzgeç birbirini SİLMEMELİ: dönemi seçip durumu değiştiren
+    kullanıcı dönemi kaybetmez. Plan bağlantısı da DOĞRU ürünün Fiyat
+    basamakları bölümüne gitmeli — yanlış ürüne giden bir bağlantı
+    ekranda doğru görünür, tıklanınca anlaşılır.
+  */
+  if (o.fiyatAkisi) {
+    const f = o.fiyatAkisi;
+    if (f.donemSuzuldu && f.donemSuzuldu.donemler?.length !== 1) {
+      eksik.push(`dönem süzgeci tek döneme indirmiyor (${(f.donemSuzuldu.donemler ?? []).join(", ")})`);
+    }
+    const iki = f.ikisiBirlikte;
+    if (iki) {
+      if (iki.donemler?.length !== 1 || iki.durumlar?.length !== 1) {
+        eksik.push(`iki süzgeç birlikte çalışmıyor (dönem ${(iki.donemler ?? []).join("/")}, durum ${(iki.durumlar ?? []).join("/")})`);
+      }
+      if (!/fatura=/.test(iki.adres) || !/durum=/.test(iki.adres)) {
+        eksik.push(`süzgeçler adreste birlikte durmuyor (${iki.adres})`);
+      }
+      if (f.baslangic && iki.satir >= f.baslangic.satir) {
+        eksik.push("süzgeç listeyi daraltmıyor");
+      }
+    }
+    /*
+      SÜZÜLMÜŞ LİSTEDEN "AÇ": hedef ürünün sayfası açılmalı ve Fiyat
+      basamakları bölümü ETKİN olmalı. href doğru olup tıklanınca
+      başka bir şey çizilmesi bu depoda bir kez yaşandı.
+    */
+    const u = f.acilanUrun;
+    if (u) {
+      if (!/bolum=fiyat/.test(u.adres)) eksik.push(`"Aç" Fiyat basamakları bölümüne gitmiyor (${u.adres})`);
+      if (u.sekme !== "Fiyat basamakları") eksik.push(`açılan üründe etkin sekme "${u.sekme}" (Fiyat basamakları olmalı)`);
+      if (!u.baslik) eksik.push("açılan üründe ürün başlığı yok");
+      /* BAŞLIK ADRESTEKİ ÜRÜNÜ GÖSTERMELİ. Düzenek ürün detayını bir
+         süre ArvoLab'a sabitliyordu: ArvoOS'un satırına basıldığında
+         adres arvoos, başlık "ArvoLab" idi (27.11.2026). */
+      const kod = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc", ArvoCal: "randevu" }[u.baslik ?? ""];
+      if (kod && !u.adres.includes(`/urunler/${kod}`)) {
+        eksik.push(`açılan ürünün başlığı adresle uyuşmuyor ("${u.baslik}" ↔ ${u.adres})`);
+      }
+      if (!(u.secili ?? []).some((e) => e.startsWith("Ürünler"))) {
+        eksik.push(`açılan üründe sol menüde Ürünler bağlamı etkin değil (${(u.secili ?? []).join(", ") || "yok"})`);
+      }
+    }
+    const b = f.planBaglantisi;
+    if (b) {
+      /* Ürün ADI ile adresteki KOD farklı olabilir (ArvoCal → randevu);
+         eşleme kodun adreste olmasıyla değil, ürünün kendi sayfasına
+         gidilmesiyle doğrulanıyor. */
+      const kod = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc", ArvoCal: "randevu" }[b.urun];
+      if (kod && !(b.href ?? "").includes(`/panel/platform/urunler/${kod}?bolum=fiyat`)) {
+        eksik.push(`plan bağlantısı yanlış ürüne gidiyor (${b.urun} → ${b.href})`);
+      }
+    }
+  }
+
+  /*
+    ÜRÜN BAĞLAMI VE "ANA MENÜYE DÖN" (27.11.2026, inceleme talebi).
+    Doğrudan girilen ürün rotasında sol menüde Ürünler bağlamı etkin
+    olmalı; geri dönüş bir MENÜ işlemi, sayfayı değiştirmemeli —
+    adres ve açık sayfa aynı kalır.
+  */
+  if (o.urunBaglami?.dogrudanGiris) {
+    const g = o.urunBaglami.dogrudanGiris;
+    if (g.kat !== "alt" || g.modul !== "Ürünler") {
+      eksik.push(`doğrudan girişte Ürünler bağlamı etkin değil (kat ${g.kat}, modül ${g.modul ?? "yok"})`);
+    }
+    const d = o.urunBaglami.anaMenuyeDonuldu;
+    if (!d) eksik.push("'Ana menüye dön' bulunamadı");
+    else {
+      if (d.kat !== "ana") eksik.push("'Ana menüye dön' ana listeyi getirmiyor");
+      if (d.adres !== g.adres) eksik.push(`ana menüye dönmek adresi değiştiriyor (${g.adres} → ${d.adres})`);
+      if (d.baslik !== g.baslik) eksik.push(`ana menüye dönmek açık sayfayı değiştiriyor (${g.baslik} → ${d.baslik})`);
+      if (!(d.odak || "").startsWith("Ürünler")) eksik.push(`ana menüye dönünce odak Ürünler satırına dönmüyor (${d.odak || "yok"})`);
     }
   }
 
