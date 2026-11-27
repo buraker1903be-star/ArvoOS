@@ -148,7 +148,10 @@ test("toplu yayımın kapsamı onaydan önce yazılıyor", () => {
     sayıları listeleniyor, ayrı bir onay kutusu isteniyor ve ana
     eylemin adı sayıyı söylüyor.
   */
-  const bolum = oku("app/panel/platform/fiyatlar/fiyat-duzenleme.tsx");
+  /* Önizleme 27.11.2026'da veri okumasından ayrıldı: saf bileşen
+     kendi dosyasında, ölçüm düzeneği onu örnek girdiyle çizebilsin
+     diye (dosya sunucu modülü import etmiyor). */
+  const bolum = oku("app/panel/platform/fiyatlar/fiyat-yayim-onizlemesi.tsx");
   assert.match(bolum, /Bu liste tek seferde yayımlanır/);
   assert.match(bolum, /name="kapsam-onayi"[\s\S]{0,40}required/);
   assert.match(bolum, /değişikliklerinin de yayımlanacağını anladım/);
@@ -156,4 +159,9 @@ test("toplu yayımın kapsamı onaydan önce yazılıyor", () => {
   /* Ürün başına sayı: "başka ürünler de var" tek başına kapsamı
      söylemiyor. */
   assert.match(bolum, /kodunUrunu\(d\.kod\) === u\)\.length/);
+  /* Saf dosya SUNUCU modülü import etmemeli: ederse düzenek onu
+     çizemez ve onay penceresinin kanıtı yine taklide düşer. */
+  assert.doesNotMatch(bolum, /panel-context|urunler\/actions/);
+  /* Üretim tarafı yayım işlemini prop olarak geçiyor. */
+  assert.match(oku("app/panel/platform/fiyatlar/fiyat-duzenleme.tsx"), /eylem=\{fiyatlariYayimla\}/);
 });
