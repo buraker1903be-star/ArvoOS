@@ -68,7 +68,19 @@ const HERKES = ["admin", "manager", "member", "operasyoncu"] as const;
   bir gün değişince paylaşılan adresi ve kaydetme işlemini birden
   kırardı.
 */
-export const YETKI_GRUPLARI: readonly { id: string; modul: string | null; baslik: string; yetkiler: readonly YetkiTanimi[] }[] = [
+/*
+  KURUMA ÖZEL GRUP (14.11.2026, F6 PR4). Yetkilendirme ekranı grupları
+  her kurumda gösteriyor, modüle göre süzmüyor; bu öteki modüllerde
+  bilinçli bir tercih (modülü sonradan açılacak kurum ayarını önceden
+  yapabiliyor) ve değiştirilmedi. Doçentlik ise yalnızca izin listesindeki
+  kuruma özel (ozel_moduller, 20261114190657): grubunu her kuruma
+  göstermek hem gereksiz hem bir bilgi sızıntısı. `kurumaOzel` işaretli
+  grup, modülü kurumda açık değilse ekranda yok, kaydedilemez ve etkin
+  yetki kümesine girmez (gorunurYetkiGruplari, kurumaOzelYetkileriSuz).
+*/
+export type YetkiGrubu = { id: string; modul: string | null; baslik: string; kurumaOzel?: true; yetkiler: readonly YetkiTanimi[] };
+
+export const YETKI_GRUPLARI: readonly YetkiGrubu[] = [
   {
     id: "crm",
     modul: "crm",
@@ -203,6 +215,28 @@ export const YETKI_GRUPLARI: readonly { id: string; modul: string | null; baslik
     ],
   },
   {
+    /*
+      Varsayılan BOŞ: yalnızca Kurum Sahibi. Veritabanı
+      (private.docentlik_yetkisi, 20261114200939) aynı anahtarları aynı
+      sırayla değerlendiriyor — Kurum Sahibi, kişi kuralı, rol kuralı, yoksa
+      hayır — ve varsayılanı bilmiyor; varsayılan boş olduğu için iki taraf
+      aynı cevabı veriyor. Buraya bir role varsayılan yazmak panelde düğmeyi
+      açar ama RLS satırı eler: önce işlevi değiştirin.
+
+      rlsBagli DEĞİL: RLS kurumun yazdığı kuralları okuyor, yani panelden
+      açılan yetki veritabanında da açılıyor.
+    */
+    id: "docentlik",
+    modul: "docentlik",
+    baslik: "Doçentlik",
+    kurumaOzel: true,
+    yetkiler: [
+      { key: "docentlik.tumunu_gor", modul: "docentlik", label: "Bütün faaliyetler", aciklama: "Kurumdaki bütün akademisyenlerin faaliyetlerini ve belgelerini görür (doktora tarihini görmez)", varsayilan: [] },
+      { key: "docentlik.kriter_yonet", modul: "docentlik", label: "Kriter ve hedefler", aciklama: "Puanlama kriterlerini ve asgari/azami hedefleri ekler, düzenler, siler", varsayilan: [] },
+      { key: "docentlik.uak_yonet", modul: "docentlik", label: "ÜAK tabloları", aciklama: "ÜAK tablosu PDF'lerini yükler ve yönetir", varsayilan: [] },
+    ],
+  },
+  {
     id: "kurum",
     modul: null,
     baslik: "Kurum ayarları",
@@ -245,6 +279,46 @@ export function yetkiTanimi(key: string): YetkiTanimi | undefined {
 export function grubunYetkileri(grupId: string | null | undefined): readonly YetkiTanimi[] {
   return YETKI_GRUPLARI.find((grup) => grup.id === grupId)?.yetkiler ?? [];
 }
+
+/**
+ * Kurumda gösterilecek yetki grupları. Kuruma özel grup yalnızca modülü
+ * kurumda AÇIKSA döner; öteki gruplar her zaman (bugünkü davranış).
+ */
+export function gorunurYetkiGruplari(acikModuller: Iterable<string>): readonly YetkiGrubu[] {
+  const acik = new Set(acikModuller);
+  return YETKI_GRUPLARI.filter((grup) => !grup.kurumaOzel || (grup.modul !== null && acik.has(grup.modul)));
+}
+
+/** Kurumda yazılabilir/gösterilebilir yetki anahtarları (gorunurYetkiGruplari'nın düz listesi). */
+export function gorunurYetkiAnahtarlari(acikModuller: Iterable<string>): Set<string> {
+  return new Set(gorunurYetkiGruplari(acikModuller).flatMap((grup) => grup.yetkiler.map((yetki) => yetki.key)));
+}
+
+/*
+  Kurumda modülü açık olmayan kuruma özel grubun anahtarlarını etkin
+  kümeden çıkarır. Kurum Sahibi "her yetkiye sahip" (etkinYetkiler) ve
+  bu, Doçentlik'in olmadığı bir kurumda izin("docentlik.tumunu_gor")
+  sorusuna EVET demek olurdu. Sayfa kapısı modülü ayrıca soruyor, ama
+  yetki sorusunun cevabı tek başına da doğru olmalı: bir bileşen yalnızca
+  izin()'e bakıp bağlantı çizerse modülü olmayan kuruma ölü bir bağlantı
+  çıkardı.
+*/
+export function kurumaOzelYetkileriSuz(yetkiler: ReadonlySet<string>, acikModuller: Iterable<string>): Set<string> {
+  const kapali = new Set(
+    YETKI_GRUPLARI.filter((grup) => grup.kurumaOzel)
+      .filter((grup) => !gorunurYetkiGruplari(acikModuller).includes(grup))
+      .flatMap((grup) => grup.yetkiler.map((yetki) => yetki.key)),
+  );
+  return new Set([...yetkiler].filter((key) => !kapali.has(key)));
+}
+
+/**
+ * Kuruma özel grupların anahtarları. Hazır yetki profilleri (lib/yetki-profilleri)
+ * bunları YÖNETMEZ: profil uygulamak kişinin Doçentlik yetkisine dokunmamalı.
+ */
+export const KURUMA_OZEL_YETKILER: ReadonlySet<string> = new Set(
+  YETKI_GRUPLARI.filter((grup) => grup.kurumaOzel).flatMap((grup) => grup.yetkiler.map((yetki) => yetki.key)),
+);
 
 export type YetkiKurali = { capability_key: string; allowed: boolean };
 export type ModulKurali = { module_key: string; can_access: boolean };
