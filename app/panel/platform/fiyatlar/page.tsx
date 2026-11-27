@@ -308,7 +308,10 @@ export default async function FiyatlarPage({ searchParams }: {
     const metin = p.toString();
     return metin ? `/panel/platform/fiyatlar?${metin}` : "/panel/platform/fiyatlar";
   };
-  return <main className={`plt talep cari ekip urun-sayfa${secili === "liste" ? " liste-sayfa" : ""}`}>
+  /* Karşılaştırma görünümü İÇERİK BOYUNDA: tek ekrana sabitlenmiş
+     liste kalıbı değil (aşağıdaki fk-sayfa kuralı). Tek ürünün
+     düzenleme tablosu eski kalıpta kalıyor. */
+  return <main className={`plt talep cari ekip urun-sayfa${secili === "liste" ? (karsilastirma ? " fk-sayfa" : " liste-sayfa") : ""}`}>
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">ÜRÜNLER VE FİYATLAR</small>
@@ -379,7 +382,11 @@ export default async function FiyatlarPage({ searchParams }: {
           */}
           {karsilastirma ? (
             <>
-              <div className="fk-suzgec" role="group" aria-label="Fiyat süzgeçleri">
+              {/* ek-arac AİLESİ: segment bağlantılarının görünümü
+                  .os-root .ek-arac .ek-segment a ile geliyor (hr.css).
+                  Sınıf olmadan bağlantılar düz yazı olarak çiziliyordu —
+                  ekranda "Hepsi Aylık Yıllık" diye bitişik duruyordu. */}
+              <div className="fk-suzgec ek-arac" role="group" aria-label="Fiyat süzgeçleri">
                 <span className="fk-suzgec-ad">Faturalama dönemi</span>
                 <nav className="ek-segment" aria-label="Faturalama dönemi">
                   <Link href={suzgecAdresi("fatura", "")} className={!fatura ? "is-active" : undefined} aria-current={!fatura ? "page" : undefined}>Hepsi</Link>

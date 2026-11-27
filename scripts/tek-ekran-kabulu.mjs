@@ -212,6 +212,17 @@ export function tekEkranHukmu(ad, o) {
       eksik.push(`sol menüde ${m.secili.length} girdi birden seçili (${m.secili.join(", ")})`);
     }
     /*
+      MENÜ DURUMU ROTAYI İZLİYOR (27.11.2026, inceleme bulgusu).
+      Düzenek doğrudan girilen ürün rotasında bile "Ana Sayfa"yı
+      seçili çiziyordu: şim adresi import anında donduruyordu. Ölçüm
+      ekranın yanlış menü durumunu gösterdiğinde kanıt kanıt değildir;
+      bu ölçüt niyet ile çözülen rotayı karşılaştırıyor.
+    */
+    if (m.rota?.niyet && m.rota.cozulen && m.rota.niyet.split("?")[0] !== m.rota.cozulen) {
+      eksik.push(`menü rotayı izlemiyor (niyet ${m.rota.niyet}, çözülen ${m.rota.cozulen})`);
+    }
+
+    /*
       İKİNCİ KAT (26.11.2026, onaylı mockup): modüle girince ana
       listenin yerini bölümler alıyor. Dört koşul birlikte aranıyor,
       çünkü üçü tek başına yanıltıcı:
@@ -336,6 +347,63 @@ export function tekEkranHukmu(ad, o) {
         eksik.push(`${satir.ad}: "${satir.etiket}" etiketi açıklamasıyla uyuşmuyor ("${satir.aciklama ?? ""}")`);
       }
       if (satir.aciklamaKirpik) eksik.push(`${satir.ad}: açıklama kırpılıyor`);
+    }
+  }
+
+  /*
+    FİYATLAR SÜZGEÇLERİ BİRLİKTE (27.11.2026, inceleme talebi). İki
+    süzgeç birbirini SİLMEMELİ: dönemi seçip durumu değiştiren
+    kullanıcı dönemi kaybetmez. Plan bağlantısı da DOĞRU ürünün Fiyat
+    basamakları bölümüne gitmeli — yanlış ürüne giden bir bağlantı
+    ekranda doğru görünür, tıklanınca anlaşılır.
+  */
+  if (o.fiyatAkisi) {
+    const f = o.fiyatAkisi;
+    if (f.donemSuzuldu && f.donemSuzuldu.donemler?.length !== 1) {
+      eksik.push(`dönem süzgeci tek döneme indirmiyor (${(f.donemSuzuldu.donemler ?? []).join(", ")})`);
+    }
+    const iki = f.ikisiBirlikte;
+    if (iki) {
+      if (iki.donemler?.length !== 1 || iki.durumlar?.length !== 1) {
+        eksik.push(`iki süzgeç birlikte çalışmıyor (dönem ${(iki.donemler ?? []).join("/")}, durum ${(iki.durumlar ?? []).join("/")})`);
+      }
+      if (!/fatura=/.test(iki.adres) || !/durum=/.test(iki.adres)) {
+        eksik.push(`süzgeçler adreste birlikte durmuyor (${iki.adres})`);
+      }
+      if (f.baslangic && iki.satir >= f.baslangic.satir) {
+        eksik.push("süzgeç listeyi daraltmıyor");
+      }
+    }
+    const b = f.planBaglantisi;
+    if (b) {
+      /* Ürün ADI ile adresteki KOD farklı olabilir (ArvoCal → randevu);
+         eşleme kodun adreste olmasıyla değil, ürünün kendi sayfasına
+         gidilmesiyle doğrulanıyor. */
+      const kod = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc", ArvoCal: "randevu" }[b.urun];
+      if (kod && !(b.href ?? "").includes(`/panel/platform/urunler/${kod}?bolum=fiyat`)) {
+        eksik.push(`plan bağlantısı yanlış ürüne gidiyor (${b.urun} → ${b.href})`);
+      }
+    }
+  }
+
+  /*
+    ÜRÜN BAĞLAMI VE "ANA MENÜYE DÖN" (27.11.2026, inceleme talebi).
+    Doğrudan girilen ürün rotasında sol menüde Ürünler bağlamı etkin
+    olmalı; geri dönüş bir MENÜ işlemi, sayfayı değiştirmemeli —
+    adres ve açık sayfa aynı kalır.
+  */
+  if (o.urunBaglami?.dogrudanGiris) {
+    const g = o.urunBaglami.dogrudanGiris;
+    if (g.kat !== "alt" || g.modul !== "Ürünler") {
+      eksik.push(`doğrudan girişte Ürünler bağlamı etkin değil (kat ${g.kat}, modül ${g.modul ?? "yok"})`);
+    }
+    const d = o.urunBaglami.anaMenuyeDonuldu;
+    if (!d) eksik.push("'Ana menüye dön' bulunamadı");
+    else {
+      if (d.kat !== "ana") eksik.push("'Ana menüye dön' ana listeyi getirmiyor");
+      if (d.adres !== g.adres) eksik.push(`ana menüye dönmek adresi değiştiriyor (${g.adres} → ${d.adres})`);
+      if (d.baslik !== g.baslik) eksik.push(`ana menüye dönmek açık sayfayı değiştiriyor (${g.baslik} → ${d.baslik})`);
+      if (!(d.odak || "").startsWith("Ürünler")) eksik.push(`ana menüye dönünce odak Ürünler satırına dönmüyor (${d.odak || "yok"})`);
     }
   }
 

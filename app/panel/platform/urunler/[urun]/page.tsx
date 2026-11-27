@@ -274,6 +274,9 @@ export default async function UrunPage({ params, searchParams }: {
     duruyor. Süzülmüş sonuç boşsa "müşteri yok" DENMİYOR: süzgecin
     sonuç vermemesi ile ürünün hiç müşterisi olmaması ayrı durumlar.
   */
+  /* Ücreti girilmemiş ödeyen lisans: eski İstatistikler kartındaki tek
+     uyarıydı, Müşteriler başlığına taşındı. */
+  const ucretsizOdeyen = odeyen.filter((satir) => !satir.ucret).length;
   const aranan = arananHam.toLocaleLowerCase("tr");
   const suzulmus = satirlar.filter((satir) =>
     (!aranan || satir.ad.toLocaleLowerCase("tr").includes(aranan))
@@ -369,6 +372,18 @@ export default async function UrunPage({ params, searchParams }: {
       sekmeler={sekmeler} adresler={bolumAdresleri} baslangic={seciliSira}>
       <section>
         <UrunGenelBakis satir={performansSatiri} donem={secilenDonem} para={para} sayi={sayi} bekleyenler={bekleyenler} />
+        {/*
+          ÜRÜN KÜNYESİ (27.11.2026). Sağ sütun kalkınca Kod ve
+          Veritabanı bilgisi ekranda hiçbir yerde kalmamıştı; ikisi de
+          kurucunun "bu ürün nerede yaşıyor" sorusunun cevabı. Adres ve
+          köprü başlıkta duruyor (alt satır + rozet), burada yalnızca
+          başka yerde yazmayanlar var.
+        */}
+        <dl className="urd-kunye">
+          <div><dt>Kod</dt><dd className="plt-mono">{urun}</dd></div>
+          <div><dt>Veritabanı</dt><dd>{cekirdek ? "Konsolla ortak" : "Ayrı (köprüyle)"}</dd></div>
+          <div><dt>Köprü</dt><dd>{kopru.not}</dd></div>
+        </dl>
       </section>
 
       <section className="urd-bolum">
@@ -377,7 +392,15 @@ export default async function UrunPage({ params, searchParams }: {
               sayı yüzeyi var, o da Genel Bakış'ın üç metriği. Şeridin
               taşıdığı iki bilgi — beklenen aylık ve grup içi değer —
               ait oldukları bölümün başlığına geçti; kaybolmadı. */}
-          <div><h2>Müşteriler</h2><small>{sayi(satirlar.length)} lisans · {sayi(acik.length)} açık · beklenen aylık {para(gelir)}{grupDegeri ? ` (+ ${para(grupDegeri)} grup içi)` : ""}</small></div>
+          {/* Şerit ve sağ sütun kalktı (27.11.2026, onaylı mockup):
+              taşıdıkları sayılar ait oldukları bölümün başlığına geçti.
+              "Ücreti girilmemiş" buraya eklendi — eski İstatistikler
+              kartındaki tek uyarı oydu ve kaybolmamalıydı. */}
+          <div><h2>Müşteriler</h2><small>
+            {sayi(satirlar.length)} lisans · {sayi(acik.length)} açık · {sayi(odeyen.length)} ödeyen ·
+            beklenen aylık {para(gelir)}{grupDegeri ? ` (+ ${para(grupDegeri)} grup içi)` : ""}
+            {ucretsizOdeyen ? ` · ${sayi(ucretsizOdeyen)} lisansın ücreti girilmemiş` : ""}
+          </small></div>
         </header>
         {/* Süzgeç GET formu: sonuç adreste, paylaşılabilir ve yenilemeye
             dayanıklı. Bölüm ve dönem gizli alanlarla korunuyor. */}

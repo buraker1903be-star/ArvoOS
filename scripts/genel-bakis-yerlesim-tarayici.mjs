@@ -37,8 +37,8 @@ function rotaCss(rota) {
 }
 /* Kurucu konsolunun ana sayfası da "panel" rotasından çiziliyor
    (konsol-ana-sayfa.tsx, yalnızca yonetim.arvo-os.com): CSS kümesi aynı. */
-const cssler = { ana: rotaCss("panel"), crm: rotaCss("panel/crm/genel-bakis"), konsol: rotaCss("panel"), urundetay: rotaCss("panel/platform/urunler/[urun]"), urunler: rotaCss("panel/platform/urunler") };
-const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol,urundetay,urunler").split(",");
+const cssler = { ana: rotaCss("panel"), crm: rotaCss("panel/crm/genel-bakis"), konsol: rotaCss("panel"), urundetay: rotaCss("panel/platform/urunler/[urun]"), urunler: rotaCss("panel/platform/urunler"), fiyatlar: rotaCss("panel/platform/fiyatlar") };
+const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol,urundetay,urunler,fiyatlar").split(",");
 
 /*
   Üretilen sayfalar geçici bir dizinde ve koşu sonunda siliniyor.
@@ -78,7 +78,21 @@ function adres() {
   const bolum = p.get("bolum");
   return bolum ? yol + "?bolum=" + bolum : yol;
 }
-let anlik = adres();
+/*
+  ADRES İMPORT ANINDA DONDURULMUYOR (27.11.2026, inceleme bulgusu).
+
+  Eskiden anlik degiskeni modül yüklenirken hesaplanıyordu; senaryonun
+  kendi rotasını (window.__yol) yazan satir ise giris dosyasinda DAHA
+  SONRA koşuyor. ESM importları hepsinden önce değerlendirildiği için
+  şim her zaman "/panel" okuyor, ürün detayına doğrudan girilen bir
+  ölçümde sol menüde "Ana Sayfa" seçili görünüyordu — yani düzenek
+  ekranın YANLIŞ menü durumunu çiziyordu.
+
+  Artık okuma tembel: adres her istendiğinde hesaplanıyor. Dönen değer
+  bir string olduğu için useSyncExternalStore'un anlık görüntü eşitliği
+  bozulmuyor. anlik yalnızca DEĞİŞİKLİK saptamak için duruyor.
+*/
+let anlik = null;
 const tazele = () => { const y = adres(); if (y !== anlik) { anlik = y; bildir(); } };
 window.addEventListener("hashchange", tazele);
 window.addEventListener("popstate", tazele);
@@ -87,7 +101,7 @@ export function yonlendir(hedef) {
   anlik = hedef;
   bildir();
 }
-const oku = () => anlik;
+const oku = () => (anlik ?? adres());
 export const usePathname = () => useSyncExternalStore(abone, oku, oku).split("?")[0];
 export const useSearchParams = () => new URLSearchParams(useSyncExternalStore(abone, oku, oku).split("?")[1] || "");
 export const useRouter = () => ({ push: yonlendir, replace: yonlendir, refresh(){}, back(){ history.back(); }, forward(){ history.forward(); } });
@@ -113,6 +127,7 @@ import { OsSimge as OsSimgeDuz } from ${a("app/panel/os/os-icons.tsx")};
 import { UrunPerformansiKarti } from "@/app/panel/konsol-urun-performansi";
 import { UrunListesi } from "@/app/panel/platform/urunler/urun-listesi";
 import { urunBekleyenleri } from "@/lib/konsol/urun-bekleyenler";
+import { karsilastirmaSatirlari, FATURA_DONEMLERI, FIYAT_DURUMLARI } from "@/lib/konsol/fiyat-karsilastirma";
 import { KararBekleyenlerKarti, OtomasyonlarKarti } from "@/app/panel/konsol-ana-kartlar";
 import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
 import { ArvoOsIsareti, ArvoOsLogosu } from "@/app/panel/os/arvoos-markasi";
@@ -135,6 +150,9 @@ const sayfa = new URLSearchParams(location.search).get("sayfa") || "ana";
    özniteliği ön boyama betiği yazıyor (lib/konsol/gezinme.ts); burada
    aynı öznitelik elle veriliyor ki iki durum da görüntülenebilsin. */
 if (new URLSearchParams(location.search).get("menu") === "dar") document.documentElement.setAttribute("data-konsol-menu", "dar");
+/* Bu satır ERKEN bir varsayılan: senaryoya özgü rota aşağıda, kabuk
+   kurulmadan hemen önce yazılıyor. İkisi de burada durabilir çünkü şim
+   adresi artık tembel okuyor (navigation şimi). */
 window.__yol = sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel";
 const gun = (i) => { const d = new Date(Date.UTC(2026, 10, 10 - (13 - i))); return d; };
 const seri = { days: Array.from({ length: 14 }, (_, i) => ({ key: "g" + i, day: String(i + 1), title: "Gün " + (i + 1), count: [2,5,1,0,3,4,6,2,1,3,5,2,4,3][i], isToday: i === 13 })), total: 41, previous: 33, max: 6, aralik: "28 Eki – 10 Kas", oncekiAralik: "14–27 Eki" };
@@ -469,6 +487,108 @@ function UrunlerListesi() {
   );
 }
 
+/*
+  FİYATLAR — ÜRÜNLER ARASI KARŞILAŞTIRMA (27.11.2026). Satırlar elle
+  yazılmıyor: gerçek kural çağrılıyor (lib/konsol/fiyat-karsilastirma),
+  fixture yalnızca plan kataloğunu veriyor. Süzgeçler adreste
+  (?fatura=, ?durum=) — ölçüm ikisinin BİRLİKTE çalıştığını buradan
+  görüyor.
+*/
+function FiyatlarKarsilastirma() {
+  const sorgu = useSearchParams();
+  const fatura = sorgu.get("fatura") || undefined;
+  const durum = sorgu.get("durum") || undefined;
+  const planlar = [
+    { urun: "arvoos", urunAdi: "ArvoOS", kod: "arvoos-baslangic", ad: "Başlangıç", birim: "kurum başına", aylik: 239000, yillik: 2390000, yayimli: true, bekleyen: false },
+    { urun: "arvoos", urunAdi: "ArvoOS", kod: "arvoos-kurumsal", ad: "Kurumsal", birim: "kurum başına", aylik: 719000, yillik: 7190000, yayimli: true, bekleyen: true },
+    { urun: "arvolab", urunAdi: "ArvoLab", kod: "arvolab-standart", ad: "Standart", birim: "kullanıcı başına", aylik: 79000, yillik: 790000, yayimli: false, bekleyen: false },
+    { urun: "arc", urunAdi: "ArvoARC", kod: "arc-baslangic", ad: "Başlangıç", birim: "kurum başına", aylik: 159000, yillik: 1590000, yayimli: true, bekleyen: false },
+    { urun: "randevu", urunAdi: "ArvoCal", kod: "randevu-tek", ad: "Tek salon", birim: "kurum başına", aylik: 89900, yillik: 899000, yayimli: false, bekleyen: false },
+    { urun: "ek", urunAdi: "Ek hizmetler", kod: "ek-kullanici", ad: "Ek kullanıcı", birim: "ek kalem", aylik: 19900, yillik: null, yayimli: true, bekleyen: false },
+  ];
+  const suzgec = { urun: "tumu", donem: fatura, durum };
+  const satirlar = karsilastirmaSatirlari(planlar, suzgec);
+  const para = (n) => "₺" + n.toLocaleString("tr-TR");
+  const adres = (alan, deger) => {
+    const p = new URLSearchParams();
+    const s2 = { fatura: fatura ?? "", durum: durum ?? "" };
+    s2[alan] = deger;
+    if (s2.fatura) p.set("fatura", s2.fatura);
+    if (s2.durum) p.set("durum", s2.durum);
+    const m = p.toString();
+    return "/panel/platform/fiyatlar" + (m ? "?" + m : "");
+  };
+  return (
+    /* Üretimdeki kabuğun aynısı: Fiyatlar sayfası kayıt kalıbını
+       kullanıyor (talep-bas başlık + panel-card gövde). */
+    <main className="plt talep cari ekip urun-sayfa fk-sayfa">
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
+          <small className="panel-kicker">ÜRÜNLER VE FİYATLAR</small>
+          <h1>Fiyatlar</h1>
+          <p className="ek-alt">Dört ürünün planları ve ek hizmetler bir arada; düzenleme ürün seçilince açılır.</p>
+        </div>
+      </header>
+      <div className="talep-izgara ekip-izgara">
+        <section className="panel-card talep-bilgi" aria-label="Fiyat listesi">
+          <div className="ekip-suzgec talep-suzgec ek-arac">
+            <nav className="ek-segment" aria-label="Ürün">
+              <Link href={adres("urun", "")} className="is-active" aria-current="page">Tümü</Link>
+              <Link href="#">ArvoOS</Link><Link href="#">ArvoARC</Link><Link href="#">ArvoCal</Link><Link href="#">ArvoLab</Link><Link href="#">Ek hizmetler</Link>
+            </nav>
+          </div>
+          <div className="fk-suzgec ek-arac" role="group" aria-label="Fiyat süzgeçleri">
+            <span className="fk-suzgec-ad">Faturalama dönemi</span>
+            <nav className="ek-segment" aria-label="Faturalama dönemi">
+              <Link href={adres("fatura", "")} className={!fatura ? "is-active" : undefined} aria-current={!fatura ? "page" : undefined}>Hepsi</Link>
+              {FATURA_DONEMLERI.map((d) => (
+                <Link key={d.kod} href={adres("fatura", d.kod)} className={fatura === d.kod ? "is-active" : undefined} aria-current={fatura === d.kod ? "page" : undefined}>{d.ad}</Link>
+              ))}
+            </nav>
+            <span className="fk-suzgec-ad">Durum</span>
+            <nav className="ek-segment" aria-label="Fiyat durumu">
+              <Link href={adres("durum", "")} className={!durum ? "is-active" : undefined} aria-current={!durum ? "page" : undefined}>Hepsi</Link>
+              {FIYAT_DURUMLARI.map((d) => (
+                <Link key={d.kod} href={adres("durum", d.kod)} className={durum === d.kod ? "is-active" : undefined} aria-current={durum === d.kod ? "page" : undefined}>{d.ad}</Link>
+              ))}
+            </nav>
+          </div>
+          {satirlar.length ? (
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="fk-karsilastirma">
+                <thead><tr><th>Ürün</th><th>Plan</th><th>Dönem</th><th className="crm-col-amount">Ücret</th><th>Durum</th><th></th></tr></thead>
+                <tbody>
+                  {satirlar.map((satir) => {
+                    const href = satir.urun === "ek" ? "#" : "/panel/platform/urunler/" + satir.urun + "?bolum=fiyat";
+                    const ton = satir.durum === "bekliyor" ? "warning" : satir.durum === "yayimli" ? "success" : "neutral";
+                    return (
+                      <tr key={satir.anahtar}>
+                        <td data-label="Ürün"><span className="crm-table-title">{satir.urunAdi}</span></td>
+                        <td data-label="Plan"><span className="crm-table-title">{satir.planAdi}</span><span className="crm-table-sub">{satir.birim}</span></td>
+                        <td data-label="Dönem"><span className="crm-table-sub">{satir.donemAdi}</span></td>
+                        <td className="crm-col-amount" data-label="Ücret"><span className="crm-table-title">{satir.tutar === null ? "Teklif" : para(satir.tutar)}</span><small>{satir.donem === "yillik" ? "/ yıl" : "/ ay"}</small></td>
+                        <td data-label="Durum"><span className="status-pill" data-tone={ton}>{satir.durumAdi}</span></td>
+                        <td className="crm-table-actions"><Link className="fk-ac" href={href}>Aç →</Link></td>
+                        <MobilSatir href={href} baslik={satir.urunAdi + " · " + satir.planAdi} durum={{ etiket: satir.durumAdi, ton }}
+                          alt={[satir.donemAdi, satir.tutar === null ? "Teklif" : para(satir.tutar), satir.birim]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="crm-empty-state talep-bos-kutu ek-bos">
+              <h2>Süzgece uyan plan yok</h2>
+              <p>Faturalama dönemi, durum ya da ürün süzgecini değiştirin.</p>
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
+
 function UrunDetay() {
   const satir = {
     kod: "arvolab", ad: "ArvoLab",
@@ -611,13 +731,18 @@ function UrunDetay() {
 /* ?yol=<rota>: bağlamlı gezinmenin kanıtı için rota dışarıdan verilebilir
    (ör. /panel/platform/billing → ana menüde Finans, şeritte Abonelikler). */
 window.__yol = new URLSearchParams(location.search).get("yol")
-  || (sayfa === "urundetay" ? "/panel/platform/urunler/arvolab" : sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel");
+  || (sayfa === "urundetay" ? "/panel/platform/urunler/arvolab"
+    : sayfa === "urunler" ? "/panel/platform/urunler"
+    : sayfa === "fiyatlar" ? "/panel/platform/fiyatlar"
+    : sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel");
 
 function Kabuk() {
+  /* Şimin ÇÖZDÜĞÜ yol: ölçüm bunu senaryonun niyetiyle karşılaştırıyor. */
+  const yolSimdi = usePathname();
   /* Konsol senaryoları yeni kabuğu kullanıyor (.os-konsol): masaüstü ve
      tablette sol menü, telefonda alt çubuk. Kiracı senaryoları (ana,
      crm) dock'ta kalıyor — üretimdeki ayrımın aynısı. */
-  const konsolMu = sayfa === "konsol" || sayfa === "urundetay" || sayfa === "urunler";
+  const konsolMu = sayfa === "konsol" || sayfa === "urundetay" || sayfa === "urunler" || sayfa === "fiyatlar";
   return <div className={konsolMu ? "panel-root os-root os-konsol" : "panel-root os-root"}><main className="panel-frame os-frame">
     {/*
       ÜST ÇUBUK. Kiracı senaryolarında olduğu gibi sade; KONSOL
@@ -649,7 +774,7 @@ function Kabuk() {
         </div>
       ) : null}
     </header>
-    <section className="os-workspace">{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? <UrunlerListesi /> : <Ana />}</div></section>
+    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? <UrunlerListesi /> : sayfa === "fiyatlar" ? <FiyatlarKarsilastirma /> : <Ana />}</div></section>
     {/* Komut paleti ve menü kapatıcı GERÇEK bileşenler: kaplamaların
         odak/Esc davranışı ölçülebilsin diye (26.11.2026). */}
     {konsolMu ? <OsKomutPaleti uygulamalar={konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 })} cikis={async () => {}} /> : null}
@@ -948,6 +1073,22 @@ const olc = () => {
             anaListeGizli: !m.querySelector(".os-yan-oge[data-modul]"),
           };
         })(),
+        /*
+          MENÜ DURUMU ROTAYI İZLİYOR MU (27.11.2026, inceleme bulgusu).
+          Düzenek bir süre doğrudan girilen ürün rotasında bile sol
+          menüde "Ana Sayfa"yı seçili çiziyordu: navigation şimi adresi
+          IMPORT ANINDA donduruyor, senaryonun rotası ise daha sonra
+          yazılıyordu. Yani ölçüm ekranın YANLIŞ menü durumunu
+          gösteriyordu — ve bunu hiçbir ölçüt görmüyordu.
+
+          Karşılaştırılan iki şey: senaryonun NİYET ettiği rota
+          (window.__yol) ile şimin çözdüğü rota. Sol menünün vurgusu
+          ikincisinden geliyor.
+        */
+        rota: {
+          niyet: window.__yol ?? null,
+          cozulen: document.querySelector("[data-olculen-yol]")?.getAttribute("data-olculen-yol") ?? null,
+        },
         /* Yatay bölüm şeridi aynı anda çizilmemeli: aynı bağlantı iki
            yerde "seçili" görünür ve kurucu hangisine bakacağını bilemez. */
         seritGorunur: (() => {
@@ -1410,7 +1551,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         üstünü başka bir şey örtmüyor), klavyeyle odaklanabiliyor mu ve
         dock'un üstünde mi.
       */
-      const konsolSenaryosu = s === "konsol" || s === "urundetay" || s === "urunler";
+      const konsolSenaryosu = s === "konsol" || s === "urundetay" || s === "urunler" || s === "fiyatlar";
       if (s === "konsol") {
         o.erisim = await sayfa.evaluate(() => {
           const gorunur2 = (el) => {
@@ -1525,6 +1666,65 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
           return sonuc;
         });
       }
+      /*
+        FİYATLAR AKIŞI (27.11.2026, inceleme talebi). İki süzgecin
+        BİRLİKTE çalıştığı ve plan bağlantısının DOĞRU ürünün Fiyat
+        basamakları bölümüne gittiği tıklamayla ölçülüyor; KAYIT=<dizin>
+        verildiğinde aynı akış kısa bir videoya da giriyor.
+      */
+      if (s === "fiyatlar" && w >= 1200) {
+        const bekle = process.env.KAYIT ? 900 : 80;
+        const oku = () => sayfa.evaluate(() => ({
+          adres: location.hash.slice(1) || "/panel/platform/fiyatlar",
+          satir: document.querySelectorAll(".crm-data-table tbody tr").length,
+          donemler: [...new Set([...document.querySelectorAll('.crm-data-table tbody td[data-label="Dönem"]')].map((e) => e.textContent.trim()))],
+          durumlar: [...new Set([...document.querySelectorAll('.crm-data-table tbody td[data-label="Durum"]')].map((e) => e.textContent.trim()))],
+        }));
+        const akis = {};
+        await sayfa.waitForTimeout(bekle);
+        akis.baslangic = await oku();
+        await sayfa.locator('nav[aria-label="Faturalama dönemi"] a', { hasText: "Yıllık" }).click();
+        await sayfa.waitForTimeout(bekle);
+        akis.donemSuzuldu = await oku();
+        await sayfa.locator('nav[aria-label="Fiyat durumu"] a', { hasText: "Konsoldan yayımlı" }).click();
+        await sayfa.waitForTimeout(bekle);
+        akis.ikisiBirlikte = await oku();
+        /* Plan bağlantısı: ilk satırın ürünü ile gidilen adres aynı
+           ürünü göstermeli — "doğru ürünün Fiyat basamakları". */
+        const ilkUrun = await sayfa.locator('.crm-data-table tbody tr td[data-label="Ürün"]').first().textContent();
+        const hedef = await sayfa.locator(".fk-ac").first().getAttribute("href");
+        akis.planBaglantisi = { urun: (ilkUrun ?? "").trim(), href: hedef };
+        o.fiyatAkisi = akis;
+      }
+
+      /*
+        ÜRÜN BAĞLAMINDA "ANA MENÜYE DÖN" (27.11.2026, inceleme talebi).
+        Ürünler listesine ya da ürün detayına DOĞRUDAN girilen bir
+        oturumda: sol menüde Ürünler bağlamı etkin mi, geri dönüldüğünde
+        AÇIK SAYFA ve ADRES korunuyor mu. Geri dönüş bir menü işlemi;
+        sayfayı değiştirmemeli.
+      */
+      if ((s === "urunler" || s === "urundetay") && w >= 1200 && process.env.MENU !== "dar") {
+        const oku = () => sayfa.evaluate(() => ({
+          /* Senaryonun rotası window.__yol'da; ?yol= yalnızca dışarıdan
+             verildiğinde var. İkisi de yoksa kök. */
+          adres: location.hash.slice(1) || new URLSearchParams(location.search).get("yol") || window.__yol || "/panel",
+          kat: document.querySelector(".os-yan-kat") ? "alt" : "ana",
+          modul: document.querySelector(".os-yan-modul .os-yan-etiket")?.textContent?.trim() ?? null,
+          secili: [...document.querySelectorAll('.os-yan-oge[aria-current="page"]')].map((e) => e.textContent.trim()),
+          baslik: document.querySelector(".panel-content h1")?.textContent?.trim() ?? null,
+          odak: (document.activeElement?.textContent || "").trim().slice(0, 40),
+        }));
+        const akis = {};
+        akis.dogrudanGiris = await oku();
+        if (await sayfa.locator(".os-yan-geri").isVisible()) {
+          await sayfa.locator(".os-yan-geri").click();
+          await sayfa.waitForTimeout(120);
+          akis.anaMenuyeDonuldu = await oku();
+        }
+        o.urunBaglami = akis;
+      }
+
       /*
         KAPLAMALAR (26.11.2026). Üçü de aynı sözleşmeye uymalı: açılınca
         ODAK İÇERİ girsin, Esc kapatsın ve odak AÇAN düğmeye dönsün.

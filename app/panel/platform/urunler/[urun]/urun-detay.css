@@ -180,3 +180,21 @@
 /* Sayfa içeriği kadar: flex çocuğu varsayılanı KISALMAK, o zaman kap
    taşmıyor ve overflow:auto hiçbir şey yapmıyor. */
 .urun-detay-sayfa { flex: 0 0 auto; }
+
+/*
+  ÜRÜN KÜNYESİ (27.11.2026). Kaldırılan sağ sütunun taşıdığı iki bilgi
+  (Kod, Veritabanı) ekranda hiçbir yerde kalmamıştı; köprünün NOTU da
+  başlıktaki rozette yalnızca title olarak vardı. Üçü Genel Bakış'ın
+  altında tek satırda; kart değil, ince bir künye.
+*/
+.urd-kunye {
+  display: flex;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  margin: 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+}
+.urd-kunye > div { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.urd-kunye dt { color: var(--muted); font-size: var(--fs-sm); }
+.urd-kunye dd { margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); }

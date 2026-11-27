@@ -805,3 +805,35 @@ test("otomasyon satırı: ad, etiket ve açıklama birlikte doğrulanır", () =>
     ...temel, otomasyonSatirlari: [{ ...kuyruk[0], aciklamaKirpik: true }],
   }).eksik.some((m: string) => m.includes("açıklama kırpılıyor")));
 });
+
+test("menü rotayı izlemiyorsa düşer", () => {
+  /*
+    27.11.2026 inceleme bulgusu: ölçüm düzeneği doğrudan girilen ürün
+    rotasında bile sol menüde "Ana Sayfa"yı seçili çiziyordu —
+    navigation şimi adresi IMPORT ANINDA donduruyor, senaryonun rotası
+    daha sonra yazılıyordu. Ölçüm ekranın YANLIŞ menü durumunu
+    gösterdiğinde kanıt kanıt değildir.
+  */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const menu = {
+    ortuyor: false, oge: 6, adsiz: 0, ipucusuz: 0, odaklanamayan: 0, sag: 240, icerikSol: 264, pencereAcik: false,
+    secili: ["Ürünler"], seritGorunur: false,
+    marka: { dosya: "arvoos-320.png", yuklendi: true, genislik: 116, oranSapmasi: 0.002 },
+  };
+  const yol = "/panel/platform/urunler/arvolab";
+  assert.deepEqual(tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, yanMenu: { ...menu, rota: { niyet: yol, cozulen: yol } },
+  }).eksik, []);
+
+  /* Ölçülen hata: niyet ürün detayı, çözülen "/panel". */
+  const bayat = tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, yanMenu: { ...menu, rota: { niyet: yol, cozulen: "/panel" } },
+  });
+  assert.equal(bayat.gecti, false);
+  assert.ok(bayat.eksik.some((m: string) => m.includes("menü rotayı izlemiyor")), bayat.eksik.join(" | "));
+
+  /* Sorgu dizesi karşılaştırmaya girmiyor: ?bolum= rotayı değiştirmez. */
+  assert.deepEqual(tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, yanMenu: { ...menu, rota: { niyet: `${yol}?bolum=abonelikler`, cozulen: yol } },
+  }).eksik, []);
+});
