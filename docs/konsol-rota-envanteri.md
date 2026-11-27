@@ -12,6 +12,9 @@ Başlangıç: `d8244105` (PR #334'ün birleşmesi).
 - `kuruldu` yeni tasarıma taşındı (düzenekte çizildi)
 - `doğrulandı` GERÇEK ROTADAN açıldı, ölçüldü ve görüntüsü alındı
 
+Durum sütunu aşağıdaki **rota matrisiyle** birleşti: artık rota başına
+dört ayrı sonuç var (erişim · tasarım · gezinme · işlem).
+
 ## Gerçek rota nasıl açılıyor
 
 27.11.2026'ya kadar konsol ekranları yalnızca düzenekle (bileşeni tek
@@ -28,10 +31,13 @@ node scripts/konsol-rota-kabulu.mjs   # ölçüm + ekran görüntüsü
 Önizleme Supabase'i sahte istemciyle değiştiriyor
 (`scripts/onizleme/`): okumalar örnek veriden, YAZMALAR sessizce
 başarılı — gerçek tahsilat, fiyat yayımı, destek yanıtı ve otomasyon
-önizlemede tetiklenmiyor. Kabul betiği ekranı gerçek host'tan
-(`yonetim.arvo-os.com`, tarayıcıda yerele eşlenmiş) açıyor: sol
-gezinme ve `/panel/platform` kapısı o karara bağlı, localhost'tan
-istenince kabuk kiracı panelini çiziyor.
+önizlemede tetiklenmiyor. Kabul betiği ekranı localhost'tan açıyor; konsol kabuğu
+`isManagementHost` kararına bağlı olduğu için önizlemede localhost da
+yönetim host'u sayılıyor (`scripts/onizleme/host-rules.ts`). Bir süre
+gerçek host tarayıcıda yerele eşlenerek kullanıldı, ama Next'in
+geliştirme sunucusu localhost DIŞINDAKİ bir host'ta istemci paketini
+bağlamıyor: sayfa doğru görünüyor, hiçbir istemci bileşeni
+çalışmıyor, hata da yok. O yoldan alınan sonuçlar yanlıştı.
 
 **Önizlemenin görmediği şeyler:** RLS (sahte istemcide politika yok),
 imzalı depolama bağlantıları (dekont "Eklenmemiş" görünür), gerçek
