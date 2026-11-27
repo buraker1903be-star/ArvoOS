@@ -312,3 +312,18 @@ a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 4
 }
 .kak-eksik b { font-weight: var(--fw-semibold); }
 .kak-eksik span { color: var(--ink-soft); }
+
+/*
+  OTOMASYON SATIRINDA ZAMAN VE KAPSAM (27.11.2026, kapanış turu · madde 2).
+
+  Kartın varsayılan kapsamı SON ÇALIŞMA; köprüden gelen iki satır
+  ("Bağlantı kesildi", "Bağlı değil") ise ŞU ANKİ sağlık. Kayıt
+  başarılıyken satırın kırmızı olması bu yüzden çelişki değil —
+  ama yazılmadığı sürece öyle okunuyordu. Rozetin altındaki küçük
+  etiket bunu söylüyor; gövdedeki ikinci satır da "en son ne zaman
+  başarılı çalıştı"yı veriyor, çünkü kopyanın ne kadar eskidiğini
+  ancak o söylüyor.
+*/
+.kak-zaman-alt { color: var(--dim); font-size: var(--fs-micro); }
+.kak-rozet-yigin { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.kak-kapsam { color: var(--muted); font-size: var(--fs-micro); white-space: nowrap; }

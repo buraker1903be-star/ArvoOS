@@ -353,9 +353,15 @@ test("'Yeniden deneniyor' kaynağı kodda deneme kuyruğu", () => {
   */
   const kural = oku("lib/konsol/otomasyonlar.ts");
   assert.match(kural, /baglanti_kesildi: \{ etiket: "Bağlantı kesildi"/);
-  /* Köprü kopuk dalı artık "yeniden" yazmıyor. */
-  const esitleme = kural.slice(kural.indexOf('if (kopruler.some((k) => k.kopuk))'));
-  assert.match(esitleme.slice(0, 300), /"baglanti_kesildi"/);
+  /* Köprü kopuk dalı artık "yeniden" yazmıyor. Çapa 27.11.2026'da
+     değişti: dal ürün ADLARINI toplamak için filter'a geçti. */
+  const esitleme = kural.slice(kural.indexOf("const kopuk = kopruler.filter"));
+  assert.match(esitleme.slice(0, 400), /"baglanti_kesildi"/);
+  assert.doesNotMatch(esitleme.slice(0, 400), /"yeniden"/);
+  /* Ürün adı elimizdeyse satırda adıyla yazılıyor. */
+  assert.match(kural, /ürününe ulaşılamıyor/);
+  /* Köprüden gelen satırın kapsamı "şu an" — öteki satırlar son çalışma. */
+  assert.match(esitleme.slice(0, 400), /"su_an"/);
 
   const sayfa = oku("app/panel/konsol-ana-sayfa.tsx");
   assert.match(sayfa, /paytr_otomatik_yenileme[\s\S]{0,160}count: "exact", head: true/);

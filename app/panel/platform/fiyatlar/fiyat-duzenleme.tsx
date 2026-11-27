@@ -213,6 +213,20 @@ export async function FiyatDuzenleme({ urun, etkilenenKiraci }: {
               {denetim.uyarilar.length ? (
                 <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
               ) : null}
+              {/*
+                BAŞKA ÜRÜN VARSA AYRI ONAY (27.11.2026, kapanış turu ·
+                madde 4). Toplu yayım kuralı DEĞİŞMEDİ, ama bölüm artık
+                bir ürünün içinde duruyor: ArvoLab'ı düzenleyen kurucu
+                başka ürünün taslağını farkında olmadan yayımlayabilir.
+                Etkilenen ürünler yukarıda tek tek listeleniyor ve bu
+                kutu işaretlenmeden düğme çalışmıyor.
+              */}
+              {baskaUrunler.length ? (
+                <label className="plt-fiyat-onay">
+                  <input type="checkbox" name="kapsam-onayi" value="evet" required />{" "}
+                  {baskaUrunler.join(", ")} değişikliklerinin de yayımlanacağını anladım.
+                </label>
+              ) : null}
               <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
                 {sayi(degisiklikler.length)} değişikliği yayımla
               </button>
@@ -228,8 +242,11 @@ export async function FiyatDuzenleme({ urun, etkilenenKiraci }: {
           */}
           {baskaUrunler.length ? (
             <KNot ton="uyari">
-              <b>Bu liste tek seferde yayımlanır.</b> Bekleyenler arasında {baskaUrunler.join(", ")} değişiklikleri de var;
-              yayımlayınca onlar da canlıya çıkar.
+              <b>Bu liste tek seferde yayımlanır.</b> Yayımlayınca aşağıdaki ürünlerin bekleyen değişiklikleri de canlıya çıkar:
+              <br />
+              {/* Ürün başına KAÇ değişiklik: "başka ürünler de var"
+                  cümlesi tek başına kapsamı söylemiyor. */}
+              {baskaUrunler.map((u) => `${u} (${sayi(degisiklikler.filter((d) => kodunUrunu(d.kod) === u).length)})`).join(" · ")}
             </KNot>
           ) : null}
           <KListe>

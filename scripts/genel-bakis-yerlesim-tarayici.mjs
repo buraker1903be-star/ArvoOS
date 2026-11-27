@@ -425,7 +425,9 @@ function Konsol() {
       : { durum: "saglikli", etiket: "Sağlıklı", ton: "success" },
     { durum: "sorunlu", etiket: "Sorunlu", ton: "danger", not: "Köprü yanıt vermiyor." },
   ];
-  const KOPRULER = URUN_SAGLIK.slice(1).map((s) => ({
+  const URUN_ADLARI = ["ArvoOS", "ArvoLab", "ArvoARC", "ArvoCal"];
+  const KOPRULER = URUN_SAGLIK.slice(1).map((s, i) => ({
+    ad: URUN_ADLARI[i + 1],
     yapilandirilmamis: s.durum === "bagli_degil",
     kopuk: s.durum !== "saglikli",
   }));

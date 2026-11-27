@@ -187,6 +187,10 @@ export default async function UrunlerPage({ searchParams }: {
               Ürünler bağlamına alındı. Ürün fiyatları artık ürünün
               kendi "Fiyat basamakları" bölümünde. */}
           <Link className="os-menu-item" role="menuitem" href="/panel/platform/fiyatlar?urun=ek">Ek hizmet fiyatları</Link>
+          {/* Ürünler arası fiyat karşılaştırması: çıplak /fiyatlar adresi
+              27.11.2026'da bu listeye yönlendirildi, görünümün kapısı
+              buraya kondu. */}
+          <Link className="os-menu-item" role="menuitem" href="/panel/platform/fiyatlar?gorunum=karsilastirma">Fiyat karşılaştırma</Link>
           <Link className="os-menu-item" role="menuitem" href="/panel/platform/subscribers">Bireysel abone planları</Link>
           <Link className="os-menu-item" role="menuitem" href="/panel/platform/saglik">Sistem sağlığı</Link>
         </div>

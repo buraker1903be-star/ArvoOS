@@ -139,11 +139,13 @@ export function OtomasyonlarKarti({ isler, href }: { isler: Otomasyon[]; href: s
     <article className="kak-kart" aria-labelledby="kak-otomasyon-baslik">
       <header className="kak-bas">
         <h2 id="kak-otomasyon-baslik">Otomasyonlar</h2>
-        {/* KAPSAM BAŞLIKTA (27.11.2026). Bu kartın durumu SON KOŞMANIN
-            sonucu; ürün tablosundaki sağlık ise ŞU ANKİ köprü
-            yoklaması. İkisi aynı ekranda yan yana duruyor ve
-            kapsamları yazılmadığında çelişiyormuş gibi okunuyordu. */}
-        <span className="kak-sayac">son koşma</span>
+        {/* KAPSAM BAŞLIKTA (27.11.2026). Kartın varsayılan kapsamı SON
+            ÇALIŞMANIN sonucu; ürün tablosundaki sağlık ise ŞU ANKİ
+            köprü yoklaması. İkisi aynı ekranda yan yana duruyor ve
+            kapsamları yazılmadığında çelişiyormuş gibi okunuyordu.
+            Köprüden gelen satırlar bu varsayılanın DIŞINDA ve kendi
+            rozetini taşıyor (aşağıda). */}
+        <span className="kak-sayac">Son çalışma</span>
       </header>
       <ul className="kak-liste kak-otomasyon">
         {isler.map((is) => (
@@ -155,8 +157,26 @@ export function OtomasyonlarKarti({ isler, href }: { isler: Otomasyon[]; href: s
               <span className="kak-govde">
                 <b>{is.ad}</b>
                 <small>{is.detay}</small>
+                {/*
+                  SON BAŞARILI ÇALIŞMANIN ZAMANI (27.11.2026). Güncel
+                  sağlık satırında ("Bağlantı kesildi") en önemli ikinci
+                  soru "peki en son ne zaman çalıştı": kopyanın ne kadar
+                  eskidiğini ancak bu söylüyor. Zaman elde yoksa satır
+                  yazılmıyor — "hiç" ile "bilinmiyor" aynı şey değil.
+                */}
+                {is.sonCalisma ? (
+                  <small className="kak-zaman-alt">
+                    {is.kapsam === "su_an" ? "Son başarılı çalışma: " : "Son çalışma: "}
+                    {kisaZaman(is.sonCalisma.toISOString())}
+                  </small>
+                ) : null}
               </span>
-              <span className="kak-rozet" data-tone={is.ton}>{is.etiket}</span>
+              <span className="kak-rozet-yigin">
+                <span className="kak-rozet" data-tone={is.ton}>{is.etiket}</span>
+                {/* Kapsam SATIRDA: bu satır son çalışmanın sonucunu
+                    değil, ŞU ANKİ bağlantı sağlığını söylüyor. */}
+                {is.kapsam === "su_an" ? <span className="kak-kapsam">şu anki durum</span> : null}
+              </span>
             </span>
           </li>
         ))}

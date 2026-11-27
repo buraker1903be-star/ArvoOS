@@ -741,10 +741,12 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
   */
   const [cronSatirlari, cronBaslangici, denemeKuyrugu] = await cronIstegi;
   const cronDurumu = cronDurumlari(cronSatirlari, new Date(), cronBaslangici);
+  /* AD DA GEÇİYOR (27.11.2026): satır "Bir ürüne ulaşılamıyor" yerine
+     ürünü adıyla yazıyor — yöneticiye hangi ürüne bakacağını söyler. */
   const kopruDurumlari: KopruDurumu[] = [
-    { yapilandirilmamis: Boolean(arvolab?.broken && arvolab.permanent), kopuk: Boolean(arvolab?.broken) },
-    { yapilandirilmamis: !arc.ok && arc.missing.length > 0, kopuk: !arc.ok },
-    { yapilandirilmamis: !randevu.ok && randevu.missing.length > 0, kopuk: !randevu.ok },
+    { ad: productName("arvolab"), yapilandirilmamis: Boolean(arvolab?.broken && arvolab.permanent), kopuk: Boolean(arvolab?.broken) },
+    { ad: productName("arc"), yapilandirilmamis: !arc.ok && arc.missing.length > 0, kopuk: !arc.ok },
+    { ad: productName("randevu"), yapilandirilmamis: !randevu.ok && randevu.missing.length > 0, kopuk: !randevu.ok },
   ];
   const otomasyonSatirlari = otomasyonlar(cronDurumu, kopruDurumlari,
     denemeKuyrugu === null ? [] : [{ grup: "tahsilat", bekleyen: denemeKuyrugu }]);

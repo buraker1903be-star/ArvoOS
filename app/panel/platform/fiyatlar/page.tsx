@@ -54,13 +54,13 @@ type Kiraci = {
 };
 
 export default async function FiyatlarPage({ searchParams }: {
-  searchParams: Promise<{ bolum?: string; urun?: string; fatura?: string; durum?: string }>;
+  searchParams: Promise<{ bolum?: string; urun?: string; fatura?: string; durum?: string; gorunum?: string }>;
 }) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "urunler");
 
-  const { bolum, urun, fatura, durum } = await searchParams;
+  const { bolum, urun, fatura, durum, gorunum } = await searchParams;
   const secili = bolum === "paket" ? "paket" : bolum === "gecmis" ? "gecmis" : "liste";
   /* Paket limitleri 02.11.2026'dan beri veritabanında, konsoldan düzenleniyor. */
   const paketLimitleri = await paketLimitleriOku(supabase);
@@ -89,6 +89,24 @@ export default async function FiyatlarPage({ searchParams }: {
   if (seciliUrun !== "tumu" && seciliUrun !== "ek") {
     redirect(`/panel/platform/urunler/${seciliUrun}?bolum=fiyat`);
   }
+  /*
+    ÜRÜN SEÇİMİ YOKSA ÜRÜNLER LİSTESİNE (27.11.2026, kapanış turu ·
+    madde 3). Bu adres bir süre ürünler arası KARŞILAŞTIRMA ekranını
+    açıyordu; fiyat yönetimi ürünün kendi sekmesine inince o ekranın
+    menüde girişi de kalmadı ve adres "nereye gittiği belirsiz" bir
+    kapı oldu. Üç adres artık üç ayrı şey yapıyor:
+
+      /panel/platform/fiyatlar            → Ürünler listesi
+      /panel/platform/fiyatlar?urun=<kod> → o ürünün Fiyat basamakları
+      /panel/platform/fiyatlar?urun=ek    → ek hizmet düzenlemesi (burada)
+
+    Karşılaştırma görünümü SİLİNMEDİ, açıkça istenmesi gerekiyor:
+      /panel/platform/fiyatlar?gorunum=karsilastirma
+    Girişi Ürünler listesinin ⋯ menüsünde, "Ek hizmet fiyatları"nın
+    yanında. Onaylanmış bir ekranı silmek yerine kapısını belli bir
+    yere koymak gerekiyordu; çıplak adres artık bir kapı değil.
+  */
+  if (seciliUrun === "tumu" && gorunum !== "karsilastirma") redirect("/panel/platform/urunler");
   const karsilastirma = seciliUrun === "tumu";
 
   const [{ data: kiraciSatirlari, error: kiraciHatasi }, { data: fiyatSatirlari, error: fiyatHatasi }] = await Promise.all([
