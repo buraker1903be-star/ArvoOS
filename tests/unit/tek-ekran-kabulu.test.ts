@@ -837,3 +837,59 @@ test("menü rotayı izlemiyorsa düşer", () => {
     ...temel, yanMenu: { ...menu, rota: { niyet: `${yol}?bolum=abonelikler`, cozulen: yol } },
   }).eksik, []);
 });
+
+test("Fiyatlar'dan açılan ürünün başlığı adresle uyuşmalı", () => {
+  /*
+    27.11.2026 inceleme bulgusu: düzenek ürün detayını ArvoLab'a
+    sabitlemişti; Fiyatlar'daki ArvoOS satırının "Aç"ına basıldığında
+    adres /urunler/arvoos iken başlık "ArvoLab" yazıyordu. Kanıt
+    olarak paylaşılan kare yanlış ürünü gösterirdi.
+  */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const akis = (acilanUrun: unknown) => ({
+    ...temel,
+    fiyatAkisi: {
+      baslangic: { adres: "/panel/platform/fiyatlar", satir: 11, donemler: ["Aylık", "Yıllık"], durumlar: ["Konsoldan yayımlı"] },
+      donemSuzuldu: { adres: "?fatura=yillik", satir: 5, donemler: ["Yıllık"], durumlar: ["Konsoldan yayımlı"] },
+      ikisiBirlikte: { adres: "/panel/platform/fiyatlar?fatura=yillik&durum=yayimli", satir: 2, donemler: ["Yıllık"], durumlar: ["Konsoldan yayımlı"] },
+      planBaglantisi: { urun: "ArvoOS", href: "/panel/platform/urunler/arvoos?bolum=fiyat" },
+      acilanUrun,
+    },
+  });
+
+  const saglam = { adres: "/panel/platform/urunler/arvoos?bolum=fiyat", baslik: "ArvoOS", sekme: "Fiyat basamakları", secili: ["Ürünler"] };
+  assert.deepEqual(tekEkranHukmu("1440x900 acik fiyatlar", akis(saglam)).eksik, []);
+
+  /* Ölçülen hata: adres arvoos, başlık ArvoLab. */
+  const yanlis = tekEkranHukmu("1440x900 acik fiyatlar", akis({ ...saglam, baslik: "ArvoLab" }));
+  assert.equal(yanlis.gecti, false);
+  assert.ok(yanlis.eksik.some((m: string) => m.includes("başlığı adresle uyuşmuyor")), yanlis.eksik.join(" | "));
+
+  /* Etkin sekme Fiyat basamakları olmalı. */
+  assert.ok(tekEkranHukmu("1440x900 acik fiyatlar", akis({ ...saglam, sekme: "Genel Bakış" }))
+    .eksik.some((m: string) => m.includes("Fiyat basamakları olmalı")));
+});
+
+test("tahsilat satırı türüne göre doğru Finans hedefine gider", () => {
+  /* Kurum ödemesi Ödeme onaylarına, abone ödemesi Tahsilat ekranına. */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const dogru = [
+    { tur: "Kurum ödemesi", kayit: "Akademik Merkez", adres: "/panel/platform/payments" },
+    { tur: "Bireysel abone", kayit: "Zeynep Aydın", adres: "/panel/platform/tahsilat" },
+  ];
+  assert.deepEqual(tekEkranHukmu("1440x900 acik urundetay", { ...temel, tahsilatHedefi: dogru }).eksik, []);
+
+  const karisik = tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel,
+    tahsilatHedefi: [{ ...dogru[0], adres: "/panel/platform/tahsilat" }, dogru[1]],
+  });
+  assert.equal(karisik.gecti, false);
+  assert.ok(karisik.eksik.some((m: string) => m.includes("yanlış hedefe gidiyor")), karisik.eksik.join(" | "));
+
+  /* TEK TÜR ÖLÇMEK YETMEZ: abone satırı hiç tıklanmamışsa ölçüm eksik.
+     Eskiden ölçüt yalnızca ilk satıra bakıyordu ve abone satırının
+     hedefi yanlış olsa da yeşil kalıyordu. */
+  const yarim = tekEkranHukmu("1440x900 acik urundetay", { ...temel, tahsilatHedefi: [dogru[0]] });
+  assert.equal(yarim.gecti, false);
+  assert.ok(yarim.eksik.some((m: string) => m.includes("Bireysel abone") && m.includes("ölçülmedi")), yarim.eksik.join(" | "));
+});

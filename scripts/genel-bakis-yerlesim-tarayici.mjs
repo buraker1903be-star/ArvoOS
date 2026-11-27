@@ -37,7 +37,26 @@ function rotaCss(rota) {
 }
 /* Kurucu konsolunun ana sayfası da "panel" rotasından çiziliyor
    (konsol-ana-sayfa.tsx, yalnızca yonetim.arvo-os.com): CSS kümesi aynı. */
-const cssler = { ana: rotaCss("panel"), crm: rotaCss("panel/crm/genel-bakis"), konsol: rotaCss("panel"), urundetay: rotaCss("panel/platform/urunler/[urun]"), urunler: rotaCss("panel/platform/urunler"), fiyatlar: rotaCss("panel/platform/fiyatlar") };
+/*
+  İKİ ROTAYI DOLAŞAN SENARYONUN CSS'İ (27.11.2026). Ürünler listesi ve
+  Fiyatlar senaryoları tıklamayla ÜRÜN DETAYINA geçiyor; üretimde bu
+  gerçek bir gezinme ve hedef rota kendi CSS'ini yüklüyor. Düzenek tek
+  sayfada kaldığı için iki rotanın CSS'i birleştiriliyor — yoksa
+  detay ekranı stilsiz çiziliyor ve kanıt olarak paylaşılan kare
+  üretimde olmayan bir görüntü gösteriyordu.
+
+  Tekrarlanan dosyalar ayıklanıyor: aynı CSS iki kez bağlanırsa son
+  bağlanan kazanır ve kural sırası bozulabilir.
+*/
+const birlesik = (...rotalar) => [...new Set(rotalar.flatMap(rotaCss))];
+const cssler = {
+  ana: rotaCss("panel"),
+  crm: rotaCss("panel/crm/genel-bakis"),
+  konsol: rotaCss("panel"),
+  urundetay: rotaCss("panel/platform/urunler/[urun]"),
+  urunler: birlesik("panel/platform/urunler", "panel/platform/urunler/[urun]"),
+  fiyatlar: birlesik("panel/platform/fiyatlar", "panel/platform/urunler/[urun]"),
+};
 const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol,urundetay,urunler,fiyatlar").split(",");
 
 /*
@@ -589,9 +608,26 @@ function FiyatlarKarsilastirma() {
   );
 }
 
+/*
+  ÜRÜN DETAYI ROTADAN (27.11.2026, inceleme bulgusu). Bileşen ArvoLab'a
+  SABİTLENMİŞTİ: Fiyatlar'dan ArvoOS satırının "Aç"ına basıldığında
+  adres /panel/platform/urunler/arvoos iken başlık "ArvoLab" yazıyordu —
+  yani düzenek yine ekranın yanlış durumunu çiziyordu. Ad, açıklama ve
+  adres artık rotadaki koddan.
+*/
+const URUN_KUNYELERI = {
+  arvoos: { ad: "ArvoOS", aciklama: "Çok kiracılı kurumsal panel", host: "app.arvo-os.com" },
+  arvolab: { ad: "ArvoLab", aciklama: "Akademik yazım ve editöryal kontrol", host: "lab.arvo-os.com" },
+  arc: { ad: "ArvoARC", aciklama: "Mağaza ve sipariş yönetimi", host: "arc.arvo-os.com" },
+  randevu: { ad: "ArvoCal", aciklama: "Salon ve randevu yönetimi", host: "cal.arvo-os.com" },
+};
+
 function UrunDetay() {
+  const yolSuan = usePathname();
+  const urunKodu = yolSuan.split("/")[4] || "arvolab";
+  const kunye = URUN_KUNYELERI[urunKodu] ?? URUN_KUNYELERI.arvolab;
   const satir = {
-    kod: "arvolab", ad: "ArvoLab",
+    kod: urunKodu, ad: kunye.ad,
     aktifMusteri: { durum: "var", deger: 892 },
     donusum: { durum: "var", deger: { denemeye: 200, ucretliye: 36, oran: 0.18 } },
     tahsilat: { durum: "var", deger: 128450 },
@@ -605,7 +641,7 @@ function UrunDetay() {
     göstermemeli; her panel data-bolum ile işaretli, ölçüm görünen
     paneli adresle karşılaştırıyor.
   */
-  const taban = "/panel/platform/urunler/arvolab";
+  const taban = "/panel/platform/urunler/" + urunKodu;
   const sorgu = useSearchParams();
   const secilenBolum = urunBolumu(sorgu.get("bolum"));
   const bolumler = [
@@ -617,6 +653,17 @@ function UrunDetay() {
     { anahtar: "destek", etiket: "Destek" },
   ];
   const seciliSira = bolumSirasi(bolumler.map((b) => b.anahtar), secilenBolum);
+  /*
+    Tahsilat satırları: iki kaynak da temsil ediliyor — kurum ödemesi
+    Finans'taki ÖDEME ONAYLARINA, abone ödemesi TAHSİLAT ekranına
+    gidiyor (üretimdeki hedeflerin aynısı).
+  */
+  const TAHSILAT_SATIRLARI = [
+    { anahtar: "k1", tarih: "26 Kas 2026", kayit: "Akademik Merkez", tur: "Kurum ödemesi", tutar: "₺28.900", durum: "Onaylandı", href: "/panel/platform/payments" },
+    { anahtar: "a1", tarih: "24 Kas 2026", kayit: "Zeynep Aydın", tur: "Bireysel abone", tutar: "₺1.490", durum: "Tahsil edildi", href: "/panel/platform/tahsilat" },
+    { anahtar: "k2", tarih: "19 Kas 2026", kayit: "Yıldız Eğitim", tur: "Kurum ödemesi", tutar: "₺94.600", durum: "Onaylandı", href: "/panel/platform/payments" },
+    { anahtar: "a2", tarih: "11 Kas 2026", kayit: "Mert Kaya", tur: "Bireysel abone", tutar: "₺3.460", durum: "Tahsil edildi", href: "/panel/platform/tahsilat" },
+  ];
   const aboneler = [
     ["Zeynep A.", "Pro", "Aylık", "₺1.490"],
     ["Mert K.", "Plus", "Yıllık", "₺9.900"],
@@ -637,19 +684,19 @@ function UrunDetay() {
           <nav className="urd-yol" aria-label="Sayfa yolu">
             <Link href="/panel/platform/urunler">Ürünler</Link>
             <span aria-hidden="true">›</span>
-            <span aria-current="page">ArvoLab</span>
+            <span aria-current="page">{kunye.ad}</span>
           </nav>
           <div className="urd-ad">
-            <h1>ArvoLab</h1>
+            <h1>{kunye.ad}</h1>
             <span className="urun-saglik" data-tone="success">Sağlıklı</span>
           </div>
-          <p className="urd-alt">Akademik yazım ve editöryal kontrol · lab.arvo-os.com</p>
+          <p className="urd-alt">{kunye.aciklama} · {kunye.host}</p>
         </div>
         <div className="urd-bas-eylem">
           <DonemSecici secili="30g" taban={taban} ek={secilenBolum === "genel-bakis" ? undefined : "bolum=" + secilenBolum} />
         </div>
       </header>
-      <TalepAkis kimlik="urun-kart" sinif="urd-serit" darSecici etiket="ArvoLab bölümleri"
+      <TalepAkis kimlik="urun-kart" sinif="urd-serit" darSecici etiket={kunye.ad + " bölümleri"}
           sekmeler={bolumler.map((b) => b.etiket)}
           adresler={bolumler.map((b) => bolumAdresi(taban, b.anahtar, null))}
           baslangic={seciliSira}>
@@ -664,7 +711,7 @@ function UrunDetay() {
                 çizilmişti — kural değişip fixture eski kalmıştı.
               */
               bekleyenler={urunBekleyenleri({
-                urunKodu: "arvolab",
+                urunKodu,
                 lisanslar: [
                   { durum: "active", donemSonu: new Date(Date.now() + 5 * 86400000).toISOString(), denemeSonu: null },
                   { durum: "active", donemSonu: new Date(Date.now() + 9 * 86400000).toISOString(), denemeSonu: null },
@@ -676,13 +723,13 @@ function UrunDetay() {
                 sayi: (n) => n.toLocaleString("tr-TR"),
               })} />
           </section>
-          {basitPanel("musteriler", "ArvoLab müşterileri", (
+          {basitPanel("musteriler", kunye.ad + " müşterileri", (
             <p className="ugb-bos">42 kurum ArvoLab lisansı kullanıyor.</p>
           ))}
-          {basitPanel("fiyat", "ArvoLab fiyat basamakları", (
+          {basitPanel("fiyat", kunye.ad + " fiyat basamakları", (
             <p className="ugb-bos">Standart ₺790 · Plus ₺1.190 · Pro ₺1.490</p>
           ))}
-          {basitPanel("abonelikler", "ArvoLab abonelikleri", (
+          {basitPanel("abonelikler", kunye.ad + " abonelikleri", (
             /*
               ÜRETİMDEKİ TABLO KALIBI (26.11.2026, ölçümle düzeltildi).
               Burada önce çıplak bir <table> vardı ve 390 px'te tablo
@@ -713,10 +760,46 @@ function UrunDetay() {
               </table>
             </div>
           ))}
-          {basitPanel("tahsilat", "ArvoLab tahsilatı", (
-            <p className="ugb-bos">Son 30 günde ₺128.450 tahsil edildi.</p>
-          ))}
-          {basitPanel("destek", "ArvoLab destek talepleri", (
+          {/*
+            TAHSİLAT BÖLÜMÜ ÜRETİMDEKİ KALIBIYLA (27.11.2026, inceleme
+            talebi). Düzenekte tek cümlelik bir özet vardı; üretimde
+            özetin ALTINDA Tarih / Kayıt / Tutar / Durum tablosu var ve
+            her satır Finans'taki ilgili kayda gidiyor. Fixture yalnızca
+            satırları veriyor — sütunlar, sınıflar ve hedefler
+            üretimdekinin aynısı (urunler/[urun]/page.tsx).
+          */}
+          <section className="urd-bolum" data-bolum="tahsilat">
+            <header className="urd-bolum-bas">
+              <div><h2>Tahsilat</h2><small>Son 30 gün · onaylı kurum ödemeleri ve bireysel abone ödemeleri</small></div>
+              <Link className="panel-secondary" href="/panel/platform/tahsilat">Tahsilat ekranı</Link>
+            </header>
+            <p className="urd-ozet">Bu dönemde <b>₺128.450</b> tahsil edildi · 4 kayıt</p>
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="ur-tahsilat">
+                <thead><tr><th className="crm-col-date" scope="col">Tarih</th><th scope="col">Kayıt</th><th className="crm-col-amount" scope="col">Tutar</th><th scope="col">Durum</th><th></th></tr></thead>
+                <tbody>
+                  {TAHSILAT_SATIRLARI.map((t) => (
+                    <tr key={t.anahtar}>
+                      <td className="crm-col-date" data-label="Tarih">{t.tarih}</td>
+                      <td data-label="Kayıt">
+                        <Link className="crm-row-link" href={t.href}>
+                          <span className="crm-table-title">{t.kayit}</span>
+                          <span className="crm-table-sub">{t.tur}</span>
+                        </Link>
+                      </td>
+                      <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{t.tutar}</span></td>
+                      <td data-label="Durum"><span className="status-pill" data-tone="success">{t.durum}</span></td>
+                      <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                      <MobilSatir href={t.href} baslik={t.kayit} durum={{ etiket: t.durum, ton: "success" }}
+                        alt={[t.tur, t.tarih, t.tutar]} />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="urd-not">İade kaydı tutulmuyor; tabloda yalnızca tahsil edilen ödemeler var.</p>
+          </section>
+          {basitPanel("destek", kunye.ad + " destek talepleri", (
             <p className="ugb-bos">Yanıt bekleyen 2 talep var.</p>
           ))}
       </TalepAkis>
@@ -778,7 +861,7 @@ function Kabuk() {
         </div>
       ) : null}
     </header>
-    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? <FiyatlarKarsilastirma /> : <Ana />}</div></section>
+    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? (urunDetayiMi ? <UrunDetay /> : <FiyatlarKarsilastirma />) : <Ana />}</div></section>
     {/* Komut paleti ve menü kapatıcı GERÇEK bileşenler: kaplamaların
         odak/Esc davranışı ölçülebilsin diye (26.11.2026). */}
     {konsolMu ? <OsKomutPaleti uygulamalar={konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 })} cikis={async () => {}} /> : null}
@@ -1671,6 +1754,39 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         });
       }
       /*
+        TAHSİLAT SATIRININ HEDEFİ (27.11.2026, inceleme talebi). Satır
+        Finans'taki DOĞRU kayda gitmeli: kurum ödemesi Ödeme
+        onaylarına, abone ödemesi Tahsilat ekranına. href okumak
+        yetmez — tıklanınca nereye gidildiği ölçülüyor.
+      */
+      if (s === "urundetay" && process.env.BOLUM === "tahsilat" && w >= 1200) {
+        /* İKİ TÜR DE ÖLÇÜLÜYOR: tablodaki ilk kurum ödemesi ve ilk
+           bireysel abone ödemesi ayrı hedeflere gidiyor. Yalnızca ilk
+           satıra bakan bir ölçüm, abone satırının hedefi yanlış olsa
+           da yeşil kalırdı. */
+        o.tahsilatHedefi = [];
+        for (const tur of ["Kurum ödemesi", "Bireysel abone"]) {
+          const satir = sayfa
+            .locator('.crm-data-table[data-cols="ur-tahsilat"] tbody tr')
+            .filter({ has: sayfa.locator('.crm-table-sub', { hasText: tur }) })
+            .first();
+          if ((await satir.count()) === 0) continue;
+          const kayit = await satir.locator('td[data-label="Kayıt"] .crm-table-title').textContent();
+          await satir.locator("td[data-label=\"Kayıt\"] a").click();
+          await sayfa.waitForTimeout(150);
+          o.tahsilatHedefi.push({
+            tur,
+            kayit: (kayit ?? "").trim(),
+            adres: await sayfa.evaluate(() => location.hash.slice(1) || window.__yol || "/panel"),
+          });
+          /* Rota geri alınıyor: sonraki ölçümler (ürün bağlamı,
+             kaplamalar) ürünün sayfasını bekliyor, Finans'ın değil. */
+          await sayfa.goBack();
+          await sayfa.waitForTimeout(150);
+        }
+      }
+
+      /*
         ÜRÜN AKIŞI (27.11.2026, inceleme talebi): Ürünler → ArvoLab →
         Abonelikler → Tahsilat → ürün listesine dönüş. Dönüş İÇERİKTEKİ
         yoldan (Ürünler › ArvoLab); sol menüdeki "Ana menüye dön" ayrı
@@ -1730,6 +1846,24 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         const ilkUrun = await sayfa.locator('.crm-data-table tbody tr td[data-label="Ürün"]').first().textContent();
         const hedef = await sayfa.locator(".fk-ac").first().getAttribute("href");
         akis.planBaglantisi = { urun: (ilkUrun ?? "").trim(), href: hedef };
+        /*
+          SON ADIM: süzülmüş listeden "Aç" tıklanınca hedef ürünün
+          sayfası açılmalı ve Fiyat basamakları bölümü ETKİN olmalı.
+          Bağlantının href'ini okumak yetmez — tıklanınca ne çizildiği
+          ölçülüyor (27.11.2026, inceleme talebi).
+        */
+        await sayfa.locator(".fk-ac").first().click();
+        await sayfa.waitForTimeout(bekle);
+        akis.acilanUrun = await sayfa.evaluate(() => ({
+          adres: location.hash.slice(1) || window.__yol || "/panel",
+          baslik: document.querySelector(".panel-content h1")?.textContent?.trim() ?? null,
+          sekme: document.querySelector(".urd-serit .talep-akis-sekmeler .is-active")?.textContent?.trim() ?? null,
+          secili: [...document.querySelectorAll('.os-yan-oge[aria-current="page"]')].map((e) => e.textContent.trim()),
+        }));
+        if (process.env.EKRAN) {
+          fs.mkdirSync(process.env.EKRAN, { recursive: true });
+          await sayfa.screenshot({ path: path.join(process.env.EKRAN, `fiyatlar-acilan-urun-${w}x${h}-${tema}.png`) });
+        }
         o.fiyatAkisi = akis;
       }
 

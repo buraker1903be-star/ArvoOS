@@ -351,6 +351,28 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    TAHSİLAT SATIRI FİNANS'A GİDİYOR (27.11.2026, inceleme talebi).
+    Kurum ödemesi Ödeme onaylarına, abone ödemesi Tahsilat ekranına.
+    Satırın kendi türü hangi hedefe gideceğini söylüyor; ikisini
+    karıştırmak kullanıcıyı yanlış kuyruğa götürür.
+  */
+  if (o.tahsilatHedefi) {
+    /* İki tür iki AYRI hedefe gider; ikisi de ölçülmeli. Tek satıra
+       bakan bir ölçüt, abone satırı yanlış sayfaya gitse de yeşil
+       kalırdı. */
+    const HEDEFLER = { "Kurum ödemesi": "/panel/platform/payments", "Bireysel abone": "/panel/platform/tahsilat" };
+    const olculen = o.tahsilatHedefi;
+    for (const t of olculen) {
+      const beklenen = HEDEFLER[t.tur];
+      if (!beklenen) eksik.push(`tahsilat satırının türü tanınmıyor (${t.tur || "yok"})`);
+      else if (t.adres !== beklenen) eksik.push(`tahsilat satırı yanlış hedefe gidiyor (${t.tur} → ${t.adres})`);
+    }
+    for (const tur of Object.keys(HEDEFLER)) {
+      if (!olculen.some((t) => t.tur === tur)) eksik.push(`tahsilat tablosunda "${tur}" satırı ölçülmedi`);
+    }
+  }
+
+  /*
     ÜRÜN AKIŞI (27.11.2026, inceleme talebi): Ürünler → ArvoLab →
     Abonelikler → Tahsilat → listeye dönüş. Her adımda ADRES, AÇIK
     SAYFA ve SOL MENÜ birlikte doğru olmalı; biri ötekinden kopunca
@@ -409,6 +431,27 @@ export function tekEkranHukmu(ad, o) {
       }
       if (f.baslangic && iki.satir >= f.baslangic.satir) {
         eksik.push("süzgeç listeyi daraltmıyor");
+      }
+    }
+    /*
+      SÜZÜLMÜŞ LİSTEDEN "AÇ": hedef ürünün sayfası açılmalı ve Fiyat
+      basamakları bölümü ETKİN olmalı. href doğru olup tıklanınca
+      başka bir şey çizilmesi bu depoda bir kez yaşandı.
+    */
+    const u = f.acilanUrun;
+    if (u) {
+      if (!/bolum=fiyat/.test(u.adres)) eksik.push(`"Aç" Fiyat basamakları bölümüne gitmiyor (${u.adres})`);
+      if (u.sekme !== "Fiyat basamakları") eksik.push(`açılan üründe etkin sekme "${u.sekme}" (Fiyat basamakları olmalı)`);
+      if (!u.baslik) eksik.push("açılan üründe ürün başlığı yok");
+      /* BAŞLIK ADRESTEKİ ÜRÜNÜ GÖSTERMELİ. Düzenek ürün detayını bir
+         süre ArvoLab'a sabitliyordu: ArvoOS'un satırına basıldığında
+         adres arvoos, başlık "ArvoLab" idi (27.11.2026). */
+      const kod = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc", ArvoCal: "randevu" }[u.baslik ?? ""];
+      if (kod && !u.adres.includes(`/urunler/${kod}`)) {
+        eksik.push(`açılan ürünün başlığı adresle uyuşmuyor ("${u.baslik}" ↔ ${u.adres})`);
+      }
+      if (!(u.secili ?? []).some((e) => e.startsWith("Ürünler"))) {
+        eksik.push(`açılan üründe sol menüde Ürünler bağlamı etkin değil (${(u.secili ?? []).join(", ") || "yok"})`);
       }
     }
     const b = f.planBaglantisi;
