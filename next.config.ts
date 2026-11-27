@@ -16,8 +16,24 @@ const NOINDEX = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
   çıkması her sorgunun "başarılı" görünüp hiçbir şey yazmaması demek.
 */
 const ONIZLEME = process.env.ARVOOS_ONIZLEME === "1";
-if (ONIZLEME && process.env.NODE_ENV === "production") {
-  throw new Error("ARVOOS_ONIZLEME üretim derlemesinde açık olamaz.");
+/*
+  İZOLE ÜRETİM DENEMESİ (27.11.2026). Bazı hatalar yalnızca üretim
+  derlemesinde görünüyor: geliştirme sunucusunun kendi Router'ı,
+  Suspense davranışı ve ölü kod ayıklaması farklı. Yönlendirme
+  hatasının üretimde de olup olmadığını görmek için önizlemeyi
+  derleyip koşturmak gerekti.
+
+  İKİ ayrı bayrak ARANIYOR ve ikincisinin adı ne işe yaradığını
+  söylüyor: Vercel'de ne biri ne öteki tanımlı. Bayrak açıkken
+  önizleme şeridi de ekranda duruyor, yani böyle bir derleme
+  yanlışlıkla canlıya çıksa bile her sayfada "SİMÜLASYON" yazıyor.
+*/
+const URETIM_DENEMESI = process.env.ARVOOS_ONIZLEME_URETIM_DENEMESI === "1";
+if (ONIZLEME && process.env.NODE_ENV === "production" && !URETIM_DENEMESI) {
+  throw new Error(
+    "ARVOOS_ONIZLEME üretim derlemesinde açık olamaz. " +
+    "Yalnızca izole denemede ARVOOS_ONIZLEME_URETIM_DENEMESI=1 ile açılır.",
+  );
 }
 
 const nextConfig: NextConfig = {

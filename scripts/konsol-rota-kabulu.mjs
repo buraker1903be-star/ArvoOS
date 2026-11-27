@@ -25,7 +25,7 @@
 */
 import { createRequire } from "node:module";
 import { mkdir, readFile } from "node:fs/promises";
-import { kusurlariAyikla, rotaKusurlari } from "./konsol-rota-olcutleri.mjs";
+import { rotaKusurlari } from "./konsol-rota-olcutleri.mjs";
 /* Playwright depoda değil, ortamın araç dizininde: ESM `import` onu
    bulamıyor (öteki tarayıcı betikleri de böyle çözüyor). */
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -101,15 +101,26 @@ for (const is of ISLER) {
       panelBaslik: document.querySelector(".kl-panel-bas h2")?.textContent ?? null,
       panelBos: document.querySelector(".kl-panel-bos-baslik")?.textContent ?? null,
       geriGorunur: gorunur(document.querySelector(".kl-geri")),
+      /* Yönlendirmenin SONUCU: inilen adres ve ana içeriğin metni. */
+      adres: location.pathname + location.search,
+      metin: (document.querySelector("main")?.textContent ?? "").slice(0, 4000),
     };
   });
-  const ham = rotaKusurlari(is, yanit.status(), olcum).concat(hatalar.map((h) => "sayfa hatası: " + h));
-  const { kusurlar, bilinenler } = kusurlariAyikla(ham, is.bilinen);
+  /*
+    SAYFA HATASI ARTIK İSTİSNASIZ KUSUR (27.11.2026). Dört yönlendirme
+    rotasında Next Router'ın attığı hata "bilinen" diye ayrılıyordu;
+    sebebi bulundu (yumuşak yönlendirme) ve ara katmana taşınarak
+    kapatıldı — `kusurlariAyikla` artık çağrılmıyor, gerekçeli
+    susturma yolu yalnızca modülde duruyor.
+  */
+  const kusurlar = rotaKusurlari(is, yanit.status(), olcum).concat(hatalar.map((h) => "sayfa hatası: " + h));
+  const bilinenler = [];
   if (kusurlar.length) dusen++;
+  const kisaOlcum = { ...olcum, metin: undefined };
   console.log(
     (kusurlar.length ? "✗ " : "✓ ") + is.ad.padEnd(32),
     yanit.status(),
-    JSON.stringify(olcum),
+    JSON.stringify(kisaOlcum),
     [kusurlar.length ? "KUSUR: " + kusurlar.join(" | ") : "", bilinenler.join(" | ")].filter(Boolean).join("  "),
   );
   await baglam.close();

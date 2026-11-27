@@ -38,6 +38,18 @@ export function kusurlariAyikla(kusurlar, bilinen) {
 export function rotaKusurlari(is, durum, olcum) {
   const k = [];
   if (durum !== 200) k.push(`durum ${durum}`);
+  /*
+    HEDEF VE İÇERİK AYRI ÖLÇÜLÜYOR (27.11.2026). Yönlendiren bir
+    adres "doğru yere gitti" diye kabul edilemez: gidilen sayfanın
+    beklenen şeyi gösterdiği de görülmeli. İki ölçüt ayrı, çünkü
+    doğru adrese gidip boş/yanlış ekran açmak da bir kusur.
+  */
+  if (is.hedef && olcum?.adres !== undefined && olcum.adres !== is.hedef) {
+    k.push(`hedef adres ${olcum.adres} (beklenen ${is.hedef})`);
+  }
+  if (is.icerik && olcum?.metin !== undefined && !new RegExp(is.icerik).test(olcum.metin)) {
+    k.push(`beklenen içerik yok: /${is.icerik}/`);
+  }
   if (!olcum) return k.concat("ölçüm yok");
   if (olcum.tasma > 0) k.push(`düzen ${olcum.tasma}px taşıyor`);
   if (olcum.yatayTasma) k.push("yatay kaydırma var");

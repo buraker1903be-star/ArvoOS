@@ -1,3 +1,4 @@
+import { kapsamImzasi } from "@/lib/fiyat-dogrulama";
 import { Fragment } from "react";
 import { para, sayi } from "../bicim";
 import { KKart, KListe, KNot, KOge } from "../konsol-ui";
@@ -40,6 +41,16 @@ export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakA
           </>}
           sag={(
             <form id="fiyat-yayim-formu" action={eylem} className="plt-fiyat-yayim">
+              {/*
+                KAPSAM İMZASI (27.11.2026): bu önizlemede GÖSTERİLEN
+                taslak kümesi. İşlem onu yeniden hesaplayıp
+                karşılaştırıyor; arada başka bir sekmede ya da başka
+                bir kurucu tarafından yeni bir basamak taslağa
+                alınırsa onay düşüyor ve liste yeniden gösteriliyor.
+                Yoksa kurucu görmediği bir değişikliği yayımlamış
+                oluyordu.
+              */}
+              <input type="hidden" name="kapsam" value={kapsamImzasi(degisiklikler)} />
               {denetim.uyarilar.length ? (
                 <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
               ) : null}

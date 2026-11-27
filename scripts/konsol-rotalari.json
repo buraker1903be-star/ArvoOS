@@ -11,10 +11,8 @@
     "yol": "/panel/platform",
     "w": 1440,
     "h": 900,
-    "bilinen": {
-      "desen": "Rendered more hooks",
-      "sebep": "Next'in kendi Router'ı, sunucu yönlendirmesinden sonra; hedef doğru iniyor, yığında ArvoOS bileşeni yok"
-    }
+    "hedef": "/panel/platform/musteriler",
+    "icerik": "Müşteriler"
   },
   {
     "ad": "03-musteriler",
@@ -83,10 +81,8 @@
     "w": 1440,
     "h": 900,
     "tamSayfa": true,
-    "bilinen": {
-      "desen": "Rendered more hooks",
-      "sebep": "Next'in kendi Router'ı, sunucu yönlendirmesinden sonra; hedef doğru iniyor, yığında ArvoOS bileşeni yok"
-    }
+    "hedef": "/panel/platform/billing?gorunum=takvim",
+    "icerik": "Abonelik|Yenileme|takvim"
   },
   {
     "ad": "13-sozlesmeler",
@@ -142,10 +138,8 @@
     "w": 1440,
     "h": 900,
     "tamSayfa": true,
-    "bilinen": {
-      "desen": "Rendered more hooks",
-      "sebep": "Next'in kendi Router'ı, sunucu yönlendirmesinden sonra; hedef doğru iniyor, yığında ArvoOS bileşeni yok"
-    }
+    "hedef": "/panel/platform/urunler?gorunum=moduller",
+    "icerik": "Modül"
   },
   {
     "ad": "21-ek-hizmet-fiyatlari",
@@ -167,10 +161,8 @@
     "w": 1440,
     "h": 900,
     "tamSayfa": true,
-    "bilinen": {
-      "desen": "Rendered more hooks",
-      "sebep": "Next'in kendi Router'ı, sunucu yönlendirmesinden sonra; hedef doğru iniyor, yığında ArvoOS bileşeni yok"
-    }
+    "hedef": "/panel/platform/urunler",
+    "icerik": "Ürünler"
   },
   {
     "ad": "24-saglik",

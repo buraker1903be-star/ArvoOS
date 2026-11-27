@@ -8,7 +8,7 @@ import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
 import { ROUTES } from "@/lib/site/routes";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
-import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
+import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, kapsamImzasi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
 
 /*
   Fiyat taslağı ve yayımlama.
@@ -176,6 +176,26 @@ async function fiyatlariYayimla__impl(formData: FormData) {
   const gecerli = fiyatlariBirlestir(kayitlar.filter((k) => k.yayimlandi_at).map((k) => ({ kod: k.kod, aylikKurus: k.aylik_kurus })));
   const degisiklikler = bekleyenDegisiklikler(kayitlar, gecerli);
   if (!degisiklikler.length) throw new Error("Yayımlanacak taslak yok.");
+
+  /*
+    ÖNİZLEMEDEN SONRA KAPSAM DEĞİŞTİYSE YAYIMLAMA (27.11.2026 ara
+    kontrolü). Yayım bekleyen BÜTÜN taslakları alıyor; onayla
+    gönderim arasında yeni bir taslak eklenirse kurucu GÖRMEDİĞİ bir
+    değişikliği yayımlamış oluyordu. Önizleme gördüğü kümenin
+    imzasını taşıyor (lib/fiyat-dogrulama → kapsamImzasi); burada
+    taze listeden yeniden hesaplanıp karşılaştırılıyor.
+
+    İmza YOKSA da geçilmiyor: eski bir sekmeden ya da doğrudan
+    çağrılan bir istek, onayı hiç almamış demektir.
+  */
+  const beklenenKapsam = kapsamImzasi(degisiklikler);
+  const gelenKapsam = String(formData.get("kapsam") ?? "");
+  if (gelenKapsam !== beklenenKapsam) {
+    throw new Error(
+      "Taslak listesi önizlemeden sonra değişti; yayımlanmadı. " +
+      "Ekranı yenileyip etkilenen ürünleri yeniden gözden geçirin.",
+    );
+  }
 
   const { hatalar, uyarilar } = fiyatDenetimi(yayimSonrasi(gecerli, degisiklikler), degisiklikler);
   if (hatalar.length) throw new Error("Yayımlanmadı: " + hatalar.join(" "));
