@@ -18,6 +18,7 @@ import { createCustomerOrganization } from "../actions";
 import { NewOrganizationWizard } from "../new-organization-wizard";
 import { kurumTuru } from "@/lib/kurum-turu";
 import { MobilSatir } from "../../crm/table-cells";
+import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos, KonsolPanelSekmeleri } from "../konsol-liste";
 import { OtomatikSecim } from "../../crm/otomatik-secim";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { SatirTiklama } from "../../crm/satir-tiklama";
@@ -222,13 +223,14 @@ const ETKINLIKLER = [
 ] as const;
 
 export default async function MusterilerPage({ searchParams }: {
-  searchParams: Promise<{ tur?: string; ara?: string; urun?: string; sira?: string; etkinlik?: string; resmi?: string }>;
+  searchParams: Promise<{ tur?: string; ara?: string; urun?: string; sira?: string; etkinlik?: string; resmi?: string; secili?: string }>;
 }) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "musteriler");
 
-  const { tur, ara, urun, sira, etkinlik: etkinlikParam, resmi } = await searchParams;
+  const { tur, ara, urun, sira, etkinlik: etkinlikParam, resmi, secili } = await searchParams;
+  const seciliAnahtar = secili?.trim() || null;
   /* Yalnızca resmi bilgisi eksik kurumlar (02.11.2026): proformaya eksik basılanlar. */
   const resmiEksikSuzgeci = resmi === "eksik";
   const secilenEtkinlik = ETKINLIKLER.some((x) => x.kod === etkinlikParam) ? etkinlikParam! : null;
@@ -513,7 +515,7 @@ export default async function MusterilerPage({ searchParams }: {
   // Müşteri geliri yalnızca gerçek müşterilerden; grup markası ayrı (grupDegeri).
   const kurumsalGelir = musteriKurumlari.reduce((toplam, satir) => toplam + satir.ucret, 0);
 
-  const adres = (yeni: { tur?: string | null; ara?: string | null; urun?: string | null; sira?: string | null; etkinlik?: string | null }) => {
+  const adres = (yeni: { tur?: string | null; ara?: string | null; urun?: string | null; sira?: string | null; etkinlik?: string | null; secili?: string | null }) => {
     const p = new URLSearchParams();
     const t = yeni.tur === undefined ? secilenTur : yeni.tur;
     const a = yeni.ara === undefined ? aranan : yeni.ara;
@@ -526,9 +528,25 @@ export default async function MusterilerPage({ searchParams }: {
     if (e) p.set("etkinlik", e);
     if (resmiEksikSuzgeci) p.set("resmi", "eksik");
     if (a) p.set("ara", a);
+    /* SEÇİM DE ADRESTE: süzgeç değiştiren bağlantılar seçimi
+       KORUYOR, "Listeye dön" ise onu düşürüyor (secili: null). */
+    const sc = yeni.secili === undefined ? seciliAnahtar : yeni.secili;
+    if (sc) p.set("secili", sc);
     const q = p.toString();
     return q ? `/panel/platform/musteriler?${q}` : "/panel/platform/musteriler";
   };
+
+  /*
+    SEÇİLİ KAYIT (27.11.2026). Anahtar `secim` alanı ("kurum:<id>" ya
+    da "abone:<id>"), çünkü liste iki ayrı kaynaktan geliyor ve id'ler
+    çakışabiliyor.
+
+    Çözüm LİSTEDEN DEĞİL bütün satırlardan yapılıyor: süzgeç değişince
+    seçili kayıt listenin dışında kalabilir ve o zaman panelin "bu
+    süzgeçte görünmüyor" demesi gerekiyor — sessizce boşalması değil.
+  */
+  const seciliSatir = seciliAnahtar ? tumSatirlar.find((x) => x.secim === seciliAnahtar) ?? null : null;
+  const seciliListedeMi = Boolean(seciliSatir && liste.some((x) => x.secim === seciliSatir.secim));
 
   /* Telefonda satırın altına düşen kısa yazılar: dikkat isteyen durum
      önde, sonra ürünler. */
@@ -605,13 +623,24 @@ export default async function MusterilerPage({ searchParams }: {
       </dl>
     </nav>
 
-    <div className="talep-izgara personel-iki ekip-izgara">
+    {/*
+      LİSTE – SEÇİLİ KAYIT (27.11.2026, onaylı tasarım). Ortada liste,
+      sağda seçili kaydın paneli; aradaki tek ayrım ince dikey sınır
+      (konsol-liste.css). Seçim ADRESTE (?secili=): detay adresi
+      paylaşılabilir, yenileme aynı kaydı getirir, geri/ileri liste
+      ile kayıt arasında gezer ve süzgeçler kaybolmaz.
+
+      Sağ sütun eskiden istatistik kartıydı; seçim yokken HÂLÂ o
+      görünüyor — boş bir kabuk göstermek yerine ekranın en çok
+      sorulan sayılarını orada tutmak daha iyi.
+    */}
+    <div className="kl-duzen" data-secim={seciliSatir ? "var" : "yok"}>
       {/* Bireysel aboneler ayrı menü değil (02.11.2026); işlemleri (paket fiyatı,
           aboneyi kuruma bağlama) kendi ekranında, buradan açılıyor. */}
       {secilenTur === "bireysel" ? (
         <KNot>Bireysel abonelerin paket fiyatı ve kuruma bağlama işlemleri: <Link href="/panel/platform/subscribers">Bireysel abone yönetimi →</Link></KNot>
       ) : null}
-      <section className="panel-card talep-bilgi" aria-label="Müşteri listesi">
+      <section className="kl-liste" aria-label="Müşteri listesi">
         <div className="ekip-suzgec talep-suzgec ek-arac">
           <nav className="ek-segment" aria-label="Tür">
             {TURLER.map(([kod, ad, adet]) => (
@@ -656,27 +685,38 @@ export default async function MusterilerPage({ searchParams }: {
           durum: satir.durum, aylik: satir.ucret || null, yenileme: satir.yenileme, olusma: satir.olusma,
         }))} /> : null}
 
+        <div className="kl-liste-govde">
         {liste.length ? (
           <div className="talep-tablo">
             <table className="crm-data-table" data-cols="konsol-musteri">
               <thead>
                 <tr>
+                  {/*
+                    SÜTUNLAR ONAYLI TASARIMA İNDİ (27.11.2026): Müşteri
+                    · Ürün · Durum. Kullanıcı, Yenileme ve Aylık
+                    kaybolmadı — seçili kaydın paneline geçtiler.
+                    Liste artık sayfanın yarısında ve altı sütun
+                    oraya sığmıyordu.
+                  */}
                   <th className="mu-secim" aria-label="Seç"></th>
                   <th>Müşteri</th>
-                  <th>Ürünler</th>
-                  <th>Kullanıcı</th>
-                  <th className="crm-col-date">Yenileme</th>
-                  <th className="crm-col-amount">Aylık</th>
+                  <th>Ürün</th>
                   <th>Durum</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {liste.map((satir) => (
-                  <tr key={satir.anahtar} className={satir.ton === "neutral" ? "is-pasif" : undefined}>
+                  <tr key={satir.anahtar}
+                    className={[satir.ton === "neutral" ? "is-pasif" : null, satir.secim === seciliAnahtar ? "is-secili" : null].filter(Boolean).join(" ") || undefined}>
                     <td className="mu-secim"><input type="checkbox" form="mu-toplu" name="secim" value={satir.secim} aria-label={`${satir.ad} seç`} /></td>
                     <td data-label="Müşteri">
-                      <Link className="crm-row-link ek-kisi" href={satir.href} aria-label={`${satir.ad} kartını aç`}>
+                      {/* Satır SEÇİYOR, tam kartı açmıyor: kart
+                          panelin baskın eylemi. Adres değiştiği için
+                          seçim paylaşılabilir ve geri tuşu çalışıyor. */}
+                      <Link className="crm-row-link ek-kisi" href={adres({ secili: satir.secim })}
+                        aria-label={`${satir.ad} kaydını seç`}
+                        aria-current={satir.secim === seciliAnahtar ? "true" : undefined}>
                         <span className="ek-avatar" data-tur={satir.tur} aria-hidden="true">{basHarfleri(satir.ad)}</span>
                         <span className="ek-kisi-metin">
                           <span className="crm-table-title" title={satir.ad}>{satir.ad}</span>
@@ -688,21 +728,6 @@ export default async function MusterilerPage({ searchParams }: {
                       <span className="mu-urunler">
                         {satir.urunler.length ? satir.urunler.map((u) => <span key={u.kod} data-tone={u.ton}>{u.etiket}</span>) : <span className="crm-table-sub">Ürün yok</span>}
                       </span>
-                    </td>
-                    <td data-label="Kullanıcı">
-                      {satir.kullanici ? <span className="crm-table-title">{satir.kullanici}</span> : <span className="crm-table-sub">—</span>}
-                      {/* Son kullanım: kim en son ne zaman girdi (lib/musteri-etkinligi). */}
-                      {satir.etkinlik ? (
-                        <span className="crm-table-sub mu-etkinlik" data-hal={satir.etkinlik.hal} title={`Son 7 günde ${satir.etkinlik.haftalik} kişi girdi`}>
-                          {satir.etkinlik.yazi}{satir.etkinlik.haftalik ? ` · ${satir.etkinlik.haftalik} kişi/hafta` : ""}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="crm-col-date" data-label="Yenileme">{satir.yenileme ? tarih(satir.yenileme) : "—"}</td>
-                    <td className="crm-col-amount" data-label="Aylık">
-                      {/* Bütün ödeyen ürünlerin toplamı; ödeyen ürünü olup hiçbirinin ücreti girilmemişse "Ücret yok". */}
-                      {satir.ucret ? <span className="crm-table-title">{para(satir.ucret)}</span> : satir.ucretGirilmedi ? <span className="k-ios-eksik">Ücret yok</span> : <span className="crm-table-sub">—</span>}
-                      {satir.ucret && (satir.tur === "grup" || satir.tur === "arvo") ? <small>grup içi</small> : null}
                     </td>
                     <td data-label="Durum">
                       <span className="status-pill" data-tone={satir.ton}>{satir.durum}</span>
@@ -738,12 +763,78 @@ export default async function MusterilerPage({ searchParams }: {
             <div className="crm-empty-actions"><Link className="panel-secondary" href="/panel/platform/musteriler">Süzgeci temizle</Link></div>
           </div>
         )}
+        </div>
       </section>
 
       {/* Sağ sütun süzgeçten BAĞIMSIZ: her zaman bütün müşterileri
           anlatır; seçili sekmeye göre değişseydi "kaç müşterim var"
           sorusunun yanıtı da değişirdi. Ekip listesindeki sekmeli kart. */}
-      <div className="liste-sag">
+      <aside className="kl-panel" aria-label={seciliSatir ? `${seciliSatir.ad} önizlemesi` : "Müşteri istatistikleri"}>
+        {seciliSatir ? (
+          <>
+            <Link className="kl-geri" href={adres({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+            <KonsolPanelBas
+              baslik={seciliSatir.ad}
+              durum={{ etiket: seciliSatir.durum, ton: seciliSatir.ton }}
+              kapatAdresi={adres({ secili: null })}
+            />
+            {/* Sekmeler TAM KARTA gidiyor: paneldeki önizleme liste
+                verisinden çiziliyor, öteki bölümler kendi okumalarını
+                yapıyor ve onları burada taklit etmek yanlış olurdu. */}
+            {/* SÜZGECİN DIŞINDA KALAN KAYIT (27.11.2026). Seçili
+                kayıt listede görünmüyorsa panel sessizce durmamalı:
+                kullanıcı solda bulamadığı bir kaydın detayına bakıyor
+                ve nedenini bilmeli. Süzgeci temizleyen bağlantı
+                SEÇİMİ koruyor. */}
+            {!seciliListedeMi ? (
+              <KNot ton="uyari">
+                Bu kayıt geçerli süzgeçte görünmüyor.{" "}
+                <Link href={`/panel/platform/musteriler?secili=${encodeURIComponent(seciliSatir.secim)}`}>Süzgeci temizle →</Link>
+              </KNot>
+            ) : null}
+            <KonsolPanelSekmeleri
+              etkin="bilgiler"
+              sekmeler={[
+                { anahtar: "bilgiler", etiket: "Genel Bilgiler", adres: adres({ secili: seciliSatir.secim }) },
+                { anahtar: "kullanicilar", etiket: "Kullanıcılar", adres: `${seciliSatir.href}?pencere=kullanicilar` },
+                { anahtar: "urunler", etiket: "Lisanslar", adres: `${seciliSatir.href}?pencere=urunler` },
+                { anahtar: "hareketler", etiket: "Geçmiş", adres: `${seciliSatir.href}?pencere=hareketler` },
+              ]}
+            />
+            <KonsolPanelAlanlar alanlar={[
+              { ad: "Tür", deger: TUR_ADI[seciliSatir.tur] },
+              { ad: "Ürünler", deger: seciliSatir.urunler.length ? seciliSatir.urunler.map((u) => u.etiket).join(", ") : <span className="crm-table-sub">Ürün yok</span> },
+              ...(seciliSatir.paket ? [{ ad: "Paket", deger: seciliSatir.paket }] : []),
+              ...(seciliSatir.kullanici ? [{ ad: "Kullanıcı", deger: seciliSatir.kullanici }] : []),
+              { ad: "Aylık", deger: seciliSatir.ucret ? para(seciliSatir.ucret) : seciliSatir.ucretGirilmedi ? <span className="k-ios-eksik">Ücret girilmemiş</span> : <span className="crm-table-sub">—</span> },
+              { ad: "Yenileme", deger: seciliSatir.yenileme ? tarih(seciliSatir.yenileme) : <span className="crm-table-sub">—</span> },
+              ...(seciliSatir.olusma ? [{ ad: "Kayıt tarihi", deger: tarih(seciliSatir.olusma) }] : []),
+              ...(seciliSatir.etkinlik ? [{ ad: "Panel kullanımı", deger: seciliSatir.etkinlik.yazi }] : []),
+              ...(seciliSatir.resmiEksikler?.length ? [{ ad: "Resmi bilgi", deger: <span className="k-ios-eksik">{seciliSatir.resmiEksikler.length} alan eksik</span> }] : []),
+            ]} />
+            {/* Panelin TEK baskın eylemi: tam kart. Öteki işlemler
+                (lisans, kullanıcı, not) orada ve yetkisi orada
+                denetleniyor. */}
+            <div className="kl-panel-eylem">
+              <Link className="panel-primary" href={seciliSatir.href}>Müşteri kartını aç</Link>
+            </div>
+          </>
+        ) : seciliAnahtar ? (
+          /* SEÇİLİ ANAHTAR ÇÖZÜLEMEDİ: kayıt silinmiş ya da artık
+             erişilemiyor. Sessizce listeye düşmek yanlış — kullanıcı
+             paylaşılan bir adresi açmış olabilir ve ne olduğunu
+             bilmeli. */
+          <>
+            <Link className="kl-geri" href={adres({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+            <KonsolPanelBos
+              ton="uyari"
+              baslik="Kayıt bulunamadı"
+              aciklama="Bu kayıt silinmiş ya da artık erişilebilir değil. Listeden başka bir kayıt seçebilirsiniz."
+              eylem={<Link className="panel-secondary" href={adres({ secili: null })}>Listeye dön</Link>}
+            />
+          </>
+        ) : (
+          <>
         <TalepAkis kimlik="musteri-sag" sinif="ek-sag" etiket="Müşteri istatistikleri"
           sekmeler={["İstatistikler", dikkatliler.length + riskliler.length ? `Dikkat · ${dikkatliler.length + riskliler.length}` : "Dikkat", ...(grupSatirlar.length ? ["Grup içi"] : [])]}>
           <IstatistikKarti
@@ -805,7 +896,9 @@ export default async function MusterilerPage({ searchParams }: {
             </section>
           ) : null}
         </TalepAkis>
-      </div>
+          </>
+        )}
+      </aside>
     </div>
   </main>;
 }

@@ -1,0 +1,206 @@
+/*
+  KONSOLUN ORTAK LİSTE–PANEL DÜZENİ (27.11.2026, onaylı tasarım).
+
+  Solda gezinme (kabuk), ortada liste, sağda seçili kayıt. İki sütun
+  arasında İNCE DİKEY SINIR — kart içinde kart değil; onaylı
+  referansta paneli listeden ayıran tek şey o çizgi.
+
+  Renk ve boşluk token'dan (panel-tokens.css); ham renk yok.
+*/
+
+.kl-duzen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+  align-items: stretch;
+  min-height: 0;
+  /*
+    Kaydırma SÜTUNLARIN İÇİNDE. Sayfanın kendisi kaydırılamıyor
+    (html/body'de overflow-x:clip var, panel.css) ve iki sütun ayrı
+    boylarda: liste uzun, panel kısa olabiliyor. Tek kaydırıcı
+    olsaydı panel listenin boyunca uzayıp boş kalırdı.
+  */
+  height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+}
+
+.kl-liste,
+.kl-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.kl-liste { padding-right: var(--sp-5); }
+.kl-liste-govde { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+.kl-panel {
+  padding-left: var(--sp-5);
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ---------- Panel başlığı ---------- */
+.kl-panel-bas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+}
+.kl-panel-bas-metin { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kl-panel-bas h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+/* Durum NOKTAYLA: renk tek başına bilgi taşımasın (renk körlüğü). */
+.kl-panel-durum { display: flex; align-items: center; gap: var(--sp-2); margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.kl-panel-durum::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.kl-panel-durum[data-tone="success"]::before { background: var(--success); }
+.kl-panel-durum[data-tone="warning"]::before { background: var(--warning); }
+.kl-panel-durum[data-tone="danger"]::before { background: var(--danger); }
+
+.kl-panel-kapat {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--ctl-h-sm);
+  height: var(--ctl-h-sm);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  text-decoration: none;
+}
+.kl-panel-kapat:hover { background: var(--surface-2); color: var(--ink); }
+.kl-panel-kapat:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ---------- Panel sekmeleri ---------- */
+/* Ürün detayındaki şeridin aynısı (urun-detay.css · urd-serit):
+   ince alt çizgi, seçilide kalın yazı + 2 px vurgu. Kaynak ArvoLab'ın
+   Analiz Merkezi şeridi. */
+.kl-panel-sekmeler {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--sp-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.kl-panel-sekmeler::-webkit-scrollbar { display: none; }
+.kl-panel-sekmeler > a {
+  position: relative;
+  padding: 0 14px var(--sp-3);
+  min-height: 40px;
+  display: inline-flex;
+  align-items: flex-end;
+  color: var(--muted);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.kl-panel-sekmeler > :first-child { padding-left: 0; }
+.kl-panel-sekmeler > a:hover { color: var(--ink); }
+.kl-panel-sekmeler > .is-active { color: var(--ink); font-weight: var(--fw-semibold); }
+.kl-panel-sekmeler > .is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--primary);
+}
+.kl-panel-sekmeler > a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+
+/* ---------- Alan–değer listesi ---------- */
+.kl-panel-alanlar { display: flex; flex-direction: column; gap: var(--sp-3); margin: 0; }
+.kl-panel-alanlar > div {
+  display: grid;
+  /* Etiket sütunu sabit: değerler alt alta hizalanır, göz tek
+     hatta iner. Dar panelde alt alta geçiyor (aşağıda). */
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: baseline;
+}
+.kl-panel-alanlar dt { color: var(--muted); font-size: var(--fs-sm); }
+.kl-panel-alanlar dd { margin: 0; color: var(--ink); font-size: var(--fs-base); overflow-wrap: anywhere; }
+
+/* ---------- Boş durum ---------- */
+.kl-panel-bos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  margin: auto 0;
+  padding: var(--sp-5) 0;
+}
+.kl-panel-bos-baslik { margin: 0; font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--ink); }
+.kl-panel-bos-aciklama { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
+.kl-panel-bos[data-tone="uyari"] .kl-panel-bos-baslik { color: var(--warning); }
+
+/* Masaüstünde "Listeye dön" yok: iki sütun yan yana, dönülecek yer yok. */
+.kl-geri { display: none; }
+
+/* ---------- Dar masaüstü ve tablet ---------- */
+@media (max-width: 1240px) {
+  /* Panel daralıyor ama hâlâ yan yana: 1024'te liste 520, panel 360
+     kalıyor ve ikisi de okunabiliyor. */
+  .kl-duzen { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); }
+  .kl-panel-alanlar > div { grid-template-columns: 120px minmax(0, 1fr); }
+}
+
+/* ---------- Telefon: tek sütun ---------- */
+@media (max-width: 860px) {
+  /*
+    İki sütunu 390 px'e sıkıştırmak ikisini de okunmaz yapıyordu.
+    Kayıt seçiliyken liste gizlenir, detay tam genişlikte açılır;
+    seçim yokken yalnızca liste görünür.
+  */
+  .kl-duzen {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+    padding-bottom: var(--os-dock-space);
+    box-sizing: border-box;
+  }
+  .kl-liste { padding-right: 0; }
+  .kl-panel { padding-left: 0; border-left: 0; }
+  .kl-duzen[data-secim="var"] .kl-liste { display: none; }
+  .kl-duzen[data-secim="yok"] .kl-panel { display: none; }
+
+  .kl-geri {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    align-self: flex-start;
+    min-height: var(--ctl-h-sm);
+    margin-bottom: var(--sp-2);
+    color: var(--accent);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    text-decoration: none;
+  }
+  .kl-geri:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+  /* Telefonda kapat düğmesi gizli: dönüş bağlantısı aynı işi yapıyor
+     ve iki geri yolu yan yana durmasın. */
+  .kl-panel-kapat { display: none; }
+  .kl-panel-alanlar > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/*
+  SEÇİLİ SATIR (27.11.2026, onaylı tasarım): hafif vurgu, solda ince
+  lacivert çizgi. Renk tek başına bilgi taşımasın diye satır ayrıca
+  aria-current="true" taşıyor — ekran okuyucu da hangisinin seçili
+  olduğunu söylüyor.
+*/
+.os-root .kl-liste .crm-data-table tbody tr.is-secili { background: var(--primary-soft); }
+.os-root .kl-liste .crm-data-table tbody tr.is-secili > td:first-child { box-shadow: inset 2px 0 0 var(--primary); }
+
+/* Panelin baskın eylemi en altta, kendi hattında. */
+.kl-panel-eylem { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line-soft); }
