@@ -54,7 +54,7 @@ gizleme tek başına güvenlik değil.
 
 | Rota | Ekran | Giriş noktaları | Alan | Ana eylem | Detay / form | Durum |
 | --- | --- | --- | --- | --- | --- | --- |
-| `/panel` | Ana Sayfa | Sol menü · logo · Ctrl+K | — | Karar kuyruğunun ilk kalemi | Kuyruk kalemleri kendi ekranlarına | — |
+| `/panel` | Ana Sayfa | Sol menü · logo · Ctrl+K | — | Karar kuyruğunun ilk kalemi | Kuyruk kalemi ilgili KAYDA açılıyor | doğrulandı |
 
 ## Müşteriler
 

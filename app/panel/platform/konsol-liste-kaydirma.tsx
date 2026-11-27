@@ -41,79 +41,111 @@ export function KonsolListeKaydirma({ anahtar, adres }: {
     const govde = document.querySelector<HTMLElement>(".kl-liste-govde");
     if (!govde) return;
     const yer = ON_EK + anahtar;
-    /*
-      GERİ YÜKLEME BİRKAÇ KARE DENENİYOR. Konum tek seferde
-      uygulandığında liste gövdesi henüz tam yüksekliğine ulaşmamış
-      oluyor ve tarayıcı değeri kırpıyor: 768 px'te 220 istenip 78'de
-      kalıyordu. Üç kare boyunca tekrar deneniyor; tutturamazsa
-      (liste gerçekten kısaldıysa) olduğu yerde bırakılıyor.
-    */
-    let kareler = 0;
-    let istek = 0;
-    const uygula = (hedef: number) => {
-      govde.scrollTop = hedef;
-      if (govde.scrollTop < hedef && kareler < 12) {
-        kareler += 1;
-        istek = requestAnimationFrame(() => uygula(hedef));
-      }
-    };
+
+    let hedef = 0;
     try {
-      const kayitli = Number(sessionStorage.getItem(yer) ?? "0");
-      /* Yalnızca gerçekten kaydırılmışsa uygula: 0 yazmak, tarayıcının
-         kendi konumunu da sıfırlardı. */
-      if (kayitli > 0) uygula(kayitli);
+      hedef = Number(sessionStorage.getItem(yer) ?? "0") || 0;
     } catch {
       /* depolama kapalı: konum korunmuyor, ekran çalışıyor */
     }
 
     /*
-      YERLEŞME PENCERESİ. Gezinmeden sonra yeni liste gövdesi 0'dan
-      başlıyor ve tarayıcı bir kaydırma olayı üretiyor; geri yükleme
-      ile o olay yarışınca saklanan konumun üzerine 0 yazılıyordu
-      (Destek ve Ödeme onayları'nda ölçüldü: 220 → 0). İlk 400 ms
-      yazma kapalı; kullanıcı o aralıkta kaydırsa bile sonraki olay
-      konumu yazıyor.
+      YAZMA YALNIZCA KULLANICI KAYDIRDIKTAN SONRA.
+
+      Gezinmeden sonra liste gövdesi 0'dan başlıyor ve içerik
+      yerleşene kadar `scrollTop = hedef` KIRPILIYOR; bu sırada çıkan
+      kaydırma olayları saklanan konumun üzerine 0 yazıyordu (Destek
+      ve Ödeme onayları'nda ölçüldü: 220 → 0, Müşteriler'de aynı kod
+      çalışıyordu çünkü listesi daha hızlı yerleşiyor). Zamana bağlı
+      bir "yerleşme penceresi" denendi ve yavaş derlemede yetmedi.
+
+      Doğru ölçüt süre değil NİYET: kullanıcı tekerleği çevirdi,
+      parmağını sürdü, tuşa bastı ya da listeye tıkladıysa kaydırma
+      onundur ve yazılır. Hedefe ulaşıldığında da yazma açılıyor:
+      geri yükleme bitmiştir, sonrası kullanıcının.
     */
-    let hazir = false;
-    const hazirlik = setTimeout(() => { hazir = true; }, 400);
+    let yazilabilir = hedef === 0;
+    let sonJest = 0;
+    const kullaniciDokundu = () => {
+      yazilabilir = true;
+      sonJest = Date.now();
+      govde.dataset.kaydirma = "hazir";
+    };
+    /*
+      Yalnızca KAYDIRMA niyeti: tekerlek, parmak, tuş. `pointerdown`
+      bilerek YOK — satıra tıklamak bir gezinme; onu niyet saymak,
+      gezinme sırasında React'in listeyi 0'a döndürmesiyle çıkan
+      kaydırma olayını "kullanıcı kaydırdı" diye kaydediyordu
+      (ölçüldü: tıklamadan ~100 ms sonra 220 → 0 yazılıyor).
+    */
+    for (const olay of ["wheel", "touchmove", "keydown"] as const) {
+      govde.addEventListener(olay, kullaniciDokundu, { passive: true });
+    }
+
+    /*
+      GERİ YÜKLEME YERLEŞENE KADAR DENENİYOR (en çok ~1 sn). Tek
+      karede uygulandığında liste tam yüksekliğine ulaşmamış oluyor
+      ve tarayıcı değeri kırpıyordu: 768 px'te 220 istenip 78'de
+      kalıyordu.
+    */
+    let kare = 0;
+    let istek = 0;
+    const uygula = () => {
+      istek = 0;
+      if (hedef <= 0) return;
+      govde.scrollTop = hedef;
+      if (govde.scrollTop >= hedef) { kullaniciDokundu(); return; }
+      if (kare < 60) { kare += 1; istek = requestAnimationFrame(uygula); }
+      else kullaniciDokundu(); /* ulaşılamadı: liste gerçekten kısalmış */
+    };
+    if (hedef > 0) uygula();
+    else govde.dataset.kaydirma = "hazir";
 
     let zamanlayici: ReturnType<typeof setTimeout> | null = null;
     const yaz = () => {
       zamanlayici = null;
       /*
-        KOPMUŞ DÜĞÜME YAZMA. Gezinmede React eski `.kl-liste-govde`yi
-        belgeden çıkarıyor ve kopmuş bir düğümün scrollTop'u HER ZAMAN
-        0. Temizlikte buna bakılmadan yazıldığında saklanan konum
-        sıfırlanıyordu: kayıt açmak çalışıyor ama tam karttan geri
-        dönmek ve paneli kapatmak listeyi başa sarıyordu (27.11.2026
-        akış ölçümü).
+        Kopmuş düğüme yazılmaz: kopmuş bir düğümün scrollTop'u her
+        zaman 0 ve saklanan konumu sıfırlardı.
       */
-      if (!govde.isConnected || !hazir) return;
+      if (!govde.isConnected || !yazilabilir) return;
+      const deger = Math.round(govde.scrollTop);
+      /*
+        SIFIRI YALNIZCA TAZE BİR JESTLE YAZ. Gezinme başlayınca React
+        listeyi yeniden çiziyor, konum 0'a dönüyor ve bu da bir
+        kaydırma olayı üretiyor; gecikmeli yazma bazen bileşenin
+        temizliğinden ÖNCE yetişip saklanan konumu sıfırlıyordu
+        (Destek ve Ödeme onayları'nda ölçüldü, Müşteriler'de
+        yetişemediği için aynı kod çalışıyor görünüyordu). Kullanıcı
+        gerçekten başa döndüyse jest 400 ms içindedir.
+      */
+      if (deger === 0 && Date.now() - sonJest > 400) return;
       try {
-        sessionStorage.setItem(yer, String(Math.round(govde.scrollTop)));
+        sessionStorage.setItem(yer, String(deger));
       } catch {
         /* yoksay */
       }
     };
     /* Her kaydırma olayında yazmak sekmeyi yoruyor; son konum yeter. */
     const dinle = () => {
-      if (!hazir || zamanlayici) return;
+      if (!yazilabilir || zamanlayici) return;
       zamanlayici = setTimeout(yaz, 150);
     };
     govde.addEventListener("scroll", dinle, { passive: true });
+
     return () => {
-      cancelAnimationFrame(istek);
-      clearTimeout(hazirlik);
+      if (istek) cancelAnimationFrame(istek);
       govde.removeEventListener("scroll", dinle);
+      for (const olay of ["wheel", "touchmove", "keydown"] as const) {
+        govde.removeEventListener(olay, kullaniciDokundu);
+      }
       if (zamanlayici) clearTimeout(zamanlayici);
+      delete govde.dataset.kaydirma;
       /*
-        TEMİZLİKTE YAZILMIYOR. Temizlik gezinme sırasında, DOM
-        GÜNCELLENDİKTEN SONRA çalışıyor: aynı düğüm yeniden
-        kullanılmış ve konumu çoktan 0'a dönmüş oluyor, yani
-        saklanan konumun üzerine 0 yazılıyordu (ölçüldü: yazma
-        sırası "0" → sonra geri yükleme "kayitli=0"). Kaydırma
-        sırasındaki gecikmeli yazma konumu zaten saklıyor; yalnızca
-        son 150 ms içindeki bir kaydırma kaybolabilir.
+        TEMİZLİKTE YAZILMIYOR: temizlik gezinme sırasında, DOM
+        güncellendikten sonra çalışıyor ve konum çoktan 0'a dönmüş
+        oluyor. Kaydırma sırasındaki gecikmeli yazma konumu zaten
+        saklıyor.
       */
     };
   }, [anahtar, adres]);

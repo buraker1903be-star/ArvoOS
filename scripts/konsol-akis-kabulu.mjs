@@ -68,6 +68,22 @@ const sayfa = await baglam.newPage();
 sayfa.on("pageerror", (e) => kusurlar.push("sayfa hatası: " + String(e.message).slice(0, 120)));
 
 const konum = () => sayfa.evaluate(() => document.querySelector(".kl-liste-govde")?.scrollTop ?? null);
+/*
+  Konumu BEKLEYEREK oku. Geri yükleme gezinmeden sonraki ilk
+  karelerde çalışıyor; geliştirme sunucusunda derleme gecikince sabit
+  bir bekleme bazen erken ölçüyordu ve "220 → 0" diye rastgele
+  düşüyordu. En çok 2 sn bekleniyor; süre dolarsa son okunan değer
+  olduğu gibi bildiriliyor (gerçek bir gecikme burada görünür).
+*/
+async function konumBekle(hedef) {
+  const bitis = Date.now() + 2000;
+  let son = await konum();
+  while (Date.now() < bitis && !yakin(son, hedef)) {
+    await bekle(100);
+    son = await konum();
+  }
+  return son;
+}
 const panelBaslik = () => sayfa.evaluate(() => document.querySelector(".kl-panel-bas h2")?.textContent ?? null);
 const bekle = (ms = 500) => sayfa.waitForTimeout(ms);
 
@@ -85,14 +101,29 @@ async function ekran({ ad, adres, satirSecici, kapatSecici, tamKartSecici, yeniS
     const g = document.querySelector(".kl-liste-govde");
     return Boolean(g) && Object.keys(g).some((k) => k.startsWith("__react"));
   }, null, { timeout: 60_000 });
-  await bekle();
+  /*
+    Konum koruyucu HAZIR olana kadar bekle. Bileşen bağlandıktan
+    sonra kısa bir yerleşme penceresi var (gezinmeden sonra
+    tarayıcının ürettiği 0'ı kaydetmemek için); o pencerede yapılan
+    kaydırma saklanmıyor ve ölçüm rastgele düşüyordu.
+  */
+  await sayfa.waitForSelector('.kl-liste-govde[data-kaydirma="hazir"]', { timeout: 30_000 });
 
-  /* 2. Listeyi aşağı kaydır. Kaydırılamıyorsa akışın kalanı anlamsız. */
+  /*
+    2. Listeyi GERÇEK TEKERLEKLE kaydır. `scrollTop = …` atamak
+    kaydırma olayı üretiyor ama kullanıcı niyeti üretmiyor; konum
+    koruyucu bilerek yalnızca tekerlek/parmak/tuş sonrası kaydediyor
+    (gezinme sırasında tarayıcının ürettiği 0'ı yazmamak için).
+    Kaydırılamıyorsa akışın kalanı anlamsız.
+  */
+  const kutu = await sayfa.locator(".kl-liste-govde").boundingBox();
+  if (kutu) await sayfa.mouse.move(kutu.x + kutu.width / 2, kutu.y + kutu.height / 2);
+  await sayfa.mouse.wheel(0, 220);
+  await bekle(400);
   const kaydirildi = await sayfa.evaluate(() => {
     const g = document.querySelector(".kl-liste-govde");
     if (!g || g.scrollHeight <= g.clientHeight + 20) return null;
-    g.scrollTop = Math.min(220, g.scrollHeight - g.clientHeight);
-    return g.scrollTop;
+    return g.scrollTop > 0 ? g.scrollTop : null;
   });
   not("liste kaydırılabiliyor", kaydirildi !== null && kaydirildi > 0, `konum=${kaydirildi}`);
   if (!kaydirildi) return;
@@ -107,7 +138,7 @@ async function ekran({ ad, adres, satirSecici, kapatSecici, tamKartSecici, yeniS
   await sayfa.waitForURL(/secili=/, { timeout: 15_000 });
   await bekle();
   not("kayıt sağ panelde açıldı", Boolean(await panelBaslik()), String(await panelBaslik()).slice(0, 40));
-  const acilistaKonum = await konum();
+  const acilistaKonum = await konumBekle(kaydirildi);
   if (!TEK_SUTUN) not("kayıt açılınca konum korundu", yakin(acilistaKonum, kaydirildi), `${kaydirildi} → ${acilistaKonum}`);
   not("süzgeç adreste duruyor", sayfa.url().includes(adres.split("?")[1]?.split("&")[0] ?? ""), sayfa.url().split("?")[1] ?? "");
 
@@ -125,7 +156,7 @@ async function ekran({ ad, adres, satirSecici, kapatSecici, tamKartSecici, yeniS
       Konum orada kapatma adımında sınanıyor.
     */
     if (!TEK_SUTUN) {
-      const geriKonum = await konum();
+      const geriKonum = await konumBekle(kaydirildi);
       not("geri dönüşte konum korundu", yakin(geriKonum, kaydirildi), `${kaydirildi} → ${geriKonum} (tam kart: ${tamKart.split("/panel")[1]})`);
     } else {
       not("tek sütunda geri dönüşte detay tam genişlikte", Boolean(await panelBaslik()), `tam kart: ${tamKart.split("/panel")[1]}`);
@@ -137,7 +168,7 @@ async function ekran({ ad, adres, satirSecici, kapatSecici, tamKartSecici, yeniS
     await sayfa.locator(kapatSecici).first().click();
     await bekle(800);
     not("kapatınca seçim düştü", !sayfa.url().includes("secili="), sayfa.url().split("?")[1] ?? "(süzgeçsiz)");
-    const kapanisKonum = await konum();
+    const kapanisKonum = await konumBekle(kaydirildi);
     /*
       TEK SÜTUNDA tarayıcı, detaydan dönüşte ODAKLANAN SATIRI görüş
       alanına çekiyor ve konumu kendi belirliyor (768 px'te ölçüldü:
