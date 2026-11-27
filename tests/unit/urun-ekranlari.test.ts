@@ -97,3 +97,18 @@ test("ürün detayı tek sütun: kart kabuğu ve sağ sütun kalktı", () => {
   /* Sekme bileşeni DEĞİŞMEDİ, yalnızca görünümü: adresli sekmeler duruyor. */
   assert.match(sayfa, /<TalepAkis kimlik="urun-kart" sinif="urd-serit"[\s\S]{0,160}adresler=\{bolumAdresleri\}/);
 });
+
+test("ölçüm düzeneği 'işlem bekleyenler' satırlarını kuraldan üretiyor", () => {
+  /*
+    26.11.2026'da otomasyon kartında yaşandı: düzenekteki fixture elle
+    yazılmıştı, kural değişti, fixture eski kaldı ve ekran üretimin
+    ÜRETEMEYECEĞİ bir satır çizdi. Aynı hata ürün detayında
+    tekrarlanmasın: düzenek gerçek kuralı çağırıyor, fixture yalnızca
+    girdi veriyor.
+  */
+  const duzenek = oku("scripts/genel-bakis-yerlesim-tarayici.mjs");
+  assert.match(duzenek, /bekleyenler=\{urunBekleyenleri\(\{/);
+  assert.match(duzenek, /import \{ urunBekleyenleri \} from/);
+  /* Elle yazılmış başlık kalmadı. */
+  assert.doesNotMatch(duzenek, /baslik: "Yanıt bekleyen talepler"/);
+});

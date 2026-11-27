@@ -112,6 +112,7 @@ import { ThemeToggle } from ${a("app/panel/theme-toggle.tsx")};
 import { OsSimge as OsSimgeDuz } from ${a("app/panel/os/os-icons.tsx")};
 import { UrunPerformansiKarti } from "@/app/panel/konsol-urun-performansi";
 import { UrunListesi } from "@/app/panel/platform/urunler/urun-listesi";
+import { urunBekleyenleri } from "@/lib/konsol/urun-bekleyenler";
 import { KararBekleyenlerKarti, OtomasyonlarKarti } from "@/app/panel/konsol-ana-kartlar";
 import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
 import { ArvoOsIsareti, ArvoOsLogosu } from "@/app/panel/os/arvoos-markasi";
@@ -535,11 +536,25 @@ function UrunDetay() {
           <section data-bolum="genel-bakis">
             <UrunGenelBakis satir={satir} donem={donem}
               para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
-              bekleyenler={[
-                { anahtar: "b1", baslik: "Ödeme bildirimleri", alt: "Onay bekleyenler konsolun kuyruğunda", href: "#", eylem: "İncele" },
-                { anahtar: "b2", baslik: "Yaklaşan yenilemeler", alt: "ArvoLab lisansı dönemi dolanlar", href: "/panel/platform/musteriler?urun=arvolab", eylem: "Görüntüle" },
-                { anahtar: "b3", baslik: "Yanıt bekleyen talepler", alt: "Destek ekranında", href: "#", eylem: "Görüntüle" },
-              ]} />
+              /*
+                SATIRLAR ELLE YAZILMIYOR (27.11.2026): gerçek kural
+                çağrılıyor (lib/konsol/urun-bekleyenler), fixture
+                yalnızca GİRDİ veriyor. Bir önceki turda otomasyon
+                kartında tam bu yüzden üretimin üretemeyeceği bir satır
+                çizilmişti — kural değişip fixture eski kalmıştı.
+              */
+              bekleyenler={urunBekleyenleri({
+                urunKodu: "arvolab",
+                lisanslar: [
+                  { durum: "active", donemSonu: new Date(Date.now() + 5 * 86400000).toISOString(), denemeSonu: null },
+                  { durum: "active", donemSonu: new Date(Date.now() + 9 * 86400000).toISOString(), denemeSonu: null },
+                  { durum: "trialing", donemSonu: null, denemeSonu: new Date(Date.now() + 2 * 86400000).toISOString() },
+                ],
+                aboneler: [{ status: "trialing", trial_ends_at: new Date(Date.now() + 86400000).toISOString() }],
+                bekleyenOdeme: 12,
+                simdi: new Date(),
+                sayi: (n) => n.toLocaleString("tr-TR"),
+              })} />
           </section>
           {basitPanel("musteriler", "ArvoLab müşterileri", (
             <p className="ugb-bos">42 kurum ArvoLab lisansı kullanıyor.</p>
@@ -602,7 +617,7 @@ function Kabuk() {
   /* Konsol senaryoları yeni kabuğu kullanıyor (.os-konsol): masaüstü ve
      tablette sol menü, telefonda alt çubuk. Kiracı senaryoları (ana,
      crm) dock'ta kalıyor — üretimdeki ayrımın aynısı. */
-  const konsolMu = sayfa === "konsol" || sayfa === "urundetay";
+  const konsolMu = sayfa === "konsol" || sayfa === "urundetay" || sayfa === "urunler";
   return <div className={konsolMu ? "panel-root os-root os-konsol" : "panel-root os-root"}><main className="panel-frame os-frame">
     {/*
       ÜST ÇUBUK. Kiracı senaryolarında olduğu gibi sade; KONSOL
@@ -1395,7 +1410,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         üstünü başka bir şey örtmüyor), klavyeyle odaklanabiliyor mu ve
         dock'un üstünde mi.
       */
-      const konsolSenaryosu = s === "konsol" || s === "urundetay";
+      const konsolSenaryosu = s === "konsol" || s === "urundetay" || s === "urunler";
       if (s === "konsol") {
         o.erisim = await sayfa.evaluate(() => {
           const gorunur2 = (el) => {
