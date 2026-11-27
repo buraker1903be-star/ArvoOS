@@ -335,3 +335,19 @@
   .koi-liste>li>a{min-height:48px;padding-block:var(--sp-1)}
   .kup-mobil>li>a{min-height:48px;padding:var(--sp-1) 0}
 }
+
+/*
+  "Tüm ürünler →" BAŞLIK HİZASINDA (27.11.2026). Kaynak ArvoLab'ın
+  "Son kaynaklar" bölümü (.pw-bolum-bas + .pw-bolum-baglanti): bölüm
+  bağlantısı başlığın sağında durur. Eskiden kartın en altındaydı ve
+  yalnızca "Ürünler" yazıyordu.
+*/
+.kup-tumu {
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.kup-tumu:hover { text-decoration: underline; }
+.kup-tumu:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }

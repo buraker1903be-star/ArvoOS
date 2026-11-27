@@ -130,10 +130,13 @@ describe("kurucu konsolu uygulamaları", () => {
        26.11.2026: ana ekranın adı "Ana Sayfa" oldu ve "Otomasyonlar"
        eklendi — zamanlanmış işler kurucunun gün içinde en çok sorduğu
        ikinci şey ("sistem kendi işini gördü mü") ve sistem sağlığının
-       içinde kaybolmuştu. */
+       içinde kaybolmuştu.
+       27.11.2026: "Ürünler ve Fiyatlar" → "Ürünler". Fiyat yönetimi
+       ürünün kendi bölümüne indi; iki işi tek ada sığdıran etiket
+       artık yanlış yeri gösteriyordu. */
     assert.deepEqual(
       uygulamalar.filter((u) => !u.yalnizBaslatici).map((u) => u.label),
-      ["Ana Sayfa", "Müşteriler", "Finans", "Destek", "Ürünler ve Fiyatlar", "Otomasyonlar", "Sistem"],
+      ["Ana Sayfa", "Müşteriler", "Finans", "Destek", "Ürünler", "Otomasyonlar", "Sistem"],
     );
   });
 });

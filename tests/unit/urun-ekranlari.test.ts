@@ -112,3 +112,56 @@ test("ölçüm düzeneği 'işlem bekleyenler' satırlarını kuraldan üretiyor
   /* Elle yazılmış başlık kalmadı. */
   assert.doesNotMatch(duzenek, /baslik: "Yanıt bekleyen talepler"/);
 });
+
+test("eski fiyat adresleri üçe ayrıldı", () => {
+  /*
+    27.11.2026, kapanış turu · madde 3. Fiyat yönetimi ürünün kendi
+    sekmesine inince /panel/platform/fiyatlar "nereye gittiği belirsiz"
+    bir kapı oldu. Üç adres üç ayrı şey yapıyor:
+
+      /panel/platform/fiyatlar              → Ürünler listesi
+      /panel/platform/fiyatlar?urun=<kod>   → o ürünün Fiyat basamakları
+      /panel/platform/fiyatlar?urun=ek      → ek hizmet düzenlemesi (yerinde)
+
+    "ek" bir ürün değil; gideceği bir ürün detayı yok, bu yüzden
+    yönlendirilmiyor. Karşılaştırma görünümü ?gorunum=karsilastirma
+    ile açılıyor ve kapısı Ürünler listesinin ⋯ menüsünde.
+  */
+  const sayfa = oku("app/panel/platform/fiyatlar/page.tsx");
+  assert.match(sayfa, /if \(seciliUrun !== "tumu" && seciliUrun !== "ek"\) \{\s*\n\s*redirect\(`\/panel\/platform\/urunler\/\$\{seciliUrun\}\?bolum=fiyat`\);/);
+  assert.match(sayfa, /if \(seciliUrun === "tumu" && gorunum !== "karsilastirma"\) redirect\("\/panel\/platform\/urunler"\);/);
+
+  /* Ek hizmet ve karşılaştırma girişleri Ürünler listesinin ⋯ menüsünde. */
+  const liste = oku("app/panel/platform/urunler/page.tsx");
+  assert.match(liste, /href="\/panel\/platform\/fiyatlar\?urun=ek">Ek hizmet fiyatları/);
+  assert.match(liste, /href="\/panel\/platform\/fiyatlar\?gorunum=karsilastirma">Fiyat karşılaştırma/);
+  /* Listenin kendi ?bolum=fiyat bağlantısı artık Fiyatlar'a değil
+     listeye düşüyor: o ekranın "fiyat" diye bir bölümü yok. */
+  assert.match(liste, /if \(bolum === "fiyat"\) redirect\("\/panel\/platform\/urunler"\);/);
+});
+
+test("toplu yayımın kapsamı onaydan önce yazılıyor", () => {
+  /*
+    27.11.2026 · madde 4. Yayım kuralı değişmedi (bekleyen BÜTÜN
+    taslaklar tek UPDATE); bölüm artık bir ürünün içinde durduğu için
+    kapsam ekranda yazılı olmalı: etkilenen ürünler ve değişiklik
+    sayıları listeleniyor, ayrı bir onay kutusu isteniyor ve ana
+    eylemin adı sayıyı söylüyor.
+  */
+  /* Önizleme 27.11.2026'da veri okumasından ayrıldı: saf bileşen
+     kendi dosyasında, ölçüm düzeneği onu örnek girdiyle çizebilsin
+     diye (dosya sunucu modülü import etmiyor). */
+  const bolum = oku("app/panel/platform/fiyatlar/fiyat-yayim-onizlemesi.tsx");
+  assert.match(bolum, /Bu liste tek seferde yayımlanır/);
+  assert.match(bolum, /name="kapsam-onayi"[\s\S]{0,40}required/);
+  assert.match(bolum, /değişikliklerinin de yayımlanacağını anladım/);
+  assert.match(bolum, /\{sayi\(degisiklikler\.length\)\} değişikliği yayımla/);
+  /* Ürün başına sayı: "başka ürünler de var" tek başına kapsamı
+     söylemiyor. */
+  assert.match(bolum, /kodunUrunu\(d\.kod\) === u\)\.length/);
+  /* Saf dosya SUNUCU modülü import etmemeli: ederse düzenek onu
+     çizemez ve onay penceresinin kanıtı yine taklide düşer. */
+  assert.doesNotMatch(bolum, /panel-context|urunler\/actions/);
+  /* Üretim tarafı yayım işlemini prop olarak geçiyor. */
+  assert.match(oku("app/panel/platform/fiyatlar/fiyat-duzenleme.tsx"), /eylem=\{fiyatlariYayimla\}/);
+});

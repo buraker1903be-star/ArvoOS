@@ -49,12 +49,26 @@ export type OtomasyonTonu = "success" | "warning" | "danger" | "neutral";
 export type Otomasyon = {
   anahtar: string;
   ad: string;
-  /** Satırın altındaki ikincil cümle: son koşma ya da sebebi. */
+  /** Satırın altındaki ikincil cümle: son çalışma ya da sebebi. */
   detay: string;
   durum: OtomasyonDurumu;
   etiket: string;
   ton: OtomasyonTonu;
+  /**
+   * Satırın taşıdığı zaman. `kapsam`a göre anlamı değişir:
+   * son çalışmanın sonucu ise O koşmanın zamanı, güncel sağlık ise
+   * SON BAŞARILI koşmanın zamanı ("en son ne zaman çalıştı").
+   */
   sonCalisma: Date | null;
+  /**
+   * DURUMUN KAPSAMI (27.11.2026).
+   *
+   * Kartın öteki satırları SON ÇALIŞMANIN sonucunu söylüyor; köprüden
+   * gelen iki durum ("Bağlantı kesildi", "Bağlı değil") ise ŞU ANKİ
+   * sağlık. İkisi aynı kartta yan yana duruyor ve ayrımı yazılmadan
+   * çelişiyormuş gibi okunuyordu: kayıt başarılıyken satır kırmızı.
+   */
+  kapsam: "son_calisma" | "su_an";
 };
 
 /**
@@ -66,6 +80,10 @@ export type DenemeKuyrugu = { grup: string; bekleyen: number };
 
 /** Köprülerin yapılandırma/erişim durumu (sayfanın zaten okuduğu bilgi). */
 export type KopruDurumu = {
+  /** Ürün adı — biliniyorsa satırda ADIYLA yazılıyor (27.11.2026).
+      "Bir ürüne ulaşılamıyor" yöneticiye hangi ürüne bakacağını
+      söylemiyordu; ad elimizdeyken gizlemenin gerekçesi yok. */
+  ad?: string;
   /** Anahtarı/ortam değişkeni eksik: bu bir arıza değil, kurulmamışlık. */
   yapilandirilmamis: boolean;
   /** Ulaşılamıyor: eşitleme her turda yeniden deniyor. */
@@ -153,13 +171,27 @@ export function otomasyonlar(durumlar: CronDurumu[], kopruler: KopruDurumu[] = [
 
     if (grup.anahtar === "esitleme") {
       /* Kayıt temiz ama köprü kapalıysa eşitleme boşa koşuyor. */
-      if (kopruler.some((k) => k.yapilandirilmamis)) {
-        return satir(grup.anahtar, grup.ad, "bagli_degil", "Bir ürün köprüsünün anahtarı tanımlı değil.", sonBasarili);
+      /* ÜRÜN ADIYLA (27.11.2026): ad elimizdeyse "bir ürün" denmiyor.
+         Birden çok ürün etkiliyse hepsi yazılıyor; adı olmayan köprü
+         için eski genel cümleye düşülüyor. */
+      const adlandir = (secilen: KopruDurumu[], tekil: string, cogul: string) => {
+        const adlar = secilen.map((k) => k.ad).filter((a): a is string => Boolean(a));
+        if (!adlar.length) return tekil;
+        return cogul.replace("{}", adlar.join(", "));
+      };
+      const ayarsiz = kopruler.filter((k) => k.yapilandirilmamis);
+      if (ayarsiz.length) {
+        return satir(grup.anahtar, grup.ad, "bagli_degil",
+          adlandir(ayarsiz, "Bir ürün köprüsünün anahtarı tanımlı değil.", "{} köprüsünün anahtarı tanımlı değil."),
+          sonBasarili, "su_an");
       }
-      if (kopruler.some((k) => k.kopuk)) {
+      const kopuk = kopruler.filter((k) => k.kopuk);
+      if (kopuk.length) {
         /* Eldeki bilgi bu: ürüne ulaşılamıyor. Bir sonraki koşmanın
            ne yapacağı kayıtta yazmıyor. */
-        return satir(grup.anahtar, grup.ad, "baglanti_kesildi", "Bir ürüne ulaşılamıyor; kopya eskiyor.", sonBasarili);
+        return satir(grup.anahtar, grup.ad, "baglanti_kesildi",
+          adlandir(kopuk, "Bir ürüne ulaşılamıyor; kopya eskiyor.", "{} ürününe ulaşılamıyor; kopya eskiyor."),
+          sonBasarili, "su_an");
       }
     }
 
@@ -181,8 +213,9 @@ function sonCalismaCumlesi(toplam: number, kayitsiz: number): string {
   return `${toplam - kayitsiz}/${toplam} iş çalıştı; kalanının kaydı yok.`;
 }
 
-function satir(anahtar: string, ad: string, durum: OtomasyonDurumu, detay: string, sonCalisma: Date | null): Otomasyon {
-  return { anahtar, ad, detay, durum, sonCalisma, ...ETIKET[durum] };
+function satir(anahtar: string, ad: string, durum: OtomasyonDurumu, detay: string, sonCalisma: Date | null,
+  kapsam: Otomasyon["kapsam"] = "son_calisma"): Otomasyon {
+  return { anahtar, ad, detay, durum, sonCalisma, kapsam, ...ETIKET[durum] };
 }
 
 /**

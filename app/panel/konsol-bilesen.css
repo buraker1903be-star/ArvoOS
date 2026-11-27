@@ -19,7 +19,16 @@
 .konsol-bilesen,
 .os-root .konsol-bilesen{
   --kb-h:40px; --kb-h-sik:32px; --kb-h-dokunma:44px;
-  --kb-r:var(--r-md); --kb-dolgu:12px;
+  /*
+    KONTROL YARIÇAPI 4 px (27.11.2026, Tur 2 · madde 4). Kaynak
+    ArvoLab'in os5 katmani (--os5-kontrol-r: 4px). Dosyanin basindaki
+    not "dusuk yaricap" diyordu ama deger --r-md, yani 10 px'ti: iki
+    aile yan yana olculunce fark cikti (scripts/bilesen-karsilastirma).
+    ArvoOS'un token setinde 4 px yok (en kucugu --r-xs 6 px), o yuzden
+    deger burada, YALNIZCA konsol kontrol ailesinde yazili — paneldeki
+    kart ve yuzey yariçaplari degismedi.
+  */
+  --kb-r:4px; --kb-dolgu:12px;
   --kb-kenarlik:var(--line); --kb-kenarlik-hover:var(--muted);
   --kb-zemin:var(--surface-raised); --kb-zemin-pasif:var(--surface-2);
   --kb-yazi:var(--ink); --kb-ipucu:var(--muted); --kb-odak:var(--primary);
@@ -31,7 +40,7 @@
   display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
   min-height:var(--kb-h);padding:0 var(--sp-4);
   border:1px solid transparent;border-radius:var(--kb-r);
-  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-semibold);line-height:1.2;
+  font:inherit;font-size:var(--fs-base);font-weight:var(--fw-semibold);line-height:1.2;
   text-decoration:none;white-space:nowrap;cursor:pointer;
   transition:background-color .12s ease,border-color .12s ease,color .12s ease;
 }
@@ -55,16 +64,16 @@
 
 /* ---------- Alan: etiket + kontrol + açıklama/hata ---------- */
 .kb-alan{display:grid;gap:6px;min-width:0}
-.kb-etiket{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--kb-yazi)}
+.kb-etiket{font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--kb-yazi)}
 .kb-zorunlu{margin-left:2px;color:var(--danger)}
-.kb-aciklama{font-size:var(--fs-sm);line-height:1.45;color:var(--kb-ipucu)}
-.kb-hata-metni{font-size:var(--fs-sm);line-height:1.45;color:var(--danger)}
+.kb-aciklama{font-size:var(--fs-base);line-height:1.45;color:var(--kb-ipucu)}
+.kb-hata-metni{font-size:var(--fs-base);line-height:1.45;color:var(--danger)}
 
 .kb-girdi,.kb-secim,.kb-metin{
   width:100%;min-height:var(--kb-h);padding:0 var(--kb-dolgu);
   border:1px solid var(--kb-kenarlik);border-radius:var(--kb-r);
   background:var(--kb-zemin);color:var(--kb-yazi);
-  font:inherit;font-size:var(--fs-sm);
+  font:inherit;font-size:var(--fs-base);
   transition:border-color .12s ease,box-shadow .12s ease;
 }
 .kb-girdi::placeholder,.kb-metin::placeholder{color:var(--kb-ipucu)}
@@ -79,7 +88,7 @@
 .kb-secim{appearance:none;padding-right:36px;cursor:pointer}
 .kb-secim-ok{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--kb-ipucu);pointer-events:none}
 
-.kb-onay{display:inline-flex;align-items:center;gap:10px;min-height:var(--kb-h-dokunma);font-size:var(--fs-sm);color:var(--kb-yazi);cursor:pointer}
+.kb-onay{display:inline-flex;align-items:center;gap:10px;min-height:var(--kb-h-dokunma);font-size:var(--fs-base);color:var(--kb-yazi);cursor:pointer}
 .kb-onay input{width:16px;height:16px;margin:0;flex:none;accent-color:var(--primary);cursor:pointer}
 .kb-onay input:focus-visible{outline:none;box-shadow:var(--kb-odak-halka);border-radius:2px}
 .kb-onay input:disabled,.kb-onay input:disabled + span{cursor:not-allowed;opacity:.55}
@@ -88,7 +97,7 @@
 .kb-sekmeler{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line-soft)}
 .kb-sekme{
   position:relative;min-height:var(--kb-h-dokunma);padding:0 var(--sp-3);
-  border:0;background:transparent;font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);
+  border:0;background:transparent;font:inherit;font-size:var(--fs-base);font-weight:var(--fw-medium);
   color:var(--kb-ipucu);cursor:pointer;transition:color .12s ease;
 }
 .kb-sekme:hover{color:var(--kb-yazi)}
@@ -97,11 +106,11 @@
 .kb-sekme:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--kb-odak);border-radius:var(--kb-r)}
 
 /* ---------- Tablo ---------- */
-.kb-tablo{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+.kb-tablo{width:100%;border-collapse:collapse;font-size:var(--fs-base)}
 .kb-tablo thead th{
   padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--line);
   background:var(--surface-2);color:var(--kb-ipucu);
-  font-size:var(--fs-sm);font-weight:var(--fw-semibold);text-align:left;white-space:nowrap;
+  font-size:var(--fs-base);font-weight:var(--fw-semibold);text-align:left;white-space:nowrap;
 }
 .kb-tablo tbody td,.kb-tablo tbody th{padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--line-soft);text-align:left}
 .kb-tablo tbody tr:last-child td,.kb-tablo tbody tr:last-child th{border-bottom:0}
@@ -113,10 +122,10 @@
 .kb-durum-simge{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--surface-raised);color:var(--kb-ipucu)}
 .kb-durum[data-tur="hata"] .kb-durum-simge{background:var(--danger-soft);color:var(--danger)}
 .kb-durum-baslik{margin:0;font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--kb-yazi)}
-.kb-durum-aciklama{margin:0;max-width:46ch;font-size:var(--fs-sm);line-height:1.5;color:var(--kb-ipucu)}
+.kb-durum-aciklama{margin:0;max-width:46ch;font-size:var(--fs-base);line-height:1.5;color:var(--kb-ipucu)}
 
 /* ---------- Bildirim ---------- */
-.kb-bildirim{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--kb-kenarlik);border-radius:var(--kb-r);background:var(--surface-2);color:var(--kb-yazi);font-size:var(--fs-sm);line-height:1.5}
+.kb-bildirim{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--kb-kenarlik);border-radius:var(--kb-r);background:var(--surface-2);color:var(--kb-yazi);font-size:var(--fs-base);line-height:1.5}
 .kb-bildirim[data-ton="hata"]{border-color:var(--danger);background:var(--danger-soft)}
 .kb-bildirim[data-ton="uyari"]{border-color:var(--warning);background:var(--warning-soft)}
 .kb-bildirim[data-ton="basari"]{border-color:var(--success);background:var(--success-soft)}

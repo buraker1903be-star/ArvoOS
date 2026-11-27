@@ -191,14 +191,28 @@ a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 4
 }
 
 /*
-  TELEFON: ürün etiketi ile zaman ikincil satıra iniyor, eylem sağda
-  kalıyor. Satır 52 px'ten 64 px'e çıkıyor; dokunma hedefi büyüyor.
+  TELEFON: satır iki hatta yayılıyor, eylem sağda kalıyor. Satır
+  52 px'ten 64 px'e çıkıyor; dokunma hedefi büyüyor.
+
+  ÜRÜN ETİKETİ GİZLENMİYOR (27.11.2026, inceleme bulgusu). Kural
+  `display:none` yazıyordu: telefonda üç karar satırı üç FARKLI ürüne
+  ait olduğu hâlde ekranda hangisinin hangi ürün olduğu yazmıyordu —
+  "Yaklaşan yenileme" tek başına hangi üründe olduğunu söylemiyor.
+  Üstelik kural öne çıkan işin rozetini de götürüyordu. Rozet artık
+  satırın ilk hattında, iş adıyla birlikte sarıyor.
+
+  Zaman hâlâ gizli: o ikincil bir bilgi ve ürün etiketiyle aynı yere
+  sığmıyor; öne çıkan işte ise kendi satırında duruyor.
 */
 @media (max-width: 560px) {
   .kak-kart { padding: var(--sp-4); }
-  .kak-satir { align-items: flex-start; min-height: 64px; }
-  .kak-urun { display: none; }
-  .kak-zaman { display: none; }
+  /* TEK HAT: rozet · gövde · ok. flex-wrap denendi ve ok alt satıra
+     düşüp satırı 130 px'e çıkardı; gövde daralıp metni sarsın yeter. */
+  .kak-satir { align-items: flex-start; min-height: 64px; gap: var(--sp-2); }
+  .kak-urun { align-self: flex-start; margin-top: 2px; }
+  .kak-urun-bos { display: none; }
+  .kak-govde { min-width: 0; flex: 1 1 auto; }
+  .kak-satir > .kak-zaman { display: none; }
   .kak-govde b { white-space: normal; }
   .kak-govde small { white-space: normal; }
   .kak-eylem { align-self: center; }
@@ -217,5 +231,99 @@ a.kak-satir:hover .kak-eylem { border-color: color-mix(in srgb, var(--primary) 4
 
   Kaydırmayı içeriğe vermek üst çubuğu ve sol menüyü de yerinde tutuyor.
 */
-.os-root .panel-content:has(> .dash-sabit.konsol-ana){overflow-y:auto;overscroll-behavior:contain}
+/*
+  27.11.2026: kural overflow-y veriyordu ama YÜKSEKLİK ve DOCK PAYI
+  yoktu. Kap içerik kadar uzadığı için overflow'un kaydıracağı bir
+  taşma oluşmuyor; 390×844'te içerik 844 px'e çıkıp alt çubuğun
+  (dock üstü 781) altında 63 px kalıyordu — "Otomasyonlar"ın son
+  satırı hiçbir yoldan okunamıyordu. Öteki konsol ekranlarındaki
+  kalıbın aynısı (urun-detay.css, urun-listesi.css, fiyat-karsilastirma.css).
+*/
+.os-root .panel-content:has(> .dash-sabit.konsol-ana){
+  height:calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+  padding-bottom:var(--os-dock-space);
+  display:flex;
+  flex-direction:column;
+  box-sizing:border-box;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
 .konsol-ana.dash-sabit{flex:0 0 auto}
+
+/*
+  ÖNE ÇIKAN İŞ (27.11.2026). Kuyruğun ilk kalemi sayfanın en belirgin
+  alanı: tür ve kayıt büyük, altında zaman, sağda TEK birincil düğme.
+  Eskiden dört kalem eşit ağırlıkta satırlardı ve dördünün de sağında
+  bir düğme vardı — ekranda dört "birincil" eylem yan yana duruyordu.
+
+  Kaynak ArvoLab'ın ana sayfasındaki "Kaldığınız yer" bloğu
+  (app/dashboard/ana-sayfa-icerik.tsx, .pw-devam): solda metin, sağda
+  eylem, düz yüzey, kart içinde kart yok.
+*/
+.kak-one {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding: var(--sp-3) 0 var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+.kak-one-metin { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 260px; }
+.kak-one-tur { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: 0; }
+.kak-one-tur > span:last-child { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--ink); }
+.kak-one-kayit { margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); }
+.kak-one .kak-zaman { color: var(--muted); font-size: var(--fs-micro); }
+.kak-one-eylem { flex: none; }
+/* Sayaç: kaç iş beklediğini başlıkta söyler, kalan satırlar altta. */
+.kak-sayac { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  /* Telefonda düğme tam genişlik: 120 px'lik bir düğme metnin yanında
+     sıkışıp iki satıra sarıyordu. */
+  .kak-one { align-items: stretch; }
+  .kak-one-eylem { width: 100%; justify-content: center; }
+}
+
+/*
+  EKSİK KAYNAK UYARISI (27.11.2026, inceleme bulgusu).
+
+  Eskiden kartın ALTINDA, boş durum metniyle aynı sınıfta duruyordu ve
+  ikisi aynı anda çıkabiliyordu: "Bekleyen karar yok." hemen altında
+  "Destek talepleri okunamadı". Yönetici "iş yok mu, bilmiyor muyuz?"
+  diye soruyordu. Artık iki hâl birbirini dışlıyor (karar-kuyrugu.ts)
+  ve uyarı LİSTENİN ÜSTÜNDE: altta dururken, kalemleri okuyup kapatan
+  kullanıcı listenin eksik olduğunu hiç görmüyordu.
+
+  Ton UYARI, hata değil: okuma düşmüş olabilir ama ekranda yanlış bir
+  sayı yok — eksik olan bilgi.
+*/
+.kak-eksik {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--warning-soft);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+}
+.kak-eksik b { font-weight: var(--fw-semibold); }
+.kak-eksik span { color: var(--ink-soft); }
+
+/*
+  OTOMASYON SATIRINDA ZAMAN VE KAPSAM (27.11.2026, kapanış turu · madde 2).
+
+  Kartın varsayılan kapsamı SON ÇALIŞMA; köprüden gelen iki satır
+  ("Bağlantı kesildi", "Bağlı değil") ise ŞU ANKİ sağlık. Kayıt
+  başarılıyken satırın kırmızı olması bu yüzden çelişki değil —
+  ama yazılmadığı sürece öyle okunuyordu. Rozetin altındaki küçük
+  etiket bunu söylüyor; gövdedeki ikinci satır da "en son ne zaman
+  başarılı çalıştı"yı veriyor, çünkü kopyanın ne kadar eskidiğini
+  ancak o söylüyor.
+*/
+.kak-zaman-alt { color: var(--dim); font-size: var(--fs-micro); }
+.kak-rozet-yigin { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.kak-kapsam { color: var(--muted); font-size: var(--fs-micro); white-space: nowrap; }
