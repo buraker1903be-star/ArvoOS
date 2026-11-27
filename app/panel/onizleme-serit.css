@@ -12,7 +12,7 @@
 .onizleme-serit {
   position: fixed;
   z-index: 80;
-  left: var(--sp-3);
+  right: var(--sp-3);
   bottom: calc(var(--os-dock-space, 0px) + var(--sp-3));
   max-width: min(420px, calc(100vw - 2 * var(--sp-3)));
   display: flex;
