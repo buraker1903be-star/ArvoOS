@@ -692,8 +692,21 @@ const MUSTERI_KAYITLARI = [
 function Musteriler() {
   const sorgu = useSearchParams();
   const secim = sorgu.get("secili");
+  /* SÜZGEÇ de adreste: seçimle birlikte korunduğu ve kaydı listeden
+     düşürebildiği için üç durumun hepsi düzenekte çizilebiliyor. */
+  const tur = sorgu.get("tur");
+  const liste = tur ? MUSTERI_KAYITLARI.filter((m) => m.tur === tur) : MUSTERI_KAYITLARI;
   const secili = MUSTERI_KAYITLARI.find((m) => m.secim === secim) ?? null;
-  const adres = (sc) => "/panel/platform/musteriler" + (sc ? "?secili=" + encodeURIComponent(sc) : "");
+  const listede = Boolean(secili && liste.some((m) => m.secim === secili.secim));
+  const adres = (yeni) => {
+    const p = new URLSearchParams();
+    const t = yeni && "tur" in yeni ? yeni.tur : tur;
+    const sc = yeni && "secili" in yeni ? yeni.secili : secim;
+    if (t) p.set("tur", t);
+    if (sc) p.set("secili", sc);
+    const q = p.toString();
+    return "/panel/platform/musteriler" + (q ? "?" + q : "");
+  };
   return (
     <main className="plt talep cari ekip konsol-musteriler">
       <header className="talep-bas">
@@ -709,20 +722,22 @@ function Musteriler() {
         <section className="kl-liste" aria-label="Müşteri listesi">
           <div className="ekip-suzgec talep-suzgec ek-arac">
             <input className="urd-ara" type="search" placeholder="Müşteri ara…" aria-label="Müşteri ara" />
-            <select className="urd-suzgec-sec" aria-label="Durum" defaultValue="">
-              <option value="">Durum: Tümü</option>
-              <option value="aktif">Aktif</option>
-            </select>
+            {/* Süzgeç BAĞLANTI: seçimi koruyor, adres paylaşılabilir. */}
+            <nav className="ek-segment" aria-label="Tür">
+              <Link href={adres({ tur: null })} className={!tur ? "is-active" : undefined}>Tümü</Link>
+              <Link href={adres({ tur: "Kurumsal" })} className={tur === "Kurumsal" ? "is-active" : undefined}>Kurumsal</Link>
+              <Link href={adres({ tur: "Grup markası" })} className={tur === "Grup markası" ? "is-active" : undefined}>Grup markası</Link>
+            </nav>
           </div>
           <div className="kl-liste-govde">
             <div className="talep-tablo">
               <table className="crm-data-table" data-cols="konsol-musteri">
                 <thead><tr><th>Müşteri</th><th>Ürün</th><th>Durum</th><th></th></tr></thead>
                 <tbody>
-                  {MUSTERI_KAYITLARI.map((m) => (
+                  {liste.map((m) => (
                     <tr key={m.secim} className={m.secim === secim ? "is-secili" : undefined}>
                       <td data-label="Müşteri">
-                        <Link className="crm-row-link ek-kisi" href={adres(m.secim)}
+                        <Link className="crm-row-link ek-kisi" href={adres({ secili: m.secim })}
                           aria-current={m.secim === secim ? "true" : undefined} aria-label={m.ad + " kaydını seç"}>
                           <span className="ek-avatar" aria-hidden="true">{m.bas}</span>
                           <span className="ek-kisi-metin">
@@ -744,10 +759,16 @@ function Musteriler() {
         <aside className="kl-panel" aria-label={secili ? secili.ad + " önizlemesi" : "Müşteri istatistikleri"}>
           {secili ? (
             <>
-              <Link className="kl-geri" href={adres(null)}><span aria-hidden="true">‹</span> Listeye dön</Link>
-              <KonsolPanelBas baslik={secili.ad} durum={{ etiket: "Aktif müşteri", ton: "success" }} kapatAdresi={adres(null)} />
+              <Link className="kl-geri" href={adres({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+              {!listede ? (
+                <p className="kl-suzgec-disi">
+                  Bu kayıt geçerli süzgeçte görünmüyor.{" "}
+                  <Link href={adres({ tur: null })}>Süzgeci temizle →</Link>
+                </p>
+              ) : null}
+              <KonsolPanelBas baslik={secili.ad} durum={{ etiket: "Aktif müşteri", ton: "success" }} kapatAdresi={adres({ secili: null })} />
               <KonsolPanelSekmeleri etkin="bilgiler" sekmeler={[
-                { anahtar: "bilgiler", etiket: "Genel Bilgiler", adres: adres(secili.secim) },
+                { anahtar: "bilgiler", etiket: "Genel Bilgiler", adres: adres({ secili: secili.secim }) },
                 { anahtar: "kullanicilar", etiket: "Kullanıcılar", adres: "/panel/platform/musteriler/1?pencere=kullanicilar" },
                 { anahtar: "urunler", etiket: "Lisanslar", adres: "/panel/platform/musteriler/1?pencere=urunler" },
                 { anahtar: "hareketler", etiket: "Geçmiş", adres: "/panel/platform/musteriler/1?pencere=hareketler" },
@@ -765,6 +786,12 @@ function Musteriler() {
               <div className="kl-panel-eylem">
                 <Link className="panel-primary" href="/panel/platform/musteriler/1">Müşteri kartını aç</Link>
               </div>
+            </>
+          ) : secim ? (
+            <>
+              <Link className="kl-geri" href={adres({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+              <KonsolPanelBos ton="uyari" baslik="Kayıt bulunamadı"
+                aciklama="Bu kayıt silinmiş ya da artık erişilebilir değil. Listeden başka bir kayıt seçebilirsiniz." />
             </>
           ) : (
             <KonsolPanelBos baslik="Kayıt seçilmedi"

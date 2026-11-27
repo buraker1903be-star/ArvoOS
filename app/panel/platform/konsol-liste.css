@@ -204,3 +204,24 @@
 
 /* Panelin baskın eylemi en altta, kendi hattında. */
 .kl-panel-eylem { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line-soft); }
+
+/*
+  LİSTE ARAÇ ÇUBUĞU SOLDAN AKAR (27.11.2026). .ek-arac'ın varsayılanı
+  space-between (hr.css): arama kutusu solda, durum süzgeci listenin
+  öbür ucuna kaçıyordu ve ikisi bir arada okunmuyordu. Aynı tuzağa
+  Fiyatlar karşılaştırmasında da düşülmüştü; iki sınıf birden
+  yazılıyor çünkü tek sınıf aynı özgüllükte kaybediyor.
+*/
+.kl-liste > .ek-arac { justify-content: flex-start; gap: var(--sp-3); flex-wrap: wrap; padding-bottom: var(--sp-3); }
+.kl-liste > .ek-arac .urd-ara { flex: 1 1 220px; max-width: 320px; }
+
+/* Süzgecin dışında kalan seçili kayıt: panelin başında, uyarı tonunda. */
+.kl-suzgec-disi {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--warning-soft);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+}
