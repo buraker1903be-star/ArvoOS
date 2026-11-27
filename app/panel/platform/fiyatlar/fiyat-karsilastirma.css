@@ -1,0 +1,26 @@
+/*
+  FİYATLAR — ÜRÜNLER ARASI KARŞILAŞTIRMA (27.11.2026, brief §4).
+
+  Süzgeç satırı kompakt: iki segment yan yana, adları solunda. Dar
+  ekranda alt alta geçiyor — üç segment 390 px'de tek satıra sığmıyor
+  ve yatay kaydırma bu ekranda kabul değil.
+
+  Renk ve boşluk token'dan (panel-tokens.css); ham renk yok.
+*/
+
+.fk-suzgec {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-3) 0 0;
+}
+.fk-suzgec-ad { color: var(--muted); font-size: var(--fs-sm); }
+
+.fk-ac { color: var(--accent); font-weight: var(--fw-medium); text-decoration: none; white-space: nowrap; }
+.fk-ac:hover { text-decoration: underline; }
+.fk-ac:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+
+@media (max-width: 760px) {
+  .fk-suzgec { align-items: stretch; flex-direction: column; gap: var(--sp-2); }
+}

@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi } from "@/lib/site/pricing";
+import { karsilastirmaSatirlari, suzgecVarMi, FATURA_DONEMLERI, FIYAT_DURUMLARI, type KarsilastirmaPlani } from "@/lib/konsol/fiyat-karsilastirma";
+import "./fiyat-karsilastirma.css";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
 import { fiyatlariYayimla, koddakiDegerleriTaslagaAl, taslagiGeriAl, taslagiKaydet, yayindanKaldir } from "../urunler/actions";
 import { paketLimitleriOku } from "../paket-limitleri-oku";
@@ -135,20 +137,27 @@ type Kiraci = {
 };
 
 export default async function FiyatlarPage({ searchParams }: {
-  searchParams: Promise<{ bolum?: string; urun?: string }>;
+  searchParams: Promise<{ bolum?: string; urun?: string; fatura?: string; durum?: string }>;
 }) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "urunler");
 
-  const { bolum, urun } = await searchParams;
+  const { bolum, urun, fatura, durum } = await searchParams;
   const secili = bolum === "paket" ? "paket" : bolum === "gecmis" ? "gecmis" : "liste";
   /* Paket limitleri 02.11.2026'dan beri veritabanında, konsoldan düzenleniyor. */
   const paketLimitleri = await paketLimitleriOku(supabase);
   /* Fiyat listesinde tek ürün açık (?urun=): dört ürün ve ek hizmetler alt
      alta 2.200 piksel tutuyordu (14.10.2026, "kompakt, sade, premium"). */
   const LISTE_URUNLERI = ["arvoos", "arc", "randevu", "arvolab", "ek"] as const;
-  const seciliUrun = (LISTE_URUNLERI as readonly string[]).includes(urun ?? "") ? urun! : "arvoos";
+  /*
+    VARSAYILAN ARTIK KARŞILAŞTIRMA (27.11.2026, brief §4). Sol menüdeki
+    "Fiyatlar" buraya geliyor ve yöneticinin ilk işi dört ürünü yan yana
+    görmek; tek ürünün DÜZENLEME tablosu ?urun=<kod> ile açılıyor.
+    Eski bağlantılar (?urun=arvoos) aynı ekranı açmaya devam ediyor.
+  */
+  const seciliUrun = (LISTE_URUNLERI as readonly string[]).includes(urun ?? "") ? urun! : "tumu";
+  const karsilastirma = seciliUrun === "tumu";
 
   const [{ data: kiraciSatirlari, error: kiraciHatasi }, { data: fiyatSatirlari, error: fiyatHatasi }] = await Promise.all([
     /* SAYFALI: paket dağılımı ve "kaç kurum bu pakette" sayıları
@@ -246,12 +255,65 @@ export default async function FiyatlarPage({ searchParams }: {
     gecmis: { baslik: "Fiyat geçmişi", alt: "Her taslak, yayım, geri alma ve koda dönüş; son otuz kayıt" },
   } as const;
   const bas = BOLUM_ADI[secili];
+
+  /*
+    KARŞILAŞTIRMA SATIRLARI (27.11.2026). Plan kataloğu koddan
+    (lib/site/pricing), tutarlar yayımlanmış listeden; kural saf ve
+    testli (lib/konsol/fiyat-karsilastirma). Ek hizmetlerin yıllığı
+    yok, aylık satırları karşılaştırmaya giriyor.
+  */
+  const karsilastirmaPlanlari: KarsilastirmaPlani[] = [
+    ...PLANS.map((plan) => {
+      const kayit = kayitlar.get(plan.code);
+      return {
+        urun: plan.product,
+        urunAdi: urunAdi(plan.product),
+        kod: plan.code,
+        ad: plan.ad.tr,
+        birim: plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına",
+        aylik: cozulmus.get(plan.code) ?? null,
+        yillik: (cozulmus.get(plan.code) ?? null) === null ? null : (cozulmus.get(plan.code) as number) * YILLIK_ODENEN_AY,
+        yayimli: Boolean(kayit?.yayimlandi_at),
+        bekleyen: Boolean(kayit?.taslak_bekliyor),
+      };
+    }),
+    ...ADD_ONS.map((kalem) => {
+      const kayit = kayitlar.get(kalem.code);
+      return {
+        urun: "ek",
+        urunAdi: "Ek hizmetler",
+        kod: kalem.code,
+        ad: EK_KALEM_ADI[kalem.code] ?? kalem.code,
+        birim: "ek kalem",
+        aylik: cozulmus.get(kalem.code) ?? null,
+        /* Ek kalemler aylık: yıllık bedelleri yok. */
+        yillik: null,
+        yayimli: Boolean(kayit?.yayimlandi_at),
+        bekleyen: Boolean(kayit?.taslak_bekliyor),
+      };
+    }),
+  ];
+  const suzgec = { urun: seciliUrun, donem: fatura, durum };
+  const karsilastirmaListesi = karsilastirmaSatirlari(karsilastirmaPlanlari, suzgec);
+  const karsilastirmaSuzgecli = suzgecVarMi(suzgec);
+  /* Süzgeç bağlantısı ötekileri KORUR: dönem seçip durumu değiştiren
+     kullanıcı dönemi kaybetmiyor. */
+  const suzgecAdresi = (alan: "urun" | "fatura" | "durum", deger: string) => {
+    const p = new URLSearchParams();
+    const simdiki = { urun: seciliUrun === "tumu" ? "" : seciliUrun, fatura: fatura ?? "", durum: durum ?? "" };
+    simdiki[alan] = deger;
+    if (simdiki.urun) p.set("urun", simdiki.urun);
+    if (simdiki.fatura) p.set("fatura", simdiki.fatura);
+    if (simdiki.durum) p.set("durum", simdiki.durum);
+    const metin = p.toString();
+    return metin ? `/panel/platform/fiyatlar?${metin}` : "/panel/platform/fiyatlar";
+  };
   return <main className={`plt talep cari ekip urun-sayfa${secili === "liste" ? " liste-sayfa" : ""}`}>
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">ÜRÜNLER VE FİYATLAR</small>
-        <h1>{bas.baslik}</h1>
-        <p className="ek-alt">{bas.alt}</p>
+        <h1>{secili === "liste" && karsilastirma ? "Fiyatlar" : bas.baslik}</h1>
+        <p className="ek-alt">{secili === "liste" && karsilastirma ? "Dört ürünün planları ve ek hizmetler bir arada; düzenleme ürün seçilince açılır." : bas.alt}</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/urunler">Ürünler</Link>
@@ -285,12 +347,15 @@ export default async function FiyatlarPage({ searchParams }: {
         <section className="panel-card talep-bilgi" aria-label="Fiyat listesi">
           <div className="ekip-suzgec talep-suzgec ek-arac">
             <nav className="ek-segment" aria-label="Ürün">
+            {/* "Tümü" karşılaştırma görünümü: süzgecin ürün ayağı. */}
+            <Link href={suzgecAdresi("urun", "")} className={karsilastirma ? "is-active" : undefined}
+              aria-current={karsilastirma ? "page" : undefined}>Tümü</Link>
             {LISTE_URUNLERI.map((kod) => {
               const bekleyen = kod === "ek"
                 ? degisiklikler.filter((d) => d.urun === "ek").length
                 : degisiklikler.filter((d) => d.urun === kod).length;
               return (
-                <Link key={kod} href={`/panel/platform/fiyatlar?urun=${kod}`} className={seciliUrun === kod ? "is-active" : undefined}
+                <Link key={kod} href={suzgecAdresi("urun", kod)} className={seciliUrun === kod ? "is-active" : undefined}
                   aria-current={seciliUrun === kod ? "page" : undefined}>
                   {kod === "ek" ? "Ek hizmetler" : urunAdi(kod as Parameters<typeof urunAdi>[0])}
                   {bekleyen ? <small className="talep-uyari">{bekleyen} taslak</small> : null}
@@ -306,6 +371,80 @@ export default async function FiyatlarPage({ searchParams }: {
             okunamazsa site fiyatsız kalmıyor: yayımlanmış bir fiyat
             listesinde boş hücre, yanlış rakamdan da kötüdür.
           */}
+          {/*
+            KARŞILAŞTIRMA GÖRÜNÜMÜ (27.11.2026, brief §4): ürün seçilmeden
+            dört ürün ve ek hizmetler tek tabloda. Faturalama dönemi ve
+            durum süzgeçleri ADRESTE — süzülmüş bir liste paylaşılabilir
+            ve yenileme süzgeci kaybetmiyor.
+          */}
+          {karsilastirma ? (
+            <>
+              <div className="fk-suzgec" role="group" aria-label="Fiyat süzgeçleri">
+                <span className="fk-suzgec-ad">Faturalama dönemi</span>
+                <nav className="ek-segment" aria-label="Faturalama dönemi">
+                  <Link href={suzgecAdresi("fatura", "")} className={!fatura ? "is-active" : undefined} aria-current={!fatura ? "page" : undefined}>Hepsi</Link>
+                  {FATURA_DONEMLERI.map((d) => (
+                    <Link key={d.kod} href={suzgecAdresi("fatura", d.kod)} className={fatura === d.kod ? "is-active" : undefined}
+                      aria-current={fatura === d.kod ? "page" : undefined}>{d.ad}</Link>
+                  ))}
+                </nav>
+                <span className="fk-suzgec-ad">Durum</span>
+                <nav className="ek-segment" aria-label="Fiyat durumu">
+                  <Link href={suzgecAdresi("durum", "")} className={!durum ? "is-active" : undefined} aria-current={!durum ? "page" : undefined}>Hepsi</Link>
+                  {FIYAT_DURUMLARI.map((d) => (
+                    <Link key={d.kod} href={suzgecAdresi("durum", d.kod)} className={durum === d.kod ? "is-active" : undefined}
+                      aria-current={durum === d.kod ? "page" : undefined}>{d.ad}</Link>
+                  ))}
+                </nav>
+              </div>
+              {karsilastirmaListesi.length ? (
+                <div className="talep-tablo">
+                  <table className="crm-data-table" data-cols="fk-karsilastirma">
+                    <thead><tr><th>Ürün</th><th>Plan</th><th>Dönem</th><th className="crm-col-amount">Ücret</th><th>Durum</th><th></th></tr></thead>
+                    <tbody>
+                      {karsilastirmaListesi.map((satir) => {
+                        const href = satir.urun === "ek"
+                          ? suzgecAdresi("urun", "ek")
+                          : `/panel/platform/urunler/${satir.urun}?bolum=fiyat`;
+                        const ton = satir.durum === "bekliyor" ? "warning" : satir.durum === "yayimli" ? "success" : "neutral";
+                        return (
+                          <tr key={satir.anahtar}>
+                            <td data-label="Ürün"><span className="crm-table-title">{satir.urunAdi}</span></td>
+                            <td data-label="Plan"><span className="crm-table-title">{satir.planAdi}</span><span className="crm-table-sub">{satir.birim}</span></td>
+                            <td data-label="Dönem"><span className="crm-table-sub">{satir.donemAdi}</span></td>
+                            {/* Tutar ile dönem BİRLİKTE okunuyor: süzgeç
+                                kalktığında aynı planın iki satırı yan yana
+                                duruyor ve hangisinin hangisi olduğu
+                                hücreden anlaşılmalı. */}
+                            <td className="crm-col-amount" data-label="Ücret">
+                              <span className="crm-table-title">{satir.tutar === null ? "Teklif" : para(satir.tutar)}</span>
+                              <small>{satir.donem === "yillik" ? "/ yıl" : "/ ay"}</small>
+                            </td>
+                            <td data-label="Durum"><span className="status-pill" data-tone={ton}>{satir.durumAdi}</span></td>
+                            <td className="crm-table-actions"><Link className="fk-ac" href={href}>Aç →</Link></td>
+                            <MobilSatir href={href} baslik={`${satir.urunAdi} · ${satir.planAdi}`}
+                              durum={{ etiket: satir.durumAdi, ton }}
+                              alt={[satir.donemAdi, satir.tutar === null ? "Teklif" : para(satir.tutar), satir.birim]} />
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                /* ÜÇ BOŞ DURUM AYRI: süzgeç eşleşmedi · ürünün planı yok ·
+                   kaynak okunamadı. Üçüncüsü yukarıda fırlatılıyor
+                   (fiyatHatasi): bu sayfadan müşteriye giden fiyat
+                   yayımlanıyor, sessiz boş liste gösterilemez. */
+                <div className="crm-empty-state talep-bos-kutu ek-bos">
+                  <h2>{karsilastirmaSuzgecli ? "Süzgece uyan plan yok" : "Tanımlı plan yok"}</h2>
+                  <p>{karsilastirmaSuzgecli
+                    ? "Faturalama dönemi, durum ya da ürün süzgecini değiştirin."
+                    : "Fiyat kataloğunda plan tanımlı değil."}</p>
+                </div>
+              )}
+            </>
+          ) : (
           <div className="talep-tablo">
           <table className="crm-data-table" data-cols="ur-fiyat">
             <thead><tr><th>Basamak</th><th>Kaynak</th><th className="crm-col-amount">Yayında</th><th className="fn-eylem-bas">Taslak</th></tr></thead>
@@ -323,6 +462,7 @@ export default async function FiyatlarPage({ searchParams }: {
             </tbody>
           </table>
           </div>
+          )}
         </section>
 
         <div className="liste-sag">

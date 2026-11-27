@@ -3,23 +3,46 @@
   Sayfa kendi sınıfının CSS'ini kendi import ediyor (AGENTS.md): sekme
   başka bir rotadan açıldığında stil eksik kalmasın.
 */
-.ugb{display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-4) var(--sp-5) var(--sp-5)}
-.ugb-serit{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:var(--sp-4);margin:0;
-  padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface)}
-.ugb-serit>div{display:flex;flex-direction:column;gap:2px;min-width:0}
-.ugb-serit dt{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
-.ugb-serit small{color:var(--muted);font-size:var(--fs-micro)}
+/* Bölüm artık sayfanın kendi sütununda: kart kabuğu ve iç boşluk
+   urun-detay.css'te, burada yalnızca bölümün içi var (27.11.2026). */
+.ugb{display:flex;flex-direction:column;gap:var(--sp-4)}
+
+/*
+  ÜÇ EŞİT METRİK KARTI (27.11.2026, onaylı mockup). Eskiden tek bir
+  kutunun içinde üç sütundu; mockup üç AYRI yüzey istiyor — ikon solda,
+  etiket ve kapsam üstte, değer altta. ÜÇÜ DE EŞİT: 1fr, yoksa uzun
+  etiketli olan ("Denemeden ücretliye") ötekileri daraltıyor.
+*/
+.ugb-serit{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-4);margin:0}
+.ugb-serit>div{display:flex;align-items:center;gap:var(--sp-3);min-width:0;
+  padding:var(--sp-4);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);box-shadow:var(--shadow-xs)}
+.ugb-serit>div>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ugb-serit i{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:var(--r-lg);
+  background:var(--surface-2);color:var(--ink-soft)}
+.ugb-serit dt{color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.ugb-serit small{color:var(--dim);font-size:var(--fs-micro);font-weight:400}
 .ugb-serit dd{margin:0;font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--ink);font-variant-numeric:tabular-nums}
+/* Dar alanda alt alta: üç kart 900 px'in altında 170 px'e iniyor ve
+   "Denemeden ücretliye" iki satıra sarıp değeri aşağı itiyordu. */
+@media (max-width:900px){.ugb-serit{grid-template-columns:minmax(0,1fr)}}
 
 .ugb-izgara{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:var(--sp-4)}
 .ugb-kart{display:flex;flex-direction:column;gap:var(--sp-3);min-width:0;margin:0}
 
-/* Huni iki adım: kaynağı olmayan ara adım çizilmiyor (bileşendeki not). */
-.ugb-huni{display:flex;gap:var(--sp-3);margin:0;padding:0;list-style:none}
-.ugb-huni>li{flex:1 1 0;display:flex;flex-direction:column;gap:2px;min-width:0;
-  padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-2)}
-.ugb-huni span{color:var(--muted);font-size:var(--fs-sm)}
-.ugb-huni b{font-size:var(--fs-lg);font-variant-numeric:tabular-nums;color:var(--ink)}
+/*
+  SATIR SATIR, YAN YANA DEĞİL (27.11.2026, onaylı mockup): adlar solda,
+  sayılar sağda. Yan yana kutularda üç değer 280 px'lik kartta
+  sıkışıyordu ve "dönüşüm oranı" dördüncü kutu olarak hiç sığmıyordu.
+*/
+.ugb-huni{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+.ugb-huni>li{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  padding:var(--sp-2) 0;border-bottom:1px solid var(--line-soft)}
+.ugb-huni>li:last-child{border-bottom:0}
+.ugb-huni span{color:var(--ink-soft);font-size:var(--fs-base)}
+.ugb-huni b{font-size:var(--fs-base);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+/* Oran hesaplanmış değer, ölçüm değil: ayrı bir hatta duruyor. */
+.ugb-oran{border-top:1px solid var(--line)}
+.ugb-oran span{color:var(--muted)}
 .ugb-not{margin:0;color:var(--muted);font-size:var(--fs-sm)}
 
 .ugb-liste{display:flex;flex-direction:column;gap:var(--sp-1);margin:0;padding:0;list-style:none}

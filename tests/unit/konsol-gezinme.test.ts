@@ -109,21 +109,26 @@ test("sol menüde 'Uygulamalar' vurgusu PENCEREYE bağlı, rotaya değil", () =>
   assert.match(tsx, /className=\{panelEtkin \? "os-dock-oge is-active"/);
 });
 
-test("ürün detayı ızgarası tek sütun: kart içerik genişliğini kullanıyor", () => {
+test("ürün detayı içerik genişliğini kullanıyor: ızgara ve sağ sütun yok", () => {
   /*
     26.11.2026 inceleme bulgusu: ızgaranın tek çocuğu (ürün kartı)
     iki sütunluk bir şablonun birinci sütununda kalıyordu —
     768×600'de sağda 296 px boşluk, 1440×900'de kartın sağ kenarı
-    dönem seçicisinden 350 px geride, metrikler alt alta.
+    dönem seçicisinden 350 px geride, metrikler alt alta. Kural o gün
+    ızgarayı tek sütuna sabitleyerek düzeltildi.
+
+    27.11.2026'da (onaylı mockup) sayfa ızgarayı tamamen bıraktı: tek
+    sütun, sağ rayı yok. Aynı özelliğin daha sağlam hâli — bir sonraki
+    "iki sütun" denemesi ızgarayı geri getirmek zorunda kalır ve bu
+    test onu görür.
   */
   const sayfa = oku("app/panel/platform/urunler/[urun]/page.tsx");
-  assert.match(sayfa, /className="talep-izgara ekip-izgara"/);
-  /* personel-iki iki sütun kuruyor (kayit-detay.css); burada ikinci
-     sütun yok. ekip-izgara ise kalmalı: kartın kendi içinde kayması
-     ona bağlı. */
+  assert.match(sayfa, /<main className="plt urun-detay-sayfa">/);
+  assert.doesNotMatch(sayfa, /className="[^"]*talep-izgara/);
   assert.doesNotMatch(sayfa, /className="[^"]*personel-iki/);
+  assert.doesNotMatch(sayfa, /className="liste-sag"/);
   const css = oku("app/panel/platform/urunler/[urun]/urun-detay.css");
-  assert.match(css, /main\.urun-sayfa>\.talep-izgara\{grid-template-columns:minmax\(0,1fr\)\}/);
+  assert.match(css, /\.urun-detay-sayfa \{ display: flex; flex-direction: column;/);
 });
 
 test("üst çubukta RESMÎ marka dosyaları kullanılıyor", () => {

@@ -37,8 +37,8 @@ function rotaCss(rota) {
 }
 /* Kurucu konsolunun ana sayfası da "panel" rotasından çiziliyor
    (konsol-ana-sayfa.tsx, yalnızca yonetim.arvo-os.com): CSS kümesi aynı. */
-const cssler = { ana: rotaCss("panel"), crm: rotaCss("panel/crm/genel-bakis"), konsol: rotaCss("panel"), urundetay: rotaCss("panel/platform/urunler/[urun]") };
-const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol,urundetay").split(",");
+const cssler = { ana: rotaCss("panel"), crm: rotaCss("panel/crm/genel-bakis"), konsol: rotaCss("panel"), urundetay: rotaCss("panel/platform/urunler/[urun]"), urunler: rotaCss("panel/platform/urunler") };
+const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol,urundetay,urunler").split(",");
 
 /*
   Üretilen sayfalar geçici bir dizinde ve koşu sonunda siliniyor.
@@ -111,6 +111,7 @@ import { OsMenuKapat } from ${a("app/panel/os/os-menu-kapat.tsx")};
 import { ThemeToggle } from ${a("app/panel/theme-toggle.tsx")};
 import { OsSimge as OsSimgeDuz } from ${a("app/panel/os/os-icons.tsx")};
 import { UrunPerformansiKarti } from "@/app/panel/konsol-urun-performansi";
+import { UrunListesi } from "@/app/panel/platform/urunler/urun-listesi";
 import { KararBekleyenlerKarti, OtomasyonlarKarti } from "@/app/panel/konsol-ana-kartlar";
 import { DonemSecici, OlcutSecici } from "@/app/panel/konsol-donem-secici";
 import { ArvoOsIsareti, ArvoOsLogosu } from "@/app/panel/os/arvoos-markasi";
@@ -431,6 +432,42 @@ function Konsol() {
   CSS; veri sentetik. Üretimle aynı kabuk sınıfları: sayfa artık TEK
   EKRAN (liste-sayfa), yani kaydırma kartın içinde.
 */
+/*
+  ÜRÜNLER LİSTESİ (27.11.2026, onaylı mockup). Üretimdeki bileşen
+  (app/panel/platform/urunler/urun-listesi.tsx) gerçek verisiyle değil
+  ÖRNEK satırlarla çiziliyor; ölçülen şey yerleşim: sütun hizaları,
+  rozetin yeri, uzun adresin taşmaması ve telefonda yatay kaydırmasız
+  okunabilirlik.
+*/
+function UrunlerListesi() {
+  const donem = { kod: "30g", etiket: "Son 30 gün", gun: 30, baslangic: "", bitis: "", oncekiBaslangic: "", oncekiBitis: "" };
+  const satirlar = [
+    { kod: "arvoos", ad: "ArvoOS", aktifMusteri: { durum: "var", deger: 3941 }, donusum: { durum: "kaynak_yok" }, tahsilat: { durum: "var", deger: 642300 },
+      saglik: { durum: "saglikli", etiket: "Sağlıklı", ton: "success" }, adres: { url: "#", host: "app.arvo-os.com" } },
+    { kod: "arvolab", ad: "ArvoLab", aktifMusteri: { durum: "var", deger: 892 }, donusum: { durum: "var", deger: { denemeye: 200, ucretliye: 36, oran: 0.18 } }, tahsilat: { durum: "var", deger: 128450 },
+      saglik: { durum: "saglikli", etiket: "Sağlıklı", ton: "success" }, adres: { url: "#", host: "lab.arvo-os.com" } },
+    { kod: "arc", ad: "ArvoARC", aktifMusteri: { durum: "var", deger: 214 }, donusum: { durum: "kaynak_yok" }, tahsilat: { durum: "var", deger: 26780 },
+      saglik: { durum: "sorunlu", etiket: "Dikkat gerektiriyor", ton: "danger", not: "Köprü yanıt vermiyor." }, adres: { url: "#", host: "arc.arvo-os.com" } },
+    /* Dördüncü satır "veri okunamadı" hâlini taşıyor: sıfır ile
+       okunamayan ayrımı ekranda da görülsün. */
+    { kod: "randevu", ad: "ArvoCal", aktifMusteri: { durum: "var", deger: 1208 }, donusum: { durum: "kaynak_yok" }, tahsilat: { durum: "okunamadi" },
+      saglik: { durum: "saglikli", etiket: "Sağlıklı", ton: "success" }, adres: { url: "#", host: "cal.arvo-os.com" } },
+  ];
+  return (
+    <main className="plt urun-liste-sayfa">
+      <div className="ek-arac urun-arac">
+        <nav className="ek-segment" aria-label="Ürün görünümü">
+          <a href="#" className="is-active" aria-current="page">Ürünler</a>
+          <a href="#">Modül matrisi</a>
+        </nav>
+      </div>
+      <UrunListesi satirlar={satirlar} donem={donem}
+        para={(n) => "₺" + n.toLocaleString("tr-TR")} sayi={(n) => n.toLocaleString("tr-TR")}
+        secici={<DonemSecici secili="30g" taban="/panel/platform/urunler" />} />
+    </main>
+  );
+}
+
 function UrunDetay() {
   const satir = {
     kod: "arvolab", ad: "ArvoLab",
@@ -452,9 +489,9 @@ function UrunDetay() {
   const secilenBolum = urunBolumu(sorgu.get("bolum"));
   const bolumler = [
     { anahtar: "genel-bakis", etiket: "Genel Bakış" },
-    { anahtar: "musteriler", etiket: "Müşteriler · 42" },
+    { anahtar: "musteriler", etiket: "Müşteriler" },
     { anahtar: "fiyat", etiket: "Fiyat basamakları" },
-    { anahtar: "abonelikler", etiket: "Abonelikler · 248" },
+    { anahtar: "abonelikler", etiket: "Abonelikler" },
     { anahtar: "tahsilat", etiket: "Tahsilat" },
     { anahtar: "destek", etiket: "Destek" },
   ];
@@ -465,27 +502,33 @@ function UrunDetay() {
     ["Elif D.", "Standart", "Aylık", "₺790"],
   ];
   const basitPanel = (anahtar, baslik, govde) => (
-    <section data-bolum={anahtar} key={anahtar}>
-      <div className="ugb">
-        <h2>{baslik}</h2>
-        {govde}
-      </div>
+    <section className="urd-bolum" data-bolum={anahtar} key={anahtar}>
+      <header className="urd-bolum-bas"><div><h2>{baslik}</h2></div></header>
+      {govde}
     </section>
   );
   return (
-    <main className="plt talep cari ekip urun-sayfa liste-sayfa">
-      <header className="talep-bas">
-        <div className="talep-bas-metin">
-          <small className="panel-kicker"><Link href="/panel/platform/urunler">ÜRÜNLER</Link> · LB</small>
-          <h1>ArvoLab</h1>
-          <p className="ek-alt">Akademik yazım ve editöryal kontrol · lab.arvo-os.com</p>
+    /* Üretimdeki kabuğun aynısı (27.11.2026, onaylı mockup): tek sütun,
+       içerikte yol, sekmeler ince ayırıcı üzerinde. */
+    <main className="plt urun-detay-sayfa">
+      <header className="urd-bas">
+        <div className="urd-bas-metin">
+          <nav className="urd-yol" aria-label="Sayfa yolu">
+            <Link href="/panel/platform/urunler">Ürünler</Link>
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">ArvoLab</span>
+          </nav>
+          <div className="urd-ad">
+            <h1>ArvoLab</h1>
+            <span className="urun-saglik" data-tone="success">Sağlıklı</span>
+          </div>
+          <p className="urd-alt">Akademik yazım ve editöryal kontrol · lab.arvo-os.com</p>
         </div>
-        <div className="talep-bas-eylem">
+        <div className="urd-bas-eylem">
           <DonemSecici secili="30g" taban={taban} ek={secilenBolum === "genel-bakis" ? undefined : "bolum=" + secilenBolum} />
         </div>
       </header>
-      <div className="talep-izgara ekip-izgara">
-        <TalepAkis kimlik="urun-kart" sinif="sy-kart" darSecici etiket="ArvoLab kartı"
+      <TalepAkis kimlik="urun-kart" sinif="urd-serit" darSecici etiket="ArvoLab bölümleri"
           sekmeler={bolumler.map((b) => b.etiket)}
           adresler={bolumler.map((b) => bolumAdresi(taban, b.anahtar, null))}
           baslangic={seciliSira}>
@@ -541,8 +584,7 @@ function UrunDetay() {
           {basitPanel("destek", "ArvoLab destek talepleri", (
             <p className="ugb-bos">Yanıt bekleyen 2 talep var.</p>
           ))}
-        </TalepAkis>
-      </div>
+      </TalepAkis>
     </main>
   );
 }
@@ -592,7 +634,7 @@ function Kabuk() {
         </div>
       ) : null}
     </header>
-    <section className="os-workspace">{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : <Ana />}</div></section>
+    <section className="os-workspace">{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? <UrunlerListesi /> : <Ana />}</div></section>
     {/* Komut paleti ve menü kapatıcı GERÇEK bileşenler: kaplamaların
         odak/Esc davranışı ölçülebilsin diye (26.11.2026). */}
     {konsolMu ? <OsKomutPaleti uygulamalar={konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 })} cikis={async () => {}} /> : null}
@@ -1237,7 +1279,10 @@ const olc = () => {
     }
     return alt;
   };
-  const altlar = [...document.querySelectorAll(".dash-card,.konsol-isler,.dash-gorunum-panel.is-secili,.panel-card")]
+  /* 27.11.2026: Ürünler listesi ve ürün detayının bölümleri kendi kart
+     sınıflarını taşıyor (.url-kart, .urd-bolum, .kak-kart). Listeye
+     eklenmeselerdi "görünür kart yok" diye ölçülemez sayılırlardı. */
+  const altlar = [...document.querySelectorAll(".dash-card,.konsol-isler,.dash-gorunum-panel.is-secili,.panel-card,.url-kart,.urd-bolum,.kak-kart")]
     .filter((e) => e.offsetParent !== null).map(kirpilmisAlt);
   const icerikAlt = altlar.length ? Math.max(...altlar) : null;
   return { tekEkran, dockPayi, dockYuksekligi: dock ? Math.round(dock.height) : null, sayfaYatay: `${s.scrollWidth}/${s.clientWidth}`, sayfaDikey: `${s.scrollHeight}/${s.clientHeight}`, dockUstu: Math.round(dock?.top ?? 0), icerikAlt: icerikAlt === null ? null : Math.round(icerikAlt), dockOrtuyor: icerikAlt === null ? null : icerikAlt > (dock?.top ?? Infinity) + 1, zincir, kartlar };
@@ -1452,7 +1497,7 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
           const dockE = document.querySelector(".os-dock");
           const dock = gorunurMu(dockE) ? dockE.getBoundingClientRect() : null;
           /* Son içerik: sayfanın en altındaki görünür kart ya da bağlantı. */
-          const adaylar = [...document.querySelectorAll(".panel-content .dash-card, .panel-content .panel-card, .panel-content .sy-kart, .panel-content .dash-card-link")].filter(gorunurMu);
+          const adaylar = [...document.querySelectorAll(".panel-content .dash-card, .panel-content .panel-card, .panel-content .sy-kart, .panel-content .dash-card-link, .panel-content .url-kart, .panel-content .urd-bolum")].filter(gorunurMu);
           const alt = adaylar.length ? Math.max(...adaylar.map((e) => e.getBoundingClientRect().bottom)) : null;
           const sonuc = {
             kayiyor,
