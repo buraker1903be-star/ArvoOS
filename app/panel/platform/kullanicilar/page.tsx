@@ -10,7 +10,7 @@ import { KNot } from "../konsol-ui";
 import { basHarfleri, sayi, tarih, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
 import { KonsolListeKaydirma } from "../konsol-liste-kaydirma";
-import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos } from "../konsol-liste";
+import { KonsolPanelAlanlar, KonsolPanelBas } from "../konsol-liste";
 import { kaydirmaAnahtari, listeAdresi } from "@/lib/konsol/liste-secimi";
 import "../konsol-liste.css";
 import { SatirTiklama } from "../../crm/satir-tiklama";

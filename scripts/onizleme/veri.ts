@@ -132,8 +132,20 @@ export const ORNEK: Record<string, Record<string, unknown>[]> = {
     { id: "bbbbbbb1-0000-4000-8000-000000000003", organization_id: K2, plan_code: "baslangic", product: "arvoos", amount: 180_000, currency: "TRY", status: "approved", payment_method: "bank_transfer", receipt_path: "dekont/p3.pdf", reference_no: "ARV-2026-0120", customer_note: null, review_note: "Hesapta görüldü.", created_at: gun(-20), reviewed_at: gun(-19), organizations: { name: "Ege Danışmanlık", slug: "ege" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
     { id: "bbbbbbb1-0000-4000-8000-000000000004", organization_id: K3, plan_code: "profesyonel", product: "arvoos", amount: 320_000, currency: "TRY", status: "rejected", payment_method: "bank_transfer", receipt_path: null, reference_no: "ARV-2026-0118", customer_note: "Dekontu sonra yükleyeceğim.", review_note: "Dekont gelmedi.", created_at: gun(-26), reviewed_at: gun(-24), organizations: { name: "Kuzey Mimarlık", slug: "kuzey" }, platform_bank_accounts: null },
   ],
+  /* Sözleşme onayları: iki bekleyen + sonuçlanmış bir yığın (liste
+     kaydırılabilsin, karar ekranı gerçek uzunlukta görünsün). */
   platform_subscription_requests: [
-    { id: "a1", organization_id: K4, status: "pending", plan_code: "kurumsal", created_at: gun(-3) },
+    { id: "a1", organization_id: K4, status: "pending", plan_code: "kurumsal", contract_id: "c1", contract_no: "SZL-2026-0041", customer_name: "Deniz Eğitim Kurumları", amount: 540_000, currency: "TRY", created_at: gun(-3), reviewed_at: null, review_note: null, requested: { modules: [{ product: "arvoos", monthly_fee: 390_000, integrated: true }, { product: "arvolab", monthly_fee: 150_000, integrated: true }] } },
+    { id: "a2", organization_id: K1, status: "pending", plan_code: "profesyonel", contract_id: "c2", contract_no: "SZL-2026-0042", customer_name: "Akademi Yayıncılık A.Ş.", amount: 320_000, currency: "TRY", created_at: gun(-1), reviewed_at: null, review_note: null, requested: { modules: [{ product: "arvoos", monthly_fee: 320_000, integrated: true }] } },
+    ...DOLGU.map((d, i) => ({
+      id: `a${i + 10}`, organization_id: d.id,
+      status: i % 4 === 0 ? "rejected" : "approved", plan_code: d.plan_code,
+      contract_id: `c${i + 10}`, contract_no: `SZL-2026-${String(100 + i)}`,
+      customer_name: d.name, amount: d.ucret, currency: "TRY",
+      created_at: gun(-60 + i), reviewed_at: gun(-58 + i),
+      review_note: i % 4 === 0 ? "Tahsilat doğrulanamadı." : null,
+      requested: { modules: [{ product: "arvoos", monthly_fee: d.ucret, integrated: true }] },
+    })),
   ],
   platform_bank_accounts: [
     { id: "b1", bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01", is_active: true },
@@ -218,11 +230,36 @@ export const ORNEK: Record<string, Record<string, unknown>[]> = {
     auth.users karşılığı: Kullanıcılar ekranı yönetici ucundan
     (auth.admin.listUsers) okuyor, tablodan değil.
   */
+  /* Üyelikler: Kullanıcılar ekranı kişileri bunlardan topluyor. */
+  organization_memberships: [
+    { user_id: KURUCU, organization_id: ARVO, role: "owner", is_active: true },
+    ...DOLGU.map((d, i) => ({
+      user_id: `cccccccc-0000-4000-8000-${String(i + 10).padStart(12, "0")}`,
+      organization_id: d.id, role: i % 3 === 0 ? "owner" : "employee", is_active: i % 7 !== 0,
+    })),
+  ],
+  /* Ad ASIL kaynağı profiles (lib/member-directory): metadata yalnızca
+     davetle dolan bir yedek. */
+  profiles: [
+    { id: KURUCU, full_name: "Kurucu", phone: null, job_title: "Kurucu" },
+    ...DOLGU.map((d, i) => ({
+      id: `cccccccc-0000-4000-8000-${String(i + 10).padStart(12, "0")}`,
+      full_name: `Örnek Kişi ${String(i + 1).padStart(2, "0")}`,
+      phone: i % 3 === 0 ? `0532 000 ${String(1000 + i)}` : null,
+      job_title: i % 2 === 0 ? "Yönetici" : "Personel",
+    })),
+  ],
   auth_users: [
     { id: KURUCU, email: "kurucu@ornek.test", created_at: gun(-900), last_sign_in_at: gun(-1), user_metadata: { full_name: "Kurucu" } },
     { id: "cccccccc-0000-4000-8000-000000000001", email: "ayse@akademi.test", created_at: gun(-300), last_sign_in_at: gun(-3), user_metadata: { full_name: "Ayşe Yılmaz" } },
     { id: "cccccccc-0000-4000-8000-000000000002", email: "mehmet@ege.test", created_at: gun(-200), last_sign_in_at: gun(-40), user_metadata: { full_name: "Mehmet Kaya" } },
     { id: "cccccccc-0000-4000-8000-000000000003", email: "zeynep@deniz.test", created_at: gun(-120), last_sign_in_at: null, user_metadata: { full_name: "Zeynep Ak" } },
+    ...DOLGU.map((d, i) => ({
+      id: `cccccccc-0000-4000-8000-${String(i + 10).padStart(12, "0")}`,
+      email: `kisi${i + 1}@ornek.test`, created_at: gun(-250 + i * 5),
+      last_sign_in_at: i % 7 === 0 ? null : gun(-i),
+      user_metadata: { full_name: `Örnek Kişi ${String(i + 1).padStart(2, "0")}` },
+    })),
   ],
   /* Ortak posta kutusu kurulu değil: kabuktaki okunmamış sayacı sıfır. */
   mail_accounts: [],

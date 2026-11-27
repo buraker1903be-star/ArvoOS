@@ -221,6 +221,22 @@ await ekran({
 });
 
 await ekran({
+  ad: "Sözleşme onayları",
+  adres: "/panel/platform/sozlesmeler",
+  satirSecici: SATIR,
+  kapatSecici: TEK_SUTUN ? ".kl-geri" : ".kl-panel-kapat",
+});
+
+await ekran({
+  ad: "Kullanıcılar",
+  /* "Pasif" evresi örnek veride uzun: akış kaydırma istiyor. */
+  adres: "/panel/platform/kullanicilar?evre=pasif",
+  satirSecici: SATIR,
+  kapatSecici: TEK_SUTUN ? ".kl-geri" : ".kl-panel-kapat",
+  yeniSuzgecAdresi: "/panel/platform/kullanicilar?evre=aktif",
+});
+
+await ekran({
   ad: "Destek",
   adres: "/panel/platform/destek?durum=tumu",
   satirSecici: SATIR,
