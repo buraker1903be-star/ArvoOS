@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { StgTone } from "../settings/settings-ui";
 import "./konsol-liste.css";
 
 /*
@@ -74,7 +75,13 @@ export function KonsolPanelBos({ baslik, aciklama, ton, eylem }: {
 */
 export function KonsolPanelBas({ baslik, durum, kapatAdresi, altBilgi }: {
   baslik: string;
-  durum?: { etiket: string; ton: "success" | "warning" | "danger" | "neutral" };
+  /*
+    TON PANELİN KENDİ LİSTESİ DEĞİL, PANELİN DİLİ. Konsolun durum
+    tonları tek yerde (settings-ui · StgTone) ve ödeme durumları da
+    onu kullanıyor; paneli dar bir listeye bağlamak çağıranı tip
+    dönüşümüne zorluyordu. CSS bilmediği bir tonu nötr çiziyor.
+  */
+  durum?: { etiket: string; ton: StgTone };
   kapatAdresi: string;
   altBilgi?: ReactNode;
 }) {

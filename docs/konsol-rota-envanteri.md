@@ -35,7 +35,7 @@ gizleme tek başına güvenlik değil.
 | Rota | Ekran | Giriş noktaları | Alan | Ana eylem | Detay / form | Durum |
 | --- | --- | --- | --- | --- | --- | --- |
 | `/panel/platform` | Müşterilere yönlendirme | Eski bağlantılar | musteriler | — | — | — |
-| `/panel/platform/musteriler` | Müşteriler listesi | Sol menü · Ana Sayfa · Ctrl+K | musteriler | Yeni müşteri | Kayıt paneli + tam kart | — |
+| `/panel/platform/musteriler` | Müşteriler listesi | Sol menü · Ana Sayfa · Ctrl+K | musteriler | Yeni müşteri | Kayıt paneli + tam kart | kuruldu |
 | `/panel/platform/musteriler/[id]` | Müşteri kartı | Liste · karar kuyruğu · arama | musteriler | Lisans / kullanıcı işlemleri | Pencereler (lisans, üye, not) | — |
 | `/panel/platform/kullanicilar` | Kullanıcılar | ⋯ menüsü · müşteri kartı | musteriler | — | Kullanıcı detayı | — |
 | `/panel/platform/kullanicilar/[id]` | Kullanıcı detayı | Kullanıcılar listesi | musteriler | — | — | — |
@@ -49,7 +49,7 @@ gizleme tek başına güvenlik değil.
 | --- | --- | --- | --- | --- | --- | --- |
 | `/panel/platform/tahsilat` | Tahsilatlar | Sol menü (2. kat) · ürün detayı | finans | — | Proforma detayı | — |
 | `/panel/platform/tahsilat/proforma/[id]` | Proforma detayı | Tahsilat listesi | finans | — | — | — |
-| `/panel/platform/payments` | Ödeme onayları | Sol menü (2. kat) · karar kuyruğu · ürün Tahsilat | finans | Ödemeyi onayla / reddet | Onay penceresi | — |
+| `/panel/platform/payments` | Ödeme onayları | Sol menü (2. kat) · karar kuyruğu · ürün Tahsilat | finans | Ödemeyi onayla / reddet | Panelde karar formu | kuruldu |
 | `/panel/platform/billing` | Abonelikler | Sol menü (2. kat) · ⋯ menüsü | finans | — | — | — |
 | `/panel/platform/yenilemeler` | Yenilemeler | Karar kuyruğu | finans | — | — | — |
 | `/panel/platform/sozlesmeler` | Sözleşmeler | Karar kuyruğu | finans | Sözleşme onayı | — | — |

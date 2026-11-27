@@ -236,3 +236,5 @@
 @media (max-width: 860px) {
   .os-root main:has(.kl-duzen[data-secim="var"]) > .talep-bas { display: none; }
 }
+.kl-panel-durum[data-tone="info"]::before { background: var(--accent); }
+.kl-panel-durum[data-tone="gold"]::before { background: var(--warning); }
