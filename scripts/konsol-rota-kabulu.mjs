@@ -68,6 +68,15 @@ for (const is of ISLER) {
   const hatalar = [];
   sayfa.on("pageerror", (e) => hatalar.push(String(e.message).slice(0, 160)));
   const yanit = await sayfa.goto(TABAN + is.yol, { waitUntil: "networkidle", timeout: 90_000 });
+  /*
+    Yönlendiren rotada hedef sayfa SONRADAN yerleşiyor; ilk ölçüm
+    ara hâle denk gelip "liste panelin sağında" gibi var olmayan bir
+    kusur üretiyordu. Adres değiştiyse bir tur daha bekleniyor.
+  */
+  if (!sayfa.url().endsWith(is.yol)) {
+    await sayfa.waitForLoadState("networkidle");
+    await sayfa.waitForTimeout(500);
+  }
   await sayfa.waitForTimeout(600);
   await sayfa.screenshot({ path: `${DIZIN}/${is.ad}.png`, fullPage: false });
   const olcum = await sayfa.evaluate(() => {
