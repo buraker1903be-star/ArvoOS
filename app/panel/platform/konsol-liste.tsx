@@ -134,3 +134,97 @@ export function KonsolPanelAlanlar({ alanlar }: {
     </dl>
   );
 }
+
+/*
+  BİRİNCİL ARAÇ SATIRI (27.11.2026 ara kontrolü).
+
+  Onaylı tasarımda listeye hemen ulaşılıyor. Müşteriler'de üst etiket
+  ("MÜŞTERİLER") başlığı, başlık altındaki sayılar da özet şeridini
+  tekrar ediyordu; şeritteki tür sayaçları ÜÇÜNCÜ kez araç satırındaki
+  sekmelerde vardı. Üçü birden ekranın ilk 460 pikselini yiyor, liste
+  katlanmanın altına düşüyordu.
+
+  Kural: araç satırında yalnızca HER GÜN kullanılanlar — arama, tür
+  sekmeleri ve ekranın birincil eylemi. Geri kalan süzgeçler
+  "Filtreler" altında; ETKİN olanlar çip olarak görünür kalıyor, yoksa
+  kapalı bir kutunun arkasında listeyi daraltan bir süzgeç unutuluyor.
+*/
+export function KonsolArac({ segment, ara, filtreler, eylem }: {
+  /** Sık kullanılan süzgeç: bağlantılardan oluşan sekme rayı. */
+  segment?: ReactNode;
+  /** Arama kutusu ve gizli alanlar — kendi formunu taşır. */
+  ara?: ReactNode;
+  /** "Filtreler" altına girecek alanlar. Aynı formda olmalı. */
+  filtreler?: ReactNode;
+  /** Ekranın birincil eylemi (Yeni müşteri gibi). */
+  eylem?: ReactNode;
+  /** Açık süzgeç sayısı; sıfırsa rozet çizilmiyor. */
+  etkinSayisi?: number;
+}) {
+  return (
+    /* `ek-arac` de taşınıyor: tür sekmelerinin (ek-segment) biçimi
+       hr.css'te o atanın altına yazılı ve sekmeler onsuz düz yazıya
+       dönüyordu. */
+    <div className="kl-arac ek-arac">
+      {segment}
+      {ara}
+      {filtreler}
+      {eylem ? <div className="kl-arac-eylem">{eylem}</div> : null}
+    </div>
+  );
+}
+
+/**
+ * "Filtreler" kutusu.
+ *
+ * AÇIKLIK ADRESTE (`?filtre=1`), istemci durumunda değil — ekranın
+ * geri kalanıyla aynı kural. `<details>` denendi ve iki ayrı yoldan
+ * düştü: kendi kutusu içinde açılınca gövde dar bir sütuna sıkışıyor,
+ * `display:contents` ile satıra yayılınca da tarayıcı kapalı gövdeyi
+ * ARTIK GİZLEMİYOR (ölçüldü: kapalıyken yükseklik 186 px).
+ *
+ * Alanlar KAPALIYKEN DE forma dahil (`hidden` bir kapsayıcı içindeler;
+ * gizli alanlar da gönderilir): açık bir süzgeç kutu kapalıyken de
+ * uygulanmaya devam ediyor — çipler bunun için var.
+ */
+export function KonsolFiltreler({ etkinSayisi, acik, degistirAdresi, children }: {
+  etkinSayisi: number;
+  acik: boolean;
+  /** Kutuyu açan/kapatan adres; süzgeçleri ve seçimi korur. */
+  degistirAdresi: string;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <Link className="panel-secondary kl-filtre-dugme" href={degistirAdresi} aria-expanded={acik}>
+        Filtreler{etkinSayisi ? <span className="kl-filtre-rozet">{etkinSayisi}</span> : null}
+      </Link>
+      <div className="kl-filtre-govde" hidden={!acik}>{children}</div>
+    </>
+  );
+}
+
+/**
+ * Etkin süzgeçlerin çipleri. Her çip kendi süzgecini kaldıran bir
+ * bağlantı: süzgeci kaldırmak için kutuyu açıp "Bütün …"i seçmek
+ * gerekmiyor.
+ */
+export function KonsolEtkinFiltreler({ cipler, temizleAdresi }: {
+  cipler: { ad: string; deger: string; adres: string }[];
+  /** Hepsini birden kaldıran adres; seçim korunur. */
+  temizleAdresi: string;
+}) {
+  if (!cipler.length) return null;
+  return (
+    <div className="kl-cipler" aria-label="Etkin filtreler">
+      {cipler.map((c) => (
+        <Link key={c.ad} className="kl-cip" href={c.adres}>
+          <span className="kl-cip-ad">{c.ad}:</span> {c.deger}
+          <span className="kl-cip-x" aria-hidden="true">×</span>
+          <span className="kl-gizli">filtresini kaldır</span>
+        </Link>
+      ))}
+      {cipler.length > 1 ? <Link className="kl-cip-hepsi" href={temizleAdresi}>Hepsini temizle</Link> : null}
+    </div>
+  );
+}

@@ -82,6 +82,93 @@
   }
 }
 
+/* ---------- Birincil araç satırı ---------- */
+/*
+  Tek satır: arama · tür sekmeleri · Filtreler · birincil eylem.
+  Dar ekranda sarıyor. Yükseklik tek: kontrollerin boyu panel
+  token'larından (--ctl-h), yoksa satır kademeleniyor.
+*/
+.kl-arac {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding-bottom: var(--sp-3);
+}
+.kl-arac-eylem { display: flex; align-items: center; gap: var(--sp-2); margin-left: auto; }
+/* Arama kutusu satırın esneyen parçası; en az 220 px kalıyor, altında
+   "Ad, e-posta, telefon ya da ürün" ipucu kırpılıyordu. */
+/*
+  Form `display: contents`: alanları doğrudan araç satırının flex
+  çocuğu oluyor, ama hepsi AYNI formda kalıyor (gönderim etkilenmez).
+  Form kendi kutusunu taşıdığında "Filtreler" açılır kutusu o dar
+  kutunun içinde dikey bir sütun olarak açılıyor, satırın solu boş
+  kalıyordu.
+*/
+.kl-arac .kl-arac-form { display: contents; }
+/* Arama büyüyor ama satırı yutmuyor: 360'ın üstünde birincil eylem
+   alt satıra düşüyordu. */
+.kl-arac input[type="search"] { flex: 1 1 240px; min-width: 180px; max-width: 360px; }
+
+.kl-filtre-dugme { display: inline-flex; align-items: center; gap: var(--sp-2); flex: none; }
+.kl-filtre-rozet {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--primary);
+  color: var(--primary-on);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+/*
+  Süzgeç gövdesi satırın ALTINDA, kaplama değil: kaplama listeyi
+  örtüyor ve açık bir süzgeçle liste aynı anda görülemiyordu. Açıkken
+  kutu tam satır oluyor; özet solda kalıyor, gövde altına iniyor.
+*/
+
+/* Gövde kendi satırında ve TAM GENİŞLİKTE; `hidden` gizliyor
+   (display:flex onu ezer, bu yüzden açıkça yazıldı). */
+.kl-filtre-govde[hidden] { display: none; }
+.kl-filtre-govde {
+  flex: 1 1 100%;
+  order: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+/* ---------- Etkin filtre çipleri ---------- */
+.kl-cipler { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding-bottom: var(--sp-3); }
+.kl-cip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ctl-h-sm);
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+.kl-cip:hover { border-color: var(--primary); }
+.kl-cip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.kl-cip-ad { color: var(--muted); }
+.kl-cip-x { color: var(--muted); font-size: var(--fs-base); line-height: 1; }
+.kl-cip-hepsi { color: var(--accent); font-size: var(--fs-sm); text-decoration: none; }
+.kl-cip-hepsi:hover { text-decoration: underline; }
+/* Ekran okuyucuya söylenen, görünmeyen metin. */
+.kl-gizli { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 /* ---------- Panel başlığı ---------- */
 .kl-panel-bas {
   display: flex;

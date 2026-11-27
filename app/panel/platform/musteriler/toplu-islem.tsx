@@ -75,23 +75,37 @@ export function TopluIslem({ satirlar }: { satirlar: CsvSatiri[] }) {
       </label>
       {secili.length ? <button type="button" className="mu-toplu-temizle" onClick={temizle}>Seçimi kaldır</button> : null}
       <span className="mu-toplu-bosluk" />
+      {/*
+        CSV SEÇİMSİZ DE ÇALIŞIYOR (mevcut davranış korundu): seçim
+        yoksa listede GÖRÜNEN satırları indiriyor. Bu yüzden her zaman
+        burada.
+      */}
       <button type="button" className="panel-secondary" onClick={indir} title={secili.length ? "Seçilenleri CSV olarak indir" : "Listede görünen bütün müşterileri CSV olarak indir"}>
         CSV indir{secili.length ? ` (${secili.length})` : ""}
       </button>
-      <button type="button" className="panel-secondary" disabled={!seciliKurumlar.length}
-        title={secili.length && !seciliKurumlar.length ? "Duyuru yalnızca kurumlara gider; seçimde kurum yok" : "Seçili kurumlara panel duyurusu"}
-        onClick={() => router.push(`/panel/platform/duyuru?kurumlar=${seciliKurumlar.join(",")}`)}>
-        Duyuru gönder{seciliKurumlar.length ? ` (${seciliKurumlar.length})` : ""}
-      </button>
-      <button type="button" className="panel-primary" disabled={!secili.length || calisiyor}
+      {/*
+        SEÇİME BAĞLI EYLEMLER SEÇİMLE BELİRİYOR (27.11.2026 ara
+        kontrolü). Eskiden ikisi de sürekli duruyor ama sönük ve
+        tıklanamazdı: ekranın en görünür iki düğmesi, hiç seçim
+        yapmamış kullanıcı için anlamsızdı. "Duyuru" seçimde kurum
+        varken etkin — bireysel aboneye panel duyurusu gitmiyor.
+      */}
+      {secili.length ? (
+        <button type="button" className="panel-secondary" disabled={!seciliKurumlar.length}
+          title={!seciliKurumlar.length ? "Duyuru yalnızca kurumlara gider; seçimde kurum yok" : "Seçili kurumlara panel duyurusu"}
+          onClick={() => router.push(`/panel/platform/duyuru?kurumlar=${seciliKurumlar.join(",")}`)}>
+          Duyuru gönder ({seciliKurumlar.length})
+        </button>
+      ) : null}
+      {secili.length ? <button type="button" className="panel-primary" disabled={calisiyor}
         onClick={() => setOnay({
           ust: "Toplu işlem",
           baslik: `${secili.length} müşteriye hatırlatma e-postası gönderilsin mi?`,
           metin: "Her müşteriye açık aboneliklerinin dönem sonu ve tutarı tek e-postada gider: kurumlarda Kurum Sahiplerine, bireyselde aboneye. Açık aboneliği olmayanlar ve Arvo/grup kayıtları atlanır.",
           onayEtiketi: "Gönder",
         })}>
-        {calisiyor ? "Gönderiliyor…" : "Hatırlatma e-postası"}
-      </button>
+        {calisiyor ? "Gönderiliyor…" : `Hatırlatma e-postası (${secili.length})`}
+      </button> : null}
       <OnayPenceresi istek={onay} calisiyor={calisiyor} onIptal={() => { if (!calisiyor) setOnay(null); }}
         onOnay={() => basla(async () => {
           const veri = new FormData();

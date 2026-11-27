@@ -50,14 +50,7 @@ const VARSAYILAN = [
 const ISLER = process.env.ISLER ? JSON.parse(process.env.ISLER) : VARSAYILAN;
 
 await mkdir(DIZIN, { recursive: true });
-const tarayici = await chromium.launch({
-  args: [
-    "--no-sandbox",
-    `--host-resolver-rules=MAP yonetim.arvo-os.com 127.0.0.1, MAP app.arvo-os.com 127.0.0.1`,
-    /* Konteynerin HTTPS vekili bu adı dışarıda arardı. */
-    "--no-proxy-server",
-  ],
-});
+const tarayici = await chromium.launch({ args: ["--no-sandbox", "--no-proxy-server"] });
 let dusen = 0;
 for (const is of ISLER) {
   const baglam = await tarayici.newContext({

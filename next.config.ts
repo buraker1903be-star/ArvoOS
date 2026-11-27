@@ -31,6 +31,9 @@ const nextConfig: NextConfig = {
             /* Ara katman oturumu çerezden çözüyor; önizlemede her panel
                isteği /login'e inerdi. */
             "@/lib/supabase/proxy": "./scripts/onizleme/proxy.ts",
+            /* Konsol kabuğu yönetim host'una bağlı; önizlemede
+               localhost da yönetim host'u sayılıyor. */
+            "@/lib/site/host-rules": "./scripts/onizleme/host-rules.ts",
           },
         },
       }

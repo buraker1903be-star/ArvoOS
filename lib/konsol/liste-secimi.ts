@@ -81,3 +81,29 @@ export function listeAdresi(
   const q = p.toString();
   return q ? `${taban}?${q}` : taban;
 }
+
+/**
+ * Listenin kaydırma konumunun saklanacağı anahtar.
+ *
+ * SEÇİM VE KUTU AÇIKLIĞI DIŞARIDA: kayıt açıp kapatmak aynı listedir,
+ * konum korunmalı. Süzgeç ya da sıralama değişince anahtar da değişir
+ * ve liste BAŞTAN başlar — önceki süzgecin konumunu yeni sonuçlara
+ * taşımak, kullanıcıyı alakasız bir satırın ortasına bırakıyor.
+ *
+ * @param yol rotanın yolu (`/panel/platform/musteriler`).
+ * @param parametreler adresteki bütün arama parametreleri.
+ */
+export function kaydirmaAnahtari(
+  yol: string,
+  parametreler: Readonly<Record<string, string | null | undefined>>,
+): string {
+  const DISARIDA = new Set(["secili", "filtre"]);
+  const p = new URLSearchParams();
+  for (const alan of Object.keys(parametreler).sort()) {
+    if (DISARIDA.has(alan)) continue;
+    const deger = parametreler[alan]?.trim();
+    if (deger) p.set(alan, deger);
+  }
+  const q = p.toString();
+  return q ? `${yol}?${q}` : yol;
+}

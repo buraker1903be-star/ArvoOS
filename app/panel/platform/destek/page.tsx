@@ -8,7 +8,8 @@ import { beklemeSuresi, DURUM_ADI, gecikmisMi, kuyrukHali, kuyrukSirala, KATEGOR
 import { basHarfleri, tarihSaat } from "../bicim";
 import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos } from "../konsol-liste";
 import { Gorusme, gorusmeAlanlari, gorusmeDurumu, gorusmeVerisi } from "./gorusme";
-import { listeAdresi } from "@/lib/konsol/liste-secimi";
+import { kaydirmaAnahtari, listeAdresi } from "@/lib/konsol/liste-secimi";
+import { KonsolListeKaydirma } from "../konsol-liste-kaydirma";
 import { MobilSatir } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import "../platform.css";
@@ -152,6 +153,7 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
           ))}
         </nav>
       </div>
+      <KonsolListeKaydirma anahtar={kaydirmaAnahtari("/panel/platform/destek", { durum: istenen })} adres={destekAdresi({})} />
       <div className="kl-liste-govde">
       {gosterilen.length === 0 ? (
         <div className="crm-empty-state talep-bos-kutu ek-bos">

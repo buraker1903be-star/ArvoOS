@@ -9,7 +9,8 @@ import { KNot } from "../konsol-ui";
 import { basHarfleri, ODEME_DURUMU, PAKET_ADI, para, tarih, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
 import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos } from "../konsol-liste";
-import { listeAdresi } from "@/lib/konsol/liste-secimi";
+import { kaydirmaAnahtari, listeAdresi } from "@/lib/konsol/liste-secimi";
+import { KonsolListeKaydirma } from "../konsol-liste-kaydirma";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
@@ -309,6 +310,7 @@ export default async function PaymentApprovalsPage({ searchParams }: {
             <Link href={odemeAdresi({ suzgec: "sonuclanan" })} className={suzgec === "sonuclanan" ? "is-active" : undefined}>Sonuçlanan <small>{sonuclananlar.length}</small></Link>
           </nav>
         </div>
+        <KonsolListeKaydirma anahtar={kaydirmaAnahtari("/panel/platform/payments", { suzgec: suzgecParam })} adres={odemeAdresi({})} />
         <div className="kl-liste-govde">
           {listelenen.length ? (
             <div className="talep-tablo">

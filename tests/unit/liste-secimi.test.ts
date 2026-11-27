@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { listeAdresi, secimHali } from "../../lib/konsol/liste-secimi";
+import { kaydirmaAnahtari, listeAdresi, secimHali } from "../../lib/konsol/liste-secimi";
 
 const TABAN = "/panel/platform/musteriler";
 
@@ -59,4 +59,38 @@ test("varsayılan değer adrese yazılmaz", () => {
 
 test("boş ve yalnızca boşluk olan değerler yazılmaz", () => {
   assert.equal(listeAdresi(TABAN, { ara: "", tur: "   ", secili: undefined }), TABAN);
+});
+
+test("kaydırma anahtarı seçimi ve filtre kutusunu dışarıda bırakır", () => {
+  /* Kayıt açıp kapatmak AYNI listedir: konum korunmalı. */
+  const a = kaydirmaAnahtari(TABAN, { tur: "kurumsal", secili: "kurum:1", filtre: "1" });
+  const b = kaydirmaAnahtari(TABAN, { tur: "kurumsal" });
+  assert.equal(a, b);
+  assert.equal(a, `${TABAN}?tur=kurumsal`);
+});
+
+test("süzgeç değişince anahtar da değişir: liste baştan başlar", () => {
+  /* Önceki süzgecin konumunu yeni sonuçlara taşımak kullanıcıyı
+     alakasız bir satırın ortasına bırakıyor. */
+  assert.notEqual(
+    kaydirmaAnahtari(TABAN, { tur: "kurumsal" }),
+    kaydirmaAnahtari(TABAN, { tur: "bireysel" }),
+  );
+  assert.notEqual(
+    kaydirmaAnahtari(TABAN, { tur: "kurumsal" }),
+    kaydirmaAnahtari(TABAN, { tur: "kurumsal", sira: "gelir" }),
+  );
+});
+
+test("anahtar alan sırasından bağımsız", () => {
+  /* Aynı süzgeç kümesi iki ayrı sırayla gelebiliyor; iki ayrı anahtar
+     aynı listeyi iki kez saklardı. */
+  assert.equal(
+    kaydirmaAnahtari(TABAN, { tur: "kurumsal", ara: "akademi" }),
+    kaydirmaAnahtari(TABAN, { ara: "akademi", tur: "kurumsal" }),
+  );
+});
+
+test("boş değerler anahtara girmez", () => {
+  assert.equal(kaydirmaAnahtari(TABAN, { tur: "", ara: "   ", sira: undefined }), TABAN);
 });
