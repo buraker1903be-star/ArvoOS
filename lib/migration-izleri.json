@@ -385,5 +385,18 @@
         "sutun": "ozel_maddeler"
       }
     ]
+  },
+  {
+    "migration": "20261127182525_fiyat_yayim_kapsam_kilidi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.platform_fiyat_kapsam_imzasi"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.platform_fiyatlari_yayimla"
+      }
+    ]
   }
 ]

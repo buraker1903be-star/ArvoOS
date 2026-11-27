@@ -45,7 +45,15 @@ grant all on all tables in schema public to anon, authenticated, service_role;
 grant all on all sequences in schema public to anon, authenticated, service_role;
 `;
 
-export const SEMA = path.resolve(import.meta.dirname, "../../supabase/schema/canli-sema.sql");
+/*
+  KÖK DİZİN. `import.meta.dirname` normalde bu dosyanın yeri; bir
+  PAKETLEYİCİ bu modülü içeri aldığında (önizlemenin veritabanı kipi
+  böyle yapıyor) tanımsız kalıyor ve şema okuması "paths[0] must be
+  of type string" ile düşüyordu. O durumda depo kökünden kuruluyor.
+*/
+const KOK = import.meta.dirname ?? path.resolve(process.cwd(), "tests/db");
+
+export const SEMA = path.resolve(KOK, "../../supabase/schema/canli-sema.sql");
 
 /*
   ANLIK GÖRÜNTÜDEN SONRA GELEN MIGRATION'LAR.
@@ -88,6 +96,7 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261103065144_konsol_ana_ozeti.sql",
   "20261103142231_sozlesme_imza_son_tarihi.sql",
   "20261103144006_sozlesmeye_ozel_maddeler.sql",
+  "20261127182525_fiyat_yayim_kapsam_kilidi.sql",
 ];
 
 /*
@@ -123,7 +132,7 @@ const yetkiSatirlari = (sql) => yorumsuz(sql).match(/^\s*(?:grant|revoke)\s[^;]*
  */
 export async function migrationYetkileri(db, dosyaAdlari) {
   for (const ad of dosyaAdlari) {
-    const sql = fs.readFileSync(path.resolve(import.meta.dirname, "../../supabase/migrations/", ad), "utf8");
+    const sql = fs.readFileSync(path.resolve(KOK, "../../supabase/migrations/", ad), "utf8");
     for (const satir of yetkiSatirlari(sql)) await db.exec(satir);
   }
 }
@@ -171,7 +180,7 @@ export async function veritabani(semaDosyasi = SEMA) {
     Supabase yeni yaratılan tabloya varsayılanı kendisi veriyor.
   */
   const bekleyen = BEKLEYEN_MIGRATIONLAR.map((ad) =>
-    fs.readFileSync(path.resolve(import.meta.dirname, "../../supabase/migrations/", ad), "utf8"),
+    fs.readFileSync(path.resolve(KOK, "../../supabase/migrations/", ad), "utf8"),
   );
   for (const dosya of bekleyen) await db.exec(dosya);
   await yetkileriKur(db, [sema, ...bekleyen]);

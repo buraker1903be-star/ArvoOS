@@ -168,3 +168,72 @@ test("iptalden sonra yayım yalnızca kalan taslağı canlıya çıkarıyor", as
     assert.equal(s[ARVOLAB_KODU].aylik, 499000);
     assert.equal(s[ARVOOS_KODU].aylik, 259000);
   }));
+
+/*
+  KAPSAM KİLİDİ (28.11.2026). Önizleme ile yazma arasında taslak
+  kümesi değişirse eski onayla yayım yapılmamalı. Kontrol işlevin
+  İÇİNDE: satırlar kilitleniyor, imza orada yeniden hesaplanıyor —
+  yoksa okuma ile RPC arasındaki aralıkta eklenen bir taslak yine
+  görülmeden yayımlanırdı.
+*/
+const imza = async () => (await db.query("select public.platform_fiyat_kapsam_imzasi() as i")).rows[0].i;
+
+test("kapsam imzası arayüzdekiyle aynı biçimde: kod:tutar, artan, | ile", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    assert.equal(await imza(), `${ARVOLAB_KODU}:549000|${ARVOOS_KODU}:259000`);
+  }));
+
+test("imza tutuyorsa yayımlanıyor", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    const beklenen = await imza();
+    const sayi = (await db.query("select public.platform_fiyatlari_yayimla($1) as n", [beklenen])).rows[0].n;
+    assert.equal(Number(sayi), 2);
+  }));
+
+test("araya yeni bir taslak girerse ESKİ onayla yayımlanmıyor", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    const eskiOnay = await imza();
+
+    /* İkinci oturum üçüncü bir basamağı taslağa alıyor. */
+    await rol(db, "postgres");
+    await db.exec(`
+      insert into public.platform_fiyat_listesi (kod, tur, aylik_kurus, taslak_kurus, taslak_bekliyor, updated_at)
+      values ('arvoos-profesyonel', 'plan', 399000, 429000, true, now())
+      on conflict (kod) do update set taslak_kurus = excluded.taslak_kurus, taslak_bekliyor = true;
+    `);
+
+    await rol(db, "authenticated", KURUCU);
+    await reddedilir(
+      db,
+      "select public.platform_fiyatlari_yayimla($1)",
+      [eskiOnay],
+      /önizlemeden sonra değişti/i,
+    );
+    /* Hiçbir şey yayımlanmadı: üç taslak da bekliyor. */
+    const kalan = (await db.query("select count(*)::int as n from public.platform_fiyat_listesi where taslak_bekliyor")).rows[0].n;
+    assert.equal(Number(kalan), 3);
+  }));
+
+test("tutarı değişen bir taslak da eski onayı düşürüyor", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    const eskiOnay = await imza();
+    await rol(db, "postgres");
+    await db.exec(`update public.platform_fiyat_listesi set taslak_kurus = 599000 where kod = '${ARVOLAB_KODU}'`);
+    await rol(db, "authenticated", KURUCU);
+    await reddedilir(db, "select public.platform_fiyatlari_yayimla($1)", [eskiOnay], /önizlemeden sonra değişti/i);
+  }));
+
+test("kapsamlı yayım da KURUCUYA özel", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", YABANCI);
+    await reddedilir(db, "select public.platform_fiyatlari_yayimla($1)", [""], /kurucu yetkisi/i);
+  }));

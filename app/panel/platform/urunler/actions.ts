@@ -204,7 +204,15 @@ async function fiyatlariYayimla__impl(formData: FormData) {
     throw new Error("Önizlemedeki uyarıları okuyup onay kutusunu işaretleyin.");
   }
 
-  const { error } = await supabase.rpc("platform_fiyatlari_yayimla");
+  /*
+    İMZA VERİTABANINA DA GİDİYOR. Buradaki karşılaştırma kullanıcıya
+    anlaşılır bir mesaj veriyor ama tek başına YETMİYOR: okuma ile
+    RPC arasında da bir aralık var ve o aralıkta eklenen bir taslak
+    yine görülmeden yayımlanırdı. İşlev satırları kilitleyip imzayı
+    kendi içinde yeniden hesaplıyor (20261127182525), yani kontrol
+    ile yazma aynı işlemde.
+  */
+  const { error } = await supabase.rpc("platform_fiyatlari_yayimla", { p_kapsam: beklenenKapsam });
   if (error) throw new Error("Yayımlanamadı: " + error.message);
   fiyatYuzeyleriniTazele();
 }
