@@ -161,7 +161,11 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
       ) : (
         <div className="talep-tablo">
           <table className="crm-data-table">
-            <thead><tr><th>Kurum ve konu</th><th>Kategori</th><th>Öncelik</th><th className="crm-col-date">Son mesaj</th><th>Durum</th></tr></thead>
+            {/* ÜÇ SÜTUN: liste sütunu 632 px ve beş sütunla durum rozeti
+                sağdan kırpılıyordu (27.11.2026 ölçümü). Kategori ve
+                öncelik satırın alt yazısına indi; ikisi de seçili
+                görüşmenin künyesinde tam hâliyle duruyor. */}
+            <thead><tr><th>Kurum ve konu</th><th className="crm-col-date">Son mesaj</th><th>Durum</th></tr></thead>
             <tbody>
               {gosterilen.map((t) => {
                 /* Satır SEÇİYOR: görüşme sağ panelde açılıyor.
@@ -175,11 +179,12 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
                     <td data-label="Kurum ve konu">
                       <Link className="crm-row-link ek-kisi" href={href} aria-current={t.id === seciliId ? "true" : undefined}>
                         <span className="ek-avatar" aria-hidden="true">{basHarfleri(kurumAdi(t))}</span>
-                        <span className="ek-kisi-metin"><span className="crm-table-title" title={t.subject}>{t.subject}</span><span className="crm-table-sub">{kurumAdi(t)}</span></span>
+                        <span className="ek-kisi-metin">
+                          <span className="crm-table-title" title={t.subject}>{t.subject}</span>
+                          <span className="crm-table-sub">{kurumAdi(t)} · {KATEGORI_ADI[t.category] ?? t.category} · {ONCELIK_ADI[t.priority] ?? t.priority}</span>
+                        </span>
                       </Link>
                     </td>
-                    <td data-label="Kategori">{KATEGORI_ADI[t.category] ?? t.category}</td>
-                    <td data-label="Öncelik"><span className="status-pill" data-tone={t.priority === "urgent" ? "danger" : t.priority === "high" ? "gold" : "neutral"}>{ONCELIK_ADI[t.priority] ?? t.priority}</span></td>
                     <td className="crm-col-date" data-label="Son mesaj">{tarihSaat(t.last_message_at)}</td>
                     <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
                     <MobilSatir href={href} baslik={t.subject} durum={durum} alt={[kurumAdi(t), ONCELIK_ADI[t.priority], tarihSaat(t.last_message_at)]} />

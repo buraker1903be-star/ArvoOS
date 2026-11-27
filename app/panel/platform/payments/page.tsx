@@ -240,7 +240,7 @@ export default async function PaymentApprovalsPage({ searchParams }: {
       { secili: seciliAnahtar, suzgec },
       yeni);
 
-  return <main className="plt talep cari ekip finans-sayfa">
+  return <main className="plt talep cari ekip finans-sayfa liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">FİNANS</small>

@@ -25,6 +25,7 @@
 */
 import { createRequire } from "node:module";
 import { mkdir } from "node:fs/promises";
+import { rotaKusurlari } from "./konsol-rota-olcutleri.mjs";
 /* Playwright depoda değil, ortamın araç dizininde: ESM `import` onu
    bulamıyor (öteki tarayıcı betikleri de böyle çözüyor). */
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -98,8 +99,14 @@ for (const is of ISLER) {
       geriGorunur: gorunur(document.querySelector(".kl-geri")),
     };
   });
-  if (yanit.status() !== 200 || hatalar.length) dusen++;
-  console.log(is.ad.padEnd(32), yanit.status(), JSON.stringify(olcum), hatalar.length ? "HATA: " + hatalar.join(" | ") : "");
+  const kusurlar = rotaKusurlari(is, yanit.status(), olcum).concat(hatalar.map((h) => "sayfa hatası: " + h));
+  if (kusurlar.length) dusen++;
+  console.log(
+    (kusurlar.length ? "✗ " : "✓ ") + is.ad.padEnd(32),
+    yanit.status(),
+    JSON.stringify(olcum),
+    kusurlar.length ? "KUSUR: " + kusurlar.join(" | ") : "",
+  );
   await baglam.close();
 }
 await tarayici.close();

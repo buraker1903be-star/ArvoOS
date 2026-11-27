@@ -25,6 +25,9 @@ export const ORNEK_KULLANICI = { id: KURUCU, email: "kurucu@ornek.test" };
 
 const gun = (fark: number) => new Date(Date.now() + fark * 86_400_000).toISOString();
 
+/* Kimlikler UUID: rotalar biçimi doğruluyor ve UUID olmayan bir
+   kimlik notFound() veriyor — "t1" ile açılan görüşme rotası
+   önizlemede 404 dönüyordu. */
 /* Kurum künyeleri tek yerde: liste görünümü, organizations tablosu ve
    gömülü seçimler aynı adları taşısın. */
 const KURUMLAR = [
@@ -81,10 +84,10 @@ export const ORNEK: Record<string, Record<string, unknown>[]> = {
 
   /* ---- Finans: ödeme bildirimleri ---- */
   organization_payment_requests: [
-    { id: "p1", organization_id: K1, plan_code: "kurumsal", product: "core", amount: 450_000, currency: "TRY", status: "pending", payment_method: "bank_transfer", receipt_path: "dekont/p1.pdf", reference_no: "ARV-2026-0141", customer_note: "Havale bugün yapıldı, dekont ekte.", review_note: null, created_at: gun(-1), reviewed_at: null, organizations: { name: "Akademi Yayıncılık", slug: "akademi" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
-    { id: "p2", organization_id: K4, plan_code: "kurumsal", product: "arvolab", amount: 150_000, currency: "TRY", status: "pending", payment_method: "bank_transfer", receipt_path: null, reference_no: "ARV-2026-0142", customer_note: null, review_note: null, created_at: gun(-2), reviewed_at: null, organizations: { name: "Deniz Eğitim Kurumları", slug: "deniz" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
-    { id: "p3", organization_id: K2, plan_code: "baslangic", product: "core", amount: 180_000, currency: "TRY", status: "approved", payment_method: "bank_transfer", receipt_path: "dekont/p3.pdf", reference_no: "ARV-2026-0120", customer_note: null, review_note: "Hesapta görüldü.", created_at: gun(-20), reviewed_at: gun(-19), organizations: { name: "Ege Danışmanlık", slug: "ege" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
-    { id: "p4", organization_id: K3, plan_code: "profesyonel", product: "core", amount: 320_000, currency: "TRY", status: "rejected", payment_method: "bank_transfer", receipt_path: null, reference_no: "ARV-2026-0118", customer_note: "Dekontu sonra yükleyeceğim.", review_note: "Dekont gelmedi.", created_at: gun(-26), reviewed_at: gun(-24), organizations: { name: "Kuzey Mimarlık", slug: "kuzey" }, platform_bank_accounts: null },
+    { id: "bbbbbbb1-0000-4000-8000-000000000001", organization_id: K1, plan_code: "kurumsal", product: "core", amount: 450_000, currency: "TRY", status: "pending", payment_method: "bank_transfer", receipt_path: "dekont/p1.pdf", reference_no: "ARV-2026-0141", customer_note: "Havale bugün yapıldı, dekont ekte.", review_note: null, created_at: gun(-1), reviewed_at: null, organizations: { name: "Akademi Yayıncılık", slug: "akademi" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
+    { id: "bbbbbbb1-0000-4000-8000-000000000002", organization_id: K4, plan_code: "kurumsal", product: "arvolab", amount: 150_000, currency: "TRY", status: "pending", payment_method: "bank_transfer", receipt_path: null, reference_no: "ARV-2026-0142", customer_note: null, review_note: null, created_at: gun(-2), reviewed_at: null, organizations: { name: "Deniz Eğitim Kurumları", slug: "deniz" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
+    { id: "bbbbbbb1-0000-4000-8000-000000000003", organization_id: K2, plan_code: "baslangic", product: "core", amount: 180_000, currency: "TRY", status: "approved", payment_method: "bank_transfer", receipt_path: "dekont/p3.pdf", reference_no: "ARV-2026-0120", customer_note: null, review_note: "Hesapta görüldü.", created_at: gun(-20), reviewed_at: gun(-19), organizations: { name: "Ege Danışmanlık", slug: "ege" }, platform_bank_accounts: { bank_name: "Örnek Bank", iban: "TR00 0000 0000 0000 0000 0000 01" } },
+    { id: "bbbbbbb1-0000-4000-8000-000000000004", organization_id: K3, plan_code: "profesyonel", product: "core", amount: 320_000, currency: "TRY", status: "rejected", payment_method: "bank_transfer", receipt_path: null, reference_no: "ARV-2026-0118", customer_note: "Dekontu sonra yükleyeceğim.", review_note: "Dekont gelmedi.", created_at: gun(-26), reviewed_at: gun(-24), organizations: { name: "Kuzey Mimarlık", slug: "kuzey" }, platform_bank_accounts: null },
   ],
   platform_subscription_requests: [
     { id: "a1", organization_id: K4, status: "pending", plan_code: "kurumsal", created_at: gun(-3) },
@@ -95,27 +98,27 @@ export const ORNEK: Record<string, Record<string, unknown>[]> = {
 
   /* ---- Destek ---- */
   support_tickets: [
-    { id: "t1", subject: "Fatura adresi güncellenmiyor", category: "billing", priority: "high", status: "open", last_message_at: gun(-1.2), created_at: gun(-2), organization_id: K2, organizations: { name: "Ege Danışmanlık", display_name: "Ege Danışmanlık Ltd.", contact_phone: "0232 555 0202" }, support_messages: [
+    { id: "aaaaaaa1-0000-4000-8000-000000000001", subject: "Fatura adresi güncellenmiyor", category: "billing", priority: "high", status: "open", last_message_at: gun(-1.2), created_at: gun(-2), organization_id: K2, organizations: { name: "Ege Danışmanlık", display_name: "Ege Danışmanlık Ltd.", contact_phone: "0232 555 0202" }, support_messages: [
       { id: "m1", body: "Fatura adresimizi değiştirdik ama proformada eski adres görünüyor.", is_staff: false, created_at: gun(-2) },
       { id: "m2", body: "Merhaba, kaydı güncelliyoruz; yeni proformada doğru görünecek.", is_staff: true, created_at: gun(-1.8) },
       { id: "m3", body: "Hâlâ eski adres çıkıyor.", is_staff: false, created_at: gun(-1.2) },
     ] },
-    { id: "t2", subject: "ArvoLab kullanıcı limiti", category: "account", priority: "normal", status: "waiting_customer", last_message_at: gun(-0.4), created_at: gun(-4), organization_id: K1, organizations: { name: "Akademi Yayıncılık", display_name: "Akademi Yayıncılık A.Ş.", contact_phone: "0212 555 0101" }, support_messages: [
+    { id: "aaaaaaa1-0000-4000-8000-000000000002", subject: "ArvoLab kullanıcı limiti", category: "account", priority: "normal", status: "waiting_customer", last_message_at: gun(-0.4), created_at: gun(-4), organization_id: K1, organizations: { name: "Akademi Yayıncılık", display_name: "Akademi Yayıncılık A.Ş.", contact_phone: "0212 555 0101" }, support_messages: [
       { id: "m4", body: "25 kullanıcıyı doldurduk, artırmak istiyoruz.", is_staff: false, created_at: gun(-4) },
       { id: "m5", body: "Paketi Kurumsal 40'a geçirebiliriz; onaylıyor musunuz?", is_staff: true, created_at: gun(-0.4) },
     ] },
-    { id: "t3", subject: "Randevu bağlantısı açılmıyor", category: "technical", priority: "urgent", status: "open", last_message_at: gun(-2.6), created_at: gun(-3), organization_id: K4, organizations: { name: "Deniz Eğitim Kurumları", display_name: "Deniz Eğitim", contact_phone: "0224 555 0404" }, support_messages: [
+    { id: "aaaaaaa1-0000-4000-8000-000000000003", subject: "Randevu bağlantısı açılmıyor", category: "technical", priority: "urgent", status: "open", last_message_at: gun(-2.6), created_at: gun(-3), organization_id: K4, organizations: { name: "Deniz Eğitim Kurumları", display_name: "Deniz Eğitim", contact_phone: "0224 555 0404" }, support_messages: [
       { id: "m6", body: "cal.arvo-os.com adresi bizde açılmıyor.", is_staff: false, created_at: gun(-3) },
     ] },
-    { id: "t4", subject: "Eğitim videosu talebi", category: "other", priority: "low", status: "resolved", last_message_at: gun(-30), created_at: gun(-40), organization_id: K3, organizations: { name: "Kuzey Mimarlık", display_name: null, contact_phone: "0312 555 0303" }, support_messages: [
+    { id: "aaaaaaa1-0000-4000-8000-000000000004", subject: "Eğitim videosu talebi", category: "other", priority: "low", status: "resolved", last_message_at: gun(-30), created_at: gun(-40), organization_id: K3, organizations: { name: "Kuzey Mimarlık", display_name: null, contact_phone: "0312 555 0303" }, support_messages: [
       { id: "m7", body: "Ekip için tanıtım videosu var mı?", is_staff: false, created_at: gun(-40) },
       { id: "m8", body: "Kılavuzda video bölümü var, bağlantıyı paylaştım.", is_staff: true, created_at: gun(-30) },
     ] },
   ],
   support_messages: [
-    { ticket_id: "t1", is_staff: true, created_at: gun(-1.8) },
-    { ticket_id: "t2", is_staff: true, created_at: gun(-0.4) },
-    { ticket_id: "t4", is_staff: true, created_at: gun(-30) },
+    { ticket_id: "aaaaaaa1-0000-4000-8000-000000000001", is_staff: true, created_at: gun(-1.8) },
+    { ticket_id: "aaaaaaa1-0000-4000-8000-000000000002", is_staff: true, created_at: gun(-0.4) },
+    { ticket_id: "aaaaaaa1-0000-4000-8000-000000000004", is_staff: true, created_at: gun(-30) },
   ],
   platform_hazir_yanitlar: [
     { id: "h1", baslik: "Fatura adresi güncelleme", metin: "Merhaba, fatura bilgilerinizi güncelledik. Yeni proformada doğru görünecek." },
