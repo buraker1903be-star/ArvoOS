@@ -924,3 +924,33 @@ test("Ürünler doğrudan girişte ANA katta ve etkin; ikinci kat açılmamalı"
   assert.equal(vurgusuz.gecti, false);
   assert.ok(vurgusuz.eksik.some((m: string) => m.includes("Ürünler etkin değil")), vurgusuz.eksik.join(" | "));
 });
+
+test("müşteri satırı: avatar solda, iç içe kaydırma yok, son satır tam", () => {
+  /*
+    27.11.2026: finans.css'teki satır kuralı sayfa sınıfına bağlıydı
+    (.finans-sayfa, .urun-sayfa, …) ve ürün detayı `urun-detay-sayfa`
+    sınıfına geçince hiçbirine uymaz oldu — avatar adın ÜSTÜNDE
+    çiziliyor, satır iki kat yükseliyordu.
+  */
+  const temel = { sayfaDikey: "900/900", sayfaYatay: "1440/1440", dockOrtuyor: false, icerikAlt: 700, dockUstu: 860 };
+  const dogru = { bulundu: true, yon: "row", avatarSolda: true, kapKaydiriyor: false, sonSatirKirpik: false };
+  assert.deepEqual(tekEkranHukmu("1440x900 acik urundetay", { ...temel, musteriSatiri: dogru }).eksik, []);
+
+  const ustte = tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, musteriSatiri: { ...dogru, yon: "column", avatarSolda: false },
+  });
+  assert.equal(ustte.gecti, false);
+  assert.ok(ustte.eksik.some((m: string) => m.includes("avatar adın solunda değil")), ustte.eksik.join(" | "));
+
+  const iciceKaydirma = tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, musteriSatiri: { ...dogru, kapKaydiriyor: true },
+  });
+  assert.equal(iciceKaydirma.gecti, false);
+  assert.ok(iciceKaydirma.eksik.some((m: string) => m.includes("iç içe kaydırma")), iciceKaydirma.eksik.join(" | "));
+
+  const kirpik = tekEkranHukmu("1440x900 acik urundetay", {
+    ...temel, musteriSatiri: { ...dogru, sonSatirKirpik: true },
+  });
+  assert.equal(kirpik.gecti, false);
+  assert.ok(kirpik.eksik.some((m: string) => m.includes("son müşteri satırı kırpık")), kirpik.eksik.join(" | "));
+});

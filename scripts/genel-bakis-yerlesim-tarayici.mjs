@@ -708,6 +708,12 @@ function UrunDetay() {
     Finans'taki ÖDEME ONAYLARINA, abone ödemesi TAHSİLAT ekranına
     gidiyor (üretimdeki hedeflerin aynısı).
   */
+  const MUSTERI_SATIRLARI = [
+    { ad: "Akademik Merkez Danışmanlık", bas: "AM", tur: "Kurumsal", paket: "Profesyonel", kullanici: "48", donem: "14 Ara 2026", ucret: "₺28.900" },
+    { ad: "Yıldız Eğitim Kurumları", bas: "YE", tur: "Grup markası", paket: "Kurumsal", kullanici: "126", donem: "02 Şub 2027", ucret: "₺94.600" },
+    { ad: "Ege Akademi", bas: "EA", tur: "Kurumsal", paket: "Başlangıç", kullanici: "12", donem: "30 Kas 2026", ucret: "₺7.900" },
+    { ad: "Boğaziçi Araştırma Enstitüsü", bas: "BA", tur: "Kurumsal", paket: "Profesyonel", kullanici: "64", donem: "21 Oca 2027", ucret: "₺31.400" },
+  ];
   const TAHSILAT_SATIRLARI = [
     { anahtar: "k1", tarih: "26 Kas 2026", kayit: "Akademik Merkez", tur: "Kurum ödemesi", tutar: "₺28.900", durum: "Onaylandı", href: "/panel/platform/payments" },
     { anahtar: "a1", tarih: "24 Kas 2026", kayit: "Zeynep Aydın", tur: "Bireysel abone", tutar: "₺1.490", durum: "Tahsil edildi", href: "/panel/platform/tahsilat" },
@@ -773,9 +779,54 @@ function UrunDetay() {
                 sayi: (n) => n.toLocaleString("tr-TR"),
               })} />
           </section>
-          {basitPanel("musteriler", kunye.ad + " müşterileri", (
-            <p className="ugb-bos">42 kurum ArvoLab lisansı kullanıyor.</p>
-          ))}
+          {/*
+            MÜŞTERİLER ÜRETİM MARKUP'IYLA (27.11.2026, inceleme talebi).
+            Bölüm tek cümlelik bir vekildi; avatarın adın solunda olup
+            olmadığı, satırın odak halkası ve iç içe kaydırma
+            ölçülemiyordu — üçü de bu turda düzeltilen şeyler. Satırlar
+            örnek GİRDİ; sınıflar ve yapı üretimdekinin aynısı
+            (urunler/[urun]/page.tsx · ur-kiraci).
+          */}
+          <section className="urd-bolum" data-bolum="musteriler">
+            <header className="urd-bolum-bas">
+              <div><h2>Müşteriler</h2><small>42 lisans · 38 açık · 31 ödeyen · beklenen aylık ₺128.450</small></div>
+            </header>
+            <form className="urd-suzgec" method="get" action="/panel/platform/urunler/arvolab">
+              <input type="hidden" name="bolum" value="musteriler" />
+              <input className="urd-ara" type="search" name="ara" placeholder="Müşteri adı" aria-label="Müşteri adında ara" />
+              <select name="durum" aria-label="Lisans durumu" defaultValue="">
+                <option value="">Bütün durumlar</option>
+                <option value="active">Etkin</option>
+              </select>
+              <button className="panel-secondary" type="submit">Süz</button>
+            </form>
+            <div className="talep-tablo fn-ic-tablo">
+              <table className="crm-data-table" data-cols="ur-kiraci">
+                <thead><tr><th>Müşteri</th><th>Paket</th><th>Kullanıcı</th><th className="crm-col-date">Dönem sonu</th><th className="crm-col-amount">Aylık</th><th>Durum</th><th></th></tr></thead>
+                <tbody>
+                  {MUSTERI_SATIRLARI.map((m) => (
+                    <tr key={m.ad}>
+                      <td data-label="Müşteri">
+                        <Link className="crm-row-link ek-kisi" href="/panel/platform/musteriler/1">
+                          <span className="ek-avatar" aria-hidden="true">{m.bas}</span>
+                          <span className="ek-kisi-metin">
+                            <span className="crm-table-title">{m.ad}</span>
+                            <span className="crm-table-sub">{m.tur}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td data-label="Paket"><span className="crm-table-title">{m.paket}</span></td>
+                      <td data-label="Kullanıcı"><span className="crm-table-title">{m.kullanici}</span></td>
+                      <td className="crm-col-date" data-label="Dönem sonu">{m.donem}</td>
+                      <td className="crm-col-amount" data-label="Aylık"><span className="crm-table-title">{m.ucret}</span></td>
+                      <td data-label="Durum"><span className="status-pill" data-tone="success">Etkin</span></td>
+                      <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
           {basitPanel("fiyat", kunye.ad + " fiyat basamakları", (
             <p className="ugb-bos">Standart ₺790 · Plus ₺1.190 · Pro ₺1.490</p>
           ))}
@@ -1907,6 +1958,35 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
         onaylarına, abone ödemesi Tahsilat ekranına. href okumak
         yetmez — tıklanınca nereye gidildiği ölçülüyor.
       */
+      /*
+        MÜŞTERİ SATIRI (27.11.2026, inceleme talebi). Üç şey birden
+        ölçülüyor: avatar adın SOLUNDA mı (üstünde değil), tablo kabı
+        AYRICA kayıyor mu (sayfa zaten kayıyor — iç içe kaydırma) ve
+        son satır kırpılmadan görünüyor mu.
+      */
+      if (s === "urundetay" && process.env.BOLUM === "musteriler") {
+        o.musteriSatiri = await sayfa.evaluate(() => {
+          const kisi = document.querySelector('td[data-label="Müşteri"] .ek-kisi');
+          if (!kisi) return { bulundu: false };
+          const avatar = kisi.querySelector(".ek-avatar");
+          const ad = kisi.querySelector(".crm-table-title");
+          const ar = avatar?.getBoundingClientRect();
+          const adr = ad?.getBoundingClientRect();
+          const kap = document.querySelector('[data-bolum="musteriler"] .talep-tablo') || kisi.closest(".talep-tablo");
+          const hucreler = [...document.querySelectorAll('td[data-label="Müşteri"]')];
+          const son = hucreler[hucreler.length - 1]?.getBoundingClientRect();
+          const kapR = kap?.getBoundingClientRect();
+          return {
+            bulundu: true,
+            yon: getComputedStyle(kisi).flexDirection,
+            /* Solda mı: avatarın sağ kenarı adın sol kenarından önce. */
+            avatarSolda: Boolean(ar && adr && ar.right <= adr.left + 1),
+            /* İç içe kaydırma: tablo kabının kendi kaydırıcısı var mı. */
+            kapKaydiriyor: kap ? kap.scrollHeight > kap.clientHeight + 1 : null,
+            sonSatirKirpik: Boolean(son && kapR && son.bottom > kapR.bottom + 1),
+          };
+        });
+      }
       if (s === "urundetay" && process.env.BOLUM === "tahsilat" && w >= 1200) {
         /* İKİ TÜR DE ÖLÇÜLÜYOR: tablodaki ilk kurum ödemesi ve ilk
            bireysel abone ödemesi ayrı hedeflere gidiyor. Yalnızca ilk

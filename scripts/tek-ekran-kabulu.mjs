@@ -373,6 +373,26 @@ export function tekEkranHukmu(ad, o) {
   }
 
   /*
+    MÜŞTERİ SATIRI (27.11.2026, inceleme talebi). Üç kural:
+      1. Avatar adın SOLUNDA. finans.css'teki kural sayfa sınıfına
+         bağlıydı ve ürün detayı `urun-detay-sayfa`ya geçince
+         eşleşmez olmuştu: avatar adın ÜSTÜNDE çiziliyordu.
+      2. Tablo kabı AYRICA kaymamalı. Sayfa zaten kayıyor; iki
+         kaydırıcı iç içe olunca fare tekerleği hangisini
+         kaydıracağı belirsiz oluyor.
+      3. Son satır kırpılmamalı.
+  */
+  if (o.musteriSatiri) {
+    const m = o.musteriSatiri;
+    if (!m.bulundu) eksik.push("müşteri satırı bulunamadı");
+    else {
+      if (!m.avatarSolda) eksik.push(`avatar adın solunda değil (yön ${m.yon})`);
+      if (m.kapKaydiriyor) eksik.push("müşteri tablosu ayrıca kayıyor (iç içe kaydırma)");
+      if (m.sonSatirKirpik) eksik.push("son müşteri satırı kırpık");
+    }
+  }
+
+  /*
     ÜRÜN AKIŞI (27.11.2026, inceleme talebi): Ürünler → ArvoLab →
     Abonelikler → Tahsilat → listeye dönüş. Her adımda ADRES, AÇIK
     SAYFA ve SOL MENÜ birlikte doğru olmalı; biri ötekinden kopunca
