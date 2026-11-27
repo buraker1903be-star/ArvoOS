@@ -635,12 +635,16 @@ export default async function MusterilerPage({ searchParams }: {
       sorulan sayılarını orada tutmak daha iyi.
     */}
     <div className="kl-duzen" data-secim={seciliSatir ? "var" : "yok"}>
-      {/* Bireysel aboneler ayrı menü değil (02.11.2026); işlemleri (paket fiyatı,
-          aboneyi kuruma bağlama) kendi ekranında, buradan açılıyor. */}
-      {secilenTur === "bireysel" ? (
-        <KNot>Bireysel abonelerin paket fiyatı ve kuruma bağlama işlemleri: <Link href="/panel/platform/subscribers">Bireysel abone yönetimi →</Link></KNot>
-      ) : null}
       <section className="kl-liste" aria-label="Müşteri listesi">
+        {/* Bireysel aboneler ayrı menü değil (02.11.2026); işlemleri (paket
+            fiyatı, aboneyi kuruma bağlama) kendi ekranında, buradan açılıyor.
+            Not LİSTE SÜTUNUNUN İÇİNDE: `kl-duzen`un doğrudan çocuğu olduğu
+            sürece ızgaranın ilk gözünü kapıyor ve liste ikinci göze,
+            panel alt satıra kayıyordu — "Bireysel" sekmesinde iki sütun
+            yer değiştirmiş görünüyordu (27.11.2026). */}
+        {secilenTur === "bireysel" ? (
+          <KNot>Bireysel abonelerin paket fiyatı ve kuruma bağlama işlemleri: <Link href="/panel/platform/subscribers">Bireysel abone yönetimi →</Link></KNot>
+        ) : null}
         <div className="ekip-suzgec talep-suzgec ek-arac">
           <nav className="ek-segment" aria-label="Tür">
             {TURLER.map(([kod, ad, adet]) => (

@@ -6,6 +6,9 @@ import { getPanelContext } from "@/lib/panel-context";
 import { tumSatirlar } from "@/lib/rapor-okuma";
 import { beklemeSuresi, DURUM_ADI, gecikmisMi, kuyrukHali, kuyrukSirala, KATEGORI_ADI, KUYRUK_SEKMELERI, ONCELIK_ADI, sureYazisi, yanitHizi } from "@/lib/destek-kuyrugu";
 import { basHarfleri, tarihSaat } from "../bicim";
+import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos } from "../konsol-liste";
+import { Gorusme, gorusmeAlanlari, gorusmeDurumu, gorusmeVerisi } from "./gorusme";
+import { listeAdresi } from "@/lib/konsol/liste-secimi";
 import { MobilSatir } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import "../platform.css";
@@ -13,6 +16,8 @@ import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../../hr/hr.css";
 import "../finans.css";
+import "../konsol-liste.css";
+import "./destek.css";
 
 export const metadata: Metadata = { title: "Destek talepleri", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -40,12 +45,18 @@ const kurumAdi = (t: Talep) => {
 // Şimdiki zaman bileşen dışında okunur (react-hooks/purity).
 const simdiOku = () => new Date();
 
-export default async function DestekKuyrugu({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
+export default async function DestekKuyrugu({ searchParams }: { searchParams: Promise<{ durum?: string; secili?: string }> }) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "destek");
-  const { durum: istenen } = await searchParams;
+  const { durum: istenen, secili: seciliParam } = await searchParams;
+  const seciliId = seciliParam?.trim() || null;
   const sekme = KUYRUK_SEKMELERI.find((s) => s.anahtar === istenen) ?? KUYRUK_SEKMELERI[0];
+  /* Sekme ve seçim adresin alanları: yenileme aynı ekranı getiriyor,
+     tarayıcı geri/ileri liste ile görüşme arasında geziyor. */
+  const destekAdresi = (degisiklik: Record<string, string | null>) =>
+    listeAdresi("/panel/platform/destek", { durum: istenen ?? null, secili: seciliId }, degisiklik,
+      { durum: KUYRUK_SEKMELERI[0].anahtar });
 
   const talepler = await tumSatirlar<Talep>("destek talepleri", (bas, son) =>
     supabase.from("support_tickets")
@@ -80,8 +91,13 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
   const geciken = yanitBekleyen.filter((t) => gecikmisMi(t.last_message_at, simdi)).length;
   const acil = yanitBekleyen.filter((t) => t.priority === "urgent" || t.priority === "high").length;
   const gosterilen = kuyrukSirala(talepler.filter((t) => sekme.anahtar === "tumu" || kuyrukHali(t.status) === sekme.anahtar));
+  /* Seçili görüşme sağ panelde. Talep hiç yoksa panel "bulunamadı"
+     diyor; duruyor ama sekmede görünmüyorsa nedenini yazıyor —
+     sessizce boşalan panel ikisi için de yanlış cevap. */
+  const gorusme = seciliId ? await gorusmeVerisi(supabase, seciliId) : null;
+  const seciliListede = Boolean(gorusme && gosterilen.some((t) => t.id === gorusme.id));
 
-  return <main className="plt talep cari ekip finans-sayfa">
+  return <main className="plt talep cari ekip finans-sayfa liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">DESTEK</small>
@@ -116,17 +132,27 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
       </dl>
     </nav>
 
-    <div className="ek-arac">
-      <nav className="ek-segment" aria-label="Talep durumu">
-        {KUYRUK_SEKMELERI.map((s) => (
-          <Link key={s.anahtar} href={`/panel/platform/destek?durum=${s.anahtar}`} className={s === sekme ? "is-active" : undefined} aria-current={s === sekme ? "page" : undefined}>
-            {s.ad} · {sayi(s.anahtar)}
-          </Link>
-        ))}
-      </nav>
-    </div>
-
-    <section className="panel-card talep-bilgi" aria-label={sekme.ad}>
+    {/*
+      LİSTE – SEÇİLİ GÖRÜŞME (27.11.2026, onaylı tasarım). Müşteriler
+      ve Ödeme onaylarıyla aynı iskelet: ortada talep listesi, sağda
+      seçili görüşme. Konuşma, yanıt kutusu ve durum formu AYNI
+      bileşenden (./gorusme) — /destek/[id] rotası da onu çiziyor ve
+      paylaşılmış bağlantılar çalışmaya devam ediyor.
+    */}
+    <div className="kl-duzen" data-secim={gorusme ? "var" : "yok"}>
+      <section className="kl-liste" aria-label={sekme.ad}>
+      <div className="ek-arac">
+        <nav className="ek-segment" aria-label="Talep durumu">
+          {KUYRUK_SEKMELERI.map((s) => (
+            /* Sekme SEÇİMİ TAŞIR: kullanıcı sekme değiştirirken açtığı
+               görüşmeyi kaybetmiyor. */
+            <Link key={s.anahtar} href={destekAdresi({ durum: s.anahtar })} className={s === sekme ? "is-active" : undefined} aria-current={s === sekme ? "page" : undefined}>
+              {s.ad} · {sayi(s.anahtar)}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      <div className="kl-liste-govde">
       {gosterilen.length === 0 ? (
         <div className="crm-empty-state talep-bos-kutu ek-bos">
           <h2>{sekme.anahtar === "yanit" ? "Yanıt bekleyen talep yok" : "Bu sekmede talep yok"}</h2>
@@ -138,14 +164,16 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
             <thead><tr><th>Kurum ve konu</th><th>Kategori</th><th>Öncelik</th><th className="crm-col-date">Son mesaj</th><th>Durum</th></tr></thead>
             <tbody>
               {gosterilen.map((t) => {
-                const href = `/panel/platform/destek/${t.id}`;
+                /* Satır SEÇİYOR: görüşme sağ panelde açılıyor.
+                   /destek/[id] paylaşılmış bağlantı olarak duruyor. */
+                const href = destekAdresi({ secili: t.id });
                 const bekliyor = kuyrukHali(t.status) === "yanit";
                 const gec = bekliyor && gecikmisMi(t.last_message_at, simdi);
                 const durum = { etiket: bekliyor ? `${beklemeSuresi(t.last_message_at, simdi)} bekliyor` : DURUM_ADI[t.status] ?? t.status, ton: bekliyor ? (gec ? "danger" : "gold") : t.status === "waiting_customer" ? "info" : "neutral" };
                 return (
-                  <tr key={t.id}>
+                  <tr key={t.id} className={t.id === seciliId ? "is-secili" : undefined}>
                     <td data-label="Kurum ve konu">
-                      <Link className="crm-row-link ek-kisi" href={href}>
+                      <Link className="crm-row-link ek-kisi" href={href} aria-current={t.id === seciliId ? "true" : undefined}>
                         <span className="ek-avatar" aria-hidden="true">{basHarfleri(kurumAdi(t))}</span>
                         <span className="ek-kisi-metin"><span className="crm-table-title" title={t.subject}>{t.subject}</span><span className="crm-table-sub">{kurumAdi(t)}</span></span>
                       </Link>
@@ -163,6 +191,37 @@ export default async function DestekKuyrugu({ searchParams }: { searchParams: Pr
           <SatirTiklama />
         </div>
       )}
-    </section>
+      </div>
+      </section>
+
+      <aside className="kl-panel" aria-label={gorusme ? `${gorusme.subject} görüşmesi` : "Görüşme"}>
+        {gorusme ? (
+          <>
+            <Link className="kl-geri" href={destekAdresi({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+            {!seciliListede ? (
+              <p className="kl-suzgec-disi">
+                Bu talep geçerli sekmede görünmüyor.{" "}
+                <Link href={destekAdresi({ durum: "tumu" })}>Bütün talepleri göster →</Link>
+              </p>
+            ) : null}
+            <KonsolPanelBas baslik={gorusme.subject}
+              durum={{ etiket: gorusmeDurumu(gorusme.status).etiket, ton: gorusmeDurumu(gorusme.status).ton }}
+              kapatAdresi={destekAdresi({ secili: null })} />
+            <KonsolPanelAlanlar alanlar={gorusmeAlanlari(gorusme)} />
+            <Gorusme veri={gorusme} />
+          </>
+        ) : seciliId ? (
+          <>
+            <Link className="kl-geri" href={destekAdresi({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+            <KonsolPanelBos ton="uyari" baslik="Talep bulunamadı"
+              aciklama="Bu talep silinmiş ya da artık erişilebilir değil. Listeden başka bir talep seçebilirsiniz."
+              eylem={<Link className="panel-secondary" href={destekAdresi({ secili: null })}>Listeye dön</Link>} />
+          </>
+        ) : (
+          <KonsolPanelBos baslik="Görüşme seçilmedi"
+            aciklama="Soldaki listeden bir talep seçin; konuşma ve yanıt kutusu burada açılır." />
+        )}
+      </aside>
+    </div>
   </main>;
 }

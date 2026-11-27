@@ -24,7 +24,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "check:css": "node scripts/check-css-tokens.mjs && node scripts/check-css-import.mjs",
-    "check:satir-tavani": "node scripts/check-satir-tavani.mjs"
+    "check:satir-tavani": "node scripts/check-satir-tavani.mjs",
+    "onizleme": "ARVOOS_ONIZLEME=1 next dev -p 3124"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",

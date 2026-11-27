@@ -6,7 +6,35 @@ import { PRIVATE_PATH_PREFIXES } from "./lib/site/host-rules";
 const MARKETING_HOST_PATTERN = MARKETING_HOSTS.map((host) => host.replace(/\./g, "\\.")).join("|");
 const NOINDEX = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
+/*
+  YEREL ÖNİZLEME (27.11.2026). `npm run onizleme` Supabase modüllerini
+  sahte istemciyle değiştirir (scripts/onizleme/): bu depoda `.env` yok
+  ve konsolun her rotası `isPlatformOwner` arkasında, yani Yönetim
+  Merkezi geliştirme makinesinde hiç açılamıyordu.
+
+  Bayrak açıkken ÜRETİM DERLEMESİ DURUR: sahte istemcinin canlıya
+  çıkması her sorgunun "başarılı" görünüp hiçbir şey yazmaması demek.
+*/
+const ONIZLEME = process.env.ARVOOS_ONIZLEME === "1";
+if (ONIZLEME && process.env.NODE_ENV === "production") {
+  throw new Error("ARVOOS_ONIZLEME üretim derlemesinde açık olamaz.");
+}
+
 const nextConfig: NextConfig = {
+  ...(ONIZLEME
+    ? {
+        turbopack: {
+          resolveAlias: {
+            "@/lib/supabase/server": "./scripts/onizleme/server.ts",
+            "@/lib/supabase/client": "./scripts/onizleme/client.ts",
+            "@/lib/supabase/admin": "./scripts/onizleme/admin.ts",
+            /* Ara katman oturumu çerezden çözüyor; önizlemede her panel
+               isteği /login'e inerdi. */
+            "@/lib/supabase/proxy": "./scripts/onizleme/proxy.ts",
+          },
+        },
+      }
+    : {}),
   experimental: {
     serverActions: {
       bodySizeLimit: "6mb",

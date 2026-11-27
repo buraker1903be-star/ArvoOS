@@ -21,3 +21,14 @@
 .panel-root .destek-hazir p{margin:0;white-space:pre-wrap;word-break:break-word;font-size:var(--fs-base);line-height:1.5;color:var(--ink)}
 .panel-root .destek-kucuk{min-height:28px;padding:3px 10px;font-size:12px}
 .panel-root .destek-hazir-sec select{max-width:320px}
+
+/*
+  SAĞ PANELDEKİ GÖRÜŞME (27.11.2026). Tam sayfada konuşma bir KARTIN
+  içinde ve kartın iç boşluğunu `destek-konusma/destek-yanit`
+  taşıyor; panelde kart yok, sütunun kendi boşluğu var. Yatay dolgu
+  iki kez binince mesajlar sütunun ortasına sıkışıyordu.
+*/
+.panel-root .kl-panel .destek-konusma,
+.panel-root .kl-panel .destek-yanit{padding-inline:0}
+.panel-root .kl-panel .destek-konusma{padding-top:var(--sp-3)}
+.panel-root .kl-panel .destek-mesaj{max-width:92%}
