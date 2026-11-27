@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { MarkaLogosu, type DigerUygulama } from "../panel-navigation";
 import { aramaAnahtari, etkinUygulama, mobilAltCubuk, type OsUygulama } from "./os-apps";
+import { etkinBolum } from "./os-bolumler";
 import { OsSimge } from "./os-icons";
 import { masaustuAbone, masaustuMu, yanMenuAbone, yanMenuDarMi, yanMenuTercihiniUygula } from "./gezinme-istemci";
-import { ArvoOsIsareti, ArvoOsLogosu } from "./arvoos-markasi";
 import "./os-navigasyon.css";
 import "./os-yanmenu.css";
 
@@ -44,7 +44,7 @@ import "./os-yanmenu.css";
 const sunucuDar = () => false;
 const sunucuMasaustu = () => false;
 
-export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, yanMenuSirasi, marka }: {
+export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, yanMenuSirasi }: {
   uygulamalar: OsUygulama[];
   digerUygulamalar: DigerUygulama[];
   /**
@@ -56,10 +56,10 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   yanMenu?: boolean;
   /** Sol menüdeki birincil sıra (anahtarlar); verilmezse liste sırası. */
   yanMenuSirasi?: string[];
-  /** Sol menünün tepesinde resmî ArvoOS markası (logo/işaret). */
-  marka?: boolean;
+
 }) {
   const yol = usePathname();
+  const sorgu = useSearchParams();
   const pencere = useRef<HTMLDialogElement>(null);
   const [arama, setArama] = useState("");
   /*
@@ -67,6 +67,15 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
     bakıyor; dock'ta rotaya bakmaya devam ediyor (aşağıdaki not).
   */
   const [pencereAcik, setPencereAcik] = useState(false);
+  /*
+    PANEL DE İKİ KATLI (26.11.2026, inceleme talebi). 240 px'lik menüde
+    modülün bölümleri panelin yerine geçiyor; dar masaüstü rayında,
+    tablette ve telefonda aynı işi BU pencere üstleniyor — ikinci bir
+    gezinme yapısı kurmak yerine var olanı derinleştirdik.
+
+    null: ana modül listesi. Dolu: o modülün bölümleri.
+  */
+  const [panelModul, setPanelModul] = useState<string | null>(null);
 
   const etkin = etkinUygulama(uygulamalar, yol);
   const { birincil, digerleri } = mobilAltCubuk(uygulamalar);
@@ -81,6 +90,10 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   const panelEtkin = Boolean(etkin && digerleri.some((u) => u.key === etkin.key));
   const panelRozeti = digerleri.reduce((t, u) => t + (u.rozet ?? 0), 0);
 
+  const acikModul = panelModul ? uygulamalar.find((u) => u.key === panelModul) ?? null : null;
+  /* Paneldeki bölüm vurgusu da adresten: açık sayfa hangisiyse o. */
+  const etkinBolumKey = etkin?.bolumler?.length ? etkinBolum(etkin.bolumler, yol, sorgu.toString())?.key : undefined;
+
   const anahtar = aramaAnahtari(arama.trim());
   const bulunanlar = useMemo(() => {
     const eslesir = (metin: string) => !anahtar || aramaAnahtari(metin).includes(anahtar);
@@ -90,12 +103,52 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   }, [uygulamalar, anahtar]);
   const bulunanUrunler = digerUygulamalar.filter((urun) => !anahtar || aramaAnahtari(urun.ad).includes(anahtar));
 
-  const ac = () => {
+  /*
+    PANEL İÇİ ODAK: bir kat inince "Ana menüye dön"e, bir kat çıkınca
+    girilen modülün satırına. Odak eski düğmede kalsaydı klavye
+    kullanıcısı her kat değişiminde listenin başına dönerdi.
+
+    İstek ref'te tutuluyor ve ONU DEĞİŞTİREN her yol efektten ÖNCE
+    tanımlı: lint kuralı (react-hooks/immutability) efektten sonra
+    yazılan ref değişikliğini kabul etmiyor, haklı olarak — efektin
+    hangi değeri göreceği okunurken belli olmalı.
+  */
+  const odakIstegi = useRef<"geri" | "modul" | null>(null);
+  const geriRef = useRef<HTMLButtonElement>(null);
+  /** Son açılan modül: geri dönüşte odak onun satırına gidiyor. */
+  const sonModul = useRef<string | null>(null);
+
+  /** @param modul verilirse pencere doğrudan o modülün bölümlerinde açılır. */
+  const ac = (modul?: string) => {
     setArama("");
+    setPanelModul(modul ?? null);
+    sonModul.current = modul ?? null;
+    odakIstegi.current = modul ? "geri" : null;
     setPencereAcik(true);
-    pencere.current?.showModal();
+    if (!pencere.current?.open) pencere.current?.showModal();
   };
   const kapat = () => pencere.current?.close();
+
+  const modulAc = (anahtar: string) => {
+    sonModul.current = anahtar;
+    odakIstegi.current = "geri";
+    setPanelModul(anahtar);
+  };
+  const anaMenuyeDon = () => {
+    odakIstegi.current = "modul";
+    setPanelModul(null);
+  };
+
+  useEffect(() => {
+    if (!pencereAcik) return;
+    const istek = odakIstegi.current;
+    if (!istek) return;
+    odakIstegi.current = null;
+    const hedef = istek === "geri"
+      ? geriRef.current
+      : pencere.current?.querySelector<HTMLElement>(`[data-modul="${sonModul.current ?? ""}"]`);
+    hedef?.focus();
+  }, [panelModul, pencereAcik]);
 
   const rozetMetni = (n: number) => (n > 99 ? "99+" : String(n));
 
@@ -105,11 +158,11 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
         <YanMenu
           uygulamalar={uygulamalar}
           sira={yanMenuSirasi}
-          etkinKey={etkin?.key}
+          etkin={etkin ?? undefined}
           pencereAcik={pencereAcik}
+          panelModul={panelModul}
           panelRozeti={panelRozeti}
           ac={ac}
-          marka={marka}
           rozetMetni={rozetMetni}
         />
       ) : null}
@@ -134,7 +187,7 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
           type="button"
           className={panelEtkin ? "os-dock-oge is-active" : "os-dock-oge"}
           aria-haspopup="dialog"
-          onClick={ac}
+          onClick={() => ac()}
           aria-label={panelRozeti ? `Uygulamalar, ${panelRozeti} okunmamış` : undefined}
         >
           <OsSimge ad="apps" boyut={20} />
@@ -151,39 +204,97 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
         onClick={(olay) => { if (olay.target === pencere.current) kapat(); }}
         /* close(), Esc ve zemine tıklama: üçü de "close" olayını veriyor,
            tek yerden dinlemek üçünü birden kapsıyor. */
-        onClose={() => setPencereAcik(false)}
+        onClose={() => { setPencereAcik(false); setPanelModul(null); }}
       >
+        {/*
+          İKİ KAT, İKİ AYRI DENETİM (26.11.2026, inceleme talebi).
+          "Ana menüye dön" panelin İÇİNDE bir üst kata çıkar, "Kapat"
+          paneli kapatır. İkisini tek düğmeye indirmek, bölüm listesinden
+          modül listesine dönmek isteyen kullanıcıyı paneli kapatıp
+          yeniden açmaya zorluyordu.
+        */}
         <header className="os-uygulamalar-bas">
-          <h2 id="os-uygulamalar-baslik">Uygulamalar</h2>
+          {acikModul ? (
+            <button ref={geriRef} type="button" className="os-uygulamalar-geri" onClick={anaMenuyeDon}>
+              <OsSimge ad="chevron-left" boyut={18} />
+              <span>Ana menüye dön</span>
+            </button>
+          ) : null}
+          <h2 id="os-uygulamalar-baslik">{acikModul ? acikModul.label : "Uygulamalar"}</h2>
           <button type="button" className="os-icon-btn" aria-label="Kapat" onClick={kapat}>
             <OsSimge ad="close" boyut={18} />
           </button>
         </header>
-        <div className="os-uygulamalar-ara">
-          <OsSimge ad="search" boyut={16} />
-          <input
-            type="search"
-            value={arama}
-            onChange={(olay) => setArama(olay.target.value)}
-            placeholder="Modül ya da bölüm adı"
-            aria-label="Uygulamalarda ara"
-            autoComplete="off"
-            enterKeyHint="search"
-          />
-        </div>
+        {acikModul ? null : (
+          <div className="os-uygulamalar-ara">
+            <OsSimge ad="search" boyut={16} />
+            <input
+              type="search"
+              value={arama}
+              onChange={(olay) => setArama(olay.target.value)}
+              placeholder="Modül ya da bölüm adı"
+              aria-label="Uygulamalarda ara"
+              autoComplete="off"
+              enterKeyHint="search"
+            />
+          </div>
+        )}
         <div className="os-uygulamalar-govde">
-          {bulunanlar.length ? (
+          {/*
+            İKİNCİ KAT: açılan modülün bölümleri. Hepsi BAĞLANTI —
+            adres paylaşılabilsin ve geri/ileri çalışsın.
+          */}
+          {acikModul ? (
+            <ul className="os-uygulamalar-liste os-uygulamalar-bolum-listesi" aria-label={`${acikModul.label} bölümleri`}>
+              {(acikModul.bolumler ?? []).map((b) => {
+                const seciliBolum = etkin?.key === acikModul.key && etkinBolumKey === b.key;
+                return (
+                  <li key={b.key}>
+                    <Link href={b.href} className={seciliBolum ? "os-uygulama is-active" : "os-uygulama"} aria-current={seciliBolum ? "page" : undefined} onClick={kapat}>
+                      <span className="os-uygulama-ad">{b.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          {!acikModul && bulunanlar.length ? (
             <ul className="os-uygulamalar-liste" aria-label="Modüller">
               {bulunanlar.map(({ u, bolumler }) => {
                 const acik = etkin?.key === u.key;
+                /*
+                  Bölümü olan modül panelin İÇİNDE bir kat iniyor
+                  (sayfaya gitmiyor): bölümlerin ilki zaten modülün
+                  giriş adresi, yani hiçbir ekran erişilemez olmuyor.
+                  Arama yazılmışsa inmek yerine eşleşen bölümler
+                  satırın altında kalıyor — aradığını gören kullanıcıyı
+                  bir kat daha tıklatmak gereksiz.
+                */
+                const katVar = (u.bolumler?.length ?? 0) >= 2 && !anahtar;
                 return (
                   <li key={u.key}>
-                    <Link href={u.href} className={acik ? "os-uygulama is-active" : "os-uygulama"} aria-current={acik ? "page" : undefined} onClick={kapat}>
-                      <span className="os-uygulama-simge"><OsSimge ad={u.ikon} boyut={20} /></span>
-                      <span className="os-uygulama-ad">{u.label}</span>
-                      {u.rozet ? <b className="os-dock-rozet os-dock-rozet--satir">{rozetMetni(u.rozet)}<span className="sr-only"> okunmamış</span></b> : null}
-                    </Link>
-                    {bolumler.length ? (
+                    {katVar ? (
+                      <button
+                        type="button"
+                        data-modul={u.key}
+                        className={acik ? "os-uygulama is-active" : "os-uygulama"}
+                        aria-current={acik ? "true" : undefined}
+                        aria-expanded={false}
+                        onClick={() => modulAc(u.key)}
+                      >
+                        <span className="os-uygulama-simge"><OsSimge ad={u.ikon} boyut={20} /></span>
+                        <span className="os-uygulama-ad">{u.label}</span>
+                        {u.rozet ? <b className="os-dock-rozet os-dock-rozet--satir">{rozetMetni(u.rozet)}<span className="sr-only"> okunmamış</span></b> : null}
+                        <OsSimge ad="chevron-right" boyut={16} />
+                      </button>
+                    ) : (
+                      <Link href={u.href} data-modul={u.key} className={acik ? "os-uygulama is-active" : "os-uygulama"} aria-current={acik ? "page" : undefined} onClick={kapat}>
+                        <span className="os-uygulama-simge"><OsSimge ad={u.ikon} boyut={20} /></span>
+                        <span className="os-uygulama-ad">{u.label}</span>
+                        {u.rozet ? <b className="os-dock-rozet os-dock-rozet--satir">{rozetMetni(u.rozet)}<span className="sr-only"> okunmamış</span></b> : null}
+                      </Link>
+                    )}
+                    {!katVar && bolumler.length ? (
                       <ul className="os-uygulama-bolumler" aria-label={`${u.label} bölümleri`}>
                         {bolumler.map((b) => (
                           <li key={b.key}><Link href={b.href} onClick={kapat}>{b.label}</Link></li>
@@ -195,7 +306,7 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
               })}
             </ul>
           ) : null}
-          {bulunanUrunler.length ? (
+          {!acikModul && bulunanUrunler.length ? (
             <section className="os-uygulamalar-urunler" aria-labelledby="os-uygulamalar-urunler">
               <h3 id="os-uygulamalar-urunler">Diğer Arvo ürünleri</h3>
               <ul className="os-uygulamalar-liste">
@@ -213,7 +324,7 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
               </ul>
             </section>
           ) : null}
-          {!bulunanlar.length && !bulunanUrunler.length ? <p className="os-uygulamalar-bos" role="status">“{arama.trim()}” ile eşleşen uygulama yok.</p> : null}
+          {!acikModul && !bulunanlar.length && !bulunanUrunler.length ? <p className="os-uygulamalar-bos" role="status">“{arama.trim()}” ile eşleşen uygulama yok.</p> : null}
         </div>
       </dialog>
     </>
@@ -233,20 +344,72 @@ export function OsNavigasyon({ uygulamalar, digerUygulamalar, yanMenu = false, y
   ad `title` ve `aria-label` olarak kalır. Erişilebilir ad hiçbir
   biçimde kaybolmaz; rozetler görünür durur.
 */
-function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, marka, rozetMetni }: {
+function YanMenu({ uygulamalar, sira, etkin, pencereAcik, panelModul, panelRozeti, ac, rozetMetni }: {
   uygulamalar: OsUygulama[];
   sira?: string[];
-  etkinKey?: string;
+  /** Rotadan çözülen etkin uygulama; alt menü de ondan geliyor. */
+  etkin?: OsUygulama;
   /** Uygulamalar penceresi açık mı; düğmenin vurgusu buna bakıyor. */
   pencereAcik: boolean;
+  /** Pencere hangi modülün bölümlerinde; ray düğmesinin aria-expanded'ı. */
+  panelModul: string | null;
   panelRozeti: number;
-  ac: () => void;
-  /** Menünün tepesinde resmî ArvoOS markası çizilsin mi. */
-  marka?: boolean;
+  ac: (modul?: string) => void;
+
   rozetMetni: (n: number) => string;
 }) {
   const dar = useSyncExternalStore(yanMenuAbone, yanMenuDarMi, sunucuDar);
   const masaustu = useSyncExternalStore(masaustuAbone, masaustuMu, sunucuMasaustu);
+  const yol = usePathname();
+  const sorgu = useSearchParams();
+  const etkinKey = etkin?.key;
+
+  /*
+    İKİ KATLI MENÜ (26.11.2026, onaylı mockup). Bir modüle girince AYNI
+    240 px'lik panelde ana liste yerini o modülün bölümlerine bırakıyor;
+    başında "Ana menüye dön" var. Eskiden bölümler yalnızca içeriğin
+    üstündeki yatay şeritteydi ve sol menü hangi modülün içinde
+    olduğunu söylemekle yetiniyordu — kurucunun gözü iki ayrı yere
+    bakıyordu.
+
+    Geri dönüş bir DÜĞME, bağlantı değil: adres, içerik, süzgeçler ve
+    tarayıcı geçmişi olduğu gibi kalmalı. Kapalı tutma isteği
+    MODÜLE bağlı (altKapali = o modülün anahtarı): başka bir modüle
+    geçince alt menü yeniden açılıyor, aynı modüle geri dönünce
+    kullanıcının kararı duruyor.
+
+    RAY GÖRÜNÜMÜNDE (tablet ve daraltılmış masaüstü) iki kat YOK:
+    64 px'te yalnızca ikon çiziliyor, bölümlerin ikonu yok ve ad
+    gizlenince satırlar birbirinden ayırt edilemezdi. Orada bölümler
+    içeriğin üstündeki şeritte kalıyor (os-bolum-menusu.tsx); şerit
+    yalnızca alt menünün göründüğü genişlikte gizleniyor
+    (os-yanmenu.css).
+  */
+  const genis = masaustu && !dar;
+  const bolumler = etkin?.bolumler ?? [];
+  const [altKapali, setAltKapali] = useState<string | null>(null);
+  const altAcik = genis && bolumler.length >= 2 && altKapali !== etkinKey;
+  const etkinBolumKey = altAcik ? etkinBolum(bolumler, yol, sorgu.toString())?.key : undefined;
+
+  /*
+    ODAK KAYBOLMASIN: modüle girince odak "Ana menüye dön"e, geri
+    dönünce girilen modülün satırına taşınıyor. Panel yerinde değişiyor;
+    odak eski düğmede kalsaydı klavye kullanıcısı listenin başına
+    dönmek zorunda kalırdı. İstek ref'te tutuluyor — doğrudan bağlantıyla
+    ya da yenilemeyle gelen kullanıcının odağı ÇALINMASIN.
+  */
+  const odakIstegi = useRef<"geri" | "modul" | null>(null);
+  const geriRef = useRef<HTMLButtonElement>(null);
+  const kokRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const istek = odakIstegi.current;
+    if (!istek) return;
+    odakIstegi.current = null;
+    const hedef = istek === "geri"
+      ? geriRef.current
+      : kokRef.current?.querySelector<HTMLElement>(`[data-modul="${etkinKey ?? ""}"]`);
+    hedef?.focus();
+  }, [altAcik, etkinKey]);
 
   /* Birincil sıra mockup'tan; listede olmayan anahtar atlanır, sırada
      olmayan uygulama "Uygulamalar" penceresinde kalır (yetki süzgeci
@@ -256,42 +419,107 @@ function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, ma
     : uygulamalar.filter((u) => !u.yalnizBaslatici);
 
   return (
-    <nav className="os-yan" aria-label="Konsol menüsü" data-dar={dar ? "evet" : undefined}>
-      {marka ? (
-        <Link className="os-yan-marka" href="/panel" aria-label="ArvoOS ana ekran">
-          {/*
-            İKİ BİÇİM BİRDEN ÇİZİLİR, HANGİSİNİN GÖRÜNECEĞİNE CSS KARAR
-            VERİR (26.11.2026). Açık menüde resmî KELİME LOGOSU, dar
-            menüde ve tablet rayında resmî İŞARET. JavaScript ile
-            seçmek menü daraltılırken bir kare yanlış logo demek; aynı
-            gerekçe açık/koyu varyantında da geçerli (panel-navigation).
-          */}
-          <span className="os-yan-logo"><ArvoOsLogosu /></span>
-          <span className="os-yan-isaret"><ArvoOsIsareti /></span>
-        </Link>
-      ) : null}
+    <nav ref={kokRef} className="os-yan" aria-label="Konsol menüsü" data-dar={dar ? "evet" : undefined} data-kat={altAcik ? "alt" : "ana"}>
 
-      <ul className="os-yan-liste">
-        {birincilMenu.map((u) => {
-          const acik = etkinKey === u.key;
-          const etiket = u.rozet ? `${u.label}, ${u.rozet} bekleyen` : u.label;
-          return (
-            <li key={u.key}>
-              <Link
-                href={u.href}
-                className={acik ? "os-yan-oge is-active" : "os-yan-oge"}
-                aria-current={acik ? "page" : undefined}
-                aria-label={etiket}
-                title={u.kisaEtiket ?? u.label}
-              >
-                <span className="os-yan-simge"><OsSimge ad={u.ikon} boyut={20} /></span>
-                <span className="os-yan-etiket">{u.kisaEtiket ?? u.label}</span>
-                {u.rozet ? <b className="os-yan-rozet" aria-hidden="true">{rozetMetni(u.rozet)}</b> : null}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {altAcik && etkin ? (
+        <div className="os-yan-kat">
+          <button
+            ref={geriRef}
+            type="button"
+            className="os-yan-geri"
+            onClick={() => { odakIstegi.current = "modul"; setAltKapali(etkinKey ?? null); }}
+          >
+            <span className="os-yan-simge" aria-hidden="true"><OsSimge ad="chevron-left" boyut={18} /></span>
+            <span className="os-yan-etiket">Ana menüye dön</span>
+          </button>
+          {/* Hangi modülün içindeyiz: başlık listenin erişilebilir adı
+              da oluyor (aria-labelledby), yoksa ekran okuyucuda iki
+              "Konsol menüsü" listesi ayırt edilemiyordu. */}
+          <p className="os-yan-modul" id="os-yan-modul-adi">
+            <span className="os-yan-simge" aria-hidden="true"><OsSimge ad={etkin.ikon} boyut={20} /></span>
+            <span className="os-yan-etiket">{etkin.kisaEtiket ?? etkin.label}</span>
+          </p>
+          <ul className="os-yan-liste" aria-labelledby="os-yan-modul-adi">
+            {bolumler.map((b) => {
+              const acik = etkinBolumKey === b.key;
+              return (
+                <li key={b.key}>
+                  <Link
+                    href={b.href}
+                    className={acik ? "os-yan-oge is-active" : "os-yan-oge"}
+                    aria-current={acik ? "page" : undefined}
+                    title={b.label}
+                  >
+                    <span className="os-yan-etiket">{b.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : (
+        <ul className="os-yan-liste">
+          {birincilMenu.map((u) => {
+            const acik = etkinKey === u.key;
+            const etiket = u.rozet ? `${u.label}, ${u.rozet} bekleyen` : u.label;
+            /* Bölümü olan modül alt menüyü AÇAR: tıklanınca odak "Ana
+               menüye dön"e geçsin diye istek burada konuyor. */
+            const altiVar = (u.bolumler?.length ?? 0) >= 2;
+            /*
+              RAYDA (64 px) BÖLÜMLER ÇEKMECEDE (26.11.2026, inceleme
+              talebi). Rayda ad gizli ve bölümlerin ikonu yok, yani
+              ikinci kat oraya sığmıyor; ikonuna basınca Uygulamalar
+              penceresi doğrudan O MODÜLÜN bölümleriyle açılıyor.
+              Satır bu durumda BAĞLANTI DEĞİL DÜĞME: tıklayınca sayfa
+              değişmiyor, bir menü açılıyor — bağlantı olsaydı
+              erişilebilirlik ağacı yanlış söylerdi. Modülün giriş
+              adresi zaten bölümlerin ilki, yani hiçbir ekran
+              erişilemez olmuyor.
+            */
+            if (altiVar && !genis) {
+              return (
+                <li key={u.key}>
+                  <button
+                    type="button"
+                    data-modul={u.key}
+                    className={acik ? "os-yan-oge is-active" : "os-yan-oge"}
+                    aria-current={acik ? "true" : undefined}
+                    aria-haspopup="dialog"
+                    aria-expanded={pencereAcik && panelModul === u.key}
+                    aria-label={`${etiket} bölümleri`}
+                    title={u.kisaEtiket ?? u.label}
+                    onClick={() => ac(u.key)}
+                  >
+                    <span className="os-yan-simge"><OsSimge ad={u.ikon} boyut={20} /></span>
+                    <span className="os-yan-etiket">{u.kisaEtiket ?? u.label}</span>
+                    {u.rozet ? <b className="os-yan-rozet" aria-hidden="true">{rozetMetni(u.rozet)}</b> : null}
+                  </button>
+                </li>
+              );
+            }
+            return (
+              <li key={u.key}>
+                <Link
+                  href={u.href}
+                  data-modul={u.key}
+                  className={acik ? "os-yan-oge is-active" : "os-yan-oge"}
+                  aria-current={acik ? "page" : undefined}
+                  aria-label={etiket}
+                  title={u.kisaEtiket ?? u.label}
+                  onClick={() => {
+                    setAltKapali(null);
+                    if (altiVar && genis) odakIstegi.current = "geri";
+                  }}
+                >
+                  <span className="os-yan-simge"><OsSimge ad={u.ikon} boyut={20} /></span>
+                  <span className="os-yan-etiket">{u.kisaEtiket ?? u.label}</span>
+                  {u.rozet ? <b className="os-yan-rozet" aria-hidden="true">{rozetMetni(u.rozet)}</b> : null}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <div className="os-yan-alt">
         {/* İkincil bölüm: bütün uygulamalar ve diğer Arvo ürünleri aynı
@@ -311,7 +539,7 @@ function YanMenu({ uygulamalar, sira, etkinKey, pencereAcik, panelRozeti, ac, ma
           className="os-yan-oge"
           aria-haspopup="dialog"
           aria-expanded={pencereAcik}
-          onClick={ac}
+          onClick={() => ac()}
           aria-label={panelRozeti ? `Uygulamalar, ${panelRozeti} bekleyen` : "Uygulamalar"}
           title="Uygulamalar"
         >

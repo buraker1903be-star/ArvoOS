@@ -101,6 +101,17 @@ describe("kurucu konsolu uygulamaları", () => {
        tıklıyor, sayfa açılıyor ama dock'ta vurgu başka bir yerde kalıyor. */
     for (const uygulama of uygulamalar) {
       if (uygulama.key === "home") continue;
+      /*
+        "Otomasyonlar" (26.11.2026) KENDİ ekranı olmayan tek girdi: sistem
+        sağlığının zamanlanmış işler sekmesini açıyor. Yolu olsaydı o
+        rotada hem "Sistem" hem "Otomasyonlar" etkin görünürdü — bu
+        yüzden bilerek yolsuz, vurgu Sistem'de kalıyor.
+      */
+      if (uygulama.key === "otomasyonlar") {
+        assert.equal(uygulama.yollar.length, 0, "Otomasyonlar yolsuz kalmalı");
+        assert.equal(uygulama.alan, "sistem", "Otomasyonlar sistem yetkisine bağlı");
+        continue;
+      }
       assert.ok(uygulama.yollar.length > 0, `${uygulama.key}: yol öneki yok`);
       assert.ok(uygulama.yollar.includes(uygulama.href), `${uygulama.key}: kendi adresi yollarında değil`);
     }
@@ -115,10 +126,14 @@ describe("kurucu konsolu uygulamaları", () => {
        02.11.2026: Destek altıncı oldu — yeni bir EKRAN değil yeni bir İŞ
        ALANI (müşteri talepleri hiçbir yerde görünmüyordu) ve kendi
        rozeti var; Müşteriler'in bölümü olsaydı rozet "müşteri" sayısı
-       gibi okunurdu. */
+       gibi okunurdu.
+       26.11.2026: ana ekranın adı "Ana Sayfa" oldu ve "Otomasyonlar"
+       eklendi — zamanlanmış işler kurucunun gün içinde en çok sorduğu
+       ikinci şey ("sistem kendi işini gördü mü") ve sistem sağlığının
+       içinde kaybolmuştu. */
     assert.deepEqual(
       uygulamalar.filter((u) => !u.yalnizBaslatici).map((u) => u.label),
-      ["Genel Bakış", "Müşteriler", "Finans", "Destek", "Ürünler ve Fiyatlar", "Sistem"],
+      ["Ana Sayfa", "Müşteriler", "Finans", "Destek", "Ürünler ve Fiyatlar", "Otomasyonlar", "Sistem"],
     );
   });
 });

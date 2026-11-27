@@ -62,6 +62,22 @@ export type UrunSatiri = {
   aktifMusteri: Olcum<number>;
   donusum: Olcum<Donusum>;
   tahsilat: Olcum<number>;
+  /*
+    Ürünün köprü sağlığı (26.11.2026). Ana sayfadaki tabloda "Durum"
+    sütunu bunu yazıyor; ölçümden DEĞİL, köprü yoklamasından geliyor ve
+    satırı okuyan hesaplar buna bakmıyor — isteğe bağlı olmasının
+    sebebi bu, ölçüm testleri alanı doldurmadan çalışmaya devam ediyor.
+  */
+  saglik?: UrunSagligi;
+};
+
+/** Ürün köprüsünün yoklama sonucu; etiket ve ton ekranda değil burada. */
+export type UrunSagligi = {
+  durum: "saglikli" | "sorunlu" | "bagli_degil";
+  etiket: string;
+  ton: "success" | "danger" | "neutral";
+  /** Neden: "Ulaşılamıyor", "Anahtar tanımlı değil" gibi tek cümle. */
+  not?: string;
 };
 
 export type Girdi = {

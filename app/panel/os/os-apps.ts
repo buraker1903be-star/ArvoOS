@@ -44,6 +44,14 @@ export type OsUygulama = {
    * durum çubuğunda aynen kalıyor — iki ad tek kayıttan.
    */
   kisaEtiket?: string;
+  /*
+    YETKİ ALANI (26.11.2026). Menü girdisinin anahtarı ile yetki alanı
+    normalde aynı; "Otomasyonlar" girdisi istisna: kendi ekranı yok,
+    sistem sağlığının zamanlanmış işler sekmesini açıyor. Girdiyi ayrı
+    bir alan yapmak, sistem yetkisi olmayan kurucuya tıklayınca
+    reddedilen bir satır göstermek olurdu.
+  */
+  alan?: string;
 };
 
 export type OsSayfa = { label: string; href: string; uygulama: string };

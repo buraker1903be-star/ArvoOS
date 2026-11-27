@@ -66,10 +66,12 @@ test("dar görünüm kuralları yalnızca masaüstü sorgusunun içinde", () => 
 });
 
 test("sol menünün birincil sırası onaylı mockup'takiyle aynı", () => {
-  /* Sıra yerleşimde yazılı; mockup: Genel Bakış · Ürünler · Müşteriler
-     · Finans · Destek. Uygulamalar ikincil bölümde. */
+  /* Sıra yerleşimde yazılı; mockup: Ana Sayfa · Ürünler · Müşteriler ·
+     Finans · Destek · Otomasyonlar. Uygulamalar ikincil bölümde.
+     Otomasyonlar 26.11.2026'da eklendi: arka planda koşan işlerin
+     durumu Ana Sayfa'da özet, burada tam liste. */
   const yerlesim = oku("app/panel/layout.tsx");
-  assert.match(yerlesim, /yanMenuSirasi=\{\["home", "urunler", "musteriler", "finans", "destek"\]\}/);
+  assert.match(yerlesim, /yanMenuSirasi=\{\["home", "urunler", "musteriler", "finans", "destek", "otomasyonlar"\]\}/);
 });
 
 test("Ürünler menüde kısa adıyla, başlatıcıda tam adıyla", () => {
@@ -102,7 +104,7 @@ test("sol menüde 'Uygulamalar' vurgusu PENCEREYE bağlı, rotaya değil", () =>
   /* Durumun sıfırlanması: close(), Esc ve zemine tıklama aynı olayı
      veriyor, pencerenin kendisi dinliyor. Dinleyici düşerse düğme
      pencere kapandıktan sonra da vurgulu kalır. */
-  assert.match(tsx, /onClose=\{\(\) => setPencereAcik\(false\)\}/);
+  assert.match(tsx, /onClose=\{\(\) => \{ setPencereAcik\(false\); setPanelModul\(null\); \}\}/);
   /* Dock DEĞİŞMEDİ: telefonun alt çubuğu rotaya bakmaya devam ediyor. */
   assert.match(tsx, /className=\{panelEtkin \? "os-dock-oge is-active"/);
 });
@@ -124,12 +126,15 @@ test("ürün detayı ızgarası tek sütun: kart içerik genişliğini kullanıy
   assert.match(css, /main\.urun-sayfa>\.talep-izgara\{grid-template-columns:minmax\(0,1fr\)\}/);
 });
 
-test("menüde RESMÎ marka dosyaları kullanılıyor", () => {
+test("üst çubukta RESMÎ marka dosyaları kullanılıyor", () => {
   /*
     26.11.2026 inceleme bulgusu: dar menüde kırık görsel simgesi vardı ve
     menüdeki işaret resmî dosya değildi (public/brand/yonetim.svg, motifin
-    iki çemberle çizilmiş yaklaşığı). Açık menüde resmî KELİME LOGOSU,
-    dar menüde ve tablet rayında resmî İŞARET duruyor.
+    iki çemberle çizilmiş yaklaşığı).
+
+    Marka aynı gün onaylanan mockup'la sol menüden ÜST ÇUBUĞA taşındı:
+    çubuk ekran boyunca kesintisiz ve marka bir kez görünüyor. Geniş
+    ekranda resmî KELİME LOGOSU, telefonda resmî İŞARET duruyor.
   */
   const marka = oku("app/panel/os/arvoos-markasi.tsx");
   assert.match(marka, /\/brand\/arvoos-320\.png/);
@@ -149,8 +154,12 @@ test("menüde RESMÎ marka dosyaları kullanılıyor", () => {
     daraltılırken bir kare yanlış logo demek.
   */
   const css = oku("app/panel/os/os-yanmenu.css");
-  assert.match(css, /\.os-yan-logo \{ display: none; \}/);
-  assert.match(css, /html\[data-konsol-menu="dar"\] \.os-konsol \.os-yan-logo \{ display: none; \}/);
+  /* Telefonda kelime logosu yerine işaret; 761 px'ten sonra tersi. */
+  assert.match(css, /\.os-konsol \.os-konsol-logo \{ display: none; \}/);
+  assert.match(css, /\.os-konsol \.os-konsol-logo \{ display: block; \}/);
+  assert.match(css, /\.os-konsol \.os-brand-isaret \{ display: none; \}/);
+  /* Marka BİR kez görünsün: sol menüde ikinci bir marka bloğu kalmadı. */
+  assert.doesNotMatch(oku("app/panel/os/os-navigasyon.tsx"), /os-yan-marka/);
 });
 
 test("üç menü durumu üç farklı işaret taşıyor", () => {
@@ -230,4 +239,116 @@ test("bağlamlı gezinme: rota → modül + alt bölüm", async () => {
   const etkin = etkinUygulama(uygulamalar, "/panel/platform/urunler/arvolab");
   assert.equal(etkin?.key, "urunler");
   assert.equal(uygulamalar.filter((u) => etkinUygulama(uygulamalar, "/panel/platform/urunler/arvolab")?.key === u.key).length, 1);
+});
+
+test("iki katlı menü: geri dönüş düğme, bölümler bağlantı", () => {
+  /*
+    26.11.2026, onaylı mockup: modüle girince ana listenin yeri o
+    modülün bölümlerine bırakılıyor. İki kural kodda yapısal:
+
+    - "Ana menüye dön" bir DÜĞME. Bağlantı olsaydı tıklamak adresi
+      değiştirir, açık sayfayı, süzgeçleri ve tarayıcı geçmişini
+      kaybettirirdi — oysa yapılan iş yalnızca menüyü değiştirmek.
+    - Bölümler BAĞLANTI: adres paylaşılabilsin, geri/ileri çalışsın.
+      Seçim bileşenin durumunda tutulsaydı yenileme modülün girişine
+      düşerdi (aynı hata ürün sekmelerinde bir kez yaşandı).
+  */
+  const tsx = oku("app/panel/os/os-navigasyon.tsx");
+  const yan = tsx.slice(tsx.indexOf("function YanMenu"));
+  assert.match(yan, /<button[\s\S]{0,200}className="os-yan-geri"/);
+  assert.match(yan, /Ana menüye dön/);
+  /* Bölüm satırı Link; alt kat bloğunda <button> ile çizilmiyor. */
+  const altKat = yan.slice(yan.indexOf('className="os-yan-kat"'), yan.indexOf(") : ("));
+  assert.match(altKat, /bolumler\.map/);
+  assert.doesNotMatch(altKat.slice(altKat.indexOf("bolumler.map")), /<button/);
+
+  /*
+    Sol menünün ikinci katı yalnızca 240 px'lik panelde: rayda yalnızca
+    ikon çiziliyor ve bölümlerin ikonu yok. Rayda aynı iş çekmecede
+    (Uygulamalar penceresi).
+  */
+  assert.match(yan, /const genis = masaustu && !dar;/);
+  /* Konsolda içerik üstü şerit HİÇ çizilmiyor (26.11.2026): aynı
+     bağlantılar gezinmenin ikinci katında — geniş menüde alt menüde,
+     rayda ve telefonda Uygulamalar penceresinde. Kiracı panelinde
+     şerit duruyor, orada ikinci kat yok. */
+  const yerlesim = oku("app/panel/layout.tsx");
+  assert.equal((yerlesim.match(/<OsBolumMenusu/g) ?? []).length, 1);
+  assert.match(yerlesim.slice(yerlesim.indexOf("konsolUygulamalariListesi")), /KONSOLDA İÇERİK ÜSTÜ BÖLÜM ŞERİDİ YOK/);
+});
+
+test("üst çubuk 56 px ve komut paleti ortada", () => {
+  /* Onaylı mockup: konsolda çubuk kiracı panelinden ince (60 → 56) ve
+     arama kutusu 500×36. Ortalama mutlak konumla: sol marka ile sağdaki
+     düğmelerin genişliği eşit olmadığı için akışta ortalanmıyordu. */
+  const css = oku("app/panel/os/os-yanmenu.css");
+  assert.match(css, /\.panel-root\.os-root\.os-konsol \{ --os-bar-h: 56px; \}/);
+  assert.match(css, /\.os-konsol \.os-search \{ height: 36px; max-width: 500px; \}/);
+  assert.match(css, /\.os-konsol \.os-search \{[\s\S]{0,200}translate: -50% 0;/);
+});
+
+test("pencere de iki katlı: ray ve telefon bölümleri oradan açar", () => {
+  /*
+    26.11.2026, inceleme talebi. 64 px'lik rayda ve telefonda ikinci
+    kat sol menüye sığmıyor (ad gizli, bölümlerin ikonu yok); o işi
+    Uygulamalar penceresi üstleniyor.
+
+    İki kural kodda yapısal:
+    - Rayda bölümü olan modül satırı BAĞLANTI DEĞİL DÜĞME. Bağlantı
+      olsaydı erişilebilirlik ağacı "sayfaya gider" derdi, oysa menü
+      açılıyor. Modülün giriş adresi zaten bölümlerin ilki.
+    - Penceredeki "Ana menüye dön" ile "Kapat" AYRI: biri bir üst
+      kata çıkar, öteki pencereyi kapatır.
+  */
+  const tsx = oku("app/panel/os/os-navigasyon.tsx");
+  assert.match(tsx, /if \(altiVar && !genis\) \{/);
+  const ray = tsx.slice(tsx.indexOf("if (altiVar && !genis) {"), tsx.indexOf("</li>", tsx.indexOf("if (altiVar && !genis) {")));
+  assert.match(ray, /<button/);
+  assert.match(ray, /aria-haspopup="dialog"/);
+  assert.match(ray, /onClick=\{\(\) => ac\(u\.key\)\}/);
+
+  /* Pencerenin başlığında iki ayrı denetim. */
+  assert.match(tsx, /className="os-uygulamalar-geri"[\s\S]{0,200}Ana menüye dön/);
+  assert.match(tsx, /aria-label="Kapat" onClick=\{kapat\}/);
+  /* Geri bir üst kata çıkar, pencereyi KAPATMAZ. */
+  assert.match(tsx, /const anaMenuyeDon = \(\) => \{[\s\S]{0,120}setPanelModul\(null\);/);
+  assert.doesNotMatch(tsx.slice(tsx.indexOf("const anaMenuyeDon"), tsx.indexOf("useEffect", tsx.indexOf("const anaMenuyeDon"))), /kapat\(\)/);
+});
+
+test("'Yeniden deneniyor' kaynağı kodda deneme kuyruğu", () => {
+  /*
+    26.11.2026 inceleme bulgusu: etiket köprünün kopuk olmasından ve
+    cron'un periyodikliğinden çıkarılıyordu. Artık tek kaynağı
+    paytr_otomatik_yenileme'nin deneme sayacı; ana sayfa da onu
+    sayarak okuyor (head count — sınırlı listeden türetilmiyor).
+  */
+  const kural = oku("lib/konsol/otomasyonlar.ts");
+  assert.match(kural, /baglanti_kesildi: \{ etiket: "Bağlantı kesildi"/);
+  /* Köprü kopuk dalı artık "yeniden" yazmıyor. */
+  const esitleme = kural.slice(kural.indexOf('if (kopruler.some((k) => k.kopuk))'));
+  assert.match(esitleme.slice(0, 300), /"baglanti_kesildi"/);
+
+  const sayfa = oku("app/panel/konsol-ana-sayfa.tsx");
+  assert.match(sayfa, /paytr_otomatik_yenileme[\s\S]{0,160}count: "exact", head: true/);
+  assert.match(sayfa, /lt\("deneme_sayisi", AZAMI_DENEME\)/);
+});
+
+test("ölçüm düzeneği otomasyon satırlarını kuraldan üretiyor", () => {
+  /*
+    27.11.2026 inceleme bulgusu: düzenekte üç satır SABİT metin ve
+    sabit etiketle duruyordu. Kural değişince (köprü kopuk →
+    "Yeniden deneniyor" yerine "Bağlantı kesildi") fixture eski
+    hâlinde kaldı ve düzenek, üretimin üretemeyeceği bir durumu
+    çizdi. Fixture artık yalnızca GİRDİ veriyor; etiketi kural
+    yazıyor, yani düzenek üretimden sapamaz.
+  */
+  const duzenek = oku("scripts/genel-bakis-yerlesim-tarayici.mjs");
+  assert.match(duzenek, /const OTOMASYONLAR = otomasyonlar\(cronDurumlari\(/);
+  assert.match(duzenek, /import \{ otomasyonlar \} from/);
+  /* Elle yazılmış etiket kalmadı. */
+  assert.doesNotMatch(duzenek, /etiket: "Yeniden deneniyor"/);
+  assert.doesNotMatch(duzenek, /etiket: "Tamamlandı"/);
+  /* İki senaryo adresten: köprü kopuk ve deneme kuyruğu. */
+  assert.match(duzenek, /OTOMASYON_SENARYO === "kopuk"/);
+  assert.match(duzenek, /OTOMASYON_SENARYO === "kuyruk"/);
 });

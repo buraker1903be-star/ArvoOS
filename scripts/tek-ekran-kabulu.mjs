@@ -73,7 +73,12 @@ export function tekEkranHukmu(ad, o) {
      sorusu anlamsız: içerik zaten görünür alanın dışına taşıyor ve
      ölçü yukarıda, sona kaydırılmış hâlde alınıyor. */
   if (!o.sonaKaydir?.kayiyor) {
-    if (o.dockOrtuyor === null) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
+    /*
+      ANA SAYFA DIŞINDAKİ ROTADA ölçülmez: YOL=<rota> ile açılan
+      gezinme provasında Ana Sayfa kartları yok, "görünür kart yok"
+      demek orada bir kusur değil — ölçülen şey menü (26.11.2026).
+    */
+    if (o.dockOrtuyor === null && o.anaSayfa !== false) eksik.push("dock örtmesi ölçülemedi (görünür kart yok)");
     else if (o.dockOrtuyor) eksik.push(`dock içeriği örtüyor (içerik ${o.icerikAlt} > dock ${o.dockUstu})`);
   }
 
@@ -87,7 +92,7 @@ export function tekEkranHukmu(ad, o) {
   if (e) {
     /* Ürün tablosu ölçülmüşse (Genel Bakış). */
     if (e.urunSayisi !== undefined) {
-      if (!e.urunSayisi) eksik.push("ürün satırı bulunamadı");
+      if (!e.urunSayisi && o.anaSayfa !== false) eksik.push("ürün satırı bulunamadı");
       if (e.erisilemeyenUrun?.length) eksik.push(`açılamayan ürün satırı: ${e.erisilemeyenUrun.join(", ")}`);
     }
     if (e.sonIs && !(e.sonIs.dokunma && e.sonIs.klavye && e.sonIs.dockUstunde)) {
@@ -188,19 +193,194 @@ export function tekEkranHukmu(ad, o) {
       MARKA ÇİZİLİYOR MU (26.11.2026, inceleme bulgusu). Dar menüde
       logo yerine kırık görsel simgesi vardı: dosya yüklenmiş olmalı ve
       çizilen oran kaynağınkinden sapmamalı (kutuya sıkıştırılmış logo).
+
+      Marka 26.11.2026'da sol menüden ÜST ÇUBUĞA taşındı (onaylı
+      mockup): aynı üç denetim orada koşuyor. Ölçüm sol menüye bakmayı
+      sürdürseydi her ekran "marka çizilmiyor" derdi ve kırık logoyu
+      yakalayan denetim susturulmuş olurdu.
     */
     if (m.marka) {
-      if (!m.marka.yuklendi) eksik.push(`menüdeki marka dosyası yüklenmedi (${m.marka.dosya})`);
+      if (!m.marka.yuklendi) eksik.push(`üst çubuktaki marka dosyası yüklenmedi (${m.marka.dosya})`);
       /* %2: yuvarlamadan gelen sapma (~%1,4) geçer, kutuya sıkıştırılmış
          bir logo (2:1 → 1:1, %100) geçmez. */
       if (m.marka.oranSapmasi > 0.02) eksik.push(`marka oranı bozuk (${m.marka.dosya}, sapma %${(m.marka.oranSapmasi * 100).toFixed(1)})`);
       if (m.marka.genislik < 20) eksik.push(`marka ${m.marka.genislik} px çiziliyor (okunmaz)`);
     } else if (m.oge) {
-      eksik.push("sol menüde marka çizilmiyor");
+      eksik.push("üst çubukta marka çizilmiyor");
     }
     if (m.pencereAcik === false && m.secili && m.secili.length > 1) {
       eksik.push(`sol menüde ${m.secili.length} girdi birden seçili (${m.secili.join(", ")})`);
     }
+    /*
+      İKİNCİ KAT (26.11.2026, onaylı mockup): modüle girince ana
+      listenin yerini bölümler alıyor. Dört koşul birlikte aranıyor,
+      çünkü üçü tek başına yanıltıcı:
+        - Geri dönüş DÜĞME olmalı; bağlantı olsaydı tıklamak adresi
+          değiştirir, açık sayfayı ve süzgeçleri kaybettirirdi.
+        - Bölümler BAĞLANTI olmalı: adres paylaşılabilsin, geri/ileri
+          çalışsın.
+        - Tam BİR bölüm seçili olmalı.
+        - Ana liste ile bölümler aynı anda durmamalı (panel taşar) ve
+          yatay bölüm şeridi aynı bağlantıları İKİNCİ kez
+          göstermemeli — aynı sayfa iki yerde "seçili" görünür.
+    */
+    if (m.altKat) {
+      const k = m.altKat;
+      if (!k.geriDugme) eksik.push("alt menüde 'Ana menüye dön' düğme değil (adres değişir)");
+      if (!k.baglantili) eksik.push("alt menüdeki bölümler bağlantı değil (adres paylaşılamaz)");
+      if (k.secili?.length !== 1) eksik.push(`alt menüde ${k.secili?.length ?? 0} bölüm seçili (tam biri olmalı)`);
+      if (!k.anaListeGizli) eksik.push("ana liste ile alt menü aynı anda çiziliyor");
+      if (m.seritGorunur) eksik.push("bölüm şeridi alt menüyle birlikte çiziliyor (aynı bağlantı iki yerde)");
+    }
+  }
+
+  /*
+    KAPLAMALAR (26.11.2026). Üç soru, üçü de klavye kullanıcısı için:
+    açılınca odak İÇERİ girdi mi, Esc kapattı mı, odak açılmadan
+    önceki yere DÖNDÜ mü. Üçüncüsü en çok unutulanı: kapanan bir
+    pencereden sonra odak <body>'de kalırsa kullanıcı sayfanın başına
+    düşer ve menüyü baştan gezer.
+  */
+  if (o.kaplamalar) {
+    for (const [ad, k] of Object.entries(o.kaplamalar)) {
+      if (!k.acik) eksik.push(`${ad} açılmıyor`);
+      if (!k.odakIcinde) eksik.push(`${ad} açılınca odak içeri girmiyor (${k.acikkenOdak || "yok"})`);
+      if (!k.kapandi) eksik.push(`${ad} Esc ile kapanmıyor`);
+      if (k.kapandi && k.odakDondu !== k.beklenenOdak) eksik.push(`${ad} kapanınca odak dönmüyor (${k.beklenenOdak || "yok"} beklenirken ${k.odakDondu || "yok"})`);
+    }
+  }
+
+  /*
+    ÜST İKİ KART (26.11.2026, onaylı mockup). Yan yanayken 58/42, aynı
+    üst hatta ve 16–18 px boşlukla; sağ kenarı alttaki ürün kartıyla
+    hizalı. Hiza kabulü PR #330'da bir kez düştü: tek çocuklu bir
+    ızgara kartı yarım genişlikte bırakmış, sağda 296 px boşluk
+    kalmıştı ve hiçbir ölçüt bunu görmüyordu.
+  */
+  if (o.ustKartlar) {
+    const u = o.ustKartlar;
+    if (u.yanYana) {
+      if (u.ustFarki > 1) eksik.push(`üst iki kartın üst kenarı ${u.ustFarki} px kaymış`);
+      if (u.bosluk < 16 || u.bosluk > 18) eksik.push(`üst iki kartın arası ${u.bosluk} px (16–18 olmalı)`);
+      if (u.oran < 55 || u.oran > 61) eksik.push(`üst ızgara oranı %${u.oran} (58 olmalı)`);
+    }
+    if (u.sagFarki !== null && u.sagFarki > 1) eksik.push(`üst kartların sağ kenarı ürün kartıyla hizalı değil (${u.sagFarki} px)`);
+    if (u.solFarki !== null && u.solFarki > 1) eksik.push(`üst kartların sol kenarı ürün kartıyla hizalı değil (${u.solFarki} px)`);
+  }
+
+  /*
+    İKİ KATLI GEZİNME TIKLAMAYLA (26.11.2026, onaylı mockup). Yukarıdaki
+    altKat ölçütü "panel doğru çizilmiş mi" diye soruyor; buradaki
+    kurucunun yaptığı YOLU sınıyor. En önemlisi ortadaki iki satır:
+    "Ana menüye dön" ADRESİ DEĞİŞTİRMEMELİ (bağlantıya dönüştüğü gün
+    açık sayfa, süzgeçler ve geçmiş sessizce kaybolur) ve tarayıcının
+    geri tuşu bölüm değişikliğini geri almalı.
+  */
+  if (o.katGezinme) {
+    const k = o.katGezinme;
+    if (k.modulAcildi?.kat !== "alt") eksik.push("modüle girince alt menü açılmıyor");
+    if (k.modulAcildi?.odak !== "Ana menüye dön") eksik.push(`modüle girince odak "Ana menüye dön"e taşınmıyor (${k.modulAcildi?.odak ?? "yok"})`);
+    if (k.bolumSecildi && k.bolumSecildi.adres === k.modulAcildi?.adres) eksik.push("alt menüden bölüm seçmek adresi değiştirmiyor");
+    if (k.anaMenuyeDonuldu?.kat !== "ana") eksik.push("'Ana menüye dön' ana listeyi getirmiyor");
+    if (k.anaMenuyeDonuldu && k.anaMenuyeDonuldu.adres !== k.bolumSecildi?.adres) eksik.push(`ana menüye dönmek adresi değiştiriyor (${k.bolumSecildi?.adres} → ${k.anaMenuyeDonuldu.adres})`);
+    /* Odak girilen modülün satırına dönmeli: tam o satır seçili olduğu
+       için ikisi aynı metni taşır. */
+    if (k.anaMenuyeDonuldu && k.anaMenuyeDonuldu.odak !== k.anaMenuyeDonuldu.secili?.[0]) {
+      eksik.push(`ana menüye dönünce odak modül satırına dönmüyor (${k.anaMenuyeDonuldu.odak ?? "yok"})`);
+    }
+    if (k.tarayiciGeri && k.tarayiciGeri.adres !== k.modulAcildi?.adres) eksik.push(`tarayıcı geri tuşu bölüm değişikliğini geri almıyor (${k.tarayiciGeri.adres})`);
+    /*
+      MENÜ, ADRES VE İÇERİK AYNI AKIŞI GÖSTERMELİ (26.11.2026,
+      inceleme bulgusu). Paylaşılan bir karede Finans alt menüsü
+      açıkken sayfa başlığı hâlâ "Ana Sayfa" idi: düzenek rotadan
+      bağımsız tek bir ekran çiziyordu ve kanıt aslında hiçbir şeyi
+      kanıtlamıyordu.
+    */
+    for (const [ad, adim] of Object.entries(k)) {
+      if (!adim || adim.baslik === undefined) continue;
+      const anaSayfada = adim.adres === "/panel";
+      if (anaSayfada && adim.baslik !== "Ana Sayfa") eksik.push(`${ad}: adres /panel ama içerik "${adim.baslik}"`);
+      if (!anaSayfada && adim.baslik === "Ana Sayfa") eksik.push(`${ad}: adres ${adim.adres} ama içerikte hâlâ Ana Sayfa`);
+    }
+  }
+
+  /*
+    OTOMASYON SATIRLARI: AD + ETİKET + AÇIKLAMA BİRLİKTE (27.11.2026,
+    inceleme talebi). Telefon kaydında "Veri senkronizasyonu" satırı
+    bağlantı kopukluğunu anlatan bir açıklamayla birlikte "Yeniden
+    deneniyor" gösteriyordu: etiket tek başına, açıklama tek başına
+    yanlış değildi — ÇİFT yanlıştı.
+
+    Ölçüt sözlüğü kuralın kendisinden (lib/konsol/otomasyonlar):
+    hangi etiket hangi cümleyle gidebilir, burada sabit. Yeni bir
+    durum eklenince bu listeye de satır eklenmeli; eklenmezse
+    "bilinmeyen etiket" düşürür.
+  */
+  if (o.otomasyonSatirlari?.length) {
+    /* Etiket → açıklamada GEÇMESİ gereken ipucu ve beklenen ton. */
+    const SOZLUK = {
+      "Tamamlandı": { ton: "success", ipucu: /başarılı/i },
+      "Gönderildi": { ton: "success", ipucu: /başarılı/i },
+      "Yeniden deneniyor": { ton: "warning", ipucu: /deneme hakkı sürüyor/i },
+      "Bağlantı kesildi": { ton: "danger", ipucu: /ulaşılamıyor/i },
+      "Bağlı değil": { ton: "neutral", ipucu: /anahtar/i },
+      "Müdahale gerekiyor": { ton: "danger", ipucu: /düştü|gecikti|koşmadı/i },
+      "Kayıt yok": { ton: "neutral", ipucu: /kayıt/i },
+    };
+    for (const satir of o.otomasyonSatirlari) {
+      if (!satir.ad) { eksik.push("otomasyon satırının adı yok"); continue; }
+      const kural = SOZLUK[satir.etiket];
+      if (!kural) { eksik.push(`${satir.ad}: bilinmeyen durum etiketi (${satir.etiket ?? "yok"})`); continue; }
+      if (satir.ton !== kural.ton) eksik.push(`${satir.ad}: "${satir.etiket}" tonu ${satir.ton} (${kural.ton} olmalı)`);
+      if (!kural.ipucu.test(satir.aciklama ?? "")) {
+        eksik.push(`${satir.ad}: "${satir.etiket}" etiketi açıklamasıyla uyuşmuyor ("${satir.aciklama ?? ""}")`);
+      }
+      if (satir.aciklamaKirpik) eksik.push(`${satir.ad}: açıklama kırpılıyor`);
+    }
+  }
+
+  /*
+    RAY ÇEKMECESİ (26.11.2026, inceleme talebi). 64 px'lik rayda ikinci
+    kat menüye sığmıyor (ad gizli, bölümlerin ikonu yok), o yüzden
+    pencereye taşındı. Çekmece aynı sözleşmeyi taşımalı: başında
+    "Ana menüye dön", başlıkta modül adı, bölümler METİN etiketiyle ve
+    BAĞLANTI olarak. Aynı bağlantıları gösteren içerik üstü şerit
+    aynı anda çizilmemeli; Esc kapatınca odak ray düğmesine dönmeli.
+  */
+  if (o.rayCekmece) {
+    const c = o.rayCekmece;
+    if (!c.acik) eksik.push("ray ikonu çekmeceyi açmıyor");
+    else {
+      if (c.geriMetin !== "Ana menüye dön") eksik.push(`çekmecede "Ana menüye dön" yok (${c.geriMetin ?? "yok"})`);
+      if (!c.kapatVar) eksik.push("çekmecede Kapat yok (geri ve kapat ayrı denetim olmalı)");
+      if (!c.baslik) eksik.push("çekmecede modül başlığı yok");
+      if (!c.adlar?.length) eksik.push("çekmecede bölüm yok");
+      if (!c.baglantili) eksik.push("çekmecedeki bölümler bağlantı değil (adres paylaşılamaz)");
+      if (!c.odakIcinde) eksik.push(`çekmece açılınca odak içeri girmiyor (${c.odak || "yok"})`);
+      if (c.seritGorunur) eksik.push("çekmece açıkken içerik üstü şerit de çiziliyor (aynı bağlantı iki yerde)");
+      if (!c.kapandi) eksik.push("çekmece Esc ile kapanmıyor");
+      if (c.kapandi && !(c.odakDondu || "").startsWith("Finans")) eksik.push(`çekmece kapanınca odak ray düğmesine dönmüyor (${c.odakDondu || "yok"})`);
+    }
+  }
+
+  /*
+    TELEFON PANELİ (26.11.2026, inceleme talebi). "Daha fazla" önce ana
+    modülleri gösteriyor; bölümü olan modül açılınca AYNI panelin
+    içeriği alt menüyle değişiyor. İki denetim AYRI çalışmalı:
+    "Ana menüye dön" bir üst kata çıkar (panel açık kalır), "Kapat"
+    paneli kapatır. Tek düğmeye indirmek, modül listesine dönmek
+    isteyeni paneli kapatıp yeniden açmaya zorluyordu.
+  */
+  if (o.telefonPanel) {
+    const t = o.telefonPanel;
+    if (t.anaKat?.kat !== "ana") eksik.push("telefon paneli ana modül listesiyle açılmıyor");
+    if (t.anaKat?.geriVar) eksik.push("ana katta 'Ana menüye dön' çiziliyor (çıkılacak kat yok)");
+    if (t.altKat?.kat !== "alt") eksik.push("telefon panelinde modül açılınca içerik alt menüyle değişmiyor");
+    if (!t.altKat?.geriVar || !t.altKat?.kapatVar) eksik.push("alt katta geri ve kapat birlikte yok");
+    if (t.altKat?.odak !== "Ana menüye dön") eksik.push(`alt kata inince odak geri düğmesine gelmiyor (${t.altKat?.odak || "yok"})`);
+    if (t.geriDonuldu?.kat !== "ana" || t.geriDonuldu?.acik !== true) eksik.push("'Ana menüye dön' paneli kapatıyor (bir üst kata çıkmalı)");
+    if (t.geriDonuldu?.acik && !(t.geriDonuldu.odak || "").startsWith("Finans")) eksik.push(`üst kata çıkınca odak modül satırına dönmüyor (${t.geriDonuldu.odak || "yok"})`);
+    if (t.kapatildi?.acik) eksik.push("'Kapat' paneli kapatmıyor");
   }
 
   /*
