@@ -372,6 +372,32 @@ işlemi listeyi okuyup imzayı karşılaştırıyor, sonra RPC'yi
 ile kilitliyor, imzayı kendi içinde hesaplıyor ve ancak ondan sonra
 yazıyor.
 
+**Yazma da onaylanan satırlarla sınırlandı** (migration
+20261127191104). Kilit VAR OLAN satırları tutuyor, yeni bir satırın
+eklenmesini engellemiyor; READ COMMITTED'ta imzayı hesaplayan SELECT
+ile UPDATE iki ayrı ifade, yani UPDATE araya girip COMMIT edilen bir
+satırı görebilirdi. Yayım artık "bekleyen her satır" yerine
+kullanıcının onayladığı (kod, tutar) çiftlerine uygulanıyor; imza
+denetimi de duruyor, satır sınırı onun arkasındaki ikinci kilit.
+Yayımlanan sayı onaylanan sayıdan azsa işlem düşüyor — yarım liste
+yayımlanmıyor.
+
+**Eşzamanlılık GERÇEK PostgreSQL'de sınanıyor** (`npm run test:pg`,
+`tests/pg/`). PGlite tek bağlantılı: "iki oturum" diye yazılan bir
+test orada aslında tek oturumda koşar. Geçici bir küme kuruluyor
+(initdb + pg_ctl, unix soketi) ve her oturum kendi `psql` süreci
+oluyor. Yedi senaryo:
+
+| Senaryo | Sonuç |
+| --- | --- |
+| Önizlemeden sonra ikinci oturum taslak ekliyor → eski onay reddediliyor, hiçbir satır yayımlanmıyor | ✓ |
+| A'nın yayımı B'nin işlemi bitene kadar BEKLİYOR (kilit gerçekten var), sonra reddediyor | ✓ |
+| Araya giren satır yazma anına kadar gelse bile yayımlanmıyor — eski yazma biçimi aynı durumda üç satıra dokunuyordu (testte ölçüldü ve geri alındı) | ✓ |
+| Güncel kapsamla yeniden onay geçiyor (3 satır) | ✓ |
+| Eski imzasız çağrı bekleyen her taslağı yayımlamaya devam ediyor | ✓ |
+| Kurucu olmayan oturum iki biçimde de reddediliyor, tutarlar değişmiyor | ✓ |
+| anon iki işlevi de çağıramıyor | ✓ |
+
 **Önizlemenin bu kipinin sınırı:** Supabase Storage yok; dekont
 bağlantısı yetkiye bakan bir TAKLİT. "Yetkisiz hesap dekonta
 ulaşamıyor" kuralının arayüzdeki karşılığı sınanıyor, gerçek kova

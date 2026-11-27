@@ -12,6 +12,7 @@
     "test": "npm run test:unit && npm run test:db",
     "test:unit": "node --import ./tests/register.mjs --test 'tests/unit/*.test.ts'",
     "test:db": "node --test 'tests/db/*.test.mjs'",
+    "test:pg": "node --test 'tests/pg/*.test.mjs'",
     "check:migrations": "node scripts/check-migrations.mjs && node scripts/migration-izleri.mjs --denetle",
     "migration:izleri": "node scripts/migration-izleri.mjs",
     "check:db-testleri": "node scripts/check-db-test-migrations.mjs",

@@ -25,6 +25,7 @@ const MIGRATIONLAR = [
      işlevini yeniden yaratıyor; listeye eklenmezse düzenek güncel
      gövdeyi eskisine döndürür ve kilit sınanmamış olur. */
   "20261127182525_fiyat_yayim_kapsam_kilidi.sql",
+  "20261127191104_fiyat_yayim_onaylanan_satirlar.sql",
 ];
 
 const ARVO = "00000000-0000-4000-8000-00000000d101";
