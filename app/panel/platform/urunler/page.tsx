@@ -116,7 +116,6 @@ export default async function UrunlerPage({ searchParams }: {
   const urunLisanslari = zorunlu(urunLisansSonucu, "Ürün lisansları");
 
   const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]).filter((k) => k.kind !== "internal");
-  const musteriMi = new Set(kiracilar.map((k) => k.id));
   /* Tahsilata yalnızca MÜŞTERİ kurumlar girer: iç ekip ve grup markası
      ödemesi gelir değil (Ana Sayfa'daki tabloyla aynı küme). */
   const musteriKurumKumesi = new Set(kiracilar.filter((k) => !k.grup_markasi).map((k) => k.id));
@@ -129,9 +128,10 @@ export default async function UrunlerPage({ searchParams }: {
   const performans = urunPerformansi({
     donem: secilenDonem,
     cekirdek: { veri: kiracilar.map((k) => ({ organization_id: k.id, license_status: k.license_status })) },
+    /* Müşteri süzgeci ARTIK ÇEKİRDEKTE (lib/konsol/urun-performansi):
+       burada da süzmek üç ekranın ayrışmasının sebebiydi. */
     urunLisanslari: {
-      veri: ((urunLisanslari ?? []) as { organization_id: string; product: string; status: string }[])
-        .filter((satir) => musteriMi.has(satir.organization_id)),
+      veri: (urunLisanslari ?? []) as { organization_id: string; product: string; status: string }[],
     },
     aboneler: okumaOlarak(aboneSonucu),
     aboneOdemeleri: okumaOlarak(aboneOdemeSonucu),

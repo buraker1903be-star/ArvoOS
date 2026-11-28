@@ -129,16 +129,41 @@ export function urunPerformansi(girdi: Girdi): UrunSatiri[] {
   }));
 }
 
-/** Lisansı açık kurum + açık bireysel abone. */
+/**
+ * Lisansı açık MÜŞTERİ kurumu + açık bireysel abone.
+ *
+ * MÜŞTERİ SÜZGECİ 28.11.2026'da BURAYA ALINDI. Üç ekran aynı göstergeyi
+ * gösteriyordu ama süzgeci yalnızca biri uyguluyordu: Ürünler listesi
+ * `musteriMi` ile süzülmüş lisans satırları veriyor, Ana Sayfa ve ürün
+ * detayı ham listeyi veriyordu. Canlıda ArvoLab için Ana Sayfa 11,
+ * Ürünler listesi 10, ürün detayı 11 yazıyordu — aradaki bir, Arvo'nun
+ * kendi kurumuydu. Gösterge "aktif MÜŞTERİ" olduğuna göre iç ekip
+ * sayılmaz; süzgeç çağıranın elinde kalırsa üç ekran er geç yine
+ * ayrışır. Tahsilat zaten aynı kümeyi kullanıyordu (donemTahsilati).
+ *
+ * Müşteri kümesi okunamadıysa sayı da okunamadı: eksik bir sayı
+ * yazmaktansa "okunamadı" demek doğru (gerçek sıfır, eksik veri ve
+ * okuma hatası birbirinden ayrı gösteriliyor).
+ */
 function aktifMusteri(kod: string, girdi: Girdi): Olcum<number> {
+  if (bos(girdi.musteriKurumlar)) return okunamadi<number>();
+  const musteri = girdi.musteriKurumlar.veri;
   const cekirdek = kod === "arvoos";
   let kurum: number;
   if (cekirdek) {
     if (bos(girdi.cekirdek)) return okunamadi<number>();
-    kurum = girdi.cekirdek.veri.filter((s) => ACIK_LISANS.has(s.license_status ?? "")).length;
+    kurum = girdi.cekirdek.veri.filter((s) => musteri.has(s.organization_id) && ACIK_LISANS.has(s.license_status ?? "")).length;
   } else {
     if (bos(girdi.urunLisanslari)) return okunamadi<number>();
-    kurum = girdi.urunLisanslari.veri.filter((s) => s.product === kod && ACIK_LISANS.has(s.status)).length;
+    /* TEKİLLEŞTİRME: aynı kuruma aynı üründen iki lisans satırı
+       açılabiliyor (ürün köprüsü yeniden yansıtınca). Kurum sayısı
+       satır sayısı değil. */
+    const kurumlar = new Set(
+      girdi.urunLisanslari.veri
+        .filter((s) => s.product === kod && musteri.has(s.organization_id) && ACIK_LISANS.has(s.status))
+        .map((s) => s.organization_id),
+    );
+    kurum = kurumlar.size;
   }
 
   /* Bireysel abonesi olmayan üründe abone okuması gerekmiyor; olanlarda

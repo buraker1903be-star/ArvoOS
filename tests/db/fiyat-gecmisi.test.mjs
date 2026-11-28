@@ -20,12 +20,20 @@ import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 const MIGRATIONLAR = [
-  "20261014064505_fiyat_gecmisi_ve_toplu_yayim.sql",
-  /* Kapsam kilidi SONDAN: yukarıdaki migration imzasız yayım
-     işlevini yeniden yaratıyor; listeye eklenmezse düzenek güncel
-     gövdeyi eskisine döndürür ve kilit sınanmamış olur. */
-  "20261127182525_fiyat_yayim_kapsam_kilidi.sql",
-  "20261127191104_fiyat_yayim_onaylanan_satirlar.sql",
+  "20261014064505_fiyat_gecmisi_ve_toplu_yayim.sql", // govde-tamam: 20261127191104 yalnızca (text) aşırı yüklemesini yeniden yazıyor; burada sınanan İMZASIZ çağrının gövdesi 20261014064505'te ve değişmedi. Listeye eklemek üç sütunlu fiyat_kapsam_cozumle'yi iki sütunluya döndürür ve düzenek düşer.
+  /*
+    PARA BİRİMİ MIGRATION'I SONDAN. Yukarıdaki migration hem imzasız
+    yayım işlevini hem geçmiş tetikleyicisini eski gövdeleriyle
+    yeniden yaratıyor; listeye eklenmezse düzenek güncel gövdeyi
+    eskisine döndürür ve çok para birimli geçmiş sınanmamış olur.
+
+    Araya 20261127182525 ve 20261127191104 KONMUYOR: ikisi de
+    `fiyat_kapsam_cozumle`i iki sütunlu hâliyle yeniden yaratıyor ve
+    düzenek onları zaten uygulamış oluyor — üç sütunlu işlevin
+    üstüne iki sütunlusunu yazmak "cannot change return type" ile
+    düşüyor. 20261128114027 ikisinin de son hâlini kuruyor.
+  */
+  "20261128114027_fiyat_listesi_para_birimi.sql",
 ];
 
 const ARVO = "00000000-0000-4000-8000-00000000d101";
@@ -34,11 +42,12 @@ const KURUCU = "00000000-0000-4000-8000-00000000d111";
 const YABANCI = "00000000-0000-4000-8000-00000000d112";
 
 let db;
-const taslak = (kod, kurus) => db.query(
-  `insert into public.platform_fiyat_listesi (kod, tur, taslak_kurus, taslak_bekliyor, updated_by)
-   values ($1, 'plan', $2, true, auth.uid())
-   on conflict (kod) do update set taslak_kurus = excluded.taslak_kurus, taslak_bekliyor = true, updated_at = now()`,
-  [kod, kurus]);
+/* Anahtar 28.11.2026'dan beri (kod, para_birimi); varsayılan TRY. */
+const taslak = (kod, kurus, birim = "TRY") => db.query(
+  `insert into public.platform_fiyat_listesi (kod, para_birimi, tur, taslak_kurus, taslak_bekliyor, updated_by)
+   values ($1, $3, 'plan', $2, true, auth.uid())
+   on conflict (kod, para_birimi) do update set taslak_kurus = excluded.taslak_kurus, taslak_bekliyor = true, updated_at = now()`,
+  [kod, kurus, birim]);
 const gecmis = async () => (await db.query(`select kod, islem, onceki_kurus, onceki_yayimli, yeni_kurus, kim from public.platform_fiyat_gecmisi order by id`)).rows;
 
 before(async () => {

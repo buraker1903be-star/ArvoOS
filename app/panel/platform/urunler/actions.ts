@@ -252,14 +252,22 @@ async function taslagiGeriAl__impl(formData: FormData) {
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
   konsolAlaniniDogrula(konsolKapsami, "urunler");
   const kod = kodOku(formData);
+  /*
+    BİRİM DE ANAHTARIN PARÇASI (28.11.2026). Eskiden yalnızca `kod` ile
+    süzülüyordu; aynı planın TRY ve USD satırı birlikte varken bu sorgu
+    İKİ satır döndürüyor (maybeSingle hata veriyor) ve güncelleme
+    İKİSİNİ birden geri alıyordu — kurucunun dokunmadığı birimin
+    taslağı da sessizce kapanırdı.
+  */
+  const paraBirimi = paraBirimiOku(formData);
 
   const { data: satir } = await supabase.from("platform_fiyat_listesi")
-    .select("aylik_kurus").eq("kod", kod).maybeSingle();
+    .select("aylik_kurus").eq("kod", kod).eq("para_birimi", paraBirimi).maybeSingle();
   if (!satir) throw new Error("Bu basamağın taslağı yok.");
   const { data: userData } = await supabase.auth.getUser();
   const { error } = await supabase.from("platform_fiyat_listesi")
     .update({ taslak_kurus: satir.aylik_kurus, taslak_bekliyor: false, updated_by: userData.user?.id ?? null, updated_at: new Date().toISOString() })
-    .eq("kod", kod);
+    .eq("kod", kod).eq("para_birimi", paraBirimi);
   if (error) throw new Error("Taslak geri alınamadı: " + error.message);
   revalidatePath("/panel/platform/urunler");
   revalidatePath("/panel/platform/fiyatlar");
@@ -270,6 +278,9 @@ async function yayindanKaldir__impl(formData: FormData) {
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
   konsolAlaniniDogrula(konsolKapsami, "urunler");
   const kod = kodOku(formData);
+  /* Yalnızca istenen birim yayından kalkıyor: TRY'yi kaldırmak USD
+     fiyatını da düşürmemeli. */
+  const paraBirimi = paraBirimiOku(formData);
 
   const { data: userData } = await supabase.auth.getUser();
   /*
@@ -281,7 +292,7 @@ async function yayindanKaldir__impl(formData: FormData) {
     /* Bekleyen taslak da kapanıyor: yoksa bir sonraki toplu yayım, koda
        dönen basamağın eski taslağını istemeden yeniden yayımlardı. */
     .update({ aylik_kurus: null, taslak_kurus: null, taslak_bekliyor: false, yayimlandi_at: null, updated_by: userData.user?.id ?? null, updated_at: new Date().toISOString() })
-    .eq("kod", kod);
+    .eq("kod", kod).eq("para_birimi", paraBirimi);
   if (error) throw new Error("Yayından kaldırılamadı: " + error.message);
   fiyatYuzeyleriniTazele();
 }

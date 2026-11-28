@@ -52,3 +52,55 @@ test("düz metin listesi sırayı koruyor", () => {
   const farklar = havaleFarklari({ bildirilenTutar: 199_000, beklenenTutar: 599_000, bildirilenPaket: "professional", mevcutPaket: "starter" });
   assert.deepEqual(farkMetinleri(farklar), farklar.map((f) => f.metin));
 });
+
+/*
+  PARA BİRİMİ FARKI (28.11.2026). 100 USD ile 100 TRY aynı ödeme
+  değildir; fark görünmeden onay verilirse lisans yanlış bedelle açılır.
+*/
+test("para birimi uyuşmazlığı tutar karşılaştırmasının önüne geçiyor", () => {
+  const farklar = havaleFarklari({
+    bildirilenTutar: 10_000,
+    beklenenTutar: 10_000,
+    bildirilenPaket: null,
+    mevcutPaket: null,
+    bildirilenParaBirimi: "USD",
+    beklenenParaBirimi: "TRY",
+  });
+  assert.equal(farklar.length, 1);
+  assert.equal(farklar[0].tur, "para_birimi");
+  assert.match(farklar[0].metin, /bildirim USD, beklenen TRY/);
+  assert.equal(havaleUyariBasligi(farklar), "Para birimi uyuşmuyor.");
+});
+
+test("aynı birimde tutar farkı kendi biriminde yazılıyor", () => {
+  const farklar = havaleFarklari({
+    bildirilenTutar: 8_500,
+    beklenenTutar: 11_900,
+    bildirilenPaket: null,
+    mevcutPaket: null,
+    bildirilenParaBirimi: "USD",
+    beklenenParaBirimi: "USD",
+  });
+  assert.equal(farklar[0].tur, "tutar");
+  assert.match(farklar[0].metin, /85,00 USD.*119,00 USD/);
+});
+
+test("TARİHSEL UYUM: para birimi verilmeyen bildirim eskisi gibi karşılaştırılıyor", () => {
+  /* 28.11.2026 öncesindeki her bildirim TRY'ydi; o kayıtların
+     karşılaştırması değişmemeli. */
+  const farklar = havaleFarklari({
+    bildirilenTutar: 199_000,
+    beklenenTutar: 199_000,
+    bildirilenPaket: null,
+    mevcutPaket: null,
+  });
+  assert.deepEqual(farklar, []);
+  const farkli = havaleFarklari({
+    bildirilenTutar: 100_000,
+    beklenenTutar: 199_000,
+    bildirilenPaket: null,
+    mevcutPaket: null,
+  });
+  assert.equal(farkli[0].tur, "tutar");
+  assert.match(farkli[0].metin, /₺1\.000,00.*₺1\.990,00/);
+});

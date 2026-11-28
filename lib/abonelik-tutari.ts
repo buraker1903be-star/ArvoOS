@@ -13,6 +13,7 @@
   ücreti (koltuk kavramı yok). Birim testi tests/unit/abonelik-tutari.test.ts.
 */
 import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "./kota-durumu";
+import { paraBirimiCoz, paraYaz, tutar as paraTutari, type ParaBirimi } from "./para";
 
 export function donemTutari(girdi: {
   urun: string;
@@ -46,7 +47,7 @@ export type HavaleFarki = {
     "uyuşmuyor" demek, olmayan bir karşılaştırmayı iddia etmek ve
     kurucuyu var olmayan bir farkı aramaya göndermek.
   */
-  tur: "dogrulanamadi" | "tutar" | "paket";
+  tur: "dogrulanamadi" | "tutar" | "paket" | "para_birimi";
   metin: string;
 };
 
@@ -55,14 +56,42 @@ export function havaleFarklari(girdi: {
   beklenenTutar: number | null;
   bildirilenPaket: string | null;
   mevcutPaket: string | null;
+  /*
+    PARA BİRİMLERİ 28.11.2026'da eklendi. Verilmezse ikisi de TRY
+    sayılıyor: 28.11.2026 öncesindeki her bildirim TRY'ydi ve o
+    kayıtların karşılaştırması değişmemeli. Ama YENİ bir bildirimde
+    birim boş gelirse bu bir veri eksiği, varsayım değil — çağıran
+    tarafta (ödeme onayı) açıkça yazılıyor.
+  */
+  bildirilenParaBirimi?: string | null;
+  beklenenParaBirimi?: string | null;
 }): HavaleFarki[] {
   const farklar: HavaleFarki[] = [];
-  const tl = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(kurus / 100);
+  const bildirilenBirim: ParaBirimi = paraBirimiCoz(girdi.bildirilenParaBirimi) ?? "TRY";
+  const beklenenBirim: ParaBirimi = paraBirimiCoz(girdi.beklenenParaBirimi) ?? bildirilenBirim;
+  const tl = (kurus: number, birim: ParaBirimi = bildirilenBirim) => paraYaz(paraTutari(kurus, birim));
+
+  /*
+    PARA BİRİMİ UYUŞMAZLIĞI TUTARDAN ÖNCE GELİYOR: 100 USD ile 100 TRY
+    "tutar aynı" değildir ve rakamları karşılaştırmak yanıltıcı olur.
+    Bu fark görünürken onay verilirse lisans yanlış bedelle açılır.
+  */
+  if (bildirilenBirim !== beklenenBirim) {
+    farklar.push({
+      tur: "para_birimi",
+      metin: `Para birimi uyuşmuyor: bildirim ${bildirilenBirim}, beklenen ${beklenenBirim}. Tutarlar karşılaştırılamaz.`,
+    });
+    if (girdi.bildirilenPaket && girdi.mevcutPaket && girdi.bildirilenPaket !== girdi.mevcutPaket) {
+      farklar.push({ tur: "paket", metin: `Bildirimdeki paket (${girdi.bildirilenPaket}) kiracının mevcut paketinden (${girdi.mevcutPaket}) farklı; onay lisansı bildirimdeki pakete geçirir.` });
+    }
+    return farklar;
+  }
+
   if (!girdi.beklenenTutar) {
     farklar.push({ tur: "dogrulanamadi", metin: "Kiracının bu ürün için aylık ücreti girilmemiş; bildirilen tutar karşılaştırılamıyor." });
   } else if (girdi.bildirilenTutar !== girdi.beklenenTutar) {
     const yon = girdi.bildirilenTutar < girdi.beklenenTutar ? "eksik" : "fazla";
-    farklar.push({ tur: "tutar", metin: `Bildirilen ${tl(girdi.bildirilenTutar)}, beklenen ${tl(girdi.beklenenTutar)} (${tl(Math.abs(girdi.bildirilenTutar - girdi.beklenenTutar))} ${yon}).` });
+    farklar.push({ tur: "tutar", metin: `Bildirilen ${tl(girdi.bildirilenTutar)}, beklenen ${tl(girdi.beklenenTutar, beklenenBirim)} (${tl(Math.abs(girdi.bildirilenTutar - girdi.beklenenTutar))} ${yon}).` });
   }
   if (girdi.bildirilenPaket && girdi.mevcutPaket && girdi.bildirilenPaket !== girdi.mevcutPaket) {
     farklar.push({ tur: "paket", metin: `Bildirimdeki paket (${girdi.bildirilenPaket}) kiracının mevcut paketinden (${girdi.mevcutPaket}) farklı; onay lisansı bildirimdeki pakete geçirir.` });
@@ -78,6 +107,9 @@ export function havaleFarklari(girdi: {
  */
 export function havaleUyariBasligi(farklar: readonly HavaleFarki[]): string | null {
   if (!farklar.length) return null;
+  /* Para birimi farkı en ağırı: tutarlar karşılaştırılabilir bile
+     değil, onay lisansı yanlış bedelle açar. */
+  if (farklar.some((f) => f.tur === "para_birimi")) return "Para birimi uyuşmuyor.";
   if (farklar.some((f) => f.tur === "tutar")) return "Beklenen tutarla uyuşmuyor.";
   if (farklar.some((f) => f.tur === "dogrulanamadi")) return "Beklenen tutar doğrulanamadı.";
   return "Bildirim kiracının kaydından farklı.";

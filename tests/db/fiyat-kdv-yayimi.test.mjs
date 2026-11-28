@@ -39,7 +39,27 @@ test("eski yayım ve taslak yeni KDV dahil listeye iner, Ekip koda döner", asyn
         ('arvoos-baslangic', 'plan', 199000, 219000, true, now(), now()),
         ('arvolab-ekip', 'plan', 149000, null, false, now(), now());
     `);
+    /*
+      28.10.2026'DAKİ ŞEMA GERİ KURULUYOR. Bu migration gerçek dosyadan
+      okunuyor ve `on conflict (kod)` yazıyor — o gün birincil anahtar
+      tek sütunluydu. 28.11.2026'da anahtar (kod, para_birimi) oldu;
+      yani bu TARİHSEL migration bugünkü şemada yeniden ÇALIŞTIRILAMAZ
+      ("no unique or exclusion constraint matching the ON CONFLICT
+      specification"). Üretimde sorun değil (migration bir kez
+      uygulandı), ama düzenek tarihi yeniden oynuyor: anahtar o günkü
+      hâline alınıp sonrasında geri konuyor. Eski bir migration'ın
+      yeniden uygulanamaz olması, yeni anahtarın ÇALIŞTIĞININ da
+      kanıtı.
+    */
+    await db.exec(`
+      alter table public.platform_fiyat_listesi drop constraint platform_fiyat_listesi_pkey;
+      alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_pkey primary key (kod);
+    `);
     await db.exec(MIGRATION);
+    await db.exec(`
+      alter table public.platform_fiyat_listesi drop constraint platform_fiyat_listesi_pkey;
+      alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_pkey primary key (kod, para_birimi);
+    `);
 
     await rol(db, "anon");
     const f = await yayimli();

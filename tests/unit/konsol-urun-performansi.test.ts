@@ -141,6 +141,9 @@ test("grup boşsa oran null: paydası sıfır olan yüzde yazılmaz", () => {
 
 test("aktif müşteri: açık kurum lisansı + açık bireysel abone", () => {
   const g = temel();
+  /* Müşteri kümesi: sayım 28.11.2026'dan beri yalnızca müşteri
+     kurumlarını alıyor (iç ekip sayılmaz). */
+  g.musteriKurumlar = { veri: new Set(["k1", "k2", "k3", "k4"]) };
   g.urunLisanslari = { veri: [
     { organization_id: "k1", product: "arvolab", status: "active" },
     { organization_id: "k2", product: "arvolab", status: "trialing" },
@@ -161,7 +164,7 @@ test("BEŞİNCİ ÜRÜN: liste arayüz değişmeden büyür", () => {
   const g = temel();
   g.urunler = [...(g.urunler ?? []), { code: "arvodesk", name: "ArvoDesk" }];
   g.urunLisanslari = { veri: [{ organization_id: "k1", product: "arvodesk", status: "active" }] };
-  g.musteriKurumlar = { veri: new Set(["m"]) };
+  g.musteriKurumlar = { veri: new Set(["m", "k1"]) };
   g.kurumOdemeleri = { veri: [{ organization_id: "m", product: "arvodesk", amount: 2500, reviewed_at: ICERIDE }] };
   const satirlar = urunPerformansi(g);
   const yeni = satirlar.find((s) => s.kod === "arvodesk");
@@ -198,4 +201,60 @@ test("BEŞİNCİ ÜRÜN: detay şablonu da tek satırla besleniyor", () => {
   if (s.donusum.durum !== "var") return;
   assert.deepEqual(s.donusum.deger, { denemeye: 2, ucretliye: 1, oran: 0.5 });
   assert.deepEqual(s.tahsilat, { durum: "var", deger: 400 });
+});
+
+/*
+  P1 · AKTİF MÜŞTERİ TEK HESAPTAN (28.11.2026).
+
+  Canlı denetimde ArvoLab için Ana Sayfa 11, Ürünler listesi 10, ürün
+  detayı 11 gösterdi. Üçü de aynı çekirdeği çağırıyordu ama müşteri
+  süzgecini yalnızca biri uyguluyordu; aradaki bir, Arvo'nun kendi
+  kurumuydu. Süzgeç çekirdeğe alındı.
+*/
+test("iç ekip kurumu aktif müşteri sayılmıyor", () => {
+  const g = temel();
+  g.musteriKurumlar = { veri: new Set(["musteri-1", "musteri-2"]) };
+  g.urunLisanslari = { veri: [
+    { organization_id: "musteri-1", product: "arvolab", status: "active" },
+    { organization_id: "musteri-2", product: "arvolab", status: "active" },
+    /* Arvo'nun kendi kurumu: lisansı açık ama müşteri değil. */
+    { organization_id: "arvo-ic", product: "arvolab", status: "active" },
+  ] };
+  assert.deepEqual(satir(g, "arvolab").aktifMusteri, { durum: "var", deger: 2 });
+});
+
+test("çekirdek üründe de iç ekip sayılmıyor", () => {
+  const g = temel();
+  g.musteriKurumlar = { veri: new Set(["musteri-1"]) };
+  g.cekirdek = { veri: [
+    { organization_id: "musteri-1", license_status: "active" },
+    { organization_id: "arvo-ic", license_status: "active" },
+  ] };
+  assert.deepEqual(satir(g, "arvoos").aktifMusteri, { durum: "var", deger: 1 });
+});
+
+test("aynı kuruma iki lisans satırı bir müşteri sayılıyor", () => {
+  /* Ürün köprüsü yeniden yansıtınca aynı kuruma ikinci satır
+     açılabiliyor; kurum sayısı satır sayısı değil. */
+  const g = temel();
+  g.musteriKurumlar = { veri: new Set(["m1"]) };
+  g.urunLisanslari = { veri: [
+    { organization_id: "m1", product: "arvolab", status: "active" },
+    { organization_id: "m1", product: "arvolab", status: "trialing" },
+  ] };
+  assert.deepEqual(satir(g, "arvolab").aktifMusteri, { durum: "var", deger: 1 });
+});
+
+test("müşteri kümesi okunamadıysa sayı 'okunamadı', sıfır değil", () => {
+  /* Gerçek sıfır, eksik veri ve okuma hatası ayrı gösterilmeli. */
+  const g = temel();
+  g.musteriKurumlar = { hata: true };
+  g.urunLisanslari = { veri: [{ organization_id: "m1", product: "arvolab", status: "active" }] };
+  assert.equal(satir(g, "arvolab").aktifMusteri.durum, "okunamadi");
+});
+
+test("müşterisi olmayan üründe gerçek sıfır yazılıyor", () => {
+  const g = temel();
+  g.musteriKurumlar = { veri: new Set(["m1"]) };
+  assert.deepEqual(satir(g, "arvolab").aktifMusteri, { durum: "var", deger: 0 });
 });

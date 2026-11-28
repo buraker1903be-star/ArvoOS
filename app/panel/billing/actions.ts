@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { paraBirimiCoz, paraYaz, tutar as paraTutari } from "@/lib/para";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { PRODUCTS, productName } from "@/lib/products";
 import { kurucuyaUyar } from "@/lib/kurucu-uyarisi";
@@ -40,13 +41,26 @@ async function submitBankTransferPayment__impl(formData: FormData) {
   if (!allowedTypes.has(receipt.type)) throw new Error("Dekont PDF, JPG, PNG veya WEBP olmalıdır.");
   if (receipt.size > 10 * 1024 * 1024) throw new Error("Dekont dosyası 10 MB sınırını aşıyor.");
 
+  /*
+    PARA BİRİMİ SUNUCUDAN, SEÇİLEN HESAPTAN (28.11.2026). Eskiden
+    satıra `currency: "TRY"` SABİT yazılıyordu: USD bir hesaba yapılan
+    havale kütüğe TL diye giriyor, onay ekranı 850 USD'yi 850 TL ile
+    karşılaştırıyordu. İstemciden para birimi ALINMIYOR — alınsaydı
+    müşteri hangi birimde ödediğini kendisi belirlerdi.
+  */
   const { data: account, error: accountError } = await supabase
     .from("platform_bank_accounts")
-    .select("id")
+    .select("id,currency")
     .eq("id", bankAccountId)
     .eq("is_active", true)
     .maybeSingle();
   if (accountError || !account) throw new Error("Aktif banka hesabı bulunamadı.");
+  const paraBirimi = paraBirimiCoz((account as { currency?: string | null }).currency);
+  if (!paraBirimi) {
+    /* Hesabın birimi tanınmıyorsa bildirim alınmıyor: TRY varsaymak,
+       yanlış birimde bir tahsilatı kütüğe doğru gibi yazmak olurdu. */
+    throw new Error("Seçilen banka hesabının para birimi tanımlı değil; bu hesapla ödeme bildirimi alınamıyor.");
+  }
 
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error("Oturum doğrulanamadı.");
@@ -65,7 +79,7 @@ async function submitBankTransferPayment__impl(formData: FormData) {
     plan_code: planCode,
     product,
     amount,
-    currency: "TRY",
+    currency: paraBirimi,
     payment_method: "bank_transfer",
     receipt_path: receiptPath,
     reference_no: referenceNo || null,
@@ -86,7 +100,7 @@ async function submitBankTransferPayment__impl(formData: FormData) {
     satirlar: [
       ["Kurum", organization.display_name || organization.name],
       ["Ürün", productName(product as Parameters<typeof productName>[0])],
-      ["Tutar", new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(amount / 100)],
+      ["Tutar", paraYaz(paraTutari(amount, paraBirimi))],
       ["Referans", referenceNo || null],
     ],
     not: customerNote || null,

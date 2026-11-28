@@ -415,5 +415,55 @@
         "ad": "public.platform_fiyatlari_yayimla"
       }
     ]
+  },
+  {
+    "migration": "20261128114027_fiyat_listesi_para_birimi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.arvo_fiyat_gecmisi_yaz"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.platform_fiyat_kapsam_imzasi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.fiyat_kapsam_cozumle"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.fiyat_kapsam_yayimla"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_fiyat_listesi",
+        "sutun": "para_birimi"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.platform_fiyat_gecmisi",
+        "sutun": "para_birimi"
+      }
+    ]
+  },
+  {
+    "migration": "20261128120350_lisans_para_birimi_ve_usd_anahtari",
+    "izler": [
+      {
+        "tur": "tablo",
+        "ad": "public.platform_urun_para_ayarlari"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.organization_licenses",
+        "sutun": "para_birimi"
+      },
+      {
+        "tur": "sutun",
+        "tablo": "public.organization_product_licenses",
+        "sutun": "para_birimi"
+      }
+    ]
   }
 ]

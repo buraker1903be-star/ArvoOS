@@ -40,6 +40,13 @@ export async function yayimlananFiyatlar(): Promise<Fiyatlar> {
     const { data, error } = await supabase
       .from("platform_fiyat_listesi")
       .select("kod,aylik_kurus")
+      /*
+        YALNIZCA TRY (28.11.2026). Liste çok para birimli oldu; birim
+        süzgeci olmadan aynı kodun USD satırı TL tablosunun üstüne
+        yazıyor ve Türkçe ücretler sayfası 4.990 yerine 119 gösteriyordu.
+        Sitenin döviz tarafı ayrı kaynaktan okuyor (lib/site/doviz.ts).
+      */
+      .eq("para_birimi", "TRY")
       .not("yayimlandi_at", "is", null);
     if (error) {
       console.error("[fiyat] yayımlanmış liste okunamadı", error.message);

@@ -134,7 +134,16 @@ $$;
 revoke all on function public.platform_fiyat_kapsam_imzasi() from public, anon;
 grant execute on function public.platform_fiyat_kapsam_imzasi() to authenticated, service_role;
 
-create or replace function private.fiyat_kapsam_cozumle(p_kapsam text)
+/*
+  ÖNCE DÜŞÜRÜLÜYOR: dönüş tipi değişiyor (iki sütundan üçe) ve Postgres
+  `create or replace` ile dönüş tipi değişikliğini kabul etmiyor
+  ("cannot change return type of existing function"). Gövdeleri çalışma
+  anında çözüldüğü için bu işlevi çağıran iki plpgsql işlevi
+  etkilenmiyor; ikisi de aşağıda yeniden yazılıyor.
+*/
+drop function if exists private.fiyat_kapsam_cozumle(text);
+
+create function private.fiyat_kapsam_cozumle(p_kapsam text)
 returns table (kod text, para_birimi text, taslak_kurus bigint)
 language sql
 immutable
