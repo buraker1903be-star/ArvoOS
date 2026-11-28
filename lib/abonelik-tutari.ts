@@ -38,22 +38,52 @@ export function donemTutari(girdi: {
  * havalesi olabilir — ama onay lisansı BİLDİRİLEN paketle bir ay
  * uzattığı için kurucu farkı görerek onaylamalı.
  */
+export type HavaleFarki = {
+  /*
+    TÜR, BAŞLIĞI BELİRLER (27.11.2026 ara kontrolü). Üç hâl aynı
+    başlıkla ("Beklenenle uyuşmuyor") gösteriliyordu; oysa beklenen
+    ücret HİÇ GİRİLMEMİŞSE karşılaştırılacak iki tutar yok —
+    "uyuşmuyor" demek, olmayan bir karşılaştırmayı iddia etmek ve
+    kurucuyu var olmayan bir farkı aramaya göndermek.
+  */
+  tur: "dogrulanamadi" | "tutar" | "paket";
+  metin: string;
+};
+
 export function havaleFarklari(girdi: {
   bildirilenTutar: number;
   beklenenTutar: number | null;
   bildirilenPaket: string | null;
   mevcutPaket: string | null;
-}): string[] {
-  const farklar: string[] = [];
+}): HavaleFarki[] {
+  const farklar: HavaleFarki[] = [];
   const tl = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(kurus / 100);
   if (!girdi.beklenenTutar) {
-    farklar.push("Kiracının bu ürün için aylık ücreti girilmemiş; tutar doğrulanamıyor.");
+    farklar.push({ tur: "dogrulanamadi", metin: "Kiracının bu ürün için aylık ücreti girilmemiş; bildirilen tutar karşılaştırılamıyor." });
   } else if (girdi.bildirilenTutar !== girdi.beklenenTutar) {
     const yon = girdi.bildirilenTutar < girdi.beklenenTutar ? "eksik" : "fazla";
-    farklar.push(`Bildirilen ${tl(girdi.bildirilenTutar)}, beklenen ${tl(girdi.beklenenTutar)} (${tl(Math.abs(girdi.bildirilenTutar - girdi.beklenenTutar))} ${yon}).`);
+    farklar.push({ tur: "tutar", metin: `Bildirilen ${tl(girdi.bildirilenTutar)}, beklenen ${tl(girdi.beklenenTutar)} (${tl(Math.abs(girdi.bildirilenTutar - girdi.beklenenTutar))} ${yon}).` });
   }
   if (girdi.bildirilenPaket && girdi.mevcutPaket && girdi.bildirilenPaket !== girdi.mevcutPaket) {
-    farklar.push(`Bildirimdeki paket (${girdi.bildirilenPaket}) kiracının mevcut paketinden (${girdi.mevcutPaket}) farklı; onay lisansı bildirimdeki pakete geçirir.`);
+    farklar.push({ tur: "paket", metin: `Bildirimdeki paket (${girdi.bildirilenPaket}) kiracının mevcut paketinden (${girdi.mevcutPaket}) farklı; onay lisansı bildirimdeki pakete geçirir.` });
   }
   return farklar;
+}
+
+/**
+ * Uyarı başlığı. İki tutar KARŞILAŞTIRILABİLİYOR ve farklıysa
+ * "uyuşmuyor"; beklenen ücret hiç girilmemişse "doğrulanamadı".
+ * İkisi birden olamaz (biri ötekini dışlıyor), paket farkı tek
+ * başına kaldığında da kendi başlığını alıyor.
+ */
+export function havaleUyariBasligi(farklar: readonly HavaleFarki[]): string | null {
+  if (!farklar.length) return null;
+  if (farklar.some((f) => f.tur === "tutar")) return "Beklenen tutarla uyuşmuyor.";
+  if (farklar.some((f) => f.tur === "dogrulanamadi")) return "Beklenen tutar doğrulanamadı.";
+  return "Bildirim kiracının kaydından farklı.";
+}
+
+/** Düz metin listesi: sunucu işleminin hata mesajı ve onay penceresi için. */
+export function farkMetinleri(farklar: readonly HavaleFarki[]): string[] {
+  return farklar.map((f) => f.metin);
 }

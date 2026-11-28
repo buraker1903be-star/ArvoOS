@@ -704,7 +704,13 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
       baslik: "Ödeme bildirimi",
       alt: [kurumAdi.get(o.organization_id) ?? "Kurum", para(Number(o.amount ?? 0), o.currency ?? "TRY")].join(" · "),
       zaman: o.created_at,
-      href: "/panel/platform/payments",
+      /*
+        DOĞRUDAN O BİLDİRİME (27.11.2026 ara kontrolü): seçim artık
+        adreste, yani karar formu tek tıkla açılıyor. Eskiden
+        listenin başına gidiyordu ve kurucu aradığı kaydı yeniden
+        bulmak zorundaydı.
+      */
+      href: `/panel/platform/payments?secili=odeme:${o.id}`,
       /* Eylem adı burada yazılıyor: kalemin TÜRÜ yalnızca burada
          belli. Kartta başlıktan türetmek Türkçe ek uyumunu bozuyor. */
       eylem: "Ödeme bildirimini incele",
@@ -730,7 +736,9 @@ export async function KonsolAnaSayfa({ donem: donemParam, olcut: olcutParam }: {
       baslik: "Yanıt bekleyen talep",
       alt: [kurumAdi.get(t.organization_id) ?? "Kurum", t.subject].filter(Boolean).join(" · "),
       zaman: t.last_message_at,
-      href: `/panel/platform/destek/${t.id}`,
+      /* Görüşme listenin sağ panelinde: yanıt kutusu tek tıkla
+         açılıyor ve kuyruktaki öteki talepler görünür kalıyor. */
+      href: `/panel/platform/destek?secili=${t.id}`,
       eylem: "Talebi görüntüle",
     })),
   ].slice(0, ONCELIKLI_TAVAN);

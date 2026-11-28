@@ -168,3 +168,180 @@ test("iptalden sonra yayım yalnızca kalan taslağı canlıya çıkarıyor", as
     assert.equal(s[ARVOLAB_KODU].aylik, 499000);
     assert.equal(s[ARVOOS_KODU].aylik, 259000);
   }));
+
+/*
+  KAPSAM KİLİDİ (28.11.2026). Önizleme ile yazma arasında taslak
+  kümesi değişirse eski onayla yayım yapılmamalı. Kontrol işlevin
+  İÇİNDE: satırlar kilitleniyor, imza orada yeniden hesaplanıyor —
+  yoksa okuma ile RPC arasındaki aralıkta eklenen bir taslak yine
+  görülmeden yayımlanırdı.
+*/
+const imza = async () => (await db.query("select public.platform_fiyat_kapsam_imzasi() as i")).rows[0].i;
+
+test("kapsam imzası arayüzdekiyle aynı biçimde: kod:tutar, artan, | ile", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    assert.equal(await imza(), `${ARVOLAB_KODU}:549000|${ARVOOS_KODU}:259000`);
+  }));
+
+test("imza tutuyorsa yayımlanıyor", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    const beklenen = await imza();
+    const sayi = (await db.query("select public.platform_fiyatlari_yayimla($1) as n", [beklenen])).rows[0].n;
+    assert.equal(Number(sayi), 2);
+  }));
+
+test("araya yeni bir taslak girerse ESKİ onayla yayımlanmıyor", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    const eskiOnay = await imza();
+
+    /* İkinci oturum üçüncü bir basamağı taslağa alıyor. */
+    await rol(db, "postgres");
+    await db.exec(`
+      insert into public.platform_fiyat_listesi (kod, tur, aylik_kurus, taslak_kurus, taslak_bekliyor, updated_at)
+      values ('arvoos-profesyonel', 'plan', 399000, 429000, true, now())
+      on conflict (kod) do update set taslak_kurus = excluded.taslak_kurus, taslak_bekliyor = true;
+    `);
+
+    await rol(db, "authenticated", KURUCU);
+    await reddedilir(
+      db,
+      "select public.platform_fiyatlari_yayimla($1)",
+      [eskiOnay],
+      /önizlemeden sonra değişti/i,
+    );
+    /* Hiçbir şey yayımlanmadı: üç taslak da bekliyor. */
+    const kalan = (await db.query("select count(*)::int as n from public.platform_fiyat_listesi where taslak_bekliyor")).rows[0].n;
+    assert.equal(Number(kalan), 3);
+  }));
+
+test("tutarı değişen bir taslak da eski onayı düşürüyor", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    const eskiOnay = await imza();
+    await rol(db, "postgres");
+    await db.exec(`update public.platform_fiyat_listesi set taslak_kurus = 599000 where kod = '${ARVOLAB_KODU}'`);
+    await rol(db, "authenticated", KURUCU);
+    await reddedilir(db, "select public.platform_fiyatlari_yayimla($1)", [eskiOnay], /önizlemeden sonra değişti/i);
+  }));
+
+test("kapsamlı yayım da KURUCUYA özel", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", YABANCI);
+    await reddedilir(db, "select public.platform_fiyatlari_yayimla($1)", [""], /kurucu yetkisi/i);
+  }));
+
+/*
+  YAYIM YALNIZCA ONAYLANAN SATIRLARI YAZAR (28.11.2026, migration
+  20261127191104).
+
+  İmza denetimi kullanıcının görmediği bir değişikliği reddediyor;
+  bu testler denetimin ARKASINDAKİ kuralı sınıyor: yazma, onaylanan
+  (kod, tutar) çiftleriyle sınırlı. Kural ayrı bir işlevde
+  (private.fiyat_kapsam_yayimla) olduğu için imza denetimini
+  geçmeden de sınanabiliyor — denetimin içine gömülseydi "araya
+  giren satır yazılmıyor" iddiası hiçbir testle kanıtlanamazdı.
+*/
+const cozumle = async (kapsam) => (await db.query(
+  "select kod, taslak_kurus from private.fiyat_kapsam_cozumle($1) order by kod", [kapsam])).rows;
+
+test("kapsam çözümlemesi imzayı (kod, tutar) çiftlerine ayırıyor", async () =>
+  islem(db, async () => {
+    await rol(db, "postgres");
+    assert.deepEqual(await cozumle("a-kod:549000|b-kod:teklif"), [
+      { kod: "a-kod", taslak_kurus: 549000 },
+      { kod: "b-kod", taslak_kurus: null },
+    ]);
+    /* Boş kapsam HİÇBİR satır demek — "hepsi" değil. */
+    assert.deepEqual(await cozumle(""), []);
+    assert.deepEqual(await cozumle(null), []);
+  }));
+
+test("yazma onaylanmayan satıra DOKUNMUYOR", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    /*
+      İmza denetimi atlanarak doğrudan yazma çağrılıyor: kontrol ile
+      UPDATE arasındaki pencerede araya giren bir satırın durumu bu.
+      Kapsamda yalnızca ArvoLab var; ArvoOS'un taslağı yerinde
+      kalmalı.
+    */
+    const sayi = (await db.query(
+      "select private.fiyat_kapsam_yayimla($1, now()) as n", [`${ARVOLAB_KODU}:549000`])).rows[0].n;
+    assert.equal(Number(sayi), 1);
+
+    await rol(db, "postgres");
+    const s = await satirlar();
+    assert.equal(s[ARVOLAB_KODU].aylik, 549000);
+    assert.equal(s[ARVOLAB_KODU].bekliyor, false);
+    /* Onaylanmayan satır: eski tutarında ve HÂLÂ taslakta. */
+    assert.equal(s[ARVOOS_KODU].aylik, 239000);
+    assert.equal(s[ARVOOS_KODU].bekliyor, true);
+  }));
+
+test("tutarı onaylanandan farklı olan satır yayımlanmıyor", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "postgres");
+    /* Kullanıcı 549000'i onayladı, taslak sonradan 599000 oldu. */
+    await db.exec(`update public.platform_fiyat_listesi set taslak_kurus = 599000 where kod = '${ARVOLAB_KODU}'`);
+
+    await rol(db, "authenticated", KURUCU);
+    const sayi = (await db.query(
+      "select private.fiyat_kapsam_yayimla($1, now()) as n", [`${ARVOLAB_KODU}:549000`])).rows[0].n;
+    assert.equal(Number(sayi), 0);
+
+    await rol(db, "postgres");
+    const s = await satirlar();
+    assert.equal(s[ARVOLAB_KODU].aylik, 499000);
+    assert.equal(s[ARVOLAB_KODU].bekliyor, true);
+  }));
+
+test("teklif satırı (tutarsız taslak) da onaylanabiliyor", async () =>
+  islem(db, async () => {
+    await rol(db, "postgres");
+    await db.exec(`
+      delete from public.platform_fiyat_listesi where kod = 'arvoos-ozel';
+      insert into public.platform_fiyat_listesi (kod, tur, aylik_kurus, taslak_kurus, taslak_bekliyor, updated_at)
+      values ('arvoos-ozel', 'plan', 399000, null, true, now());
+    `);
+    await rol(db, "authenticated", KURUCU);
+    /* "is not distinct from" olmasaydı NULL taslak hiçbir zaman
+       eşleşmez ve teklife çevirme yayımlanamazdı. */
+    const sayi = (await db.query(
+      "select private.fiyat_kapsam_yayimla($1, now()) as n", ["arvoos-ozel:teklif"])).rows[0].n;
+    assert.equal(Number(sayi), 1);
+    await rol(db, "postgres");
+    const satir = (await db.query(
+      "select aylik_kurus, taslak_bekliyor from public.platform_fiyat_listesi where kod = 'arvoos-ozel'")).rows[0];
+    assert.equal(satir.aylik_kurus, null);
+    assert.equal(satir.taslak_bekliyor, false);
+  }));
+
+test("imzalı yayım onaylanan satır sayısını döndürüyor ve hepsini yazıyor", async () =>
+  islem(db, async () => {
+    await ikiUrundeTaslak();
+    await rol(db, "authenticated", KURUCU);
+    const beklenen = await imza();
+    const sayi = (await db.query("select public.platform_fiyatlari_yayimla($1) as n", [beklenen])).rows[0].n;
+    assert.equal(Number(sayi), 2);
+    await rol(db, "postgres");
+    const s = await satirlar();
+    assert.equal(s[ARVOLAB_KODU].bekliyor, false);
+    assert.equal(s[ARVOOS_KODU].bekliyor, false);
+  }));
+
+test("private işlevler anon'a kapalı", async () =>
+  islem(db, async () => {
+    await rol(db, "anon");
+    await reddedilir(db, "select private.fiyat_kapsam_cozumle('a:1')", [], /permission denied/i);
+    await reddedilir(db, "select private.fiyat_kapsam_yayimla('a:1', now())", [], /permission denied/i);
+  }));

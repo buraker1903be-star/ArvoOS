@@ -630,7 +630,16 @@ export default async function SistemSagligiPage({ searchParams }: { searchParams
                         {/* Hiç koşmamış işte "1 sa önce" yazmak yanlış: o süre kayıt tutmanın yaşı. */}
                         <td className="crm-col-date" data-label="En son koşma">{is.sonCalisma ? gecenSure(is.gecikmeDk ?? 0) : "—"}<small>{is.sonCalisma ? "önce" : is.durum === "gecikti" ? "hiç koşmadı" : "kayıt bekleniyor"}</small></td>
                         <td data-label="Durum"><span className="status-pill" data-tone={CRON_DURUM[is.durum].ton}>{CRON_DURUM[is.durum].etiket}</span></td>
-                        <MobilSatir baslik={is.ad} durum={CRON_DURUM[is.durum]} alt={[cronAralikMetni(is.aralikDk), is.sonCalisma ? `${gecenSure(is.gecikmeDk ?? 0)} önce` : null, sorunlu ? hata : null]} />
+                        {/*
+                          TELEFONDA DA İŞ DETAYINA GİDİLİYOR (28.11.2026).
+                          Eskiden bu satır `href` almıyordu: dar ekranda
+                          (≤760px) öteki hücreler gizlendiği için iş adının
+                          bağlantısı da gizleniyor ve zamanlanmış işin detayı
+                          telefondan HİÇ açılamıyordu — bağlantı sayfada
+                          duruyor, genişliği sıfır. Sağlıktaki öteki
+                          tablolar `href` veriyordu, yalnızca bu vermiyordu.
+                        */}
+                        <MobilSatir href={`/panel/platform/saglik/is?yol=${encodeURIComponent(is.yol)}`} baslik={is.ad} durum={CRON_DURUM[is.durum]} alt={[cronAralikMetni(is.aralikDk), is.sonCalisma ? `${gecenSure(is.gecikmeDk ?? 0)} önce` : null, sorunlu ? hata : null]} />
                       </tr>
                     );
                   })}

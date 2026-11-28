@@ -8,7 +8,7 @@ type Props = {
   action: (formData: FormData) => void | Promise<void>;
   plans: Plan[];
   /** Kullanılan kısa adlar: çakışma daha formu göndermeden gösterilir. */
-  existingSlugs: string[];
+  existingSlugs: (string | null | undefined)[];
 };
 
 const steps = [
@@ -65,7 +65,18 @@ export function NewOrganizationWizard({ action, plans, existingSlugs }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const taken = useMemo(() => new Set(existingSlugs.map((item) => item.toLowerCase())), [existingSlugs]);
+  /*
+    BOŞ SLUG EKRANI DÜŞÜRMESİN (27.11.2026). Liste görünümünden gelen
+    bir satırın slug'ı boş olabiliyor; `item.toLowerCase()` o zaman
+    TypeError atıyor ve sihirbazı çizen SAYFANIN TAMAMI hata sınırına
+    düşüyordu (Kurulumlar ekranında ölçüldü: HTTP 200, ekranda "Bir
+    sorun oluştu"). Boş kayıt bir çakışma da üretemez; listeden
+    düşüyor.
+  */
+  const taken = useMemo(
+    () => new Set(existingSlugs.filter((item): item is string => typeof item === "string" && item.length > 0).map((item) => item.toLowerCase())),
+    [existingSlugs],
+  );
   const cleanSlug = slugify(slug);
   const slugTaken = cleanSlug.length >= 2 && taken.has(cleanSlug);
   const sector = sectorChoice === "other" ? customSector.trim() : sectorChoice;

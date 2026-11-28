@@ -466,10 +466,22 @@ senaryosu burada yeşil kalmalı; 19.09.2026'da teklif dondurma kuralı yalnızc
 saldırı senaryolarıyla sınandı ve müşterinin onayını canlıda kırdı. Yeni
 kuralı önce anlık görüntüye uygulayıp testleri çalıştırın.
 
+**PGlite TEK BAĞLANTILIDIR; eşzamanlılık orada ölçülemez.** İki oturum
+arasındaki kilitlenme, bir işlemin ötekini beklemesi ve READ
+COMMITTED'ta her ifadenin kendi anlık görüntüsünü alması `tests/db`'nin
+göremediği şeyler — "iki oturum" diye yazılan bir PGlite testi aslında
+tek oturumda koşar ve yeşil kalır. Böyle bir kural sınanacaksa
+`tests/pg/` (`npm run test:pg`): geçici bir gerçek PostgreSQL kümesi
+kurulur (initdb + pg_ctl, unix soketi, canlıya dokunulmaz), şema
+`tests/db/ortam.mjs`'teki AYNI sırayla yüklenir ve her oturum kendi
+`psql` süreci olur. Küme bulunamazsa testler atlanır (çıkış 0) ve
+nedeni yazılır. İlk kullanıcısı fiyat yayımının kapsam kilidi
+(28.11.2026): onayla yazma arasına giren bir taslak.
+
 ## Kontroller
 
 `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, `npm run test:db`,
-`npm run check:rakamlar` — hepsi CI'da
+`npm run test:pg`, `npm run check:rakamlar` — hepsi CI'da
 (`.github/workflows/ci.yml`) çalışır. Derleme CI'da yapılmaz.
 
 **Rakam denetimi** (`npm run check:rakamlar`): ekrandaki sayıların üç

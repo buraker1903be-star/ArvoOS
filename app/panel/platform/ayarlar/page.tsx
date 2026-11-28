@@ -372,7 +372,16 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
       </> : null}
 
       {bolum === "baglantilar" ? <>
-        <div className="talep-tablo">
+        {/*
+          İKİ TABLO TEK KARTTA. `talep-tablo` liste kabuğunda esneyen
+          kaydırma alanı (os-shell.css): iki tanesi aynı kartta
+          olunca ikisi de esniyor ve ÜST ÜSTE biniyordu — bağlantı
+          tablosunun son satırları sır tablosunun altında kalıyordu
+          (27.11.2026 ölçümü). `fn-ic-tablo` kartı kaydırıcı yapıp
+          tabloları olduğu boyda bırakıyor (finans.css); aynı kalıp
+          Finans'ta da var.
+        */}
+        <div className="talep-tablo fn-ic-tablo">
           <table className="crm-data-table" data-cols="sy-entegrasyon">
             <thead><tr><th>Bağlantı</th><th>Grup</th><th>Ayrıntı</th><th>Durum</th></tr></thead>
             <tbody>
@@ -398,7 +407,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
             </tbody>
           </table>
         </div>
-        <div className="talep-tablo">
+        <div className="talep-tablo fn-ic-tablo">
           <table className="crm-data-table" data-cols="sy-sir">
             <thead><tr><th>Sır</th><th>Ne için</th><th>Durum</th></tr></thead>
             <tbody>

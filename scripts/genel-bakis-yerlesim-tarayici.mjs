@@ -61,6 +61,7 @@ const cssler = {
   ops: rotaCss("panel/operations"),
   /* MOCKUP tek sayfada dört rotayı dolaşıyor: hepsinin CSS'i gerekli. */
   mockup: birlesik("panel", "panel/platform/urunler", "panel/platform/urunler/[urun]", "panel/platform/fiyatlar"),
+  musteriler: birlesik("panel/platform/musteriler", "panel/platform/musteriler/[id]"),
 };
 // SAYFALAR: Operasyon PR'ının (#315) eski adı; SENARYOLAR ile aynı.
 const SENARYOLAR = (process.env.SENARYOLAR ?? process.env.SAYFALAR ?? "ana,crm,konsol,urundetay,urunler,fiyatlar,ops").split(",");
@@ -159,6 +160,7 @@ import { ArvoOsIsareti, ArvoOsLogosu } from "@/app/panel/os/arvoos-markasi";
 import { bolumAdresi, bolumSirasi, urunBolumu } from "@/lib/konsol/urun-bolumleri";
 import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-bakis";
 import { YayimOnizlemesi } from "@/app/panel/platform/fiyatlar/fiyat-yayim-onizlemesi";
+import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos, KonsolPanelSekmeleri } from "@/app/panel/platform/konsol-liste";
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
 import { OsBolumMenusu } from ${a("app/panel/os/os-bolum-menusu.tsx")};
 import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
@@ -692,6 +694,137 @@ const URUN_KUNYELERI = {
     donusum: { durum: "kaynak_yok" } },
 };
 
+/*
+  MÜŞTERİLER — LİSTE + SEÇİLİ KAYIT (27.11.2026, onaylı tasarım).
+  Üretimdeki iskeletin aynısı (musteriler/page.tsx): kl-duzen,
+  kl-liste, kl-panel ve GERÇEK panel bileşenleri. Satırlar örnek
+  GİRDİ; seçim adresten (?secili=) okunuyor, tıklayınca değişiyor.
+*/
+const MUSTERI_KAYITLARI = [
+  { secim: "kurum:1", ad: "Akademik Merkez", bas: "AM", tur: "Kurumsal", urun: "ArvoLab", durum: "Aktif", ton: "success",
+    paket: "Profesyonel", kullanici: "48 / 60", ucret: "₺28.900", yenileme: "14 Ara 2026", olusma: "10 Mar 2024", etkinlik: "bugün kullanıldı" },
+  { secim: "kurum:2", ad: "Yıldız Eğitim Kurumları", bas: "YE", tur: "Grup markası", urun: "ArvoLab", durum: "Aktif", ton: "success",
+    paket: "Kurumsal", kullanici: "126 / 150", ucret: "₺94.600", yenileme: "02 Şub 2027", olusma: "21 Eyl 2023", etkinlik: "dün kullanıldı" },
+  { secim: "kurum:3", ad: "Ege Akademi", bas: "EA", tur: "Kurumsal", urun: "ArvoLab", durum: "Aktif", ton: "success",
+    paket: "Başlangıç", kullanici: "12 / 20", ucret: "₺7.900", yenileme: "30 Kas 2026", olusma: "04 Oca 2025", etkinlik: "5 gündür kullanılmadı" },
+  { secim: "kurum:4", ad: "Nova Teknoloji", bas: "NT", tur: "Kurumsal", urun: "ArvoLab", durum: "Aktif", ton: "success",
+    paket: "Profesyonel", kullanici: "31 / 60", ucret: "₺24.400", yenileme: "18 Mar 2027", olusma: "12 Haz 2025", etkinlik: "bugün kullanıldı" },
+];
+
+function Musteriler() {
+  const sorgu = useSearchParams();
+  const secim = sorgu.get("secili");
+  /* SÜZGEÇ de adreste: seçimle birlikte korunduğu ve kaydı listeden
+     düşürebildiği için üç durumun hepsi düzenekte çizilebiliyor. */
+  const tur = sorgu.get("tur");
+  const liste = tur ? MUSTERI_KAYITLARI.filter((m) => m.tur === tur) : MUSTERI_KAYITLARI;
+  const secili = MUSTERI_KAYITLARI.find((m) => m.secim === secim) ?? null;
+  const listede = Boolean(secili && liste.some((m) => m.secim === secili.secim));
+  const adres = (yeni) => {
+    const p = new URLSearchParams();
+    const t = yeni && "tur" in yeni ? yeni.tur : tur;
+    const sc = yeni && "secili" in yeni ? yeni.secili : secim;
+    if (t) p.set("tur", t);
+    if (sc) p.set("secili", sc);
+    const q = p.toString();
+    return "/panel/platform/musteriler" + (q ? "?" + q : "");
+  };
+  return (
+    <main className="plt talep cari ekip konsol-musteriler">
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
+          <h1>Müşteriler</h1>
+          <p className="ek-alt">ArvoLab kullanan müşteriler ve abonelikleri.</p>
+        </div>
+        <div className="talep-bas-eylem">
+          <button className="panel-primary" type="button">+ Yeni müşteri</button>
+        </div>
+      </header>
+      <div className="kl-duzen" data-secim={secili ? "var" : "yok"}>
+        <section className="kl-liste" aria-label="Müşteri listesi">
+          <div className="ekip-suzgec talep-suzgec ek-arac">
+            <input className="urd-ara" type="search" placeholder="Müşteri ara…" aria-label="Müşteri ara" />
+            {/* Süzgeç BAĞLANTI: seçimi koruyor, adres paylaşılabilir. */}
+            <nav className="ek-segment" aria-label="Tür">
+              <Link href={adres({ tur: null })} className={!tur ? "is-active" : undefined}>Tümü</Link>
+              <Link href={adres({ tur: "Kurumsal" })} className={tur === "Kurumsal" ? "is-active" : undefined}>Kurumsal</Link>
+              <Link href={adres({ tur: "Grup markası" })} className={tur === "Grup markası" ? "is-active" : undefined}>Grup markası</Link>
+            </nav>
+          </div>
+          <div className="kl-liste-govde">
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="konsol-musteri">
+                <thead><tr><th>Müşteri</th><th>Ürün</th><th>Durum</th><th></th></tr></thead>
+                <tbody>
+                  {liste.map((m) => (
+                    <tr key={m.secim} className={m.secim === secim ? "is-secili" : undefined}>
+                      <td data-label="Müşteri">
+                        <Link className="crm-row-link ek-kisi" href={adres({ secili: m.secim })}
+                          aria-current={m.secim === secim ? "true" : undefined} aria-label={m.ad + " kaydını seç"}>
+                          <span className="ek-avatar" aria-hidden="true">{m.bas}</span>
+                          <span className="ek-kisi-metin">
+                            <span className="crm-table-title">{m.ad}</span>
+                            <span className="crm-table-sub">{m.tur}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td data-label="Ürün"><span className="crm-table-title">{m.urun}</span></td>
+                      <td data-label="Durum"><span className="status-pill" data-tone={m.ton}>{m.durum}</span></td>
+                      <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <aside className="kl-panel" aria-label={secili ? secili.ad + " önizlemesi" : "Müşteri istatistikleri"}>
+          {secili ? (
+            <>
+              <Link className="kl-geri" href={adres({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+              {!listede ? (
+                <p className="kl-suzgec-disi">
+                  Bu kayıt geçerli süzgeçte görünmüyor.{" "}
+                  <Link href={adres({ tur: null })}>Süzgeci temizle →</Link>
+                </p>
+              ) : null}
+              <KonsolPanelBas baslik={secili.ad} durum={{ etiket: "Aktif müşteri", ton: "success" }} kapatAdresi={adres({ secili: null })} />
+              <KonsolPanelSekmeleri etkin="bilgiler" sekmeler={[
+                { anahtar: "bilgiler", etiket: "Genel Bilgiler", adres: adres({ secili: secili.secim }) },
+                { anahtar: "kullanicilar", etiket: "Kullanıcılar", adres: "/panel/platform/musteriler/1?pencere=kullanicilar" },
+                { anahtar: "urunler", etiket: "Lisanslar", adres: "/panel/platform/musteriler/1?pencere=urunler" },
+                { anahtar: "hareketler", etiket: "Geçmiş", adres: "/panel/platform/musteriler/1?pencere=hareketler" },
+              ]} />
+              <KonsolPanelAlanlar alanlar={[
+                { ad: "Tür", deger: secili.tur },
+                { ad: "Ürünler", deger: secili.urun },
+                { ad: "Paket", deger: secili.paket },
+                { ad: "Kullanıcı", deger: secili.kullanici },
+                { ad: "Aylık", deger: secili.ucret },
+                { ad: "Yenileme", deger: secili.yenileme },
+                { ad: "Kayıt tarihi", deger: secili.olusma },
+                { ad: "Panel kullanımı", deger: secili.etkinlik },
+              ]} />
+              <div className="kl-panel-eylem">
+                <Link className="panel-primary" href="/panel/platform/musteriler/1">Müşteri kartını aç</Link>
+              </div>
+            </>
+          ) : secim ? (
+            <>
+              <Link className="kl-geri" href={adres({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+              <KonsolPanelBos ton="uyari" baslik="Kayıt bulunamadı"
+                aciklama="Bu kayıt silinmiş ya da artık erişilebilir değil. Listeden başka bir kayıt seçebilirsiniz." />
+            </>
+          ) : (
+            <KonsolPanelBos baslik="Kayıt seçilmedi"
+              aciklama="Soldaki listeden bir müşteri seçin; özet bilgileri burada görünür." />
+          )}
+        </aside>
+      </div>
+    </main>
+  );
+}
+
 function UrunDetay() {
   const yolSuan = usePathname();
   const urunKodu = yolSuan.split("/")[4] || "arvolab";
@@ -974,7 +1107,8 @@ function UrunDetay() {
 /* ?yol=<rota>: bağlamlı gezinmenin kanıtı için rota dışarıdan verilebilir
    (ör. /panel/platform/billing → ana menüde Finans, şeritte Abonelikler). */
 window.__yol = new URLSearchParams(location.search).get("yol")
-  || (sayfa === "mockup" ? "/panel"
+  || (sayfa === "musteriler" ? "/panel/platform/musteriler"
+    : sayfa === "mockup" ? "/panel"
     : sayfa === "urundetay" ? "/panel/platform/urunler/arvolab"
     : sayfa === "urunler" ? "/panel/platform/urunler"
     : sayfa === "fiyatlar" ? "/panel/platform/fiyatlar"
@@ -991,7 +1125,7 @@ function Kabuk() {
   /* Konsol senaryoları yeni kabuğu kullanıyor (.os-konsol): masaüstü ve
      tablette sol menü, telefonda alt çubuk. Kiracı senaryoları (ana,
      crm) dock'ta kalıyor — üretimdeki ayrımın aynısı. */
-  const konsolMu = sayfa === "konsol" || sayfa === "urundetay" || sayfa === "urunler" || sayfa === "fiyatlar" || sayfa === "mockup";
+  const konsolMu = sayfa === "konsol" || sayfa === "urundetay" || sayfa === "urunler" || sayfa === "fiyatlar" || sayfa === "mockup" || sayfa === "musteriler";
   return <div className={konsolMu ? "panel-root os-root os-konsol" : "panel-root os-root"}><main className="panel-frame os-frame">
     {/*
       ÜST ÇUBUK. Kiracı senaryolarında olduğu gibi sade; KONSOL
@@ -1023,7 +1157,7 @@ function Kabuk() {
         </div>
       ) : null}
     </header>
-    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : <OsBolumMenusu uygulamalar={uygulamalar} />}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. Kiracı sayfalarında bölüm menüsü üretimdeki gibi içeriğin üstünde (Operasyon ölçümü, PR #315). */${'}'}<div className="panel-content">{sayfa === "mockup" ? (urunDetayiMi ? <UrunDetay /> : yolSimdi.startsWith("/panel/platform/urunler") ? <UrunlerListesi /> : yolSimdi.startsWith("/panel/platform/fiyatlar") ? <FiyatlarKarsilastirma /> : <KonsolRota />) : sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? (urunDetayiMi ? <UrunDetay /> : <FiyatlarKarsilastirma />) : sayfa === "ops" ? (${opsYeni} ? <Ops /> : <OpsEski />) : <Ana />}</div></section>
+    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : <OsBolumMenusu uygulamalar={uygulamalar} />}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. Kiracı sayfalarında bölüm menüsü üretimdeki gibi içeriğin üstünde (Operasyon ölçümü, PR #315). */${'}'}<div className="panel-content">{sayfa === "musteriler" ? <Musteriler /> : sayfa === "mockup" ? (urunDetayiMi ? <UrunDetay /> : yolSimdi.startsWith("/panel/platform/urunler") ? <UrunlerListesi /> : yolSimdi.startsWith("/panel/platform/fiyatlar") ? <FiyatlarKarsilastirma /> : <KonsolRota />) : sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? (urunDetayiMi ? <UrunDetay /> : <FiyatlarKarsilastirma />) : sayfa === "ops" ? (${opsYeni} ? <Ops /> : <OpsEski />) : <Ana />}</div></section>
     {/* Komut paleti ve menü kapatıcı GERÇEK bileşenler: kaplamaların
         odak/Esc davranışı ölçülebilsin diye (26.11.2026). */}
     {konsolMu ? <OsKomutPaleti uygulamalar={konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 })} cikis={async () => {}} /> : null}
@@ -1907,8 +2041,8 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
          ulaşılan son satır "örtülü" sayılıyordu. */
       /* Gezinme sözleşmesini ölçen senaryolar: ikisi de aynı kabuğu
          (sol menü + dock + "Daha fazla" paneli) çiziyor. */
-      const KABUK_SENARYOSU = new Set(["konsol", "mockup"]);
-      const konsolSenaryosu = s === "konsol" || s === "urundetay" || s === "urunler" || s === "fiyatlar" || s === "mockup";
+      const KABUK_SENARYOSU = new Set(["konsol", "mockup", "musteriler"]);
+      const konsolSenaryosu = s === "konsol" || s === "urundetay" || s === "urunler" || s === "fiyatlar" || s === "mockup" || s === "musteriler";
       if (s === "konsol") {
         o.erisim = await sayfa.evaluate(() => {
           const gorunur2 = (el) => {

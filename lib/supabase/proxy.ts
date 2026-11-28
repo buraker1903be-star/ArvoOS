@@ -4,6 +4,7 @@ import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
 import { isDevOrPreviewHost, isManagementHost, isMarketingHost, konsolaTasinanYol, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
 import { eskiIngilizceKokMu, kokDilYonlendirmesi, SITE_DIL_COOKIE } from "@/lib/site/dil-secimi";
 import { resolvePath, ROUTES } from "@/lib/site/routes";
+import { eskiKonsolAdresi } from "@/lib/konsol/eski-adresler";
 import { supabaseAyarlari } from "./yapilandirma";
 
 // arvo-os.com'da oturum/kurum sorgusu gerektirmeyen yollar: pazarlama
@@ -93,6 +94,22 @@ export async function updateSession(request: NextRequest) {
     search: request.nextUrl.search,
   });
   if (konsolAdresi) return NextResponse.redirect(konsolAdresi, 307);
+
+  /*
+    KONSOLUN ESKİ ADRESLERİ BURADA YÖNLENDİRİLİYOR (27.11.2026).
+    Sayfadan yönlendirildiğinde `app/panel/loading.tsx` Suspense
+    sınırının altında kalıyor, HTTP 307 yerine 200 + istemci geçişi
+    oluyor ve o geçişte Next'in Router'ı "Rendered more hooks"
+    atıyordu. Kural ve ölçüm: lib/konsol/eski-adresler.ts.
+
+    Host kurallarından SONRA: yönetim/pazarlama alan adı kararları
+    önce verilmeli, yoksa yanlış host'ta doğru yola yönlendirirdik.
+  */
+  const eskiKonsol = eskiKonsolAdresi({
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+  });
+  if (eskiKonsol) return NextResponse.redirect(new URL(eskiKonsol, request.url), 308);
 
   /*
     SUPABASE AYARLI DEĞİLSE ARA KATMAN DÜŞMEZ (15.10.2026). Gerekçe
