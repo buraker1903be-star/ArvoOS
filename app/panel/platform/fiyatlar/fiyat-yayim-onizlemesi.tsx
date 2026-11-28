@@ -1,4 +1,3 @@
-import { kapsamImzasi } from "@/lib/fiyat-dogrulama";
 import { paraYaz, tutar as paraTutari, type ParaBirimi } from "@/lib/para";
 import { Fragment } from "react";
 import { sayi } from "../bicim";
@@ -14,7 +13,7 @@ import { KKart, KListe, KNot, KOge } from "../konsol-ui";
  *
  * Yayım kuralı burada DEĞİŞMİYOR; bu bileşen yalnızca çiziyor.
  */
-export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakAdi, kodunUrunu, kendiKodlari, etkilenenKiraci, eylem }: {
+export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakAdi, kodunUrunu, kendiKodlari, etkilenenKiraci, kapsam, eylem }: {
   degisiklikler: { kod: string; paraBirimi: ParaBirimi; eski: number | null; yeni: number | null; yuzde: number | null }[];
   denetim: { hatalar: string[]; uyarilar: string[] };
   baskaUrunler: string[];
@@ -22,6 +21,18 @@ export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakA
   kodunUrunu: (kod: string) => string;
   kendiKodlari: Set<string>;
   etkilenenKiraci?: number;
+  /**
+   * Kapsam imzası — VERİTABANININ ürettiği (28.11.2026). Eskiden
+   * arayüz imzayı kendi hesaplıyordu; biçim iki yerde yaşıyordu ve
+   * çok para birimine geçişte ("kod:tutar" → "kod:birim:tutar")
+   * uygulama ile veritabanı, migration'ın uygulanmadığı aralıkta
+   * ayrışıyor, yayım hiç çalışmıyordu. Artık imza o anda
+   * veritabanından okunuyor: iki taraf tanım gereği aynı biçimi
+   * konuşuyor, hangi aşamada olursa olsun.
+   * null = imza okunamadı; yayım düğmesi kapalı kalıyor. Yanlış
+   * kapsamla yayımlamaktansa durmak doğru.
+   */
+  kapsam: string | null;
   /**
    * Yayım sunucu işlemi. PROP olarak geçiyor ki bu dosya sunucu
    * modüllerini import etmesin: ölçüm düzeneği bileşeni tarayıcıda
@@ -54,7 +65,7 @@ export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakA
                 Yoksa kurucu görmediği bir değişikliği yayımlamış
                 oluyordu.
               */}
-              <input type="hidden" name="kapsam" value={kapsamImzasi(degisiklikler)} />
+              <input type="hidden" name="kapsam" value={kapsam ?? ""} />
               {denetim.uyarilar.length ? (
                 <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
               ) : null}
@@ -66,7 +77,7 @@ export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakA
                 Etkilenen ürünler yukarıda tek tek listeleniyor ve bu
                 kutu işaretlenmeden düğme çalışmıyor.
               */}
-              <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
+              <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0 || kapsam === null}>
                 {sayi(degisiklikler.length)} değişikliği yayımla
               </button>
             </form>
@@ -114,6 +125,11 @@ export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakA
               );
             })}
           </KListe>
+          {kapsam === null ? (
+            <KNot ton="tehlike">
+              <b>Kapsam imzası okunamadı.</b> Yayım kapalı: hangi taslakların yayımlanacağı doğrulanamıyor. Sayfayı yenileyin.
+            </KNot>
+          ) : null}
           {denetim.hatalar.length ? (
             <KNot ton="tehlike">
               <b>Bu liste yayımlanamaz.</b>

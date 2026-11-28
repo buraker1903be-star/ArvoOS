@@ -30,6 +30,37 @@
   çalışmaya devam ediyor (tests/db/odeme-para-birimi.test.mjs).
 */
 
+/*
+  ÖN KOŞUL — SIRA HATASINI YÜKSEK SESLE DÜŞÜR (28.11.2026).
+
+  Bu dosya 20261128120350'ye bağlı, ama bağımlılık SESSİZ: plpgsql
+  gövdesi sütunları çalışma anında denetliyor (AGENTS.md), yani
+  `organization_licenses.para_birimi` yokken migration HATASIZ
+  uygulanıyor — SQL Editor "Success" diyor — ve ilk havale onayında
+  düşüyor. Canlıda bunun karşılığı "ödeme onaylayamayan kurucu" ve
+  sebebi yalnızca sunucu günlüğünde.
+
+  Ölçüldü: tests/db/para-birimi-gecis-sirasi.test.mjs, 2. madde.
+  Bu blok sırayı uygulama anında denetliyor: eksikse hiçbir işlev
+  yeniden yazılmıyor.
+*/
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'organization_licenses' and column_name = 'para_birimi'
+  ) then
+    raise exception 'Önce 20261128120350 uygulanmalı: organization_licenses.para_birimi yok.';
+  end if;
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'organization_product_licenses' and column_name = 'para_birimi'
+  ) then
+    raise exception 'Önce 20261128120350 uygulanmalı: organization_product_licenses.para_birimi yok.';
+  end if;
+end
+$$;
+
 /* Ortak çözüm: sağlayıcının "TL"si ISO'ya çevriliyor, tanınmayan
    birim reddediliyor. Tek yerde, üç işlev de bunu çağırıyor. */
 create or replace function private.para_birimi_coz(p_deger text)

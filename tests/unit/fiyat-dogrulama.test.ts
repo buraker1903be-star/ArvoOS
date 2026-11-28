@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bekleyenDegisiklikler, fiyatDenetimi, yayimSonrasi, type FiyatKaydi , kapsamImzasi } from "@/lib/fiyat-dogrulama";
+import { bekleyenDegisiklikler, fiyatDenetimi, yayimSonrasi, type FiyatKaydi  } from "@/lib/fiyat-dogrulama";
 import { birimliPlanTutari, cokParaliBirlestir } from "@/lib/site/fiyat-kaynagi";
 import type { ParaBirimi } from "@/lib/para";
 
@@ -67,48 +67,27 @@ test("taslak_bekliyor sütunu yoksa eski kural: yayındakinden farklı taslak be
   assert.equal(fiyatKaydi({ kod: "x", aylik_kurus: 100, taslak_kurus: 200, yayimlandi_at: null, taslak_bekliyor: false }).taslak_bekliyor, false);
 });
 
-test("kapsam imzası: aynı küme farklı sırayla aynı imzayı verir", () => {
-  /* Önizlemedeki liste ile işlemdeki liste başka sırada gelebilir;
-     sıra bir karar farkı değil. */
-  const a = kapsamImzasi([{ kod: "arvolab-arastirmaci", yeni: 19_900 }, { kod: "arvoos-baslangic", yeni: 99_900 }]);
-  const b = kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 99_900 }, { kod: "arvolab-arastirmaci", yeni: 19_900 }]);
-  assert.equal(a, b);
-});
-
-test("kapsam imzası: tutar değişince imza da değişir", () => {
-  /* Aynı kod, başka rakam = başka karar. Onay eskiyse yayım
-     düşmeli. */
-  assert.notEqual(
-    kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 99_900 }]),
-    kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 109_900 }]),
-  );
-});
-
-test("kapsam imzası: listeye yeni bir basamak girince imza değişir", () => {
-  /* Onayla gönderim arasında başka bir sekmede taslak eklenirse
-     kurucu görmediği bir değişikliği yayımlıyordu. */
-  const once = kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 99_900 }]);
-  const sonra = kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 99_900 }, { kod: "arvolab-arastirmaci", yeni: 19_900 }]);
-  assert.notEqual(once, sonra);
-});
-
-test("kapsam imzası: 'teklif' (null) ile 0 aynı şey değil", () => {
-  assert.notEqual(
-    kapsamImzasi([{ kod: "x", yeni: null }]),
-    kapsamImzasi([{ kod: "x", yeni: 0 }]),
-  );
-});
-
 test("yayım işlemi kapsam imzasını karşılaştırıyor", async () => {
   /*
     Kural sunucu işleminde; önizleme imzayı gizli alanda taşıyor.
     Dosya bağını burada sabitliyoruz: imza karşılaştırması kalkarsa
     (ya da alan adı değişirse) bu test düşer ve kuralın sessizce
     kaybolması engellenir.
+
+    İmzayı ARTIK VERİTABANI üretiyor (28.11.2026): biçim tek yerde
+    yaşamalı, yoksa dağıtım ile migration arasındaki aralıkta
+    uygulama "kod:birim:tutar", işlev "kod:tutar" üretip imza hiç
+    tutmuyordu. Bu yüzden burada beklenen şey yerel hesap DEĞİL,
+    `platform_fiyat_kapsam_imzasi` RPC çağrısı.
   */
   const { readFile } = await import("node:fs/promises");
   const islem = await readFile(new URL("../../app/panel/platform/urunler/actions.ts", import.meta.url), "utf8");
-  assert.match(islem, /kapsamImzasi\(degisiklikler\)/);
+  assert.match(islem, /rpc\("platform_fiyat_kapsam_imzasi"\)/);
+  /* Yerel hesap GERİ GELMESİN: yardımcı artık yok, dolayısıyla
+     import edilmiş olması da yeter. (Yorumda adı geçebilir — ilk
+     yazılışta bu testi tam o yüzden kendi yorumum düşürdü.) */
+  const importlar = islem.slice(0, islem.indexOf("\n\n"));
+  assert.doesNotMatch(importlar, /kapsamImzasi/, "yayım yolu imzayı yerel hesaplamamalı");
   assert.match(islem, /formData\.get\("kapsam"\)/);
   assert.match(islem, /önizlemeden sonra değişti/i);
   const onizleme = await readFile(new URL("../../app/panel/platform/fiyatlar/fiyat-yayim-onizlemesi.tsx", import.meta.url), "utf8");
@@ -146,21 +125,6 @@ test("aynı planın iki birimi ayrı değişiklik", () => {
   /* Yüzde kendi biriminde: USD taslağı TL fiyatıyla karşılaştırılmıyor. */
   const usd = d.find((x) => x.paraBirimi === "USD")!;
   assert.equal(usd.eski, simdiki("arvolab-arastirmaci", "USD"));
-});
-
-test("kapsam imzası para birimini ayırt ediyor", () => {
-  const tryOnayi = kapsamImzasi([{ kod: "arvolab-arastirmaci", paraBirimi: "TRY", yeni: 599_000 }]);
-  const usdOnayi = kapsamImzasi([{ kod: "arvolab-arastirmaci", paraBirimi: "USD", yeni: 599_000 }]);
-  assert.notEqual(tryOnayi, usdOnayi, "aynı tutar farklı birim = farklı karar");
-  assert.equal(tryOnayi, "arvolab-arastirmaci:TRY:599000");
-  /* Veritabanındaki ikiziyle aynı biçim: kod:para:tutar, "|" ile. */
-  assert.equal(
-    kapsamImzasi([
-      { kod: "b", paraBirimi: "USD", yeni: null },
-      { kod: "a", paraBirimi: "TRY", yeni: 1 },
-    ]),
-    "a:TRY:1|b:USD:teklif",
-  );
 });
 
 test("eski satırda para birimi yoksa TRY sayılıyor", async () => {

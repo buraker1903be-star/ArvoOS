@@ -156,7 +156,19 @@ async function yetkileriKur(db, dosyalar) {
 }
 
 /** Canlı şemayla kurulmuş, boş bir veritabanı. */
-export async function veritabani(semaDosyasi = SEMA) {
+/**
+ * Akış testlerinin veritabanı: canlı şema dökümü + bekleyen
+ * migration'lar.
+ *
+ * `migrationlar` BİLEREK parametre (28.11.2026). Çok para birimi geçişi
+ * iki migration'a bölündü ve uygulamanın yeni sürümü, son migration
+ * henüz UYGULANMADAN dağıtılacak. O aralığı ölçebilmek için düzeneğin
+ * eksik şemayı da kurabilmesi gerekiyor; yoksa "dağıtım penceresinde
+ * ne olur" sorusu ancak canlıda cevaplanırdı
+ * (tests/db/fiyat-surum-araligi.test.mjs). Varsayılan değişmedi:
+ * parametresiz çağrı bütün migration'ları uygular.
+ */
+export async function veritabani(semaDosyasi = SEMA, migrationlar = BEKLEYEN_MIGRATIONLAR) {
   const db = new PGlite({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_KABUGU);
   const sema = fs.readFileSync(semaDosyasi, "utf8");
@@ -186,7 +198,7 @@ export async function veritabani(semaDosyasi = SEMA) {
     Toplu grant bekleyen migration'lardan sonra çalışıyor, çünkü
     Supabase yeni yaratılan tabloya varsayılanı kendisi veriyor.
   */
-  const bekleyen = BEKLEYEN_MIGRATIONLAR.map((ad) =>
+  const bekleyen = migrationlar.map((ad) =>
     fs.readFileSync(path.resolve(KOK, "../../supabase/migrations/", ad), "utf8"),
   );
   for (const dosya of bekleyen) await db.exec(dosya);

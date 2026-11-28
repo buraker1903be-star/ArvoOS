@@ -9,7 +9,7 @@ import { ADD_ONS, PLANS } from "@/lib/site/pricing";
 import { ROUTES } from "@/lib/site/routes";
 import { cokParaliBirlestir, type CokParaliSatir } from "@/lib/site/fiyat-kaynagi";
 import { SATIS_PARA_BIRIMLERI, paraBirimiCoz, type ParaBirimi } from "@/lib/para";
-import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, kapsamImzasi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
+import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
 
 /*
   Fiyat taslağı ve yayımlama.
@@ -85,16 +85,58 @@ async function taslagiKaydet__impl(formData: FormData) {
   const degismedi = Boolean(mevcut?.yayimlandi_at) && (mevcut?.aylik_kurus === null ? null : Number(mevcut?.aylik_kurus)) === kurus;
 
   const { data: userData } = await supabase.auth.getUser();
-  const { error } = await supabase.from("platform_fiyat_listesi").upsert({
-    kod,
-    para_birimi: paraBirimi,
+  /*
+    ÖNCE GÜNCELLE, YOKSA EKLE — `upsert` DEĞİL (28.11.2026).
+
+    `upsert` bir ÇATIŞMA HEDEFİ ister ve hedef, o anki birincil
+    anahtarla birebir eşleşmek zorunda: `on conflict (kod)` bileşik
+    anahtarlı şemada, `on conflict (kod, para_birimi)` ise anahtarın
+    henüz genişlemediği şemada "no unique or exclusion constraint" ile
+    düşüyor. Yani upsert, uygulamayı TEK bir şema sürümüne çiviliyordu
+    ve dağıtımla migration arasındaki her aralıkta fiyat taslağı
+    kaydedilemiyordu (ölçüldü: tests/db/fiyat-surum-araligi.test.mjs).
+
+    Güncelle-yoksa-ekle iki şemada da çalışıyor. Yarış koşulu burada
+    zararsız: aynı (kod, birim) satırını yalnızca kurucu yazıyor ve
+    ikinci ekleme benzersizlik hatası verir, sessizce ikinci satır
+    açılmaz.
+  */
+  const satir = {
     tur: TUR.get(kod) ?? "plan",
     taslak_kurus: kurus,
     taslak_bekliyor: !degismedi,
     updated_by: userData.user?.id ?? null,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "kod,para_birimi" });
-  if (error) throw new Error("Taslak kaydedilemedi: " + error.message);
+  };
+  const { data: guncellenen, error: guncelleHatasi } = await supabase
+    .from("platform_fiyat_listesi")
+    .update(satir)
+    .eq("kod", kod)
+    .eq("para_birimi", paraBirimi)
+    .select("kod");
+  if (guncelleHatasi) throw new Error("Taslak kaydedilemedi: " + guncelleHatasi.message);
+  if (!guncellenen?.length) {
+    const { error: eklemeHatasi } = await supabase
+      .from("platform_fiyat_listesi")
+      .insert({ kod, para_birimi: paraBirimi, ...satir });
+    /*
+      DAĞITIM ARALIĞINDA İKİNCİ BİRİM AÇILAMIYOR (28.11.2026).
+      20261128122145 uygulanmadan önce birincil anahtar hâlâ tek
+      sütunlu: aynı kodun ikinci satırı benzersizliği çiğniyor ve
+      Postgres "duplicate key value" diyor. Kurucuya ham veritabanı
+      hatası göstermek yerine nedenini yazıyoruz — bu bir veri hatası
+      değil, geçişin henüz tamamlanmamış olması.
+    */
+    if (eklemeHatasi) {
+      const anahtarCakismasi = eklemeHatasi.code === "23505" || /duplicate key/i.test(eklemeHatasi.message);
+      throw new Error(
+        anahtarCakismasi
+          ? `${paraBirimi} fiyatı henüz açılamıyor: fiyat listesinin para birimi geçişi tamamlanmadı ` +
+            "(bekleyen veritabanı güncellemesi). TRY fiyatları etkilenmiyor."
+          : "Taslak kaydedilemedi: " + eklemeHatasi.message,
+      );
+    }
+  }
 
   revalidatePath("/panel/platform/urunler");
   revalidatePath("/panel/platform/fiyatlar");
@@ -172,20 +214,32 @@ async function koddakiDegerleriTaslagaAl__impl() {
 
   if (!alinacaklar.length) throw new Error("Taslağa alınacak basamak yok: hepsi ya yayımlı ya da taslağı bekliyor.");
 
-  const { error: yazmaHatasi } = await supabase.from("platform_fiyat_listesi").upsert(
-    alinacaklar.map(({ kod, paraBirimi, kurus }) => ({
-      kod,
-      para_birimi: paraBirimi,
-      tur: TUR.get(kod) ?? "plan",
-      /* null = "Teklif": bu basamağın liste fiyatı yok ve olmayacak. */
-      taslak_kurus: kurus,
-      taslak_bekliyor: true,
-      updated_by: userData.user?.id ?? null,
-      updated_at: simdi,
-    })),
-    { onConflict: "kod,para_birimi" },
-  );
-  if (yazmaHatasi) throw new Error("Taslaklar kaydedilemedi: " + yazmaHatasi.message);
+  /* Aynı sebeple upsert yok: var olan satır güncelleniyor, olmayan
+     ekleniyor. Liste onlarca satır; iki sorgu yetiyor. */
+  const varOlanlar = new Set([...mevcut.keys()]);
+  const guncellenecek = alinacaklar.filter(({ kod, paraBirimi }) => varOlanlar.has(`${kod}|${paraBirimi}`));
+  const eklenecek = alinacaklar.filter(({ kod, paraBirimi }) => !varOlanlar.has(`${kod}|${paraBirimi}`));
+  for (const { kod, paraBirimi, kurus } of guncellenecek) {
+    const { error } = await supabase.from("platform_fiyat_listesi")
+      .update({ tur: TUR.get(kod) ?? "plan", taslak_kurus: kurus, taslak_bekliyor: true, updated_by: userData.user?.id ?? null, updated_at: simdi })
+      .eq("kod", kod).eq("para_birimi", paraBirimi);
+    if (error) throw new Error("Taslaklar kaydedilemedi: " + error.message);
+  }
+  if (eklenecek.length) {
+    const { error: yazmaHatasi } = await supabase.from("platform_fiyat_listesi").insert(
+      eklenecek.map(({ kod, paraBirimi, kurus }) => ({
+        kod,
+        para_birimi: paraBirimi,
+        tur: TUR.get(kod) ?? "plan",
+        /* null = "Teklif": bu basamağın liste fiyatı yok ve olmayacak. */
+        taslak_kurus: kurus,
+        taslak_bekliyor: true,
+        updated_by: userData.user?.id ?? null,
+        updated_at: simdi,
+      })),
+    );
+    if (yazmaHatasi) throw new Error("Taslaklar kaydedilemedi: " + yazmaHatasi.message);
+  }
 
   revalidatePath("/panel/platform/fiyatlar");
   revalidatePath("/panel/platform/urunler");
@@ -210,16 +264,29 @@ async function fiyatlariYayimla__impl(formData: FormData) {
     ÖNİZLEMEDEN SONRA KAPSAM DEĞİŞTİYSE YAYIMLAMA (27.11.2026 ara
     kontrolü). Yayım bekleyen BÜTÜN taslakları alıyor; onayla
     gönderim arasında yeni bir taslak eklenirse kurucu GÖRMEDİĞİ bir
-    değişikliği yayımlamış oluyordu. Önizleme gördüğü kümenin
-    imzasını taşıyor (lib/fiyat-dogrulama → kapsamImzasi); burada
-    taze listeden yeniden hesaplanıp karşılaştırılıyor.
+    değişikliği yayımlamış oluyordu.
+
+    İMZAYI VERİTABANI ÜRETİYOR (28.11.2026). Eskiden burada
+    `kapsamImzasi(degisiklikler)` ile yeniden hesaplanıyordu, yani
+    biçim iki yerde yaşıyordu: uygulamada ve yayım işlevinde. Çok para
+    birimine geçişte biçim değişiyor ("kod:tutar" → "kod:birim:tutar")
+    ve uygulamanın yeni sürümü dağıtıldığı hâlde 20261128122145 henüz
+    uygulanmadıysa iki taraf AYRIŞIYOR: işlev eski biçimi üretiyor,
+    uygulama yenisini gönderiyor, imza hiç tutmuyor ve yayım o aralıkta
+    hiç çalışmıyordu (ölçüm: tests/db/fiyat-surum-araligi.test.mjs).
+    Artık imza tek kaynaktan — işlevin kendisinden — okunuyor:
+    önizlemeye giden değer de, buraya gelen değer de, RPC'ye gönderilen
+    değer de aynı metin. Hangi migration aşamasında olursa olsun biçim
+    sorusu ortadan kalkıyor.
 
     İmza YOKSA da geçilmiyor: eski bir sekmeden ya da doğrudan
     çağrılan bir istek, onayı hiç almamış demektir.
   */
-  const beklenenKapsam = kapsamImzasi(degisiklikler);
+  const { data: imza, error: imzaHatasi } = await supabase.rpc("platform_fiyat_kapsam_imzasi");
+  if (imzaHatasi) throw new Error("Yayım kapsamı doğrulanamadı: " + imzaHatasi.message);
+  const beklenenKapsam = typeof imza === "string" ? imza : "";
   const gelenKapsam = String(formData.get("kapsam") ?? "");
-  if (gelenKapsam !== beklenenKapsam) {
+  if (!beklenenKapsam || gelenKapsam !== beklenenKapsam) {
     throw new Error(
       "Taslak listesi önizlemeden sonra değişti; yayımlanmadı. " +
       "Ekranı yenileyip etkilenen ürünleri yeniden gözden geçirin.",

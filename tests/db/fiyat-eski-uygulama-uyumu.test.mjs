@@ -16,8 +16,20 @@
     site       : select kod, aylik_kurus where yayimlandi_at is not null
 
   Amaç davranışı onaylamak değil, YAYIN SIRASINI KANITA BAĞLAMAK:
-  hangi yol kırılıyor, hangisi sessizce yanlış sonuç veriyor, USD
-  satırları oluştuktan sonra eski sürüme dönmek güvenli mi.
+  hangi yol kırılıyor ve hangisi sessizce yanlış sonuç veriyor.
+
+  GERİ DÖNÜŞ SORUSUNUN CEVABI: BİLEŞİK ANAHTARLI ŞEMADA ESKİ SÜRÜME
+  DÖNÜLEMEZ. 28.11.2026'da bir ara "USD satırları yayından
+  kaldırılırsa eski sürüm güvenli" denmişti; YANLIŞTI ve geri alındı.
+  `on conflict (kod)` satırların İÇERİĞİNE değil ANAHTARA bakıyor:
+  veritabanında hiç USD satırı olmasa bile düşüyor
+  (tests/db/fiyat-surum-araligi.test.mjs, "tek satır varken bile
+  upsert düşüyor"). Yayından kaldırmak yalnızca SİTE OKUMASINI
+  düzeltiyor, yazma yolunu düzeltmiyor. Üstelik canlı fiyatları
+  topluca yayından kaldırmak bir geri dönüş adımı DEĞİL: ücretler
+  sayfası "Teklif"e düşer, kurulumun "liste fiyatını uygula" tutarı
+  boşalır. Geri dönüş planı PR'da: ya bileşik şemayla uyumlu bir
+  yama sürümü, ya ileri yönlü düzeltme.
 */
 import { before, test } from "node:test";
 import assert from "node:assert/strict";
@@ -119,9 +131,10 @@ test("AŞAMA 2 · eski site okuması USD tutarını TL sanıyor", async () =>
       taşımıyor: iki satır dönüyor, kodda `Map.set(kod, tutar)` ile
       birleştiriliyor ve SONUNCU satır kazanıyor. Yani Türkçe ücretler
       sayfası 4.990 ₺ yerine 119 (USD tutarı) gösterebilir.
-      Sonuç: USD satırları YAYIMLANDIKTAN sonra eski sürüme dönmek
-      güvenli DEĞİL; dönülecekse önce USD satırları yayından
-      kaldırılmalı.
+      Sonuç: USD satırları YAYIMLANDIKTAN sonra eski sürüm siteyi
+      YANLIŞ gösteriyor. Bu, geri dönüşün yalnızca bir yarısı —
+      öteki yarısı (yazma yolu) hiç çalışmıyor ve onu hiçbir satır
+      düzenlemesi düzeltmiyor.
     */
     const site = await db.query(
       `select kod, aylik_kurus from public.platform_fiyat_listesi
@@ -141,18 +154,45 @@ test("AŞAMA 2 · eski güncelleme İKİ birimi birden bozuyor", async () =>
     assert.equal(sonuc.rows.length, 2, "eski 'yayından kaldır' USD satırını da düşürür");
   }));
 
-test("AŞAMA 2 · GERİ DÖNÜŞ GÜVENLİĞİ: USD satırları yayından kaldırılınca eski okuma düzeliyor", async () =>
+test("AŞAMA 2 · yayından kaldırmak SİTE OKUMASINI düzeltiyor, geri dönüşü SAĞLAMIYOR", async () =>
   islem(db, async () => {
     await ikiBirim();
     await rol(db, "postgres");
-    /* Geri dönüş yordamı (PR'da yazılı): USD satırlarını yayından
-       kaldır, satırları SİLME — taslaklar ve geçmiş korunsun. */
+    /*
+      ESKİ İDDİA GERİ ALINDI (28.11.2026). Burada bir ara "USD
+      satırlarını yayından kaldır, eski sürüme dönmek güvenli" yazılıydı.
+      Ölçüm iki şeyi ayırdı:
+
+       - Okuma yolu gerçekten düzeliyor: site yine TL tutarını görüyor
+         (aşağıdaki iddia).
+       - Yazma yolu düzelmiyor: `on conflict (kod)` anahtara bakıyor,
+         satır sayısına değil. Bileşik anahtar yerinde olduğu sürece
+         eski sürüm taslak KAYDEDEMEZ
+         (tests/db/fiyat-surum-araligi.test.mjs).
+
+      Ayrıca canlı fiyatları topluca yayından kaldırmak bir geri dönüş
+      adımı olarak KULLANILMIYOR: yayından kalkan basamak ücretler
+      sayfasında "Teklif"e düşüyor ve kurulum ekranındaki "liste
+      fiyatını uygula" tutarı boşalıyor — müşteriye görünen bir
+      değişiklik, sessiz bir tedbir değil.
+    */
     await db.exec(`update public.platform_fiyat_listesi set yayimlandi_at = null where para_birimi = 'USD'`);
     const site = await db.query(
       `select kod, aylik_kurus from public.platform_fiyat_listesi
         where yayimlandi_at is not null and kod = $1`, [KOD]);
     assert.equal(site.rows.length, 1);
     assert.equal(Number(site.rows[0].aylik_kurus), 499000, "site yine TL tutarını okuyor");
+
+    /* Ama eski yazma yolu HÂLÂ düşüyor: tek satır kaldı, anahtar
+       bileşik. Geri dönüş bu yüzden bir seçenek değil. */
+    await reddedilir(
+      db,
+      `insert into public.platform_fiyat_listesi (kod, tur, taslak_kurus, taslak_bekliyor, updated_at)
+       values ($1, 'plan', 549000, true, now())
+       on conflict (kod) do update set taslak_kurus = excluded.taslak_kurus`,
+      [KOD],
+      /no unique or exclusion constraint/i,
+    );
   }));
 
 test("AŞAMA 2 · yeni kod USD satırı varken de doğru çalışıyor", async () =>
