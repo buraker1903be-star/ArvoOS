@@ -67,3 +67,24 @@ test("FX-02/03: liste kartları satırı EŞİT doldurmaz; kısa ekranda görün
   const iskelet = oku("app/panel/panel-page-system.css");
   assert.match(iskelet, /@media \(max-width:900px\), \(max-height:640px\)/, "iskelet ana ekranla aynı kırılımda değil");
 });
+
+/*
+  Operasyon genel bakışı (10.11.2026): sayfa uzayıp dış kaydırma çıkıyordu,
+  çünkü sabit düzene (dash-sabit) hiç geçmemişti. Ürün kuralı burada: aynı
+  satırdaki kartların üst ve alt kenarları hizalı (dash-esit). Geometrinin
+  kanıtı scripts/genel-bakis-yerlesim-tarayici.mjs; bu test kararın koddan
+  sessizce geri dönmesini yakalar.
+*/
+test("Operasyon genel bakışı sabit düzende, kartlar eşit yükseklikte, iskelet aynı şekilde", () => {
+  const sayfa = oku("app/panel/operations/page.tsx");
+  assert.match(sayfa, /sinif="dash-sabit dash-esit"/);
+  assert.match(sayfa, /<GorunumSecici/);
+  assert.doesNotMatch(sayfa, /<ListeIzgarasi/, "eski akış düzeni geri gelmiş");
+  const css = oku("app/panel/dashboard.css");
+  const esit = kural(css, ".dash-esit .dash-cols.dash-cols--sabit");
+  assert.match(esit, /align-items:\s*stretch/);
+  assert.match(esit, /grid-auto-flow:\s*column/, "dört kart tek satırda değil (auto-fit 3+1'e bölüyordu)");
+  const iskelet = oku("app/panel/panel-page-system.css");
+  assert.match(kural(iskelet, ".skel-genel--esit .skel-izgara"), /align-items:\s*stretch/);
+  assert.match(oku("app/panel/panel-iskeleti.tsx"), /\/panel\/operations/);
+});

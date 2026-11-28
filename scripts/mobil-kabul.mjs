@@ -64,7 +64,8 @@ const GIRIS_SURESI = Number(process.env.GIRIS_DAKIKA || 10) * 60_000;
 
 const BOYUTLAR = (process.env.BOYUTLAR ?? "390x844,768x600,1440x900,1440x600").split(",").map((b) => b.split("x").map(Number));
 const TEMALAR = (process.env.TEMALAR ?? "light,dark").split(",");
-const SAYFALAR = { ana: "/panel", crm: "/panel/crm/genel-bakis" };
+const TUM_SAYFALAR = { ana: "/panel", crm: "/panel/crm/genel-bakis", ops: "/panel/operations" };
+const SAYFALAR = Object.fromEntries((process.env.SAYFALAR ?? "ana,crm,ops").split(",").map((k) => [k, TUM_SAYFALAR[k]]).filter(([, v]) => v));
 const ZOOM = !bayrak("--zoom-yok");
 
 /* Gerçek yakınlaştırma eklentisi: geçici dizine yazılır. */
@@ -147,7 +148,8 @@ const kartOlc = () => [...document.querySelectorAll(".dash-gorunum-panel")].filt
   const r = (e) => e ? Math.round(e.getBoundingClientRect().height) : null;
   const gr = g?.getBoundingClientRect();
   const tam = g ? [...g.querySelectorAll("li")].filter((li) => { const l = li.getBoundingClientRect(); return l.top >= gr.top - 1 && l.bottom <= gr.bottom + 1; }).length : null;
-  return { panel: p.id.replace("gorunum-", ""), kart: r(kart), govde: r(g), govdeKaydirma: g ? `${g.scrollHeight}/${g.clientHeight}` : null, tamKayit: tam, kayit: g ? g.querySelectorAll("li").length : null, yatayFazla: kart ? kart.scrollWidth - kart.clientWidth : null };
+  const kr = kart?.getBoundingClientRect();
+  return { panel: p.id.replace("gorunum-", ""), ust: kr ? +kr.top.toFixed(1) : null, alt: kr ? +kr.bottom.toFixed(1) : null, kart: r(kart), govde: r(g), govdeKaydirma: g ? `${g.scrollHeight}/${g.clientHeight}` : null, tamKayit: tam, kayit: g ? g.querySelectorAll("li").length : null, yatayFazla: kart ? kart.scrollWidth - kart.clientWidth : null };
 });
 const tiklanabilir = (sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); if (!r.width) return null; const ust = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return Boolean(ust && e.contains(ust)); };
 
@@ -245,6 +247,12 @@ for (const [w, h] of BOYUTLAR) for (const tema of TEMALAR) for (const [ad, yol] 
       if (d) { await d.click(); await sayfa.waitForTimeout(150); }
       const o = await sayfa.evaluate(sayfaOlc); const k = await kaydirmaDene(sayfa); const hatalar = kuralHatalari(o, k);
       const kartlar = await sayfa.evaluate(kartOlc); const erisim = {};
+      // Operasyon (dash-esit): masaüstünde liste kartlarının üst ve alt kenarı aynı (alt piksel farkı hariç).
+      if (ad === "ops" && !d) {
+        const liste = kartlar.filter((c) => c.govde !== null);
+        const fark = (k) => Math.max(...liste.map((c) => c[k])) - Math.min(...liste.map((c) => c[k]));
+        if (liste.length > 1 && (fark("ust") > 1 || fark("alt") > 1)) hatalar.push(`kart hizası bozuk: üst farkı ${fark("ust").toFixed(1)}px, alt farkı ${fark("alt").toFixed(1)}px`);
+      }
       for (const c of kartlar) {
         if (c.yatayFazla > 1) hatalar.push(`${c.panel} kartında yatay ${c.yatayFazla}px`);
         if (c.govde !== null && c.kayit > 0 && c.tamKayit < 1) hatalar.push(`${c.panel}: gövdede bir tam kayıt bile yok (${c.govde}px)`);
@@ -276,7 +284,7 @@ for (const [w, h] of BOYUTLAR) for (const tema of TEMALAR) for (const [ad, yol] 
   });
 
   // Bölüm menüsü (CRM): açılır listede yatay kayma yok, Esc/ikinci basış kapatır.
-  if (ad === "crm") await adim("bölüm menüsü", async () => {
+  if (ad !== "ana") await adim("bölüm menüsü", async () => {
     const ac = sayfa.locator(".os-bolumler-ac");
     const hatalar = [];
     const liste = await sayfa.evaluate(() => { const l = document.querySelector(".os-bolumler-liste"); return l ? { yatay: l.scrollWidth - l.clientWidth, gorunur: l.getBoundingClientRect().height > 0 } : null; });

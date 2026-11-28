@@ -24,6 +24,8 @@ import { createRequire } from "node:module";
 const { chromium } = createRequire(import.meta.url)("playwright");
 const KOK = path.resolve(process.env.KOK ?? path.join(import.meta.dirname, ".."));
 const yeniKurulum = fs.existsSync(path.join(KOK, "app/panel/os/kurulum-ozeti.tsx"));
+// Operasyon genel bakışı sabit düzene geçmiş mi (10.11.2026): eskisi akış düzeni + ListeIzgarasi.
+const opsYeni = fs.readFileSync(path.join(KOK, "app/panel/operations/page.tsx"), "utf8").includes("dash-esit");
 /* Yalnızca rotanın GERÇEKTEN yüklediği CSS: .next/static altında 70'i aşkın
    dosya var (pazarlama sitesi dahil); hepsini bağlamak panelde olmayan genel
    kuralları da uygulardı. Liste Next'in rota manifestosundan (entryCSSFiles). */
@@ -56,11 +58,13 @@ const cssler = {
   urundetay: rotaCss("panel/platform/urunler/[urun]"),
   urunler: birlesik("panel/platform/urunler", "panel/platform/urunler/[urun]"),
   fiyatlar: birlesik("panel/platform/fiyatlar", "panel/platform/urunler/[urun]"),
+  ops: rotaCss("panel/operations"),
   /* MOCKUP tek sayfada dört rotayı dolaşıyor: hepsinin CSS'i gerekli. */
   mockup: birlesik("panel", "panel/platform/urunler", "panel/platform/urunler/[urun]", "panel/platform/fiyatlar"),
   musteriler: birlesik("panel/platform/musteriler", "panel/platform/musteriler/[id]"),
 };
-const SENARYOLAR = (process.env.SENARYOLAR ?? "ana,crm,konsol,urundetay,urunler,fiyatlar").split(",");
+// SAYFALAR: Operasyon PR'ının (#315) eski adı; SENARYOLAR ile aynı.
+const SENARYOLAR = (process.env.SENARYOLAR ?? process.env.SAYFALAR ?? "ana,crm,konsol,urundetay,urunler,fiyatlar,ops").split(",");
 
 /*
   Üretilen sayfalar geçici bir dizinde ve koşu sonunda siliniyor.
@@ -140,7 +144,7 @@ export default function Image({ src, alt, width, height, className }) {
 const a = (p) => JSON.stringify(path.join(KOK, p));
 fs.writeFileSync(path.join(dizin, "giris.tsx"), `
 import { createRoot } from "react-dom/client";
-import { GenelBakis, ListeKarti, ListeSatiri, SeriKarti } from ${a("app/panel/os/genel-bakis.tsx")};
+import { GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti } from ${a("app/panel/os/genel-bakis.tsx")};
 import { GorunumSecici } from ${a("app/panel/os/gorunum-secici.tsx")};
 import { OsAramaDugmesi, OsKomutPaleti } from ${a("app/panel/os/os-command-palette.tsx")};
 import { OsMenuKapat } from ${a("app/panel/os/os-menu-kapat.tsx")};
@@ -158,6 +162,7 @@ import { UrunGenelBakis } from "@/app/panel/platform/urunler/[urun]/urun-genel-b
 import { YayimOnizlemesi } from "@/app/panel/platform/fiyatlar/fiyat-yayim-onizlemesi";
 import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos, KonsolPanelSekmeleri } from "@/app/panel/platform/konsol-liste";
 import { OsNavigasyon } from ${a("app/panel/os/os-navigasyon.tsx")};
+import { OsBolumMenusu } from ${a("app/panel/os/os-bolum-menusu.tsx")};
 import { TalepAkis } from ${a("app/panel/crm/kayit-detay/kayit-akis.tsx")};
 import { useSearchParams } from "next/navigation";
 import { MobilSatir } from "@/app/panel/crm/table-cells";
@@ -181,13 +186,13 @@ if (new URLSearchParams(location.search).get("menu") === "dar") document.documen
 /* Bu satır ERKEN bir varsayılan: senaryoya özgü rota aşağıda, kabuk
    kurulmadan hemen önce yazılıyor. İkisi de burada durabilir çünkü şim
    adresi artık tembel okuyor (navigation şimi). */
-window.__yol = sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel";
+window.__yol = sayfa === "crm" ? "/panel/crm/genel-bakis" : sayfa === "ops" ? "/panel/operations" : "/panel";
 const gun = (i) => { const d = new Date(Date.UTC(2026, 10, 10 - (13 - i))); return d; };
 const seri = { days: Array.from({ length: 14 }, (_, i) => ({ key: "g" + i, day: String(i + 1), title: "Gün " + (i + 1), count: [2,5,1,0,3,4,6,2,1,3,5,2,4,3][i], isToday: i === 13 })), total: 41, previous: 33, max: 6, aralik: "28 Eki – 10 Kas", oncekiAralik: "14–27 Eki" };
 const uygulamalar = [
   { key: "home", label: "Ana ekran", href: "/panel", ikon: "home", yollar: [] },
   { key: "crm", label: "CRM", href: "/panel/crm/genel-bakis", ikon: "crm", yollar: ["/panel/crm"], bolumler: [{ key: "genel-bakis", label: "Genel Bakış", href: "/panel/crm/genel-bakis" }, { key: "talepler", label: "Talepler", href: "/panel/crm" }, { key: "teklifler", label: "Teklifler", href: "/panel/crm/proposals" }, { key: "sozlesmeler", label: "Sözleşmeler", href: "/panel/crm/contracts" }] },
-  { key: "operations", label: "Operasyon", href: "/panel/operations", ikon: "operations", yollar: ["/panel/operations"] },
+  { key: "operations", label: "Operasyon", href: "/panel/operations", ikon: "operations", yollar: ["/panel/operations"], bolumler: [{ key: "genel", label: "Genel Bakış", href: "/panel/operations" }, { key: "isler", label: "İşler", href: "/panel/operations/isler" }, { key: "pano", label: "Pano", href: "/panel/operations/pano" }, { key: "takvim", label: "Takvim", href: "/panel/operations/takvim" }] },
   { key: "finance", label: "Finans", href: "/panel/finance", ikon: "finance", yollar: ["/panel/finance"] },
   { key: "hr", label: "İK", href: "/panel/hr", ikon: "hr", yollar: ["/panel/hr"] },
   { key: "settings", label: "Ayarlar", href: "/panel/settings", ikon: "settings", yollar: ["/panel/settings"] },
@@ -235,6 +240,23 @@ function Crm() {
     { anahtar: "imzali", etiket: "İmzalananlar", yer: "liste", icerik: kart("Son imzalanan sözleşmeler", 4, true) },
   ];
   return <GenelBakis gizliBaslik="CRM genel bakış" sinif="dash-sabit"><GorunumSecici etiket="CRM görünümü" paneller={paneller} /></GenelBakis>;
+}
+// Gerçek sayfanın kart dizilimi (operations/page.tsx): 6 aşama, 3 yeni iş, 6 devam eden, mesaj yok (boş kart).
+function opsKartlari() {
+  return {
+    asamalar: <ListeKarti baslik="Yaklaşan aşamalar" alt="2 aşamanın teslimi gecikti" bos="Yaklaşan aşama yok." href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={6}>{isler.map(satir)}</ListeKarti>,
+    yeni: <ListeKarti baslik="Yeni gelen işler" alt="1 iş sorumlu bekliyor" bos="Yeni iş yok." href="/panel/operations/isler?durum=planned" hrefEtiket="Tümünü gör" sayi={3}>{isler.slice(0, 3).map(satir)}</ListeKarti>,
+    devam: <ListeKarti baslik="Devam eden işler" alt="2 geciken, bu hafta 3 teslim" bos="Şu an devam eden iş yok." href="/panel/operations/isler?durum=devam" hrefEtiket="Tümünü gör" sayi={6}>{isler.map(satir)}</ListeKarti>,
+    mesajlar: <ListeKarti baslik="Müşteri mesajları" alt="Takip ekranından yazılanlar" bos="Okunmamış müşteri mesajı yok." href="/panel/operations/isler?mesaj=yeni" hrefEtiket="Tümünü gör" sayi={0} />,
+  };
+}
+function Ops() {
+  const kartlar = opsKartlari();
+  const grafik = <SeriKarti baslik="Tamamlanan aşamalar" alt="Son 14 gün" seri={seri} adet="aşama" />;
+  ${'return <GenelBakis gizliBaslik="Operasyon genel bakış" sinif="dash-sabit dash-esit"><GorunumSecici etiket="Operasyon görünümü" paneller={[{ anahtar: "asamalar", etiket: "Aşamalar", yer: "liste", icerik: kartlar.asamalar }, { anahtar: "yeni", etiket: "Yeni işler", yer: "liste", icerik: kartlar.yeni }, { anahtar: "devam", etiket: "Devam eden", yer: "liste", icerik: kartlar.devam }, { anahtar: "mesajlar", etiket: "Mesajlar", yer: "liste", icerik: kartlar.mesajlar }, { anahtar: "tamamlanan", etiket: "Tamamlanan", yer: "ust", icerik: grafik }]} /></GenelBakis>;'}
+}
+function OpsEski() {
+  return <GenelBakis gizliBaslik="Operasyon genel bakış">{<SeriKarti baslik="Tamamlanan aşamalar" alt="Son 14 gün" seri={seri} adet="aşama" />}<ListeIzgarasi etiket="Operasyon işleri">{Object.values(opsKartlari())}</ListeIzgarasi></GenelBakis>;
 }
 /*
   KURUCU KONSOLU ANA EKRANI (25.11.2026).
@@ -1090,7 +1112,8 @@ window.__yol = new URLSearchParams(location.search).get("yol")
     : sayfa === "urundetay" ? "/panel/platform/urunler/arvolab"
     : sayfa === "urunler" ? "/panel/platform/urunler"
     : sayfa === "fiyatlar" ? "/panel/platform/fiyatlar"
-    : sayfa === "crm" ? "/panel/crm/genel-bakis" : "/panel");
+    : sayfa === "crm" ? "/panel/crm/genel-bakis"
+    : sayfa === "ops" ? "/panel/operations" : "/panel");
 
 function Kabuk() {
   /* Şimin ÇÖZDÜĞÜ yol: ölçüm bunu senaryonun niyetiyle karşılaştırıyor. */
@@ -1134,7 +1157,7 @@ function Kabuk() {
         </div>
       ) : null}
     </header>
-    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : null}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. */${'}'}<div className="panel-content">{sayfa === "musteriler" ? <Musteriler /> : sayfa === "mockup" ? (urunDetayiMi ? <UrunDetay /> : yolSimdi.startsWith("/panel/platform/urunler") ? <UrunlerListesi /> : yolSimdi.startsWith("/panel/platform/fiyatlar") ? <FiyatlarKarsilastirma /> : <KonsolRota />) : sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? (urunDetayiMi ? <UrunDetay /> : <FiyatlarKarsilastirma />) : <Ana />}</div></section>
+    <section className="os-workspace" data-olculen-yol={yolSimdi}>{konsolMu ? null : <OsBolumMenusu uygulamalar={uygulamalar} />}${'{'}/* Konsolda içerik üstü bölüm şeridi YOK (üretimle aynı): bölümler gezinmenin ikinci katında. Kiracı sayfalarında bölüm menüsü üretimdeki gibi içeriğin üstünde (Operasyon ölçümü, PR #315). */${'}'}<div className="panel-content">{sayfa === "musteriler" ? <Musteriler /> : sayfa === "mockup" ? (urunDetayiMi ? <UrunDetay /> : yolSimdi.startsWith("/panel/platform/urunler") ? <UrunlerListesi /> : yolSimdi.startsWith("/panel/platform/fiyatlar") ? <FiyatlarKarsilastirma /> : <KonsolRota />) : sayfa === "crm" ? <Crm /> : sayfa === "konsol" ? <KonsolRota /> : sayfa === "urundetay" ? <UrunDetay /> : sayfa === "urunler" ? (urunDetayiMi ? <UrunDetay /> : <UrunlerListesi />) : sayfa === "fiyatlar" ? (urunDetayiMi ? <UrunDetay /> : <FiyatlarKarsilastirma />) : sayfa === "ops" ? (${opsYeni} ? <Ops /> : <OpsEski />) : <Ana />}</div></section>
     {/* Komut paleti ve menü kapatıcı GERÇEK bileşenler: kaplamaların
         odak/Esc davranışı ölçülebilsin diye (26.11.2026). */}
     {konsolMu ? <OsKomutPaleti uygulamalar={konsolUygulamalari({ odeme: 3, sozlesme: 1, destek: 2 })} cikis={async () => {}} /> : null}
@@ -1275,7 +1298,7 @@ if (process.env.DISAAKTAR) {
 const olc = () => {
   const r = (e) => e ? Math.round(e.getBoundingClientRect().height) : null;
   const s = document.scrollingElement;
-  const kartlar = [...document.querySelectorAll(".dash-gorunum-panel")].filter((p) => p.offsetParent !== null).map((p) => {
+  let kartlar = [...document.querySelectorAll(".dash-gorunum-panel")].filter((p) => p.offsetParent !== null).map((p) => {
     const kart = p.firstElementChild;
     const govde = kart?.querySelector(".dash-col-govde");
     const gr = govde?.getBoundingClientRect();
@@ -1294,8 +1317,16 @@ const olc = () => {
       sonKayitErisilir = son.bottom <= kutu.bottom + 1 && son.top >= kutu.top - 1;
       govde.scrollTop = onceki;
     }
-    return { panel: p.id.replace("gorunum-", ""), kart: r(kart), kartKaydirma: kart ? `${kart.scrollHeight}/${kart.clientHeight}` : null, govde: r(govde), tamGorunenKayit: tam, kayit: govde ? govde.querySelectorAll("li").length : null, sonKayitErisilir, yatayTasma: kart ? kart.scrollWidth > kart.clientWidth + 1 : null };
+    const kr = kart?.getBoundingClientRect();
+    return { panel: p.id.replace("gorunum-", ""), ust: kr ? +kr.top.toFixed(1) : null, alt: kr ? +kr.bottom.toFixed(1) : null, kart: r(kart), kartKaydirma: kart ? `${kart.scrollHeight}/${kart.clientHeight}` : null, govde: r(govde), tamGorunenKayit: tam, kayit: govde ? govde.querySelectorAll("li").length : null, sonKayitErisilir, yatayTasma: kart ? kart.scrollWidth > kart.clientWidth + 1 : null };
   });
+  // Eski (akış) düzende panel sarmalayıcısı yok: kartları doğrudan ölç. Yalnızca Operasyon
+  // senaryosunun "önce" ölçümü için; panelsiz başka sayfalarda (ör. ürün detayı) devreye girip
+  // dock ölçümünü yanıltıyordu.
+  if (!kartlar.length && new URLSearchParams(location.search).get("sayfa") === "ops") for (const kart of document.querySelectorAll(".dash-chart, .dash-cols > .dash-col")) {
+    const kr = kart.getBoundingClientRect(), govde = kart.querySelector(".dash-col-govde, .dash-col-list");
+    kartlar.push({ panel: kart.querySelector("h2")?.textContent?.trim() ?? "?", ust: +kr.top.toFixed(1), alt: +kr.bottom.toFixed(1), kart: Math.round(kr.height), kartKaydirma: `${kart.scrollHeight}/${kart.clientHeight}`, govde: govde ? Math.round(govde.getBoundingClientRect().height) : null, tamGorunenKayit: null, kayit: kart.querySelectorAll("li").length, yatayTasma: kart.scrollWidth > kart.clientWidth + 1 });
+  }
   /*
     GÖRÜNÜRLÜK: offsetParent KULLANILMAZ — position:fixed öğelerde her
     zaman null döner (26.11.2026'da ölçüldü: dock ve sol menü ekranda
@@ -2554,6 +2585,23 @@ for (const [w, h] of (process.env.BOYUTLAR ?? "1600x1000,1363x936,1440x900,1100x
           o.secimler[(await d.textContent()).trim()] = m;
         }
       }
+      /* Dış kaydırma girişimi ve gövde sabitliği EN SONDA: End tuşu ve tekerlek bir kaydırma
+         alanını kaydırabiliyor; öteki ölçümlerden önce koşunca onları bozuyordu (konsol ürün detayı,
+         390×844: dock ölçümü). */
+      // Gerçek dış kaydırma girişimi: tekerlek + End; sonra sayfanın konumu.
+      await sayfa.mouse.move(w / 2, 100); await sayfa.mouse.wheel(0, 3000); await sayfa.mouse.wheel(3000, 0); await sayfa.keyboard.press("End");
+      o.kaydirmaSonrasi = await sayfa.evaluate(() => ({ x: Math.round(scrollX), y: Math.round(scrollY) }));
+      // Liste gövdesi kaydırılırken başlık ve alt bağlantı yerinde mi (kayan gövdesi olan her görünür kart).
+      o.sabitlik = await sayfa.evaluate(() => [...document.querySelectorAll(".dash-gorunum-panel")].filter((p) => p.offsetParent !== null).flatMap((p) => {
+        const g = p.querySelector(".dash-col-govde"); if (!g || g.scrollHeight <= g.clientHeight + 1) return [];
+        const h = p.querySelector(".dash-card-head"), l = p.querySelector(".dash-card-link");
+        const once = [h?.getBoundingClientRect().top, l?.getBoundingClientRect().top];
+        g.scrollTop = g.scrollHeight;
+        const sonra = [h?.getBoundingClientRect().top, l?.getBoundingClientRect().top];
+        const son = [...g.querySelectorAll("li")].pop()?.getBoundingClientRect(), gr = g.getBoundingClientRect();
+        g.scrollTop = 0;
+        return [{ panel: p.id.replace("gorunum-", ""), baslikKaydi: Math.round((sonra[0] ?? 0) - (once[0] ?? 0)), altBaglantiKaydi: Math.round((sonra[1] ?? 0) - (once[1] ?? 0)), sonKayitGorunur: son ? son.bottom <= gr.bottom + 1 && son.top >= gr.top - 1 : null }];
+      }));
       sonuc[`${w}x${h} ${tema} ${s}`] = o;
       const video = process.env.KAYIT ? sayfa.video() : null;
       await sayfa.close();
@@ -2567,7 +2615,7 @@ if (!process.env.SAKLA) fs.rmSync(dizin, { recursive: true, force: true });
 /* Hüküm ölçümden ayrı ve testli: scripts/tek-ekran-kabulu.mjs. */
 const hukumler = Object.entries(sonuc).map(([ad, o]) => tekEkranHukmu(ad, { ...o, kartPanelde: o.zincir?.kartPanelde, uyariVar: o.zincir?.uyariVar, urunTablosu: o.zincir?.urunTablosu, ilkIs: o.zincir?.ilkIs, sonUrun: o.zincir?.sonUrun, yanMenu: o.zincir?.yanMenu, bolumSecimi: o.zincir?.bolumSecimi, genislik: o.zincir?.genislik, kartHizasi: o.zincir?.kartHizasi, bolumSeridi: o.zincir?.bolumSeridi, urunBolumu: o.zincir?.urunBolumu }));
 const dusen = hukumler.filter((h) => !h.gecti);
-console.log(JSON.stringify({ kok: KOK, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
+console.log(JSON.stringify({ kok: KOK, opsYeni, yeniKurulum, not: "bileşen düzeyi ölçüm; uygulama kabulü değil", kabul: { gecen: hukumler.length - dusen.length, toplam: hukumler.length, dusen }, sonuc }, null, 1));
 for (const h of hukumler.filter((x) => x.borc?.length)) console.error(`· bilinen borç — ${h.ad}: ${h.borc.join(" · ")}`);
 /* Borçtaki bir satır artık düşmüyorsa liste eskimiştir: düzelen bir şeyi
    örtmeye devam etmesin. */

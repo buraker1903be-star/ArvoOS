@@ -268,6 +268,10 @@
 }
 /* Kartlar içerik boyunda, kalan yüksekliği aşmadan (ana ekranla aynı kural, FX-03). */
 .skel-izgara>.skel-kart{max-height:100%}
+/* Operasyon genel bakışı (dashboard.css · .dash-esit): dört kart tek satırda, eşit yükseklikte; başlık yok. */
+.skel-genel--esit .skel-hero{display:none}
+.skel-genel--esit .skel-izgara{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);align-items:stretch}
+.skel-genel--esit .skel-izgara>.skel-kart{max-height:none}
 /* Kısa dizüstü (dashboard.css ile aynı eşik): grafik alçalır, aralıklar daralır. */
 @media (min-width:901px) and (max-height:820px){
   .panel-skeleton.skel-genel{gap:var(--sp-3)}
@@ -280,6 +284,7 @@
   .skel-sekmeler>.skel{width:84px;height:32px;border-radius:var(--r-pill)}
   .skel-genel>.skel-kart{display:none}
   .skel-izgara>.skel-kart:nth-child(n+2){display:none}
+  .skel-genel--esit .skel-izgara{align-items:start}
   .skel-genel .skel-title{height:26px}
 }
 /* panel-premium.css .skel'e kayan bir zemin veriyor; hareketi azaltma tercihinde durur. */
