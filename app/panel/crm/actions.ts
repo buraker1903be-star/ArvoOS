@@ -1,6 +1,7 @@
 "use server";
 
-import { runPanelAction } from "@/lib/panel-action";
+import { runPanelAction, runPanelActionDurumlu } from "@/lib/panel-action";
+import { sunucuHatasiAlani, type FormSonucu } from "@/lib/form-hatalari";
 import { calismaTuruBul } from "@/lib/is-adimlari";
 
 import { revalidatePath } from "next/cache";
@@ -822,6 +823,18 @@ async function deleteInternalComment__impl(formData: FormData) {
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createOpportunity(...args: Parameters<typeof createOpportunity__impl>) {
   return runPanelAction(() => createOpportunity__impl(...args), "Talep sisteme girildi");
+}
+/*
+  Yeni talep formunun kullandığı sürüm (useActionState): sonucu forma döner,
+  hata olunca değerler korunur ve mesaj ilgili alanın altına düşer
+  (lib/panel-action · runPanelActionDurumlu). Doğrulama ve yetki aynı
+  işlevde (createOpportunity__impl); ikinci bir yol yok.
+  Arayüzdeki çift gönderim kilidi veritabanı tekilliği DEĞİLDİR: talep
+  eklemede tekillik anahtarı hâlâ yok (docs/takip-yerlesim-kurallari.md).
+*/
+export async function talepOlusturDurumlu(_onceki: FormSonucu | null, formData: FormData): Promise<FormSonucu> {
+  const sonuc = await runPanelActionDurumlu(() => createOpportunity__impl(formData), "Talep sisteme girildi");
+  return sonuc.tamam ? sonuc : { ...sonuc, alan: sunucuHatasiAlani(sonuc.hata) };
 }
 export async function updateOpportunity(...args: Parameters<typeof updateOpportunity__impl>) {
   return runPanelAction(() => updateOpportunity__impl(...args), "Talep güncellendi");

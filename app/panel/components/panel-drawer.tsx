@@ -40,8 +40,43 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
     return () => window.removeEventListener("arvo:action-success", onSuccess);
   }, [open]);
 
-  /* Klavye penceredeyken dışarı kaçmasın (components/odak-tuzagi). */
-  useOdakTuzagi(open, pencereRef, "panel-drawer-root");
+  /* Klavye penceredeyken dışarı kaçmasın (components/odak-tuzagi); açılışta
+     odak ilk form kontrolüne (fareli cihazda). */
+  useOdakTuzagi(open, pencereRef, "panel-drawer-root", [], true);
+
+  /*
+    Sabit kaydet çubuğu odaklanan alanı ÖRTMESİN (10.11.2026, PR #316).
+    Tab ile gezerken tarayıcı alanı gövdenin alt kenarına kaydırıyor; alt
+    kenarda yapışık kaydet çubuğu durduğu için alan onun altında kalıyordu
+    (Yeni talep: kaynak ve iç not; teklif/sözleşme: tarih). Gövdenin
+    scroll-padding'i çubuğun GERÇEK yüksekliğinden (hata özeti açılınca
+    büyüyor) — panel-drawer.css · --drawer-eylem-h.
+  */
+  useEffect(() => {
+    if (!open) return;
+    const govde = pencereRef.current?.querySelector<HTMLElement>(".panel-drawer-body");
+    const cubuk = govde?.querySelector<HTMLElement>(".panel-form-actions");
+    if (!govde || !cubuk) return;
+    const olc = () => govde.style.setProperty("--drawer-eylem-h", `${Math.ceil(cubuk.getBoundingClientRect().height)}px`);
+    olc();
+    const gozcu = new ResizeObserver(olc);
+    gozcu.observe(cubuk);
+    /* Chromium Tab ile odaklanan alanı kaydırırken scroll-padding'e her
+       zaman uymuyor (390×844'te iç not çubuğun altında kaldı); tarayıcının
+       kaydırmasından sonra alan hâlâ çubuğun altındaysa gövde o kadar kayar. */
+    const goster = (olay: FocusEvent) => {
+      const alan = olay.target;
+      if (!(alan instanceof HTMLElement) || cubuk.contains(alan)) return;
+      window.requestAnimationFrame(() => {
+        const r = alan.getBoundingClientRect(), g = govde.getBoundingClientRect(), c = cubuk.getBoundingClientRect();
+        const alt = (c.top > g.top ? Math.min(c.top, g.bottom) : g.bottom) - 12, ust = g.top + 12;
+        if (r.height > alt - ust || r.top < ust) govde.scrollTop += r.top - ust;
+        else if (r.bottom > alt) govde.scrollTop += r.bottom - alt;
+      });
+    };
+    govde.addEventListener("focusin", goster);
+    return () => { gozcu.disconnect(); govde.removeEventListener("focusin", goster); };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -59,7 +94,10 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
 
   const drawer = (
     <div className={open ? "panel-drawer-root open" : "panel-drawer-root"} aria-hidden={!open}>
-      <button className="panel-drawer-backdrop" type="button" aria-label="Pencereyi kapat" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
+      {/* Arka plan katmanı yalnızca fareyle/dokunarak kapatır: Tab sırasında
+          DEĞİL (F-01: odak pencereden çıkınca buraya düşüyordu). Klavyeyle
+          kapatma Esc ve başlıktaki Kapat düğmesi. */}
+      <button className="panel-drawer-backdrop" type="button" aria-label="Pencereyi kapat" tabIndex={-1} onClick={() => setOpen(false)} />
       {/* tabIndex -1: açılışta odak buraya alınır, ilk Tab pencerenin
           kendi ilk alanına geçer. */}
       <aside ref={pencereRef} tabIndex={-1} className={genis ? "panel-drawer is-genis" : "panel-drawer"} role="dialog" aria-modal="true" aria-labelledby={titleId} inert={!open}>

@@ -76,3 +76,39 @@ export async function runPanelAction<T>(action: () => Promise<T>, successMessage
     return undefined;
   }
 }
+
+/*
+  SONUCU FORMA DÖNEN SÜRÜM (10.11.2026, ortak form kontrolleri).
+
+  runPanelAction hata olunca çereze yazıp `undefined` döndürüyor; form
+  için bu "başarı" ile ayırt edilemiyor. React 19 da formun işlemi
+  fırlatmadan biterse kontrolsüz alanları SIFIRLIYOR: Yeni talep formunda
+  sunucu hatası (ör. "Hesabınız aktif bir satış personeli kaydıyla
+  eşleşmiyor") gelince kullanıcının yazdığı her şey siliniyordu.
+
+  Bu sürüm sonucu açıkça döndürür; form hatayı alanın/formun içinde
+  gösterir ve değerleri korur. Hata çereze YAZILMAZ (aynı mesaj bir de
+  bildirim olarak çıkmasın); başarı mesajı yazılır, böylece bildirim ve
+  pencerenin kapanması (flash-toast → arvo:action-success) aynı kalır.
+  Kontrol akışı sinyalleri (redirect, notFound) runPanelAction'daki gibi.
+*/
+export type DurumluSonuc = { tamam: true; kimlik: number } | { tamam: false; hata: string; kimlik: number };
+
+export async function runPanelActionDurumlu(action: () => Promise<unknown>, successMessage?: string): Promise<DurumluSonuc> {
+  // kimlik: art arda aynı hata dönse de istemci yeni bir sonuç olduğunu anlasın.
+  const kimlik = Date.now();
+  try {
+    await action();
+    if (successMessage) await flashSuccess(successMessage);
+    return { tamam: true, kimlik };
+  } catch (error) {
+    if (isControlFlowSignal(error)) {
+      const kilit = String((error as { digest?: unknown }).digest ?? "").includes(ERISIM_KAPALI_ADRESI);
+      if (successMessage && isRedirectSignal(error) && !kilit) await flashSuccess(successMessage);
+      throw error;
+    }
+    console.error("[panel-action]", error);
+    const hata = error instanceof Error && error.message ? error.message.slice(0, 400) : "İşlem tamamlanamadı. Lütfen tekrar deneyin.";
+    return { tamam: false, hata, kimlik };
+  }
+}

@@ -17,18 +17,27 @@
    ============================================================ */
 .panel-root .kayit-formu{gap:var(--sp-4) var(--sp-4)}
 .panel-root .kayit-formu > label{display:flex;flex-direction:column;gap:6px;min-width:0;color:var(--ink-soft);font-size:13px;font-weight:600;line-height:1.3}
-.panel-root .kayit-formu > label > :is(input:not([type="checkbox"]):not([type="hidden"]):where(:not([type="radio"],[type="file"],[type="color"])),select,textarea){
+.panel-root .kayit-formu > label > :is(input:not([type="checkbox"]):not([type="hidden"]):where(:not([type="radio"],[type="file"],[type="color"])),select,textarea),
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(input:not([type="checkbox"]):not([type="hidden"]):where(:not([type="radio"],[type="file"],[type="color"])),select,textarea){
   width:100%;margin:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);
   font:inherit;font-size:14px;font-weight:500;box-shadow:none;transition:border-color .18s ease,box-shadow .18s ease
 }
-.panel-root .kayit-formu > label > :is(input:not([type="checkbox"]):not([type="hidden"]):where(:not([type="radio"],[type="file"],[type="color"])),select){height:42px;min-height:42px;padding:0 12px}
+.panel-root .kayit-formu > label > :is(input:not([type="checkbox"]):not([type="hidden"]):where(:not([type="radio"],[type="file"],[type="color"])),select),
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(input:not([type="checkbox"]):not([type="hidden"]):where(:not([type="radio"],[type="file"],[type="color"])),select){height:42px;min-height:42px;padding:0 12px}
+/* Her alan kuralı İKİ seçiciyle: eski `.kayit-formu > label >` özgüllüğü
+   BİREBİR korunuyor (panelde 50'yi aşkın form bu dosyayı kullanıyor; sayfa
+   kuralları ona göre yazılmış), yeni ortak alan `.form-alani` ayrı seçicide. */
 /* :not zinciri: özgüllük eski form kurallarının (crm.css, request-page.css) üstünde kalsın. */
-.panel-root .kayit-formu > label > textarea:not([hidden]):not([readonly]){min-height:96px;padding:10px 12px;line-height:1.45;resize:vertical}
-.panel-root .kayit-formu > label > :is(input,select,textarea):focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
-.panel-root .kayit-formu > label > :is(input,textarea)::placeholder{color:var(--muted);font-weight:400}
+.panel-root .kayit-formu > label > textarea:not([hidden]):not([readonly]),
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > textarea:not([hidden]):not([readonly]){min-height:96px;padding:10px 12px;line-height:1.45;resize:vertical}
+.panel-root .kayit-formu > label > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea):focus,
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea):focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+.panel-root .kayit-formu > label > :is(input,textarea)::placeholder,
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(input,textarea)::placeholder{color:var(--muted);font-weight:400}
 /* Seçim kutuları tek tip ok: tarayıcının kendi oku Windows'ta gri bir kutuyla çiziliyordu. */
 /* Özgüllük bilerek yukarıdaki alan kuralıyla eşit (:is ile); sonra geldiği için sağ dolgu kazanır. */
-.panel-root .kayit-formu > label > :is(select:not([multiple]):not([size])){
+.panel-root .kayit-formu > label > :is(select:not([multiple]):not([size])),
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(select:not([multiple]):not([size])){
   appearance:none;-webkit-appearance:none;padding:0 36px 0 12px;cursor:pointer;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 12px center
@@ -54,11 +63,76 @@
 /* Onay kutulu etiket (stg-check, hr-check …) yan yana kalır; yalnız yön, hizalamayı kendi sınıfı verir. */
 .panel-root .kayit-formu > label:has(> input[type="checkbox"]){flex-direction:row}
 /* Dosya alanı: kutu kuralının dışında (yukarıda), kendi sade görünümü. Eskiden sayfanın genel kuralından kalın ve çerçevesiz çıkıyordu. */
-.panel-root .kayit-formu > label > input[type="file"]{width:100%;margin:0;padding:7px 8px;border:1px dashed var(--line);border-radius:12px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:500;cursor:pointer}
-.panel-root .kayit-formu > label > input[type="file"]::file-selector-button{margin-right:12px;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.panel-root .kayit-formu > label > input[type="file"],
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > input[type="file"]{width:100%;margin:0;padding:7px 8px;border:1px dashed var(--line);border-radius:12px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:500;cursor:pointer}
+.panel-root .kayit-formu > label > input[type="file"]::file-selector-button,
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > input[type="file"]::file-selector-button{margin-right:12px;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
 /* Uyarı tonlu alan (ör. kota aşımı): çerçeve kırmızı. Özgüllük alan kuralının üstünde. */
 .panel-root .kayit-formu > label[data-tone="danger"] > :is(input:not([type="checkbox"]):not([type="hidden"]),select){border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
 /* Eylem çubuğunda birden çok düğme (ör. Reddet / Onayla) yan yana. */
 .panel-root .kayit-formu-dugmeler{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
 /* Alanın altındaki kısa açıklama (ör. "hizmet türüne göre seçildi"). */
 .panel-root .kayit-formu label .kayit-formu-ipucu{display:block;margin-top:4px;color:var(--muted);font-size:12.5px;font-weight:400;line-height:1.4}
+
+/* ============================================================
+   ORTAK FORM ALANI (components/form-alani.tsx, 10.11.2026).
+   Etiket ayrı ve kalıcı; yardım ve hata metni alanın ALTINDA, aria ile
+   bağlı. Alan kutusu yukarıdaki kurallardan (:is(label,.form-alani)).
+   Hata yalnızca renk değil: simge + metin + kalın çerçeve.
+   ============================================================ */
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani{display:flex;flex-direction:column;gap:6px;min-width:0}
+.panel-root .kayit-formu .form-alani-etiket{color:var(--ink-soft);font-size:13px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.panel-root .kayit-formu .form-alani-yardim{margin:0;color:var(--muted);font-size:12.5px;font-weight:400;line-height:1.45;overflow-wrap:anywhere}
+.panel-root .kayit-formu .form-alani-hata{display:flex;align-items:flex-start;gap:6px;margin:0;color:var(--danger);font-size:12.5px;font-weight:600;line-height:1.45;overflow-wrap:anywhere}
+.panel-root .kayit-formu .form-alani-hata svg{flex:none;margin-top:2px}
+.panel-root .kayit-formu .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Durumlar (özgüllük: alan kutusu kuralı :not zinciriyle yüksek; bunlar aynı
+   zinciri taşıyıp üstüne sözde sınıf ekler, yoksa sessizce eziliyorlardı).
+   Üzerine gelince çerçeve belirginleşir; hatalı alan kalın kırmızı
+   çerçeve + simgeli metin; devre dışı alan soluk zeminli. Odak halkası
+   yukarıdaki :focus kuralında. */
+.panel-root .kayit-formu > label > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea):hover:not(:focus):not(:disabled),
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea):hover:not(:focus):not(:disabled){border-color:color-mix(in srgb,var(--ink) 28%,var(--line))}
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani.is-hatali > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea),
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani.is-hatali .tsc-kutu{border-color:var(--danger);box-shadow:inset 0 0 0 1px var(--danger)}
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani.is-hatali > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea):focus{box-shadow:inset 0 0 0 1px var(--danger),0 0 0 3px color-mix(in srgb,var(--danger) 18%,transparent)}
+.panel-root .kayit-formu > label > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea):disabled,
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea):disabled{background:var(--surface-2);color:var(--muted);cursor:not-allowed}
+/* Seçim kutusu boşken (yer tutucu seçenek) metin soluk: "seçilmedi" ile "seçildi" ayrışsın. */
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > select:not([multiple]):not([size]):invalid{color:var(--muted)}
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > select option{color:var(--ink)}
+/* Telefonda 16px: iOS 16px'in altındaki alana odaklanınca sayfayı büyütüyor. */
+@media (max-width:760px){
+  .panel-root .kayit-formu > label > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea),
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(input:not([type="checkbox"]):not([type="hidden"]),select,textarea){font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .panel-root .kayit-formu > label > :is(input,select,textarea),
+.panel-root :is(.kayit-formu,.kayit-formu-grup) > .form-alani > :is(input,select,textarea){transition:none}
+}
+
+/* Form bölümü: başlıklı alan grubu (role="group" + aria-labelledby), formun
+   ızgarasını aynen sürdürür. fieldset/legend değil: legend ızgaranın
+   parçası olmuyor, tarayıcıya göre farklı yerleşiyordu.
+   Yeni talep formu: Müşteri bilgileri · Talep bilgileri · İç not. */
+.panel-root .kayit-formu > .kayit-formu-grup{grid-column:1/-1;display:grid;grid-template-columns:repeat(var(--kayit-sutun,1),minmax(0,1fr));gap:var(--sp-4);min-width:0;padding-top:var(--sp-4);border-top:1px solid var(--line-soft)}
+.panel-root .kayit-formu > .kayit-formu-grup.is-ilk{padding-top:0;border-top:0}
+@media (min-width:761px){.panel-root .kayit-formu > .kayit-formu-grup{--kayit-sutun:2}}
+.panel-root .kayit-formu-grup > .kayit-formu-grup-bas{grid-column:1/-1;margin:0 0 calc(var(--sp-1) * -1);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.panel-root .kayit-formu-grup > .wide{grid-column:1/-1}
+.panel-root .kayit-formu-grup > .kayit-formu-not{margin:0}
+
+/* Kaydet çubuğundaki özet: kaç alan eksik + ilk alana git; sunucu hatası. */
+.panel-root .kayit-formu-eylem .form-ozet{flex:1 1 100%;display:flex;align-items:flex-start;gap:8px;margin:0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--danger) 45%,var(--line));border-radius:12px;background:var(--danger-soft);color:var(--danger);font-size:13px;font-weight:600;line-height:1.45;overflow-wrap:anywhere}
+.panel-root .kayit-formu-eylem .form-ozet svg{flex:none;margin-top:2px}
+.panel-root .kayit-formu-eylem .form-ozet button{margin-left:auto;flex:none;padding:0 4px;border:0;background:none;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+
+/* Telefon (≤760px): pencerenin kaydet çubuğu her çocuğa eşit pay veriyor
+   (panel-drawer.css · .panel-form-actions>*{flex:1 1 0}) ve satır kırmıyor.
+   Hata özeti o kuralla tek kelimelik bir sütuna sıkışıp çubuğu formun
+   yarısına uzatıyordu (bileşen sınaması, 390×844). Özet tam satır, not ve
+   düğme altında yan yana. Özgüllük o kuralın üstünde. */
+@media (max-width:760px){
+  .panel-root .panel-drawer-root .panel-drawer .panel-drawer-body .kayit-formu-eylem{flex-wrap:wrap;row-gap:8px}
+  .panel-root .panel-drawer-root .panel-drawer .panel-drawer-body .kayit-formu-eylem > .form-ozet{flex:1 1 100%;min-height:0;max-height:30dvh;overflow-y:auto}
+}

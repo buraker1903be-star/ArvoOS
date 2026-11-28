@@ -3,9 +3,25 @@
    React state'i kullanılmıyor: işlem sürerken güncelleme useFormStatus'u
    bozuyordu (bileşendeki not). Süre 0s: hareket yok, yalnızca gecikmeli
    görünürlük değişimi — hareketi azaltma tercihinde de aynı. */
-.gonder-bekleme{display:inline-grid}
-.gonder-bekleme>span{grid-area:1/1}
+.gonder-bekleme{display:inline-flex;align-items:center;justify-content:center;gap:8px;max-width:100%}
+.gonder-bekleme-metin{display:inline-grid;min-width:0;white-space:normal;text-align:center}
+.gonder-bekleme-metin>span{grid-area:1/1}
 .gonder-bekleme-uzun{visibility:hidden;animation:gonder-uzun-goster 0s linear 8s forwards}
 .gonder-bekleme-kisa{animation:gonder-kisa-gizle 0s linear 8s forwards}
 @keyframes gonder-uzun-goster{to{visibility:visible}}
 @keyframes gonder-kisa-gizle{to{visibility:hidden}}
+
+/* Bekleme DEVRE DIŞI DEĞİL, sürüyor (10.11.2026): düğme devre dışı olduğu
+   için genel :disabled kuralı onu %52 soluklaştırıyordu; koyu temada
+   lacivert düğme zeminle birleşip "Hâlâ işleniyor" okunmuyordu. Bekleyen
+   düğme rengini korur, dönen halka ve imleç sürdüğünü söyler. Uzun etiket
+   dar düğmede satır kırar (eskiden düğmenin dışına taşıyordu). */
+.panel-root :is(.panel-primary,.panel-secondary,.panel-danger)[aria-busy="true"]:disabled{opacity:1;filter:none;cursor:progress;white-space:normal;height:auto}
+.gonder-donen{flex:none;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:gonder-don .8s linear infinite}
+@keyframes gonder-don{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.gonder-donen{animation:none;border-right-color:currentColor;opacity:.6}}
+/* Genel :disabled kuralı (panel-premium.css) zemini gri, yazıyı soluk
+   yapıyor; bekleyen düğme kendi türünün rengini korur. */
+.panel-root .panel-primary[aria-busy="true"]:disabled{background-color:var(--primary);color:var(--primary-on);border-color:transparent}
+.panel-root .panel-secondary[aria-busy="true"]:disabled{background-color:var(--surface);color:var(--ink);border-color:var(--line)}
+.panel-root .panel-danger[aria-busy="true"]:disabled{background-color:var(--danger-soft);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}

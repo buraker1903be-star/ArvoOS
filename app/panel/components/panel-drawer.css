@@ -59,3 +59,6 @@
 }
 /* Geniş pencere (PanelDrawer genis): içinde liste olan formlar. Telefonda zaten tam genişlik. */
 .panel-drawer-root .panel-drawer.is-genis{width:min(960px,100%)}
+/* Tab ile odaklanan alan sabit kaydet çubuğunun altında kalmasın: gövdenin
+   kaydırma payı çubuğun gerçek yüksekliği (panel-drawer.tsx ölçüyor). */
+.panel-drawer-root .panel-drawer .panel-drawer-body{scroll-padding-top:12px;scroll-padding-bottom:calc(var(--drawer-eylem-h, 0px) + 12px)}
