@@ -28,31 +28,14 @@
 import { YILLIK_ODENEN_AY, planlar, tutarYaz, type Plan, type SiteProduct } from "./pricing";
 import { ekKalemTutari, planTutari, type Fiyatlar } from "./fiyat-kaynagi";
 import { LOCALE_TAGS, type Locale } from "./routes";
+import { DOVIZ_FIYATLARI } from "./doviz-fiyatlari";
+
+export { DOVIZ_FIYATLARI };
 
 export type ParaBirimi = "TRY" | "USD" | "EUR";
 
 export const SAYFA_PARA_BIRIMI: Record<Locale, ParaBirimi> = { tr: "TRY", en: "USD", de: "EUR", es: "EUR", fr: "EUR", ar: "USD" };
 
-const d = (tam: number) => tam * 100;
-
-/** Basamak ve ek kalem kodu → aylık döviz tutarı (küçük birim). */
-export const DOVIZ_FIYATLARI: Record<string, { USD: number | null; EUR: number | null }> = {
-  "arvoos-baslangic": { USD: d(59), EUR: d(55) },
-  "arvoos-kurumsal": { USD: d(179), EUR: d(165) },
-  "arvoos-ozel": { USD: null, EUR: null },
-
-  "randevu-tek": { USD: d(29), EUR: d(27) },
-  "randevu-coklu": { USD: d(59), EUR: d(55) },
-  "randevu-zincir": { USD: null, EUR: null },
-
-  "arvolab-arastirmaci": { USD: d(119), EUR: d(109) },
-  "arvolab-kurum": { USD: null, EUR: null },
-
-  "ek-kullanici": { USD: d(9), EUR: d(8) },
-  "ek-sube": { USD: d(12), EUR: d(11) },
-  "veri-aktarimi": { USD: null, EUR: null },
-  "ozel-gelistirme": { USD: null, EUR: null },
-};
 
 /** Sayfanın para biriminde aylık tutar; teklif usulüyse null. */
 export function sayfaPlanTutari(plan: Plan, locale: Locale, fiyatlar?: Fiyatlar): number | null {

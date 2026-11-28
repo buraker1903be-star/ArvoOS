@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { bekleyenDegisiklikler, fiyatDenetimi, yayimSonrasi, type FiyatKaydi , kapsamImzasi } from "@/lib/fiyat-dogrulama";
-import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
+import { birimliPlanTutari, cokParaliBirlestir } from "@/lib/site/fiyat-kaynagi";
+import type { ParaBirimi } from "@/lib/para";
 
 /* Fiyat yayımının önizlemesi ve denetimi (lib/fiyat-dogrulama.ts). */
 
-const gecerli = fiyatlariBirlestir([]);
+const gecerli = cokParaliBirlestir([]);
+/* Tutarlar artık birim başına: "geçerli" tablonun anahtarı kod+birim. */
+const simdiki = (kod: string, birim: ParaBirimi = "TRY") => birimliPlanTutari(kod, birim, gecerli)!;
 const kayit = (kod: string, taslak: number | null, ek: Partial<FiyatKaydi> = {}): FiyatKaydi =>
-  ({ kod, aylik_kurus: null, taslak_kurus: taslak, yayimlandi_at: null, taslak_bekliyor: true, ...ek });
+  ({ kod, para_birimi: "TRY", aylik_kurus: null, taslak_kurus: taslak, yayimlandi_at: null, taslak_bekliyor: true, ...ek });
 const denetle = (kayitlar: FiyatKaydi[]) => {
   const d = bekleyenDegisiklikler(kayitlar, gecerli);
   return { d, ...fiyatDenetimi(yayimSonrasi(gecerli, d), d) };
@@ -20,7 +23,7 @@ test("bugünkü liste denetimden temiz geçiyor", () => {
 });
 
 test("bekleyen değişiklik önce → sonra ve yüzdeyle; bekleyen olmayan ve tanınmayan atlanıyor", () => {
-  const eski = gecerli.get("arvoos-baslangic")!;
+  const eski = simdiki("arvoos-baslangic");
   const { d } = denetle([
     kayit("arvoos-baslangic", eski + eski / 10),
     kayit("arvoos-kurumsal", 1, { taslak_bekliyor: false }),
@@ -31,14 +34,14 @@ test("bekleyen değişiklik önce → sonra ve yüzdeyle; bekleyen olmayan ve ta
 });
 
 test("kurum başı merdiven: alt basamak üsttekinden pahalı olamaz", () => {
-  const { hatalar } = denetle([kayit("arvoos-baslangic", gecerli.get("arvoos-kurumsal")! + 100)]);
+  const { hatalar } = denetle([kayit("arvoos-baslangic", simdiki("arvoos-kurumsal") + 100)]);
   assert.equal(hatalar.length, 1);
   assert.match(hatalar[0], /üst basamak daha pahalı olmalı/);
 });
 
 test("ArvoLab: hacim basamağı yokken Araştırmacı tutarı merdiven hatası üretmez", () => {
   // Ekip 28.10.2026'da kalktı; tekil koltuğun karşılaştırılacağı basamak yok.
-  assert.deepEqual(denetle([kayit("arvolab-arastirmaci", gecerli.get("arvolab-arastirmaci")! + 100)]).hatalar, []);
+  assert.deepEqual(denetle([kayit("arvolab-arastirmaci", simdiki("arvolab-arastirmaci") + 100)]).hatalar, []);
 });
 
 test("teklif usulü basamak merdiveni bozmuyor", () => {
@@ -49,7 +52,7 @@ test("teklif usulü basamak merdiveni bozmuyor", () => {
 });
 
 test("büyük değişim ve ücretsiz basamak uyarı veriyor", () => {
-  const eski = gecerli.get("ek-kullanici")!;
+  const eski = simdiki("ek-kullanici");
   assert.match(denetle([kayit("ek-kullanici", eski * 10)]).uyarilar.join(" "), /Yazım hatası değilse/);
   assert.match(denetle([kayit("ek-kullanici", 0)]).uyarilar.join(" "), /ücretsiz/);
   // %10'luk zam sessiz geçiyor.
@@ -110,4 +113,61 @@ test("yayım işlemi kapsam imzasını karşılaştırıyor", async () => {
   assert.match(islem, /önizlemeden sonra değişti/i);
   const onizleme = await readFile(new URL("../../app/panel/platform/fiyatlar/fiyat-yayim-onizlemesi.tsx", import.meta.url), "utf8");
   assert.match(onizleme, /name="kapsam"/);
+});
+
+/*
+  ÇOK PARA BİRİMİ (28.11.2026). Üç kural sabitleniyor: iki birim ayrı
+  merdiven, imza birimi ayırt ediyor, eksik USD fiyatı merdiven hatası
+  değil.
+*/
+test("TRY ve USD merdivenleri birbirine karışmıyor", () => {
+  /* USD listesi TRY listesinden küçük rakamlardan oluşuyor; ikisi bir
+     arada denetlenirse "üst basamak daha ucuz" diye sahte hata çıkardı. */
+  const { hatalar } = denetle([
+    kayit("arvoos-baslangic", 5_900, { para_birimi: "USD" }),
+    kayit("arvoos-kurumsal", 17_900, { para_birimi: "USD" }),
+  ]);
+  assert.deepEqual(hatalar, []);
+});
+
+test("USD merdiveni kendi içinde bozulursa hata veriyor", () => {
+  const { hatalar } = denetle([kayit("arvoos-baslangic", 25_000, { para_birimi: "USD" })]);
+  assert.equal(hatalar.length, 1);
+  assert.match(hatalar[0], /USD/);
+});
+
+test("aynı planın iki birimi ayrı değişiklik", () => {
+  const { d } = denetle([
+    kayit("arvolab-arastirmaci", 599_000),
+    kayit("arvolab-arastirmaci", 12_900, { para_birimi: "USD" }),
+  ]);
+  assert.equal(d.length, 2);
+  assert.deepEqual(d.map((x) => x.paraBirimi).sort(), ["TRY", "USD"]);
+  /* Yüzde kendi biriminde: USD taslağı TL fiyatıyla karşılaştırılmıyor. */
+  const usd = d.find((x) => x.paraBirimi === "USD")!;
+  assert.equal(usd.eski, simdiki("arvolab-arastirmaci", "USD"));
+});
+
+test("kapsam imzası para birimini ayırt ediyor", () => {
+  const tryOnayi = kapsamImzasi([{ kod: "arvolab-arastirmaci", paraBirimi: "TRY", yeni: 599_000 }]);
+  const usdOnayi = kapsamImzasi([{ kod: "arvolab-arastirmaci", paraBirimi: "USD", yeni: 599_000 }]);
+  assert.notEqual(tryOnayi, usdOnayi, "aynı tutar farklı birim = farklı karar");
+  assert.equal(tryOnayi, "arvolab-arastirmaci:TRY:599000");
+  /* Veritabanındaki ikiziyle aynı biçim: kod:para:tutar, "|" ile. */
+  assert.equal(
+    kapsamImzasi([
+      { kod: "b", paraBirimi: "USD", yeni: null },
+      { kod: "a", paraBirimi: "TRY", yeni: 1 },
+    ]),
+    "a:TRY:1|b:USD:teklif",
+  );
+});
+
+test("eski satırda para birimi yoksa TRY sayılıyor", async () => {
+  const { fiyatKaydi } = await import("@/lib/fiyat-dogrulama");
+  const k = fiyatKaydi({ kod: "arvoos-baslangic", aylik_kurus: 1, taslak_kurus: 2, yayimlandi_at: null });
+  assert.equal(k.para_birimi, "TRY");
+  /* Tanınmayan bir değer de USD sayılmıyor: TRY'ye düşüyor. */
+  const bozuk = fiyatKaydi({ kod: "arvoos-baslangic", aylik_kurus: 1, taslak_kurus: 2, yayimlandi_at: null, para_birimi: "GBP" });
+  assert.equal(bozuk.para_birimi, "TRY");
 });

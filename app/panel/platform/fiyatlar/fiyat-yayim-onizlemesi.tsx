@@ -1,6 +1,7 @@
 import { kapsamImzasi } from "@/lib/fiyat-dogrulama";
+import { paraYaz, tutar as paraTutari, type ParaBirimi } from "@/lib/para";
 import { Fragment } from "react";
-import { para, sayi } from "../bicim";
+import { sayi } from "../bicim";
 import { KKart, KListe, KNot, KOge } from "../konsol-ui";
 
 /**
@@ -14,7 +15,7 @@ import { KKart, KListe, KNot, KOge } from "../konsol-ui";
  * Yayım kuralı burada DEĞİŞMİYOR; bu bileşen yalnızca çiziyor.
  */
 export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakAdi, kodunUrunu, kendiKodlari, etkilenenKiraci, eylem }: {
-  degisiklikler: { kod: string; eski: number | null; yeni: number | null; yuzde: number | null }[];
+  degisiklikler: { kod: string; paraBirimi: ParaBirimi; eski: number | null; yeni: number | null; yuzde: number | null }[];
   denetim: { hatalar: string[]; uyarilar: string[] };
   baskaUrunler: string[];
   basamakAdi: (kod: string) => string;
@@ -29,7 +30,10 @@ export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakA
    */
   eylem?: (formData: FormData) => void | Promise<void>;
 }) {
-  const tutarYazi = (kurus: number | null) => (kurus === null ? "Teklif" : para(Number(kurus)));
+  /* Tutar KENDİ para biriminde yazılıyor: aynı listede TRY ve USD
+     satırları yan yana durabiliyor ve "4.990" ile "119" rakamlarının
+     hangi birimde olduğu satırdan okunmalı. */
+  const tutarYazi = (kurus: number | null, birim: ParaBirimi) => (kurus === null ? "Teklif" : paraYaz(paraTutari(Number(kurus), birim)));
   if (!degisiklikler.length) return null;
   return (
         <KKart
@@ -101,11 +105,11 @@ export function YayimOnizlemesi({ degisiklikler, denetim, baskaUrunler, basamakA
               const buyuk = d.yuzde !== null && Math.abs(d.yuzde) >= 50;
               return (
                 <KOge
-                  key={d.kod}
-                  baslik={basamakAdi(d.kod)}
+                  key={`${d.kod}|${d.paraBirimi}`}
+                  baslik={`${basamakAdi(d.kod)} · ${d.paraBirimi}`}
                   alt={<span className="plt-mono">{kendiKodlari.has(d.kod) ? d.kod : `${kodunUrunu(d.kod)} · ${d.kod}`}</span>}
-                  deger={tutarYazi(d.yeni)}
-                  degerAlt={<>önce {tutarYazi(d.eski)} · <span className={buyuk ? "talep-uyari" : undefined}>{degisim}</span></>}
+                  deger={tutarYazi(d.yeni, d.paraBirimi)}
+                  degerAlt={<>önce {tutarYazi(d.eski, d.paraBirimi)} · <span className={buyuk ? "talep-uyari" : undefined}>{degisim}</span></>}
                 />
               );
             })}

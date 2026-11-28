@@ -7,7 +7,8 @@ import { getPanelContext } from "@/lib/panel-context";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
 import { ROUTES } from "@/lib/site/routes";
-import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
+import { cokParaliBirlestir, type CokParaliSatir } from "@/lib/site/fiyat-kaynagi";
+import { SATIS_PARA_BIRIMLERI, paraBirimiCoz, type ParaBirimi } from "@/lib/para";
 import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, kapsamImzasi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
 
 /*
@@ -33,6 +34,18 @@ const TUR = new Map<string, "plan" | "ek">([
   ...ADD_ONS.map((a) => [a.code, "ek"] as const),
 ]);
 
+/*
+  PARA BİRİMİ FORMDAN GELİYOR ve tanınmayan değer REDDEDİLİYOR.
+  Varsayılana düşmek (TRY) bir USD taslağını sessizce TL satırına
+  yazmak olurdu; o yüzden hata.
+*/
+function paraBirimiOku(formData: FormData): ParaBirimi {
+  const ham = String(formData.get("para_birimi") ?? "TRY").trim();
+  const birim = paraBirimiCoz(ham);
+  if (!birim) throw new Error(`Tanınmayan para birimi: ${ham}. Geçerli olanlar: ${SATIS_PARA_BIRIMLERI.join(", ")}.`);
+  return birim;
+}
+
 function kodOku(formData: FormData) {
   const kod = String(formData.get("kod") ?? "").trim();
   /* Kod kodda tanımlı olmalı: basamağın adı, birimi ve hangi üründe
@@ -47,6 +60,7 @@ async function taslagiKaydet__impl(formData: FormData) {
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
   konsolAlaniniDogrula(konsolKapsami, "urunler");
   const kod = kodOku(formData);
+  const paraBirimi = paraBirimiOku(formData);
 
   const ham = String(formData.get("tutar") ?? "").trim();
   /*
@@ -67,18 +81,19 @@ async function taslagiKaydet__impl(formData: FormData) {
   /* Yayındaki tutarın aynısı yazıldıysa bekleyen bir değişiklik yok:
      önizlemede "1.990 → 1.990" satırı çıkmasın. */
   const { data: mevcut } = await supabase.from("platform_fiyat_listesi")
-    .select("aylik_kurus,yayimlandi_at").eq("kod", kod).maybeSingle();
+    .select("aylik_kurus,yayimlandi_at").eq("kod", kod).eq("para_birimi", paraBirimi).maybeSingle();
   const degismedi = Boolean(mevcut?.yayimlandi_at) && (mevcut?.aylik_kurus === null ? null : Number(mevcut?.aylik_kurus)) === kurus;
 
   const { data: userData } = await supabase.auth.getUser();
   const { error } = await supabase.from("platform_fiyat_listesi").upsert({
     kod,
+    para_birimi: paraBirimi,
     tur: TUR.get(kod) ?? "plan",
     taslak_kurus: kurus,
     taslak_bekliyor: !degismedi,
     updated_by: userData.user?.id ?? null,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "kod" });
+  }, { onConflict: "kod,para_birimi" });
   if (error) throw new Error("Taslak kaydedilemedi: " + error.message);
 
   revalidatePath("/panel/platform/urunler");
@@ -129,26 +144,38 @@ async function koddakiDegerleriTaslagaAl__impl() {
   konsolAlaniniDogrula(konsolKapsami, "urunler");
 
   /* sınırsız-tamam: fiyat kataloğu: ürün × paket, elle yönetilen onlarca satır */
-  const { data, error } = await supabase.from("platform_fiyat_listesi").select("kod,yayimlandi_at,taslak_bekliyor");
+  const { data, error } = await supabase.from("platform_fiyat_listesi").select("kod,para_birimi,yayimlandi_at,taslak_bekliyor");
   if (error) throw new Error("Fiyat listesi okunamadı: " + error.message);
-  const mevcut = new Map(((data ?? []) as { kod: string; yayimlandi_at: string | null; taslak_bekliyor: boolean | null }[])
-    .map((satir) => [satir.kod, satir]));
+  /* Anahtar kod+birim: aynı planın TRY satırı yayımlıyken USD satırı
+     hiç açılmamış olabilir. */
+  const mevcut = new Map(((data ?? []) as { kod: string; para_birimi: string | null; yayimlandi_at: string | null; taslak_bekliyor: boolean | null }[])
+    .map((satir) => [`${satir.kod}|${paraBirimiCoz(satir.para_birimi) ?? "TRY"}`, satir]));
 
   const { data: userData } = await supabase.auth.getUser();
   const simdi = new Date().toISOString();
-  const alinacaklar = [
-    ...PLANS.map((plan) => ({ kod: plan.code, kurus: plan.aylikKurus })),
-    ...ADD_ONS.map((kalem) => ({ kod: kalem.code, kurus: kalem.aylikKurus })),
-  ].filter(({ kod }) => {
-    const satir = mevcut.get(kod);
+  /*
+    KODDAKİ DEĞERLER HER İKİ BİRİMDE: TRY tutarları pricing.ts'te, USD
+    tutarları doviz.ts'te (28.11.2026'dan beri ikisi de yayımlanabilir
+    değer). Birimi olmayan basamak null ile açılıyor — "Teklif".
+  */
+  const kodVarsayilanlari = cokParaliBirlestir([]);
+  const alinacaklar = SATIS_PARA_BIRIMLERI.flatMap((birim) =>
+    [...PLANS.map((p) => p.code), ...ADD_ONS.map((a) => a.code)].map((kod) => ({
+      kod,
+      paraBirimi: birim,
+      kurus: kodVarsayilanlari.get(`${kod}|${birim}`) ?? null,
+    })),
+  ).filter(({ kod, paraBirimi }) => {
+    const satir = mevcut.get(`${kod}|${paraBirimi}`);
     return !satir?.yayimlandi_at && !satir?.taslak_bekliyor;
   });
 
   if (!alinacaklar.length) throw new Error("Taslağa alınacak basamak yok: hepsi ya yayımlı ya da taslağı bekliyor.");
 
   const { error: yazmaHatasi } = await supabase.from("platform_fiyat_listesi").upsert(
-    alinacaklar.map(({ kod, kurus }) => ({
+    alinacaklar.map(({ kod, paraBirimi, kurus }) => ({
       kod,
+      para_birimi: paraBirimi,
       tur: TUR.get(kod) ?? "plan",
       /* null = "Teklif": bu basamağın liste fiyatı yok ve olmayacak. */
       taslak_kurus: kurus,
@@ -156,7 +183,7 @@ async function koddakiDegerleriTaslagaAl__impl() {
       updated_by: userData.user?.id ?? null,
       updated_at: simdi,
     })),
-    { onConflict: "kod" },
+    { onConflict: "kod,para_birimi" },
   );
   if (yazmaHatasi) throw new Error("Taslaklar kaydedilemedi: " + yazmaHatasi.message);
 
@@ -173,7 +200,9 @@ async function fiyatlariYayimla__impl(formData: FormData) {
   const { data, error: okumaHatasi } = await supabase.from("platform_fiyat_listesi").select("*");
   if (okumaHatasi) throw new Error("Fiyat listesi okunamadı: " + okumaHatasi.message);
   const kayitlar = (data ?? []).map(fiyatKaydi);
-  const gecerli = fiyatlariBirlestir(kayitlar.filter((k) => k.yayimlandi_at).map((k) => ({ kod: k.kod, aylikKurus: k.aylik_kurus })));
+  const gecerli = cokParaliBirlestir(
+    kayitlar.filter((k) => k.yayimlandi_at).map((k): CokParaliSatir => ({ kod: k.kod, paraBirimi: k.para_birimi, aylikKurus: k.aylik_kurus })),
+  );
   const degisiklikler = bekleyenDegisiklikler(kayitlar, gecerli);
   if (!degisiklikler.length) throw new Error("Yayımlanacak taslak yok.");
 
