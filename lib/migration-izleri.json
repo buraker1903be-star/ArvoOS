@@ -424,18 +424,6 @@
         "ad": "private.arvo_fiyat_gecmisi_yaz"
       },
       {
-        "tur": "islev",
-        "ad": "public.platform_fiyat_kapsam_imzasi"
-      },
-      {
-        "tur": "islev",
-        "ad": "private.fiyat_kapsam_cozumle"
-      },
-      {
-        "tur": "islev",
-        "ad": "private.fiyat_kapsam_yayimla"
-      },
-      {
         "tur": "sutun",
         "tablo": "public.platform_fiyat_listesi",
         "sutun": "para_birimi"
@@ -463,6 +451,44 @@
         "tur": "sutun",
         "tablo": "public.organization_product_licenses",
         "sutun": "para_birimi"
+      }
+    ]
+  },
+  {
+    "migration": "20261128122145_fiyat_para_birimi_anahtari",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.platform_fiyat_kapsam_imzasi"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.fiyat_kapsam_cozumle"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.fiyat_kapsam_yayimla"
+      }
+    ]
+  },
+  {
+    "migration": "20261128122230_odeme_para_birimi_dogrulamasi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.para_birimi_coz"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.arvo_activate_license_period"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.arvo_activate_product_period"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.review_bank_transfer_payment"
       }
     ]
   }

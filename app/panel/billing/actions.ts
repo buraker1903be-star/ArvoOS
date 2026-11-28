@@ -62,6 +62,35 @@ async function submitBankTransferPayment__impl(formData: FormData) {
     throw new Error("Seçilen banka hesabının para birimi tanımlı değil; bu hesapla ödeme bildirimi alınamıyor.");
   }
 
+  /*
+    BİLDİRİM ASIL ÖDEME İSTEĞİNE BAĞLI (28.11.2026).
+
+    Aboneliğin para birimi lisans satırında sabitlenmiş durumda
+    (organization_licenses / organization_product_licenses →
+    para_birimi, 20261128120350). Müşteri USD abonelik için TL hesabı
+    seçerse bildirim KAYDEDİLMİYOR — ne satır açılıyor ne dekont
+    yükleniyor. Eskiden böyle bir denetim yoktu: her bildirim TRY
+    yazılıyor ve onay ekranı 850 USD'yi 850 TL ile karşılaştırıyordu.
+
+    Lisans satırı yoksa (ilk satın alma) beklenen birim yok sayılıyor:
+    o durumda hesabın birimi bildirimin birimi olur ve onay aşaması
+    kararı kurucuya bırakır.
+  */
+  const lisansSorgusu = product === "arvoos"
+    ? supabase.from("organization_licenses").select("para_birimi").eq("organization_id", organization.id).maybeSingle()
+    : supabase.from("organization_product_licenses").select("para_birimi").eq("organization_id", organization.id).eq("product", product).maybeSingle();
+  const { data: lisans, error: lisansHatasi } = await lisansSorgusu;
+  /* Okunamayan lisans "fark yok" demek değil (AGENTS.md: engelin
+     sorgusu hata yutmaz). */
+  if (lisansHatasi) throw new Error(`Abonelik para birimi okunamadı: ${lisansHatasi.message}`);
+  const beklenenBirim = paraBirimiCoz((lisans as { para_birimi?: string | null } | null)?.para_birimi);
+  if (beklenenBirim && beklenenBirim !== paraBirimi) {
+    throw new Error(
+      `Bu aboneliğin para birimi ${beklenenBirim}; seçilen banka hesabı ${paraBirimi}. ` +
+      `${beklenenBirim} hesabını seçin — bildirim kaydedilmedi.`,
+    );
+  }
+
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error("Oturum doğrulanamadı.");
 

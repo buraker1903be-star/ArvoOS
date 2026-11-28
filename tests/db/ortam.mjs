@@ -102,6 +102,8 @@ export const BEKLEYEN_MIGRATIONLAR = [
   "20261127191104_fiyat_yayim_onaylanan_satirlar.sql",
   "20261128114027_fiyat_listesi_para_birimi.sql",
   "20261128120350_lisans_para_birimi_ve_usd_anahtari.sql",
+  "20261128122145_fiyat_para_birimi_anahtari.sql",
+  "20261128122230_odeme_para_birimi_dogrulamasi.sql",
 ];
 
 /*

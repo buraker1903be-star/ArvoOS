@@ -34,6 +34,7 @@ const MIGRATIONLAR = [
     düşüyor. 20261128114027 ikisinin de son hâlini kuruyor.
   */
   "20261128114027_fiyat_listesi_para_birimi.sql",
+  "20261128122145_fiyat_para_birimi_anahtari.sql",
 ];
 
 const ARVO = "00000000-0000-4000-8000-00000000d101";
