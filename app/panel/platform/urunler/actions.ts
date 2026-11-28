@@ -8,7 +8,7 @@ import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
 import { ROUTES } from "@/lib/site/routes";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
-import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
+import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, kapsamImzasi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
 
 /*
   Fiyat taslağı ve yayımlama.
@@ -177,6 +177,26 @@ async function fiyatlariYayimla__impl(formData: FormData) {
   const degisiklikler = bekleyenDegisiklikler(kayitlar, gecerli);
   if (!degisiklikler.length) throw new Error("Yayımlanacak taslak yok.");
 
+  /*
+    ÖNİZLEMEDEN SONRA KAPSAM DEĞİŞTİYSE YAYIMLAMA (27.11.2026 ara
+    kontrolü). Yayım bekleyen BÜTÜN taslakları alıyor; onayla
+    gönderim arasında yeni bir taslak eklenirse kurucu GÖRMEDİĞİ bir
+    değişikliği yayımlamış oluyordu. Önizleme gördüğü kümenin
+    imzasını taşıyor (lib/fiyat-dogrulama → kapsamImzasi); burada
+    taze listeden yeniden hesaplanıp karşılaştırılıyor.
+
+    İmza YOKSA da geçilmiyor: eski bir sekmeden ya da doğrudan
+    çağrılan bir istek, onayı hiç almamış demektir.
+  */
+  const beklenenKapsam = kapsamImzasi(degisiklikler);
+  const gelenKapsam = String(formData.get("kapsam") ?? "");
+  if (gelenKapsam !== beklenenKapsam) {
+    throw new Error(
+      "Taslak listesi önizlemeden sonra değişti; yayımlanmadı. " +
+      "Ekranı yenileyip etkilenen ürünleri yeniden gözden geçirin.",
+    );
+  }
+
   const { hatalar, uyarilar } = fiyatDenetimi(yayimSonrasi(gecerli, degisiklikler), degisiklikler);
   if (hatalar.length) throw new Error("Yayımlanmadı: " + hatalar.join(" "));
   // Uyarılar önizlemede gösteriliyor; kurucu kutuyu işaretlemeden geçmiyor.
@@ -184,7 +204,15 @@ async function fiyatlariYayimla__impl(formData: FormData) {
     throw new Error("Önizlemedeki uyarıları okuyup onay kutusunu işaretleyin.");
   }
 
-  const { error } = await supabase.rpc("platform_fiyatlari_yayimla");
+  /*
+    İMZA VERİTABANINA DA GİDİYOR. Buradaki karşılaştırma kullanıcıya
+    anlaşılır bir mesaj veriyor ama tek başına YETMİYOR: okuma ile
+    RPC arasında da bir aralık var ve o aralıkta eklenen bir taslak
+    yine görülmeden yayımlanırdı. İşlev satırları kilitleyip imzayı
+    kendi içinde yeniden hesaplıyor (20261127182525), yani kontrol
+    ile yazma aynı işlemde.
+  */
+  const { error } = await supabase.rpc("platform_fiyatlari_yayimla", { p_kapsam: beklenenKapsam });
   if (error) throw new Error("Yayımlanamadı: " + error.message);
   fiyatYuzeyleriniTazele();
 }

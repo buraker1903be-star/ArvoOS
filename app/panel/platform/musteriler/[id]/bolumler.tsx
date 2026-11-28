@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { productName } from "@/lib/products";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
+import { farkMetinleri, havaleUyariBasligi } from "@/lib/abonelik-tutari";
 import { KKart, KNot } from "../../konsol-ui";
 import { MobilSatir } from "../../../crm/table-cells";
 import { ODEME_DURUMU, PAKET_ADI, para, tarih, tarihSaat } from "../../bicim";
@@ -126,10 +127,10 @@ export async function OdemeBolumu({ supabase, odemeler, kurumAdi, urunler, grup 
           </dl>
           {o.customer_note ? <div className="talep-not"><p className="plt-quote">“{o.customer_note}”</p></div> : null}
           {denetim?.farklar.length ? (
-            <KNot ton="tehlike"><b>Beklenenle uyuşmuyor.</b>{denetim.farklar.map((f) => <span key={f}><br />{f}</span>)}</KNot>
+            <KNot ton="tehlike"><b>{havaleUyariBasligi(denetim.farklar)}</b>{denetim.farklar.map((f) => <span key={f.metin}><br />{f.metin}</span>)}</KNot>
           ) : null}
           <div className="talep-not">
-            <KararFormu paymentId={o.id} kurumAdi={kurumAdi} tutar={tutar} farklar={denetim?.farklar ?? []} kaydet={reviewBankTransferPayment} />
+            <KararFormu paymentId={o.id} kurumAdi={kurumAdi} tutar={tutar} farklar={farkMetinleri(denetim?.farklar ?? [])} kaydet={reviewBankTransferPayment} />
           </div>
         </KKart>
       );

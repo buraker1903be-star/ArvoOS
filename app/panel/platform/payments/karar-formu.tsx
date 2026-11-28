@@ -89,7 +89,22 @@ export function KararFormu({
     });
   };
 
+  /*
+    ONAY PENCERESİ FORMUN DIŞINDA (28.11.2026).
+
+    Pencere karar formunun İÇİNDE çiziliyordu ve kendi `<form>`unu
+    taşıyor: iç içe form geçersiz HTML. React "cannot contain a
+    nested form" diye uyarıyor, tarayıcı iç formu düşürüyor ve
+    "Onayla"ya basınca karar gönderilmiyordu — panel hata durumuna
+    düşüyor, ödeme kararsız kalıyordu. Arayüzden tıklanana kadar
+    görünmedi: ekran doğru çiziliyor, düğme erişilebilir, yalnızca
+    İŞE YARAMIYORDU (28.11.2026 işlem kabulü).
+
+    Sözleşme onaylarındaki kart da pencereyi formun dışında
+    çiziyor; kalıp aynı.
+  */
   return (
+    <>
     <form className="panel-form kayit-formu" action={kaydet} ref={form}>
       <input type="hidden" name="payment_id" value={paymentId} />
       <input type="hidden" name="decision" ref={kararAlani} defaultValue="" />
@@ -110,11 +125,12 @@ export function KararFormu({
         <button className="panel-primary" type="button" onClick={() => gonder("approved")}>Ödemeyi onayla</button>
         </span>
       </div>
-      <OnayPenceresi
-        istek={onay?.istek ?? null}
-        onIptal={() => setOnay(null)}
-        onOnay={() => onay?.uygula()}
-      />
     </form>
+    <OnayPenceresi
+      istek={onay?.istek ?? null}
+      onIptal={() => setOnay(null)}
+      onOnay={() => onay?.uygula()}
+    />
+    </>
   );
 }

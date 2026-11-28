@@ -7,8 +7,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { productName } from "@/lib/products";
 import { basHarfleri, para, tarih } from "../bicim";
 import { IstekKarti, type BekleyenIstek, type Kurum } from "./istek-karti";
-import { KKart } from "../konsol-ui";
+import { KNot } from "../konsol-ui";
 import { MobilSatir } from "../../crm/table-cells";
+import { SatirTiklama } from "../../crm/satir-tiklama";
+import { KonsolListeKaydirma } from "../konsol-liste-kaydirma";
+import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos } from "../konsol-liste";
+import { kaydirmaAnahtari, listeAdresi } from "@/lib/konsol/liste-secimi";
+import "../konsol-liste.css";
 // İstek kartlarının düzeni (.istek-listesi, .istek-karti) platform.css'te.
 import "../platform.css";
 // Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
@@ -52,7 +57,9 @@ type IstekSatiri = {
   reviewed_at: string | null;
 };
 
-export default async function SozlesmelerPage() {
+export default async function SozlesmelerPage({ searchParams }: {
+  searchParams: Promise<{ secili?: string }>;
+}) {
   const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "finans");
@@ -91,6 +98,10 @@ export default async function SozlesmelerPage() {
 
   const bekleyenler = (bekleyenSatirlar ?? []) as IstekSatiri[];
   const sonuclananlar = (gecmisSatirlar ?? []) as IstekSatiri[];
+  const { secili } = await searchParams;
+  const seciliId = secili?.trim() || null;
+  const sozlesmeAdresi = (degisiklik: Record<string, string | null>) =>
+    listeAdresi("/panel/platform/sozlesmeler", { secili: seciliId }, degisiklik);
   // Sayımlar bütün kayıtlardan; liste kısa kalıyor, sayı kısalmıyor.
   const tumDurumlar = ((sayimlar ?? []) as { status: string }[]).map((satir) => satir.status);
   const onaylananSayisi = tumDurumlar.filter((durum) => durum === "approved").length;
@@ -132,7 +143,21 @@ export default async function SozlesmelerPage() {
     karar formu bir tablo satırına sığmıyor); sonuçlananlar iOS satırı
     yerine Finans'ın öteki ekranlarıyla aynı hizalı tablo.
   */
-  return <main className="plt talep cari ekip finans-sayfa">
+  /*
+    LİSTE – SEÇİLİ İSTEK (27.11.2026). Bekleyen istekler bir kart
+    yığınıydı ve sonuçlananlar ayrı bir tablodaydı; kurucu "hangi
+    istek" sorusunu iki ayrı yerde arıyordu. Onaylı tasarımda ikisi
+    TEK liste: solda bütün istekler (bekleyenler önce), sağda seçili
+    isteğin kararı. Karar formu (kiracı seçimi + ret sebebi)
+    DEĞİŞMEDİ — aynı bileşen, aynı sunucu işlemi.
+  */
+  const kalemler = [
+    ...bekleyenler.map((satir) => ({ satir, bekliyor: true })),
+    ...sonuclananlar.map((satir) => ({ satir, bekliyor: false })),
+  ];
+  const seciliKalem = seciliId ? kalemler.find((k) => k.satir.id === seciliId) ?? null : null;
+
+  return <main className="plt talep cari ekip finans-sayfa liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker"><Link href="/panel/platform/billing">FİNANS · ABONELİKLER</Link></small>
@@ -154,51 +179,94 @@ export default async function SozlesmelerPage() {
       </dl>
     </nav>
 
-    {bekleyenler.length ? (
-      <div className="istek-listesi">
-        {bekleyenler.map((satir) => <IstekKarti key={satir.id} istek={bekleyen(satir)} kurumlar={kurumlar} />)}
-      </div>
-    ) : (
-      <KKart baslik="Onay kuyruğu">
-        <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>Onay bekleyen sözleşme yok</h2><p>ArvoOS kurumunda bir sözleşme imzalandığında burada görünür.</p></div>
-      </KKart>
-    )}
-
-    {sonuclananlar.length ? (
-      <section className="panel-card talep-bilgi" id="gecmis" aria-label="Sonuçlanan istekler">
-        <header className="phr-bas fn-alt-bas">
-          <h2>Sonuçlanan istekler <span className="pu-sayi">{sonuclananlar.length}</span></h2>
-          <small>Son 20 karar. Kararlar geri alınamaz: onay modülleri açar, ret imzalı bir sözleşmeyi reddeder.</small>
-        </header>
-        {/* Satırın gidecek bir sayfası yok: ok (chevron) çizilmiyor. */}
-        <div className="talep-tablo">
-          <table className="crm-data-table" data-cols="fn-sozlesme">
-            <thead><tr><th>Müşteri</th><th>Sözleşme</th><th className="crm-col-date">Karar</th><th className="crm-col-amount">Tutar</th><th>Durum</th></tr></thead>
-            <tbody>
-              {sonuclananlar.map((satir) => {
-                const onay = satir.status === "approved";
-                const karar = { etiket: onay ? "Onaylandı" : "Reddedildi", ton: onay ? "success" : "danger" };
-                const ad = satir.customer_name ?? "Müşteri";
-                return (
-                  <tr key={satir.id} className={onay ? undefined : "is-pasif"}>
-                    <td data-label="Müşteri">
-                      <span className="ek-kisi">
-                        <span className="ek-avatar" aria-hidden="true">{basHarfleri(ad)}</span>
-                        <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span>{satir.review_note ? <span className="crm-table-sub" title={satir.review_note}>{satir.review_note}</span> : null}</span>
-                      </span>
-                    </td>
-                    <td data-label="Sözleşme"><span className="crm-table-title plt-mono">{satir.contract_no ?? "—"}</span></td>
-                    <td className="crm-col-date" data-label="Karar">{tarih(satir.reviewed_at)}</td>
-                    <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{satir.amount ? para(Number(satir.amount), satir.currency) : "—"}</span></td>
-                    <td data-label="Durum"><span className="status-pill" data-tone={karar.ton}>{karar.etiket}</span></td>
-                    <MobilSatir baslik={ad} durum={karar} alt={[satir.contract_no, satir.amount ? para(Number(satir.amount), satir.currency) : null, tarih(satir.reviewed_at), satir.review_note]} />
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+    <div className="kl-duzen" data-secim={seciliKalem ? "var" : "yok"}>
+      <section className="kl-liste" aria-label="Abonelik istekleri">
+        <KonsolListeKaydirma anahtar={kaydirmaAnahtari("/panel/platform/sozlesmeler", {})} adres={sozlesmeAdresi({})} />
+        <div className="kl-liste-govde">
+          {kalemler.length ? (
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="fn-sozlesme">
+                <thead><tr><th>Müşteri</th><th>Sözleşme</th><th className="crm-col-amount">Tutar</th><th>Durum</th></tr></thead>
+                <tbody>
+                  {kalemler.map(({ satir, bekliyor }) => {
+                    const ad = satir.customer_name ?? "Müşteri";
+                    const onay = satir.status === "approved";
+                    const durum = bekliyor
+                      ? { etiket: "Onay bekliyor", ton: "gold" as const }
+                      : { etiket: onay ? "Onaylandı" : "Reddedildi", ton: onay ? ("success" as const) : ("danger" as const) };
+                    const href = sozlesmeAdresi({ secili: satir.id });
+                    return (
+                      <tr key={satir.id} className={satir.id === seciliId ? "is-secili" : bekliyor ? undefined : "is-pasif"}>
+                        <td data-label="Müşteri">
+                          <Link className="crm-row-link ek-kisi" href={href} aria-current={satir.id === seciliId ? "true" : undefined}>
+                            <span className="ek-avatar" aria-hidden="true">{basHarfleri(ad)}</span>
+                            <span className="ek-kisi-metin">
+                              <span className="crm-table-title" title={ad}>{ad}</span>
+                              <span className="crm-table-sub">{bekliyor ? tarih(satir.created_at) : `karar ${tarih(satir.reviewed_at)}`}</span>
+                            </span>
+                          </Link>
+                        </td>
+                        <td data-label="Sözleşme"><span className="crm-table-title plt-mono">{satir.contract_no ?? "—"}</span></td>
+                        <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{satir.amount ? para(Number(satir.amount), satir.currency) : "—"}</span></td>
+                        <td data-label="Durum"><span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span></td>
+                        <MobilSatir href={href} baslik={ad} durum={durum} alt={[satir.contract_no, satir.amount ? para(Number(satir.amount), satir.currency) : null, bekliyor ? tarih(satir.created_at) : tarih(satir.reviewed_at)]} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SatirTiklama />
+            </div>
+          ) : (
+            <div className="crm-empty-state talep-bos-kutu ek-bos">
+              <h2>Abonelik isteği yok</h2>
+              <p>ArvoOS kurumunda bir sözleşme imzalandığında burada görünür.</p>
+            </div>
+          )}
         </div>
       </section>
-    ) : null}
+
+      <aside className="kl-panel" aria-label={seciliKalem ? "Seçili istek" : "İstek"}>
+        {seciliKalem ? (
+          <>
+            <Link className="kl-geri" href={sozlesmeAdresi({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+            {seciliKalem.bekliyor ? (
+              /* Karar formu DEĞİŞMEDİ: kiracı seçimi, modül listesi,
+                 onay penceresi ve ret sebebi aynı bileşende. */
+              <IstekKarti istek={bekleyen(seciliKalem.satir)} kurumlar={kurumlar} />
+            ) : (
+              <>
+                <KonsolPanelBas
+                  baslik={seciliKalem.satir.customer_name ?? "Müşteri"}
+                  durum={{
+                    etiket: seciliKalem.satir.status === "approved" ? "Onaylandı" : "Reddedildi",
+                    ton: seciliKalem.satir.status === "approved" ? "success" : "danger",
+                  }}
+                  kapatAdresi={sozlesmeAdresi({ secili: null })}
+                />
+                <KonsolPanelAlanlar
+                  alanlar={[
+                    { ad: "Sözleşme", deger: seciliKalem.satir.contract_no ?? "—" },
+                    { ad: "Tutar", deger: seciliKalem.satir.amount ? para(Number(seciliKalem.satir.amount), seciliKalem.satir.currency) : "—" },
+                    { ad: "Karar", deger: tarih(seciliKalem.satir.reviewed_at) },
+                    ...(seciliKalem.satir.review_note ? [{ ad: "Not", deger: seciliKalem.satir.review_note }] : []),
+                  ]}
+                />
+                {/* Kararlar geri alınamaz: onay modülleri açar, ret
+                    imzalı bir sözleşmeyi reddeder. */}
+                <KNot>Bu karar geri alınamaz. Yeni bir karar için sözleşmenin yeniden imzalanması gerekiyor.</KNot>
+              </>
+            )}
+          </>
+        ) : (
+          <KonsolPanelBos
+            baslik={bekleyenler.length ? "İstek seçilmedi" : "Onay bekleyen istek yok"}
+            aciklama={bekleyenler.length
+              ? "Soldaki listeden bir istek seçin; kiracı seçimi ve karar formu burada açılır."
+              : "ArvoOS kurumunda bir sözleşme imzalandığında isteği burada karara bağlarsınız."}
+          />
+        )}
+      </aside>
+    </div>
   </main>;
 }

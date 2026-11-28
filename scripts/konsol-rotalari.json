@@ -1,0 +1,214 @@
+[
+  {
+    "ad": "01-ana",
+    "yol": "/panel",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "02-platform-yonlendirme",
+    "yol": "/panel/platform",
+    "w": 1440,
+    "h": 900,
+    "hedef": "/panel/platform/musteriler",
+    "icerik": "Müşteriler"
+  },
+  {
+    "ad": "03-musteriler",
+    "yol": "/panel/platform/musteriler",
+    "w": 1440,
+    "h": 900
+  },
+  {
+    "ad": "04-musteri-karti",
+    "yol": "/panel/platform/musteriler/11111111-1111-4111-8111-111111111111",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "05-kullanicilar",
+    "yol": "/panel/platform/kullanicilar",
+    "w": 1440,
+    "h": 900
+  },
+  {
+    "ad": "06-subscribers",
+    "yol": "/panel/platform/subscribers",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "07-duyuru",
+    "yol": "/panel/platform/duyuru",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "08-rapor",
+    "yol": "/panel/platform/rapor",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "09-tahsilat",
+    "yol": "/panel/platform/tahsilat",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "10-odeme-onaylari",
+    "yol": "/panel/platform/payments",
+    "w": 1440,
+    "h": 900
+  },
+  {
+    "ad": "11-billing",
+    "yol": "/panel/platform/billing",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "12-yenilemeler",
+    "yol": "/panel/platform/yenilemeler",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true,
+    "hedef": "/panel/platform/billing?gorunum=takvim",
+    "icerik": "Abonelik|Yenileme|takvim"
+  },
+  {
+    "ad": "13-sozlesmeler",
+    "yol": "/panel/platform/sozlesmeler",
+    "w": 1440,
+    "h": 900
+  },
+  {
+    "ad": "14-destek",
+    "yol": "/panel/platform/destek",
+    "w": 1440,
+    "h": 900
+  },
+  {
+    "ad": "15-gorusme",
+    "yol": "/panel/platform/destek/aaaaaaa1-0000-4000-8000-000000000001",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "16-hazir-yanitlar",
+    "yol": "/panel/platform/destek/hazir",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "17-urunler",
+    "yol": "/panel/platform/urunler",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "18-modul-matrisi",
+    "yol": "/panel/platform/urunler?gorunum=moduller",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "19-urun-detayi",
+    "yol": "/panel/platform/urunler/arvolab",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "20-moduller-eski",
+    "yol": "/panel/platform/moduller",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true,
+    "hedef": "/panel/platform/urunler?gorunum=moduller",
+    "icerik": "Modül"
+  },
+  {
+    "ad": "21-ek-hizmet-fiyatlari",
+    "yol": "/panel/platform/fiyatlar?urun=ek",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "22-fiyat-karsilastirma",
+    "yol": "/panel/platform/fiyatlar?gorunum=karsilastirma",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "23-fiyatlar-eski",
+    "yol": "/panel/platform/fiyatlar",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true,
+    "hedef": "/panel/platform/urunler",
+    "icerik": "Ürünler"
+  },
+  {
+    "ad": "24-saglik",
+    "yol": "/panel/platform/saglik",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "25-zamanli-is",
+    "yol": "/panel/platform/saglik/is",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "26-kurulumlar",
+    "yol": "/panel/platform/kurulumlar",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "27-ayarlar",
+    "yol": "/panel/platform/ayarlar",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "28-arama",
+    "yol": "/panel/platform/ara?q=akademi",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "29-bildirimler",
+    "yol": "/panel/notifications",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  },
+  {
+    "ad": "30-kilavuz",
+    "yol": "/panel/kilavuz",
+    "w": 1440,
+    "h": 900,
+    "tamSayfa": true
+  }
+]

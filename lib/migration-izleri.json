@@ -385,5 +385,35 @@
         "sutun": "ozel_maddeler"
       }
     ]
+  },
+  {
+    "migration": "20261127182525_fiyat_yayim_kapsam_kilidi",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "public.platform_fiyat_kapsam_imzasi"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.platform_fiyatlari_yayimla"
+      }
+    ]
+  },
+  {
+    "migration": "20261127191104_fiyat_yayim_onaylanan_satirlar",
+    "izler": [
+      {
+        "tur": "islev",
+        "ad": "private.fiyat_kapsam_cozumle"
+      },
+      {
+        "tur": "islev",
+        "ad": "private.fiyat_kapsam_yayimla"
+      },
+      {
+        "tur": "islev",
+        "ad": "public.platform_fiyatlari_yayimla"
+      }
+    ]
   }
 ]

@@ -9,6 +9,10 @@ import { kisilereTopla, kisininRolu, rolAdi, type Kisi } from "./kisiler";
 import { KNot } from "../konsol-ui";
 import { basHarfleri, sayi, tarih, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
+import { KonsolListeKaydirma } from "../konsol-liste-kaydirma";
+import { KonsolPanelAlanlar, KonsolPanelBas } from "../konsol-liste";
+import { kaydirmaAnahtari, listeAdresi } from "@/lib/konsol/liste-secimi";
+import "../konsol-liste.css";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
@@ -63,14 +67,15 @@ const davetleriIsaretle = (davetler: Davet[]) => {
 };
 
 export default async function KullanicilarPage({ searchParams }: {
-  searchParams: Promise<{ evre?: string; ara?: string }>;
+  searchParams: Promise<{ evre?: string; ara?: string; secili?: string }>;
 }) {
   const { isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "musteriler");
   const admin = createAdminClient();
 
-  const { evre, ara } = await searchParams;
+  const { evre, ara, secili: seciliParam } = await searchParams;
+  const seciliKimlik = seciliParam?.trim() || null;
   const secili: Evre = EVRELER.some((e) => e.kod === evre) ? (evre as Evre) : "aktif";
   const aranan = (ara ?? "").trim().slice(0, 80);
 
@@ -107,8 +112,18 @@ export default async function KullanicilarPage({ searchParams }: {
     : liste;
 
   const gosterilen = secili === "aktif" ? suz(aktifler) : secili === "pasif" ? suz(pasifler) : [];
+  /*
+    Seçili kişi BÜTÜN kişilerden çözülüyor, gösterilen listeden değil:
+    paylaşılan bir adres başka bir evreden gelebilir. Listede yoksa
+    panel bunu yazıyor — sessizce boşalmıyor.
+  */
+  const seciliKisi = seciliKimlik ? kisiler.find((k) => k.kimlik === seciliKimlik) ?? null : null;
+  const listedeki = Boolean(seciliKisi && gosterilen.some((k) => k.kimlik === seciliKisi.kimlik));
   const sayim: Record<Evre, number> = { aktif: aktifler.length, pasif: pasifler.length, davet: davetler.length };
-  const adres = (kod: Evre) => `/panel/platform/kullanicilar?evre=${kod}${aranan ? `&ara=${encodeURIComponent(aranan)}` : ""}`;
+  /* Seçim adresin parçası (öteki liste ekranlarıyla aynı kural):
+     paylaşılabilir, yenilemeye dayanıklı, geri/ileri çalışıyor. */
+  const adres = (kod: Evre, secim?: string | null) =>
+    listeAdresi("/panel/platform/kullanicilar", { evre: kod, ara: aranan, secili: secim === undefined ? seciliKimlik : secim });
 
   /* Sağ kartın dağılımları zaten okunmuş kişilerden sayılıyor; yeni sorgu
      yok. Arama ve evre süzgecinden bağımsız: kart her zaman bütün
@@ -169,8 +184,13 @@ export default async function KullanicilarPage({ searchParams }: {
       </dl>
     </nav>
 
-    <div className="talep-izgara personel-iki ekip-izgara">
-      <section className="panel-card talep-bilgi" aria-label={EVRELER.find((e) => e.kod === secili)!.ad}>
+    {/*
+      LİSTE – SEÇİLİ KİŞİ (27.11.2026). Sağ sütun istatistik kartıydı;
+      onaylı tasarımda seçili kaydın paneli. Seçim yokken kart hâlâ
+      orada: boş bir kabuk yerine ekranın en çok sorulan sayıları.
+    */}
+    <div className="kl-duzen" data-secim={seciliKisi ? "var" : "yok"}>
+      <section className="kl-liste" aria-label={EVRELER.find((e) => e.kod === secili)!.ad}>
         <div className="ekip-suzgec talep-suzgec ek-arac">
           <nav className="ek-segment" aria-label="Evre">
             {EVRELER.map((e) => (
@@ -196,6 +216,8 @@ export default async function KullanicilarPage({ searchParams }: {
           </KNot>
         ) : null}
 
+        <KonsolListeKaydirma anahtar={kaydirmaAnahtari("/panel/platform/kullanicilar", { evre: secili, ara: aranan })} adres={adres(secili)} />
+        <div className="kl-liste-govde">
         {secili === "davet" ? (
           admin ? (
             davetOkumasi.okunamadi ? (
@@ -249,9 +271,10 @@ export default async function KullanicilarPage({ searchParams }: {
                   const rol = kisininRolu(kisi);
                   const durum = kisi.acik ? { etiket: "Aktif", ton: "success" } : { etiket: kisi.sebep ?? "Erişim kapalı", ton: "danger" };
                   const alt = kisiYazisi(kisi);
-                  const kisiAdresi = `/panel/platform/kullanicilar/${kisi.kimlik}`;
+                  /* Satır SEÇİYOR; tam kart panelden bir tık uzakta. */
+                  const kisiAdresi = adres(secili, kisi.kimlik);
                   return (
-                    <tr key={kisi.anahtar} className={kisi.acik ? undefined : "is-pasif"}>
+                    <tr key={kisi.anahtar} className={[kisi.kimlik === seciliKimlik ? "is-secili" : "", kisi.acik ? "" : "is-pasif"].filter(Boolean).join(" ") || undefined}>
                       <td data-label="Kişi">
                         <span className="ek-kisi">
                           <span className="ek-avatar" data-tur="bireysel" aria-hidden="true">{basHarfleri(kisi.ad)}</span>
@@ -288,10 +311,40 @@ export default async function KullanicilarPage({ searchParams }: {
             <SatirTiklama />
           </div>
         ) : bos(aranan ? `“${aranan}” ile eşleşen kullanıcı yok` : "Bu evrede kullanıcı yok", "Aramayı ya da evreyi değiştirip yeniden deneyin.")}
+        </div>
       </section>
 
-      {/* Sağ sütun aramadan ve evreden bağımsız: bütün kullanıcıları anlatır. */}
-      <div className="liste-sag">
+      <aside className="kl-panel" aria-label={seciliKisi ? `${seciliKisi.ad} önizlemesi` : "Kullanıcı istatistikleri"}>
+        {seciliKisi ? (
+          <>
+            <Link className="kl-geri" href={adres(secili, null)}><span aria-hidden="true">‹</span> Listeye dön</Link>
+            {!listedeki ? (
+              <KNot ton="uyari">
+                Bu kişi geçerli evrede ya da aramada görünmüyor.{" "}
+                <Link href={`/panel/platform/kullanicilar?evre=tumu&secili=${encodeURIComponent(seciliKisi.kimlik)}`}>Süzgeci temizle →</Link>
+              </KNot>
+            ) : null}
+            <KonsolPanelBas
+              baslik={seciliKisi.ad}
+              durum={seciliKisi.acik
+                ? { etiket: "Aktif", ton: "success" }
+                : { etiket: seciliKisi.sebep ?? "Erişim kapalı", ton: "danger" }}
+              kapatAdresi={adres(secili, null)}
+            />
+            <KonsolPanelAlanlar
+              alanlar={[
+                ...(seciliKisi.email ? [{ ad: "E-posta", deger: seciliKisi.email }] : []),
+                ...(seciliKisi.telefon ? [{ ad: "Telefon", deger: seciliKisi.telefon }] : []),
+                { ad: "Rol", deger: kisininRolu(seciliKisi) },
+                { ad: "Kurum", deger: seciliKisi.uyelikler.filter((u) => !u.bireysel).length || "—" },
+                { ad: "Tür", deger: seciliKisi.bireysel ? "Bireysel abone" : "Kurum kullanıcısı" },
+              ]}
+            />
+            <div className="kl-panel-eylem">
+              <Link className="panel-primary" href={`/panel/platform/kullanicilar/${seciliKisi.kimlik}`}>Kullanıcı kartını aç</Link>
+            </div>
+          </>
+        ) : (
         <TalepAkis kimlik="kullanici-sag" sinif="ek-sag" etiket="Kullanıcı istatistikleri" sekmeler={["İstatistikler"]}>
           <IstatistikKarti
             kapsam={`bütün kullanıcılar${!arvolabReachable || !kullanicilarTam ? " · liste eksik olabilir" : ""}`}
@@ -307,7 +360,8 @@ export default async function KullanicilarPage({ searchParams }: {
             ]}
           />
         </TalepAkis>
-      </div>
+        )}
+      </aside>
     </div>
   </main>;
 }

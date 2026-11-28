@@ -36,6 +36,21 @@ jobs:
       # tetikleyicilerle, müşterinin ve personelin rolleriyle koşar.
       - name: Veritabanı akış testleri
         run: npm run test:db
+      # PGlite TEK bağlantılı: iki oturum arasındaki kilitlenme ve anlık
+      # görüntü farkı orada ölçülemiyor. Fiyat yayımının kapsam kilidi
+      # tam olarak buna dayanıyor (28.11.2026), bu yüzden o senaryolar
+      # geçici bir gerçek PostgreSQL kümesinde iki bağımsız oturumla
+      # koşuyor. Küme bulunamazsa testler atlanır (çıkış 0) — "atlandı"
+      # çıktıda yazılı, "geçti" ile karışmıyor.
+      #
+      # Sunucu runner imajında YOK (yalnızca istemci olabiliyor):
+      # kurulmazsa testler "atlandı" deyip geçiyor ve eşzamanlılık
+      # hiç sınanmamış oluyor — 28.11.2026'da ilk koşuda tam bunu
+      # yaptı. Kurulum ~30 sn; küme testin kendisi kuruyor.
+      - name: PostgreSQL sunucusu
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql
+      - name: Eşzamanlılık testleri (gerçek PostgreSQL)
+        run: npm run test:pg
       # Yeni migration adı ve sürüm sırası (scripts/check-migrations.mjs).
       # Migration'lar SQL Editor'den elle uygulanıyor; sıralama hatası ancak
       # burada yakalanır.

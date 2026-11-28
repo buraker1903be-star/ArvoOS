@@ -1,0 +1,410 @@
+/*
+  KONSOLUN ORTAK LİSTE–PANEL DÜZENİ (27.11.2026, onaylı tasarım).
+
+  Solda gezinme (kabuk), ortada liste, sağda seçili kayıt. İki sütun
+  arasında İNCE DİKEY SINIR — kart içinde kart değil; onaylı
+  referansta paneli listeden ayıran tek şey o çizgi.
+
+  Renk ve boşluk token'dan (panel-tokens.css); ham renk yok.
+*/
+
+.kl-duzen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+  align-items: stretch;
+  min-height: 0;
+  /*
+    Kaydırma SÜTUNLARIN İÇİNDE. Sayfanın kendisi kaydırılamıyor
+    (html/body'de overflow-x:clip var, panel.css) ve iki sütun ayrı
+    boylarda: liste uzun, panel kısa olabiliyor. Tek kaydırıcı
+    olsaydı panel listenin boyunca uzayıp boş kalırdı.
+  */
+  height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+}
+
+.kl-liste,
+.kl-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/*
+  IZGARANIN İKİ GÖZÜ YALNIZCA LİSTE VE PANEL. Araya giren başka bir
+  çocuk (bir uyarı notu, bir boş durum) ilk gözü kapıyor ve liste
+  ikinci göze, panel alt satıra kayıyor: 27.11.2026'da Müşteriler'in
+  "Bireysel" sekmesinde iki sütun yer değiştirmiş görünüyordu. Doğrusu
+  notu sütunun İÇİNE yazmak; bu kural o hatayı bir daha düzen hatasına
+  çevirmiyor, tam genişlikte bir şerit yapıyor.
+*/
+.kl-duzen > :not(.kl-liste):not(.kl-panel) { grid-column: 1 / -1; }
+
+.kl-liste { padding-right: var(--sp-5); }
+.kl-liste-govde { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/*
+  PANELİN ÇOCUKLARI BÜZÜLMEZ. Panel bir flex sütun ve kendi içinde
+  kayıyor; `flex-shrink` açık kalınca içerik ekrana sığmadığında
+  satırlar eziliyordu: 27.11.2026'da telefonda sekme şeridi 40 px
+  yerine 1 PİKSELE indi — sekmeler DOM'daydı, ekranda ince bir çizgi
+  görünüyordu ve "sekmeler yok" sanılıyordu.
+*/
+.kl-panel > * { flex: none; }
+
+.kl-panel {
+  padding-left: var(--sp-5);
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/*
+  LİSTE-SAYFA KABUĞUNUN İÇİNDE: ARTAN ALANI DOLDURUR (27.11.2026).
+
+  `main.liste-sayfa` zaten ekran yüksekliğine sabit (os-shell.css) ve
+  başlık ile özet şeridi onun içinde yer tutuyor. kl-duzen kendi
+  100dvh yüksekliğini koruyunca iki sütunun ALT UCU ekranın dışına
+  taşıyordu; html/body'de taşma kırpılı olduğu için (panel.css) listenin
+  son satırlarına ve panelin alt kısmına hiç ulaşılamıyordu.
+*/
+/* Sınıf ÜÇ KEZ: os-shell'in `main.liste-sayfa>:not(.talep-izgara):not(.talep-bilgi)`
+   kuralı dört sınıf değerinde (`:not()` argümanı özgüllüğe sayılıyor) ve
+   `flex:0 0 auto` veriyor; iki sınıfla yazıldığında eşitlikte kalıp dosya
+   sırasına bağlı oluyordu. Aynı çözüm posta.css'te de var. */
+.os-root main.liste-sayfa > .kl-duzen.kl-duzen.kl-duzen { flex: 1 1 auto; height: auto; min-height: 0; }
+
+@media (max-width: 1200px) and (min-width: 861px) {
+  /* Bu aralıkta os-shell main'in yüksekliğini serbest bırakıyor;
+     kl-duzen `auto` kalırsa sütunlar sıfır boya iner. */
+  .os-root main.liste-sayfa > .kl-duzen.kl-duzen.kl-duzen {
+    height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--sp-6) - var(--os-dock-space));
+  }
+}
+
+/* ---------- Birincil araç satırı ---------- */
+/*
+  Tek satır: arama · tür sekmeleri · Filtreler · birincil eylem.
+  Dar ekranda sarıyor. Yükseklik tek: kontrollerin boyu panel
+  token'larından (--ctl-h), yoksa satır kademeleniyor.
+*/
+.kl-arac {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding-bottom: var(--sp-3);
+}
+.kl-arac-eylem { display: flex; align-items: center; gap: var(--sp-2); margin-left: auto; }
+/* Arama kutusu satırın esneyen parçası; en az 220 px kalıyor, altında
+   "Ad, e-posta, telefon ya da ürün" ipucu kırpılıyordu. */
+/*
+  Form `display: contents`: alanları doğrudan araç satırının flex
+  çocuğu oluyor, ama hepsi AYNI formda kalıyor (gönderim etkilenmez).
+  Form kendi kutusunu taşıdığında "Filtreler" açılır kutusu o dar
+  kutunun içinde dikey bir sütun olarak açılıyor, satırın solu boş
+  kalıyordu.
+*/
+.kl-arac .kl-arac-form { display: contents; }
+/* Arama büyüyor ama satırı yutmuyor: 360'ın üstünde birincil eylem
+   alt satıra düşüyordu. */
+.kl-arac input[type="search"] { flex: 1 1 240px; min-width: 180px; max-width: 360px; }
+
+.kl-filtre-dugme { display: inline-flex; align-items: center; gap: var(--sp-2); flex: none; }
+.kl-filtre-rozet {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--primary);
+  color: var(--primary-on);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+/*
+  Süzgeç gövdesi satırın ALTINDA, kaplama değil: kaplama listeyi
+  örtüyor ve açık bir süzgeçle liste aynı anda görülemiyordu. Açıkken
+  kutu tam satır oluyor; özet solda kalıyor, gövde altına iniyor.
+*/
+
+/* Gövde kendi satırında ve TAM GENİŞLİKTE; `hidden` gizliyor
+   (display:flex onu ezer, bu yüzden açıkça yazıldı). */
+.kl-filtre-govde[hidden] { display: none; }
+.kl-filtre-govde {
+  flex: 1 1 100%;
+  order: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+/* ---------- Etkin filtre çipleri ---------- */
+.kl-cipler { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding-bottom: var(--sp-3); }
+.kl-cip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ctl-h-sm);
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+.kl-cip:hover { border-color: var(--primary); }
+.kl-cip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.kl-cip-ad { color: var(--muted); }
+.kl-cip-x { color: var(--muted); font-size: var(--fs-base); line-height: 1; }
+.kl-cip-hepsi { color: var(--accent); font-size: var(--fs-sm); text-decoration: none; }
+.kl-cip-hepsi:hover { text-decoration: underline; }
+/* Ekran okuyucuya söylenen, görünmeyen metin. */
+.kl-gizli { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- Panel başlığı ---------- */
+.kl-panel-bas {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+}
+.kl-panel-bas-metin { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kl-panel-bas h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+/* Durum NOKTAYLA: renk tek başına bilgi taşımasın (renk körlüğü). */
+.kl-panel-durum { display: flex; align-items: center; gap: var(--sp-2); margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.kl-panel-durum::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.kl-panel-durum[data-tone="success"]::before { background: var(--success); }
+.kl-panel-durum[data-tone="warning"]::before { background: var(--warning); }
+.kl-panel-durum[data-tone="danger"]::before { background: var(--danger); }
+
+.kl-panel-kapat {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--ctl-h-sm);
+  height: var(--ctl-h-sm);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  text-decoration: none;
+}
+.kl-panel-kapat:hover { background: var(--surface-2); color: var(--ink); }
+.kl-panel-kapat:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ---------- Panel sekmeleri ---------- */
+/* Ürün detayındaki şeridin aynısı (urun-detay.css · urd-serit):
+   ince alt çizgi, seçilide kalın yazı + 2 px vurgu. Kaynak ArvoLab'ın
+   Analiz Merkezi şeridi. */
+.kl-panel-sekmeler {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--sp-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.kl-panel-sekmeler::-webkit-scrollbar { display: none; }
+.kl-panel-sekmeler > a {
+  position: relative;
+  padding: 0 14px var(--sp-3);
+  min-height: 40px;
+  display: inline-flex;
+  align-items: flex-end;
+  color: var(--muted);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.kl-panel-sekmeler > :first-child { padding-left: 0; }
+.kl-panel-sekmeler > a:hover { color: var(--ink); }
+.kl-panel-sekmeler > .is-active { color: var(--ink); font-weight: var(--fw-semibold); }
+.kl-panel-sekmeler > .is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--primary);
+}
+.kl-panel-sekmeler > a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+
+/* ---------- Alan–değer listesi ---------- */
+.kl-panel-alanlar { display: flex; flex-direction: column; gap: var(--sp-3); margin: 0; }
+.kl-panel-alanlar > div {
+  display: grid;
+  /* Etiket sütunu sabit: değerler alt alta hizalanır, göz tek
+     hatta iner. Dar panelde alt alta geçiyor (aşağıda). */
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: baseline;
+}
+.kl-panel-alanlar dt { color: var(--muted); font-size: var(--fs-sm); }
+.kl-panel-alanlar dd { margin: 0; color: var(--ink); font-size: var(--fs-base); overflow-wrap: anywhere; }
+
+/* ---------- Boş durum ---------- */
+.kl-panel-bos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  margin: auto 0;
+  padding: var(--sp-5) 0;
+}
+.kl-panel-bos-baslik { margin: 0; font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--ink); }
+.kl-panel-bos-aciklama { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
+.kl-panel-bos[data-tone="uyari"] .kl-panel-bos-baslik { color: var(--warning); }
+
+/* Masaüstünde "Listeye dön" yok: iki sütun yan yana, dönülecek yer yok. */
+.kl-geri { display: none; }
+
+/* ---------- Dar masaüstü ve tablet ---------- */
+@media (max-width: 1240px) {
+  /* Panel daralıyor ama hâlâ yan yana: 1024'te liste 520, panel 360
+     kalıyor ve ikisi de okunabiliyor. */
+  .kl-duzen { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); }
+  .kl-panel-alanlar > div { grid-template-columns: 120px minmax(0, 1fr); }
+}
+
+/* ---------- Telefon: tek sütun ---------- */
+@media (max-width: 860px) {
+  /*
+    İki sütunu 390 px'e sıkıştırmak ikisini de okunmaz yapıyordu.
+    Kayıt seçiliyken liste gizlenir, detay tam genişlikte açılır;
+    seçim yokken yalnızca liste görünür.
+  */
+  .kl-duzen {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)));
+    padding-bottom: var(--os-dock-space);
+    box-sizing: border-box;
+  }
+  /*
+    Telefonda os-shell main'in yüksekliğini serbest bırakıyor
+    (max-width:1200px) ve kl-duzen kendi 100dvh yüksekliğini alınca
+    başlık ile özet şeridi kadar AŞAĞI taşıyordu: 390x844'te listenin
+    son 406 pikseli ekranın dışında kalıyordu ve html/body'de taşma
+    kırpılı olduğu için oraya hiç ulaşılamıyordu. Kabuk yeniden ekran
+    yüksekliğine sabit, düzen ARTAN alanı dolduruyor.
+  */
+  .os-root main.liste-sayfa:has(> .kl-duzen) {
+    /* Üst çubuk ve kabuğun ÜST BOŞLUĞU (--sp-4) düşülüyor: ikisi de
+       main'in üstünde yer tutuyor, yoksa kabuk tam o kadar (16 px)
+       aşağı taşıyor. */
+    height: calc(100dvh - var(--os-ust-h, var(--os-bar-h)) - var(--sp-4));
+    min-height: 0;
+  }
+  .os-root main.liste-sayfa > .kl-duzen.kl-duzen.kl-duzen {
+    flex: 1 1 auto;
+    height: auto;
+    padding-bottom: var(--os-dock-space);
+  }
+  .kl-liste { padding-right: 0; }
+  .kl-panel { padding-left: 0; border-left: 0; }
+  .kl-duzen[data-secim="var"] .kl-liste { display: none; }
+  .kl-duzen[data-secim="yok"] .kl-panel { display: none; }
+
+  .kl-geri {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    align-self: flex-start;
+    min-height: var(--ctl-h-sm);
+    margin-bottom: var(--sp-2);
+    color: var(--accent);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    text-decoration: none;
+  }
+  .kl-geri:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+  /* Telefonda kapat düğmesi gizli: dönüş bağlantısı aynı işi yapıyor
+     ve iki geri yolu yan yana durmasın. */
+  .kl-panel-kapat { display: none; }
+  .kl-panel-alanlar > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/*
+  SEÇİLİ SATIR (27.11.2026, onaylı tasarım): hafif vurgu, solda ince
+  lacivert çizgi. Renk tek başına bilgi taşımasın diye satır ayrıca
+  aria-current="true" taşıyor — ekran okuyucu da hangisinin seçili
+  olduğunu söylüyor.
+*/
+.os-root .kl-liste .crm-data-table tbody tr.is-secili { background: var(--primary-soft); }
+.os-root .kl-liste .crm-data-table tbody tr.is-secili > td:first-child { box-shadow: inset 2px 0 0 var(--primary); }
+
+/* Panelin baskın eylemi en altta, kendi hattında. */
+.kl-panel-eylem { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line-soft); }
+
+/*
+  LİSTE ARAÇ ÇUBUĞU SOLDAN AKAR (27.11.2026). .ek-arac'ın varsayılanı
+  space-between (hr.css): arama kutusu solda, durum süzgeci listenin
+  öbür ucuna kaçıyordu ve ikisi bir arada okunmuyordu. Aynı tuzağa
+  Fiyatlar karşılaştırmasında da düşülmüştü; iki sınıf birden
+  yazılıyor çünkü tek sınıf aynı özgüllükte kaybediyor.
+*/
+/*
+  SÜZGEÇ SATIRI SÜTUNUN İÇİNDE KALIR. hr.css arama kutusunu
+  `.ek-arac>.talep-ara{flex:1 1 320px;justify-content:flex-end}` ile
+  yazıyor ve geniş ekranda `.suzgec-ray{display:contents}` (konsol-ui.css)
+  yüzünden seçiciler doğrudan onun çocuğu oluyor. Toplam genişlik 320'yi
+  aşınca `flex-end` TAŞMAYI SOLA atıyordu: 27.11.2026'da Müşteriler'de tür
+  sekmeleri ve arama kutusu sol gezinmenin altında kalıyor, seçiciler sağ
+  panelin üstüne taşıyordu — liste sütunu 632 px, satırın içeriği 1100 px.
+*/
+.os-root .kl-liste .ek-arac > .talep-ara {
+  flex: 1 1 100%;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.os-root .kl-liste .ek-arac > .talep-ara > * { min-width: 0; }
+
+.kl-liste > .ek-arac { justify-content: flex-start; gap: var(--sp-3); flex-wrap: wrap; padding-bottom: var(--sp-3); }
+.kl-liste > .ek-arac .urd-ara { flex: 1 1 220px; max-width: 320px; }
+
+/* Süzgecin dışında kalan seçili kayıt: panelin başında, uyarı tonunda. */
+.kl-suzgec-disi {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--warning-soft);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+}
+
+/*
+  TELEFONDA DETAY EKRANI SAHİPLENİR (27.11.2026). Kayıt seçiliyken
+  sayfa başlığı ve "+ Yeni müşteri" detayın ÜSTÜNDE kalıyordu: 390
+  px'te ekranın üçte biri listeye ait bir başlık ve listeye ait bir
+  eylemle doluydu, oysa kullanıcı bir kaydın detayına bakıyor.
+  Bağlam zaten "Listeye dön" ve kaydın adıyla veriliyor.
+*/
+@media (max-width: 860px) {
+  .os-root main:has(.kl-duzen[data-secim="var"]) > .talep-bas { display: none; }
+  /* Özet şeridi de gizleniyor: 390x844'te şerit tek başına 233 piksel
+     tutuyor ve seçili kaydın detayı ekranın alt üçte birine sıkışıyordu.
+     Şerit listenin özeti; kayıt açıkken bakılan şey kayıt. */
+  .os-root main:has(.kl-duzen[data-secim="var"]) > .kayit-serit { display: none; }
+}
+.kl-panel-durum[data-tone="info"]::before { background: var(--accent); }
+.kl-panel-durum[data-tone="gold"]::before { background: var(--warning); }

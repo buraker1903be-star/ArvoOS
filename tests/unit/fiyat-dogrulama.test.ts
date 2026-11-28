@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bekleyenDegisiklikler, fiyatDenetimi, yayimSonrasi, type FiyatKaydi } from "@/lib/fiyat-dogrulama";
+import { bekleyenDegisiklikler, fiyatDenetimi, yayimSonrasi, type FiyatKaydi , kapsamImzasi } from "@/lib/fiyat-dogrulama";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
 
 /* Fiyat yayımının önizlemesi ve denetimi (lib/fiyat-dogrulama.ts). */
@@ -62,4 +62,52 @@ test("taslak_bekliyor sütunu yoksa eski kural: yayındakinden farklı taslak be
   assert.equal(fiyatKaydi({ kod: "x", aylik_kurus: "100", taslak_kurus: "100", yayimlandi_at: "2026-10-14" }).taslak_bekliyor, false);
   // Sütun varsa o geçerli.
   assert.equal(fiyatKaydi({ kod: "x", aylik_kurus: 100, taslak_kurus: 200, yayimlandi_at: null, taslak_bekliyor: false }).taslak_bekliyor, false);
+});
+
+test("kapsam imzası: aynı küme farklı sırayla aynı imzayı verir", () => {
+  /* Önizlemedeki liste ile işlemdeki liste başka sırada gelebilir;
+     sıra bir karar farkı değil. */
+  const a = kapsamImzasi([{ kod: "arvolab-arastirmaci", yeni: 19_900 }, { kod: "arvoos-baslangic", yeni: 99_900 }]);
+  const b = kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 99_900 }, { kod: "arvolab-arastirmaci", yeni: 19_900 }]);
+  assert.equal(a, b);
+});
+
+test("kapsam imzası: tutar değişince imza da değişir", () => {
+  /* Aynı kod, başka rakam = başka karar. Onay eskiyse yayım
+     düşmeli. */
+  assert.notEqual(
+    kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 99_900 }]),
+    kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 109_900 }]),
+  );
+});
+
+test("kapsam imzası: listeye yeni bir basamak girince imza değişir", () => {
+  /* Onayla gönderim arasında başka bir sekmede taslak eklenirse
+     kurucu görmediği bir değişikliği yayımlıyordu. */
+  const once = kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 99_900 }]);
+  const sonra = kapsamImzasi([{ kod: "arvoos-baslangic", yeni: 99_900 }, { kod: "arvolab-arastirmaci", yeni: 19_900 }]);
+  assert.notEqual(once, sonra);
+});
+
+test("kapsam imzası: 'teklif' (null) ile 0 aynı şey değil", () => {
+  assert.notEqual(
+    kapsamImzasi([{ kod: "x", yeni: null }]),
+    kapsamImzasi([{ kod: "x", yeni: 0 }]),
+  );
+});
+
+test("yayım işlemi kapsam imzasını karşılaştırıyor", async () => {
+  /*
+    Kural sunucu işleminde; önizleme imzayı gizli alanda taşıyor.
+    Dosya bağını burada sabitliyoruz: imza karşılaştırması kalkarsa
+    (ya da alan adı değişirse) bu test düşer ve kuralın sessizce
+    kaybolması engellenir.
+  */
+  const { readFile } = await import("node:fs/promises");
+  const islem = await readFile(new URL("../../app/panel/platform/urunler/actions.ts", import.meta.url), "utf8");
+  assert.match(islem, /kapsamImzasi\(degisiklikler\)/);
+  assert.match(islem, /formData\.get\("kapsam"\)/);
+  assert.match(islem, /önizlemeden sonra değişti/i);
+  const onizleme = await readFile(new URL("../../app/panel/platform/fiyatlar/fiyat-yayim-onizlemesi.tsx", import.meta.url), "utf8");
+  assert.match(onizleme, /name="kapsam"/);
 });

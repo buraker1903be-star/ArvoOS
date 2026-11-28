@@ -5,9 +5,12 @@ import { getPanelContext } from "@/lib/panel-context";
 import { sayfaliSonuc } from "@/lib/rapor-okuma";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { KKart, KNot } from "../konsol-ui";
+import { KNot } from "../konsol-ui";
 import { basHarfleri, ODEME_DURUMU, PAKET_ADI, para, tarih, tarihSaat } from "../bicim";
 import { MobilSatir } from "../../crm/table-cells";
+import { KonsolPanelAlanlar, KonsolPanelBas, KonsolPanelBos } from "../konsol-liste";
+import { kaydirmaAnahtari, listeAdresi } from "@/lib/konsol/liste-secimi";
+import { KonsolListeKaydirma } from "../konsol-liste-kaydirma";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
@@ -15,6 +18,7 @@ import { enCok } from "@/lib/liste-istatistik";
 import { reviewBankTransferPayment } from "./actions";
 import { KararFormu } from "./karar-formu";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
+import { farkMetinleri, havaleUyariBasligi, type HavaleFarki } from "@/lib/abonelik-tutari";
 // plt-quote, plt-receipt, plt-mono, kiraci-baglanti hâlâ buradan.
 import "../platform.css";
 import "../../hr/hr.css";
@@ -38,7 +42,12 @@ import "../finans.css";
   küçük dağılım kartı), sayfa kendi boyunda kayıyor.
 */
 
-export default async function PaymentApprovalsPage() {
+export default async function PaymentApprovalsPage({ searchParams }: {
+  searchParams: Promise<{ secili?: string; suzgec?: string }>;
+}) {
+  const { secili: seciliParam, suzgec: suzgecParam } = await searchParams;
+  const seciliAnahtar = seciliParam?.trim() || null;
+  const suzgec = ["bekleyen", "karsiliksiz", "sonuclanan"].includes(suzgecParam ?? "") ? suzgecParam! : null;
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   konsolAlaniniAc(konsolKapsami, "finans");
@@ -124,13 +133,6 @@ export default async function PaymentApprovalsPage() {
   // tuzak-tamam: ödeme yolu dağılımı bilerek yalnızca gösterilen son 30 karardan; kart başlığı da "son 30 karar" diyor.
   const gecmisKartla = sonuclananlar.filter((payment) => payment.payment_method === "paytr").length;
 
-  const kisi = (ad: string, alt: string, href: string | null) => {
-    const ic = <>
-      <span className="ek-avatar" aria-hidden="true">{basHarfleri(ad)}</span>
-      <span className="ek-kisi-metin"><span className="crm-table-title" title={ad}>{ad}</span><span className="crm-table-sub">{alt}</span></span>
-    </>;
-    return href ? <Link className="crm-row-link ek-kisi" href={href}>{ic}</Link> : <span className="ek-kisi">{ic}</span>;
-  };
   /* tuzak-tamam: ürün dağılımı bilerek yalnızca gösterilen son 30 karardan; kartın kapsamı da "son 30 karar" diyor. */
   const urunDagilimi = enCok(sonuclananlar.map((payment) => productName(payment.product ?? "arvoos")), 5);
 
@@ -141,7 +143,106 @@ export default async function PaymentApprovalsPage() {
     KART kalıyor: karar formu bir tablo satırına sığmıyor ve dekontu
     incelerken bütün bilgiler bir arada durmalı.
   */
-  return <main className="plt talep cari ekip finans-sayfa">
+  /*
+    TEK LİSTE, ÜÇ KAYNAK (27.11.2026). Bekleyen bildirimler, PayTR'nin
+    işlenemeyen olayları ve sonuçlanan kararlar aynı listede; ayrımı
+    durum rozeti ve süzgeç yapıyor. Eskiden üç ayrı bölümdü ve
+    bugün yapılacak işi bulmak için ikisini geçmek gerekiyordu.
+
+    Anahtarlar ön ekli: olay ve bildirim id'leri çakışabilir.
+  */
+  const kurumAdiniAl = (p: (typeof incelenecekler)[number]) => {
+    const o = Array.isArray(p.organizations) ? p.organizations[0] : p.organizations;
+    return o?.name ?? "Kurum";
+  };
+  const bildirimKalemi = (payment: (typeof incelenecekler)[number], bekleyen: boolean) => {
+    const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
+    const account = Array.isArray(payment.platform_bank_accounts) ? payment.platform_bank_accounts[0] : payment.platform_bank_accounts;
+    const ad = kurumAdiniAl(payment);
+    const tutar = para(Number(payment.amount), payment.currency);
+    const beklenen = denetimler.get(payment.id)?.beklenen;
+    const farklar = denetimler.get(payment.id)?.farklar ?? [];
+    const d = bekleyen ? ODEME_DURUMU.pending : (ODEME_DURUMU[payment.status] ?? { ad: payment.status, ton: "neutral" as const });
+    return {
+      anahtar: `odeme:${payment.id}`,
+      ad,
+      alt: [organization?.slug ?? null, payment.payment_method === "paytr" ? "Kartla (PayTR)" : "Havale / EFT"].filter(Boolean).join(" · "),
+      tutar,
+      durum: d.ad,
+      ton: d.ton,
+      kurumId: payment.organization_id as string | null,
+      farklar,
+      not: payment.customer_note as string | null,
+      /* ONAYDAN ÖNCE GÖRÜNEN ALANLAR. Tutar ve para birimi birlikte:
+         kayıtlarda birden çok birim olabiliyor. */
+      alanlar: [
+        { ad: "Tutar", deger: tutar },
+        { ad: "Referans", deger: payment.reference_no ? <span className="plt-mono">{payment.reference_no}</span> : <em>Belirtilmedi</em> },
+        { ad: "Ürün", deger: productName(payment.product ?? "arvoos") },
+        { ad: "Paket", deger: PAKET_ADI[payment.plan_code] ?? payment.plan_code },
+        { ad: "Beklenen", deger: beklenen ? para(beklenen, payment.currency) : <em>ücret girilmemiş</em> },
+        { ad: "Ödeme yolu", deger: payment.payment_method === "paytr" ? "Kartla (PayTR)" : "Havale / EFT" },
+        ...(account?.bank_name ? [{ ad: "Banka", deger: account.bank_name }] : []),
+        { ad: "Bildirim", deger: tarihSaat(payment.created_at) },
+        ...(bekleyen ? [] : [{ ad: "Karar", deger: tarih(payment.reviewed_at ?? payment.created_at) }]),
+        ...(!bekleyen && payment.review_note ? [{ ad: "Karar notu", deger: payment.review_note }] : []),
+      ],
+      dekont: (
+        <p className="ek-alt">
+          <b>Dekont:</b>{" "}
+          {payment.payment_method === "paytr"
+            ? "Kartla (PayTR) ödendi; otomatik onaylandı"
+            : payment.receiptUrl
+            ? <a className="plt-receipt" href={payment.receiptUrl} target="_blank" rel="noreferrer">Dekontu görüntüle ↗</a>
+            : <em>Eklenmemiş: müşteri bildirimi dekontsuz gönderdi</em>}
+        </p>
+      ),
+      /* KARAR FORMU DEĞİŞMEDİ: aynı bileşen, aynı sunucu işlemi,
+         aynı yetki. Yalnızca bulunduğu yer değişti. */
+      karar: bekleyen ? (
+        <div className="talep-not">
+          <KararFormu paymentId={payment.id} kurumAdi={ad} tutar={tutar} farklar={farkMetinleri(farklar)} kaydet={reviewBankTransferPayment} />
+        </div>
+      ) : null,
+    };
+  };
+  const olayKalemi = (incident: (typeof incidents)[number]) => ({
+    anahtar: `olay:${incident.id}`,
+    ad: incident.organizationName ?? "Kurum bilinmiyor",
+    alt: incident.merchantOid,
+    tutar: incident.paymentAmount !== null ? para(incident.paymentAmount) : "—",
+    durum: incidentLabels[incident.result] ?? incident.result,
+    ton: "danger" as const,
+    kurumId: incident.organizationId ?? null,
+    farklar: [] as HavaleFarki[],
+    not: null as string | null,
+    alanlar: [
+      { ad: "Tutar", deger: incident.paymentAmount !== null ? para(incident.paymentAmount) : <em>bilinmiyor</em> },
+      { ad: "Referans", deger: <span className="plt-mono">{incident.merchantOid}</span> },
+      { ad: "Sebep", deger: incidentNotes[incident.result] ?? incidentLabels[incident.result] ?? incident.result },
+      { ad: "Olay", deger: tarihSaat(incident.createdAt) },
+    ],
+    dekont: <KNot ton="tehlike">PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; PayTR panelinden doğrulayın.</KNot>,
+    karar: null as React.ReactNode,
+  });
+
+  const bekleyenKalemler = incelenecekler.map((x) => bildirimKalemi(x, true));
+  const olayKalemler = incidents.map(olayKalemi);
+  const sonucKalemler = sonuclananlar.map((x) => bildirimKalemi(x, false));
+  /* Sıra ekranın sırası: bugün yapılacak iş önce. */
+  const tumKayitlar = [...bekleyenKalemler, ...olayKalemler, ...sonucKalemler];
+  const listelenen = suzgec === "bekleyen" ? bekleyenKalemler
+    : suzgec === "karsiliksiz" ? olayKalemler
+    : suzgec === "sonuclanan" ? sonucKalemler
+    : tumKayitlar;
+  const secili = seciliAnahtar ? tumKayitlar.find((k) => k.anahtar === seciliAnahtar) ?? null : null;
+  const seciliListede = Boolean(secili && listelenen.some((k) => k.anahtar === secili.anahtar));
+  const odemeAdresi = (yeni: { secili?: string | null; suzgec?: string | null }) =>
+    listeAdresi("/panel/platform/payments",
+      { secili: seciliAnahtar, suzgec },
+      yeni);
+
+  return <main className="plt talep cari ekip finans-sayfa liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">FİNANS</small>
@@ -186,158 +287,124 @@ export default async function PaymentApprovalsPage() {
       <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar {currency} varsayımıyla yazıldı ve güvenilir değil.</KNot>
     ) : null}
 
-    <div className="talep-izgara personel-iki ekip-izgara">
-      <div className="fn-kartlar">
-        {incidents.length ? (
-          <section className="panel-card talep-bilgi" id="karsiliksiz" aria-label="İşlenemeyen ödeme bildirimleri">
-            <header className="phr-bas fn-alt-bas">
-              <h2>{incidents.length} ödeme bildirimi işlenemedi <span className="status-pill" data-tone="danger">Müdahale bekliyor</span></h2>
-              <small>PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın.</small>
-            </header>
+    {/*
+      LİSTE – SEÇİLİ ÖDEME (27.11.2026, onaylı tasarım). Müşteriler'le
+      aynı iskelet (konsol-liste.css): ortada bildirim listesi, sağda
+      seçili bildirimin paneli.
+
+      Eskiden bekleyen her bildirim TAM KART olarak alt alta
+      çiziliyordu; yüz bildirimin içinden bugün yapılacak işi bulmak
+      için doksan altı sonuçlanmış kartı geçmek gerekiyordu. Artık
+      hepsi tek listede, karar formu seçili kaydın panelinde.
+
+      ONAY ÖNCESİ GÖRÜNEN BİLGİ panelde ve karar formunun ÜSTÜNDE:
+      müşteri, tutar, para birimi ve referans. Karar formu, sunucu
+      işlemi ve yetki DEĞİŞMEDİ (KararFormu · reviewBankTransferPayment).
+    */}
+    <div className="kl-duzen" data-secim={secili ? "var" : "yok"}>
+      <section className="kl-liste" aria-label="Ödeme bildirimleri">
+        <div className="ek-arac">
+          <nav className="ek-segment" aria-label="Durum">
+            <Link href={odemeAdresi({ suzgec: null })} className={!suzgec ? "is-active" : undefined}>Tümü <small>{tumKayitlar.length}</small></Link>
+            <Link href={odemeAdresi({ suzgec: "bekleyen" })} className={suzgec === "bekleyen" ? "is-active" : undefined}>Bekleyen <small>{incelenecekler.length}</small></Link>
+            <Link href={odemeAdresi({ suzgec: "karsiliksiz" })} className={suzgec === "karsiliksiz" ? "is-active" : undefined}>Karşılıksız <small>{incidents.length}</small></Link>
+            <Link href={odemeAdresi({ suzgec: "sonuclanan" })} className={suzgec === "sonuclanan" ? "is-active" : undefined}>Sonuçlanan <small>{sonuclananlar.length}</small></Link>
+          </nav>
+        </div>
+        <KonsolListeKaydirma anahtar={kaydirmaAnahtari("/panel/platform/payments", { suzgec: suzgecParam })} adres={odemeAdresi({})} />
+        <div className="kl-liste-govde">
+          {listelenen.length ? (
             <div className="talep-tablo">
-              <table className="crm-data-table" data-cols="fn-karsiliksiz">
-                <thead><tr><th>Kurum</th><th>Sebep</th><th className="crm-col-date">Tarih</th><th className="crm-col-amount">Tutar</th></tr></thead>
+              <table className="crm-data-table" data-cols="fn-odeme">
+                <thead><tr><th>Kurum</th><th className="crm-col-amount">Tutar</th><th>Durum</th><th></th></tr></thead>
                 <tbody>
-                  {incidents.map((incident) => {
-                    const href = incident.organizationId ? `/panel/platform/musteriler/${incident.organizationId}` : null;
-                    const ad = incident.organizationName ?? "Kurum bilinmiyor";
-                    const sebep = incidentLabels[incident.result] ?? incident.result;
-                    return (
-                      <tr key={incident.id}>
-                        <td data-label="Kurum">{kisi(ad, incident.merchantOid, href)}</td>
-                        <td data-label="Sebep"><span className="status-pill" data-tone="danger">{sebep}</span><small title={incidentNotes[incident.result]}>{incidentNotes[incident.result]}</small></td>
-                        <td className="crm-col-date" data-label="Tarih">{tarihSaat(incident.createdAt)}</td>
-                        <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{incident.paymentAmount !== null ? para(incident.paymentAmount) : "—"}</span></td>
-                        <MobilSatir href={href} baslik={ad} durum={{ etiket: sebep, ton: "danger" }}
-                          alt={[incident.paymentAmount !== null ? para(incident.paymentAmount) : null, tarihSaat(incident.createdAt), incident.merchantOid]} />
-                      </tr>
-                    );
-                  })}
+                  {listelenen.map((k) => (
+                    <tr key={k.anahtar} className={[k.ton === "neutral" ? "is-pasif" : null, k.anahtar === seciliAnahtar ? "is-secili" : null].filter(Boolean).join(" ") || undefined}>
+                      <td data-label="Kurum">
+                        <Link className="crm-row-link ek-kisi" href={odemeAdresi({ secili: k.anahtar })}
+                          aria-current={k.anahtar === seciliAnahtar ? "true" : undefined} aria-label={`${k.ad} bildirimini seç`}>
+                          <span className="ek-avatar" aria-hidden="true">{basHarfleri(k.ad)}</span>
+                          <span className="ek-kisi-metin">
+                            <span className="crm-table-title" title={k.ad}>{k.ad}</span>
+                            <span className="crm-table-sub">{k.alt}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{k.tutar}</span></td>
+                      <td data-label="Durum"><span className="status-pill" data-tone={k.ton}>{k.durum}</span></td>
+                      <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                      <MobilSatir href={odemeAdresi({ secili: k.anahtar })} baslik={k.ad} durum={{ etiket: k.durum, ton: k.ton }} alt={[k.alt, k.tutar]} />
+                    </tr>
+                  ))}
                 </tbody>
               </table>
               <SatirTiklama />
             </div>
-          </section>
-        ) : null}
-
-        {/*
-          Bekleyenler kart, sonuçlananlar tablo. Eskiden yüz bildirimin
-          hepsi tam kart olarak çiziliyordu; bugün yapılacak işi bulmak
-          için doksan altı sonuçlanmış kartı geçmek gerekiyordu.
-        */}
-        <div id="bekleyen" className="fn-kartlar">
-          {incelenecekler.length ? incelenecekler.map((payment) => {
-            const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
-            const account = Array.isArray(payment.platform_bank_accounts) ? payment.platform_bank_accounts[0] : payment.platform_bank_accounts;
-            const kurumAdi = organization?.name ?? "Kurum";
-            const tutar = para(Number(payment.amount), payment.currency);
-            const beklenen = denetimler.get(payment.id)?.beklenen;
-            const farklar = denetimler.get(payment.id)?.farklar ?? [];
-            const alanlar: [string, string | null, boolean?][] = [
-              ["Ürün", productName(payment.product ?? "arvoos")],
-              ["Paket", PAKET_ADI[payment.plan_code] ?? payment.plan_code],
-              ["Beklenen", beklenen ? para(beklenen, payment.currency) : "ücret girilmemiş"],
-              ["Ödeme yolu", payment.payment_method === "paytr" ? "Kartla (PayTR)" : "Havale / EFT"],
-              ["Banka", account?.bank_name ?? null],
-              ["Referans", payment.reference_no ?? null, true],
-              ["Bildirim", tarihSaat(payment.created_at)],
-            ];
-            return (
-              <KKart
-                key={payment.id} id={`odeme-${payment.id}`}
-                baslik={`${kurumAdi} · ${tutar}`}
-                aciklama={`${organization?.slug ?? "kurum"} · tutarın hesaba geçtiğini doğrulayın; onay lisansı açar ve dönemi uzatır.`}
-                sag={<>
-                  <span className="status-pill" data-tone={ODEME_DURUMU.pending.ton}>{ODEME_DURUMU.pending.ad}</span>
-                  {/* Dekontu incelerken kiracının tamamına bakmak gerekebilir. */}
-                  <Link className="pu-tumu" href={`/panel/platform/musteriler/${payment.organization_id}`}>Müşteri kartı</Link>
-                </>}
-              >
-                <dl className="talep-liste talep-liste--iki">
-                  {alanlar.map(([etiket, deger, mono]) => (
-                    <div key={etiket}>
-                      <dt>{etiket}</dt>
-                      <dd className={deger && mono ? "plt-mono" : undefined}>{deger ? deger : <em>Belirtilmedi</em>}</dd>
-                    </div>
-                  ))}
-                  <div>
-                    <dt>Dekont</dt>
-                    <dd>{payment.payment_method === "paytr"
-                      ? "Kartla (PayTR) ödendi; otomatik onaylandı"
-                      : payment.receiptUrl
-                      ? <a className="plt-receipt" href={payment.receiptUrl} target="_blank" rel="noreferrer">Dekontu görüntüle ↗</a>
-                      : <em>Eklenmemiş: müşteri bildirimi dekontsuz gönderdi</em>}</dd>
-                  </div>
-                </dl>
-                {payment.customer_note ? <div className="talep-not"><p className="plt-quote">“{payment.customer_note}”</p></div> : null}
-                {farklar.length ? (
-                  <KNot ton="tehlike"><b>Beklenenle uyuşmuyor.</b>{farklar.map((f) => <span key={f}><br />{f}</span>)}</KNot>
-                ) : null}
-                <div className="talep-not">
-                  <KararFormu paymentId={payment.id} kurumAdi={kurumAdi} tutar={tutar} farklar={farklar} kaydet={reviewBankTransferPayment} />
-                </div>
-              </KKart>
-            );
-          }) : (
-            /* Başlık bölümün adı, boşluğun ilanı değil (15.10.2026). */
-            <section className="panel-card talep-bilgi" aria-label="Bekleyen dekontlar">
-              <header className="phr-bas fn-alt-bas"><h2>Bekleyen dekontlar</h2></header>
-              <div className="crm-empty-state talep-bos-kutu ek-bos"><h2>İncelenecek dekont yok</h2><p>Kurumlar panelden havale bildirdiğinde burada görünür.</p></div>
-            </section>
+          ) : (
+            <div className="crm-empty-state talep-bos-kutu ek-bos">
+              <h2>{suzgec ? "Bu süzgeçte bildirim yok" : "Ödeme bildirimi yok"}</h2>
+              <p>Kurumlar panelden havale bildirdiğinde burada görünür.</p>
+              {suzgec ? <div className="crm-empty-actions"><Link className="panel-secondary" href={odemeAdresi({ suzgec: null })}>Süzgeci temizle</Link></div> : null}
+            </div>
           )}
         </div>
+      </section>
 
-        {sonuclananlar.length ? (
-          <section className="panel-card talep-bilgi" id="gecmis" aria-label="Sonuçlanan bildirimler">
-            <header className="phr-bas fn-alt-bas">
-              <h2>Sonuçlanan bildirimler <span className="pu-sayi">{sonuclananlar.length}</span></h2>
-              <small>Son 30 karar. Dekontun kendisine müşteri kartından ulaşılır.</small>
-            </header>
-            <div className="talep-tablo">
-              <table className="crm-data-table" data-cols="fn-gecmis">
-                <thead><tr><th>Kurum</th><th>Ürün</th><th className="crm-col-date">Karar</th><th className="crm-col-amount">Tutar</th><th>Durum</th></tr></thead>
-                <tbody>
-                  {sonuclananlar.map((payment) => {
-                    const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
-                    const { ad: etiket, ton } = ODEME_DURUMU[payment.status] ?? { ad: payment.status, ton: "neutral" as const };
-                    const href = `/panel/platform/musteriler/${payment.organization_id}`;
-                    const yol = payment.payment_method === "paytr" ? "Kartla" : "Havale";
-                    const ad = organization?.name ?? "Kurum";
-                    return (
-                      <tr key={payment.id} className={payment.status === "approved" ? undefined : "is-pasif"}>
-                        <td data-label="Kurum">{kisi(ad, yol, href)}</td>
-                        <td data-label="Ürün"><span className="crm-table-title">{productName(payment.product ?? "arvoos")}</span>{payment.review_note ? <small title={payment.review_note}>{payment.review_note}</small> : null}</td>
-                        <td className="crm-col-date" data-label="Karar">{tarih(payment.reviewed_at ?? payment.created_at)}</td>
-                        <td className="crm-col-amount" data-label="Tutar"><span className="crm-table-title">{para(Number(payment.amount), payment.currency)}</span></td>
-                        <td data-label="Durum"><span className="status-pill" data-tone={ton}>{etiket}</span></td>
-                        <MobilSatir href={href} baslik={ad} durum={{ etiket, ton }}
-                          alt={[productName(payment.product ?? "arvoos"), para(Number(payment.amount), payment.currency), tarih(payment.reviewed_at ?? payment.created_at), payment.review_note]} />
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <SatirTiklama />
+      <aside className="kl-panel" aria-label={secili ? `${secili.ad} bildirimi` : "Ödeme istatistikleri"}>
+        {secili ? (
+          <>
+            <Link className="kl-geri" href={odemeAdresi({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+            {!seciliListede ? (
+              <p className="kl-suzgec-disi">
+                Bu bildirim geçerli süzgeçte görünmüyor.{" "}
+                <Link href={odemeAdresi({ suzgec: null })}>Süzgeci temizle →</Link>
+              </p>
+            ) : null}
+            <KonsolPanelBas baslik={secili.ad} durum={{ etiket: secili.durum, ton: secili.ton }}
+              kapatAdresi={odemeAdresi({ secili: null })} />
+            {/*
+              ONAYDAN ÖNCE GÖRÜNEN BİLGİ. Tutar ve para birimi
+              birlikte yazılıyor: kayıtlarda birden çok para birimi
+              olabiliyor ve "28.900" tek başına hangi birim olduğunu
+              söylemiyor.
+            */}
+            <KonsolPanelAlanlar alanlar={secili.alanlar} />
+            {secili.dekont}
+            {secili.not ? <div className="talep-not"><p className="plt-quote">&ldquo;{secili.not}&rdquo;</p></div> : null}
+            {/* BAŞLIK FARKIN TÜRÜNE GÖRE: beklenen ücret girilmemişse
+                karşılaştırılacak iki tutar yok, "uyuşmuyor" demek
+                olmayan bir karşılaştırmayı iddia ederdi
+                (lib/abonelik-tutari → havaleUyariBasligi). */}
+            {secili.farklar.length ? (
+              <KNot ton="tehlike"><b>{havaleUyariBasligi(secili.farklar)}</b>{secili.farklar.map((f) => <span key={f.metin}><br />{f.metin}</span>)}</KNot>
+            ) : null}
+            {secili.karar}
+            <div className="kl-panel-eylem">
+              {secili.kurumId ? <Link className="panel-secondary" href={`/panel/platform/musteriler/${secili.kurumId}`}>Müşteri kartı</Link> : null}
             </div>
-          </section>
-        ) : null}
-      </div>
-
-      {/* Sağ sütun: Ekip ve Müşteriler listesindeki sekmeli istatistik kartı. */}
-      <div className="liste-sag">
-        <TalepAkis kimlik="odeme-sag" sinif="ek-sag" etiket="Ödeme istatistikleri" sekmeler={["İstatistikler"]}>
-          <IstatistikKarti
-            kapsam="son 30 karar"
-            kutular={[
-              { ad: "Havale / EFT", deger: String(sonuclananlar.length - gecmisKartla), alt: "son 30 karar" },
-              { ad: "Kartla (PayTR)", deger: String(gecmisKartla), alt: "son 30 karar" },
-              { ad: "Onaylanan", deger: String(onaylilar.length), alt: "tüm zamanlar" },
-              { ad: "Reddedilen", deger: String(rejected), alt: "tüm zamanlar", ton: rejected ? "uyari" : undefined },
-            ]}
-            gruplar={[{ baslik: "Ürüne göre", satirlar: urunDagilimi.map(([ad, adet]) => ({ ad, adet })) }]}
-          />
-        </TalepAkis>
-      </div>
+          </>
+        ) : seciliAnahtar ? (
+          <>
+            <Link className="kl-geri" href={odemeAdresi({ secili: null })}><span aria-hidden="true">‹</span> Listeye dön</Link>
+            <KonsolPanelBos ton="uyari" baslik="Bildirim bulunamadı"
+              aciklama="Bu bildirim listede yok: karar verilmiş ve geçmişten düşmüş olabilir. Listeden başka bir kayıt seçin."
+              eylem={<Link className="panel-secondary" href={odemeAdresi({ secili: null })}>Listeye dön</Link>} />
+          </>
+        ) : (
+          <TalepAkis kimlik="odeme-sag" sinif="ek-sag" etiket="Ödeme istatistikleri" sekmeler={["İstatistikler"]}>
+            <IstatistikKarti
+              kapsam="son 30 karar"
+              kutular={[
+                { ad: "Havale / EFT", deger: String(sonuclananlar.length - gecmisKartla), alt: "son 30 karar" },
+                { ad: "Kartla (PayTR)", deger: String(gecmisKartla), alt: "son 30 karar" },
+                { ad: "Onaylanan", deger: String(onaylilar.length), alt: "tüm zamanlar" },
+                { ad: "Reddedilen", deger: String(rejected), alt: "tüm zamanlar", ton: rejected ? "uyari" : undefined },
+              ]}
+              gruplar={[{ baslik: "Ürüne göre", satirlar: urunDagilimi.map(([ad, adet]) => ({ ad, adet })) }]}
+            />
+          </TalepAkis>
+        )}
+      </aside>
     </div>
   </main>;
 }

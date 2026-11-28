@@ -140,3 +140,30 @@ export function fiyatKaydi(ham: {
     taslak_bekliyor: typeof ham.taslak_bekliyor === "boolean" ? ham.taslak_bekliyor : taslak !== null && taslak !== aylik,
   };
 }
+
+/*
+  ÖNİZLEMENİN KAPSAM İMZASI (27.11.2026 ara kontrolü).
+
+  Yayım işlemi bekleyen BÜTÜN taslakları yayımlıyor (14.10.2026
+  kararı: yarı güncel liste olmasın). Ekran bunu önceden yazıyor —
+  etkilenen ürünler listeleniyor ve ayrı bir onay kutusu isteniyor —
+  ama ONAY ile GÖNDERİM arasında taslak kümesi değişebiliyordu:
+  başka bir sekmede ya da başka bir kurucu tarafından yeni bir
+  basamak taslağa alınırsa, kurucu görmediği bir değişikliği
+  yayımlamış oluyordu. Ekrandaki liste doğru, onay yanlış şeye
+  verilmiş oluyordu.
+
+  İmza önizlemede neyin GÖSTERİLDİĞİNİ taşıyor; işlem onu yeniden
+  hesaplayıp karşılaştırıyor. Fark varsa yayım yapılmıyor, ekran
+  tazeleniyor ve onay yeniden isteniyor.
+
+  Sıralı ve kod+tutar ikilisinden: aynı küme farklı sırayla gelse de
+  aynı imza çıkmalı, tutarı değişen bir basamak ise FARKLI kabul
+  edilmeli (aynı kod, başka rakam = başka karar).
+*/
+export function kapsamImzasi(degisiklikler: readonly { kod: string; yeni: number | null }[]): string {
+  return [...degisiklikler]
+    .map((d) => `${d.kod}:${d.yeni === null ? "teklif" : d.yeni}`)
+    .sort()
+    .join("|");
+}

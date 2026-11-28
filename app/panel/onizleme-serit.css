@@ -1,0 +1,47 @@
+/*
+  Önizleme şeridi (onizleme-serit.tsx).
+
+  AKIŞIN DIŞINDA (position: fixed). Şerit normal akışta durduğunda
+  kabuğun yüksekliğini 26 piksel kaydırıyor ve liste ekranları tam o
+  kadar taşıyordu: önizlemeye özel bir öğe, ölçülen düzeni
+  değiştiriyordu. Dock'un üstünde kalıyor (--os-dock-space), yoksa
+  telefonda alt çubuğun altında kalırdı.
+
+  Renk uyarı token'ından; ham renk yok.
+*/
+.onizleme-serit {
+  position: fixed;
+  z-index: 80;
+  right: var(--sp-3);
+  bottom: calc(var(--os-dock-space, 0px) + var(--sp-3));
+  max-width: min(420px, calc(100vw - 2 * var(--sp-3)));
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  box-sizing: border-box;
+  border: 1px solid var(--warning);
+  border-radius: var(--r-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  box-shadow: var(--shadow-md);
+  /*
+    TIKLAMAYI ENGELLEMEZ. Rozet sabit bir kaplama; telefonda sağ
+    panelin son eyleminin (yanıt gönder, karar formu) üstüne
+    geliyordu ve ölçüm "örten: SPAN" diyordu. Önizlemeye özel bir
+    öğe, denenen işin önüne geçmemeli.
+  */
+  pointer-events: none;
+}
+.onizleme-serit > b { flex: none; letter-spacing: 0.06em; }
+.onizleme-serit > span { min-width: 0; }
+
+/* Telefonda tek satırlık rozet: uzun metin ekranın dörtte birini
+   kaplıyordu. */
+@media (max-width: 860px) {
+  .onizleme-serit { max-width: none; padding: 4px var(--sp-2); font-size: 12px; }
+  .onizleme-serit > span { display: none; }
+  .onizleme-serit > b::after { content: " · SİMÜLASYON"; font-weight: var(--fw-medium); }
+}

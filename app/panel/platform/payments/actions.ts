@@ -9,6 +9,7 @@ import { syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { havaleDenetimleri } from "@/lib/beklenen-odeme";
+import { farkMetinleri, havaleUyariBasligi } from "@/lib/abonelik-tutari";
 
 async function reviewBankTransferPayment__impl(formData: FormData) {
   const { supabase, isPlatformOwner, konsolKapsami } = await getPanelContext();
@@ -35,7 +36,11 @@ async function reviewBankTransferPayment__impl(formData: FormData) {
     if (bildirimHatasi || !bildirim) throw new Error("Ödeme bildirimi okunamadı" + (bildirimHatasi ? `: ${bildirimHatasi.message}` : "."));
     const denetim = (await havaleDenetimleri(supabase, [bildirim])).get(bildirim.id);
     if (denetim?.farklar.length && formData.get("fark_onayi") !== "evet") {
-      throw new Error("Bildirim beklenenle uyuşmuyor: " + denetim.farklar.join(" ") + " Farkı görerek onaylamak için ekrandaki teyidi kullanın.");
+      throw new Error(
+        (havaleUyariBasligi(denetim.farklar) ?? "Bildirim kiracının kaydından farklı.") +
+        " " + farkMetinleri(denetim.farklar).join(" ") +
+        " Farkı görerek onaylamak için ekrandaki teyidi kullanın.",
+      );
     }
   }
 
